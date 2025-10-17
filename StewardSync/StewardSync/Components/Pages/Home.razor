@@ -1,0 +1,209 @@
+@page "/"
+@page "/"
+@using StewardSync.Models
+@using StewardSync.Services
+@using StewardSync.Services.Authentication
+@inject ReportService ReportService
+@inject ReviewService ReviewService
+@inject AuthenticationService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>StewardSync Dashboard</PageTitle>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h1>StewardSync Dashboard</h1>
+        <p class="lead">Unified Racing Steward Reports Management System</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center bg-primary text-white">
+            <div class="card-body">
+                <h2 class="card-title">@totalReports</h2>
+                <p class="card-text">Total Reports</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center bg-warning text-dark">
+            <div class="card-body">
+                <h2 class="card-title">@openReports</h2>
+                <p class="card-text">Open Reports</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center bg-success text-white">
+            <div class="card-body">
+                <h2 class="card-title">@finalizedReports</h2>
+                <p class="card-text">Finalized Reports</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center bg-info text-white">
+            <div class="card-body">
+                <h2 class="card-title">@totalReviews</h2>
+                <p class="card-text">Total Reviews</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Reports</h5>
+            </div>
+            <div class="card-body">
+                @if (recentReports.Any())
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var report in recentReports.Take(5))
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">Report #@report.ReportId</h6>
+                                    <small>@report.ReportDate:yyyy-MM-dd</small>
+                                </div>
+                                <p class="mb-1">
+                                    <strong>@report.ReportingDriver.DriverName</strong> reported <strong>@report.ReportedDriver.DriverName</strong>
+                                </p>
+                                <small>
+                                    @report.Event.Series - Race @report.Race.RaceNumber - Turn @report.Turn
+                                    @if (report.IsFinalized)
+                                    {
+                                        <span class="badge bg-success ms-2">Finalized</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning ms-2">Open</span>
+                                    }
+                                </small>
+                            </div>
+                        }
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="/reports" class="btn btn-outline-primary">View All Reports</a>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No reports found.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="/report-incident" class="btn btn-primary">
+                        <span class="bi bi-exclamation-triangle-fill" aria-hidden="true"></span> Report New Incident
+                    </a>
+
+                    @if (canReviewReports)
+                    {
+                        <a href="/review-report" class="btn btn-outline-primary">
+                            <span class="bi bi-clipboard-check-fill" aria-hidden="true"></span> Review Reports
+                        </a>
+                    }
+
+                    @if (canFinalizeReports)
+                    {
+                        <a href="/finalize-report" class="btn btn-outline-danger">
+                            <span class="bi bi-check-circle-fill" aria-hidden="true"></span> Finalize Reports
+                        </a>
+                    }
+
+                    <a href="/reports" class="btn btn-outline-secondary">
+                        <span class="bi bi-list-ul" aria-hidden="true"></span> View All Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5>System Information</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Application:</strong> StewardSync</p>
+                <p><strong>Purpose:</strong> Racing Steward Reports Management</p>
+                <p><strong>Version:</strong> 1.0.0</p>
+                <p><strong>Current User:</strong> @AuthService.CurrentUser!.UserName (@AuthService.CurrentUser.Role.RoleName)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Report> allReports = new();
+    private List<Report> recentReports = new();
+    private List<Review> allReviews = new();
+    private int totalReports = 0;
+    private int openReports = 0;
+    private int finalizedReports = 0;
+    private int totalReviews = 0;
+    private bool isLoading = true;
+    private bool canReviewReports = false;
+    private bool canFinalizeReports = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Redirect to login if not authenticated
+        if (!AuthService.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/login");
+            return;
+        }
+
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            allReports = await ReportService.GetAllReportsAsync();
+            recentReports = allReports.OrderByDescending(r => r.ReportDate).ToList();
+            allReviews = await ReviewService.GetAllReviewsAsync();
+
+            totalReports = allReports.Count;
+            openReports = allReports.Count(r => !r.IsFinalized);
+            finalizedReports = allReports.Count(r => r.IsFinalized);
+            totalReviews = allReviews.Count;
+        }
+        catch (Exception ex)
+        {
+            // Handle error - in a real app, you might want to show a toast or alert
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SetPermissions()
+    {
+        canReviewReports = AuthService.CanUserReviewReport();
+        canFinalizeReports = AuthService.CanUserFinalizeReport();
+    }
+}

@@ -1,0 +1,291 @@
+@page "/finalize-report"
+@using StewardSync.Models
+@using StewardSync.Services
+@inject ReportService ReportService
+@inject ReviewService ReviewService
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Finalize Report</PageTitle>
+
+<h3>Finalize Report</h3>
+
+@if (selectedReport == null)
+{
+    <div class="row">
+        <div class="col-md-8">
+            <h4>Select a Report to Finalize</h4>
+            <div class="list-group">
+                @foreach (var report in unfinalizedReports)
+                {
+                    <button class="list-group-item list-group-item-action" @onclick="() => SelectReport(report)">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Report #@report.ReportId</h6>
+                            <small>@report.ReportDate:yyyy-MM-dd HH:mm</small>
+                        </div>
+                        <p class="mb-1">
+                            <strong>@report.ReportingDriver.DriverName</strong> reported <strong>@report.ReportedDriver.DriverName</strong>
+                        </p>
+                        <small>
+                            @report.Event.Series - Race @report.Race.RaceNumber - Turn @report.Turn
+                            @if (report.Reviews.Any())
+                            {
+                                <span class="badge bg-info ms-2">@report.Reviews.Count Review(s)</span>
+                            }
+                        </small>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Incident Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Report ID:</strong></div>
+                        <div class="col-sm-8">@selectedReport.ReportId</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Date:</strong></div>
+                        <div class="col-sm-8">@selectedReport.ReportDate:yyyy-MM-dd HH:mm</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Event:</strong></div>
+                        <div class="col-sm-8">@selectedReport.Event.Series - @selectedReport.Event.TrackName</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Race:</strong></div>
+                        <div class="col-sm-8">Race @selectedReport.Race.RaceNumber</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Turn:</strong></div>
+                        <div class="col-sm-8">@selectedReport.Turn</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Reporting Driver:</strong></div>
+                        <div class="col-sm-8">@selectedReport.ReportingDriver.DriverNumber - @selectedReport.ReportingDriver.DriverName</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Reported Driver:</strong></div>
+                        <div class="col-sm-8">@selectedReport.ReportedDriver.DriverNumber - @selectedReport.ReportedDriver.DriverName</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Original Description:</strong></div>
+                        <div class="col-sm-8">@selectedReport.Description</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Finalization Form</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Final Incident Description</label>
+                        <InputTextArea class="form-control" @bind-Value="finalDescription" rows="5" />
+                        <small class="form-text text-muted">This will be the final description for the incident record.</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Finalization Notes</label>
+                        <InputTextArea class="form-control" @bind-Value="finalizationNotes" rows="3" />
+                        <small class="form-text text-muted">Any additional notes from other stewards or final comments.</small>
+                    </div>
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Warning:</strong> Once finalized, this report cannot be modified. Please ensure all reviews have been completed and the incident description is accurate.
+                    </div>
+
+                    <button class="btn btn-danger" @onclick="HandleFinalize" disabled="@isFinalizing">
+                        @if (isFinalizing)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span class="ms-2">Finalizing...</span>
+                        }
+                        else
+                        {
+                            <span>Finalize Report</span>
+                        }
+                    </button>
+
+                    <button class="btn btn-secondary ms-2" @onclick="HandleCancel">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (selectedReport.Reviews.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <h4>Steward Reviews</h4>
+                @foreach (var review in selectedReport.Reviews)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>@review.User.UserName</strong> (@review.User.Role.RoleName) - @review.ReviewDate:yyyy-MM-dd HH:mm
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Incident Description:</strong> @review.IncidentDescription</p>
+                            @if (!string.IsNullOrEmpty(review.ReviewNotes))
+                            {
+                                <p><strong>Review Notes:</strong> @review.ReviewNotes</p>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="alert alert-info" role="alert">
+                    <strong>Info:</strong> This report has not been reviewed by any stewards yet. Consider having stewards review this report before finalizing.
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-3" role="alert">
+        @errorMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success mt-3" role="alert">
+        @successMessage
+    </div>
+}
+
+@code {
+    private Report? selectedReport;
+    private List<Report> unfinalizedReports = new();
+    private string finalDescription = string.Empty;
+    private string finalizationNotes = string.Empty;
+    private bool isFinalizing = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    // Hardcoded current user - in a real app, this would come from authentication
+    private readonly User currentUser = new User { UserId = 1, UserName = "headsteward" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUnfinalizedReports();
+    }
+
+    private async Task LoadUnfinalizedReports()
+    {
+        try
+        {
+            unfinalizedReports = await ReportService.GetUnfinalizedReportsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading reports: {ex.Message}";
+        }
+    }
+
+    private async Task SelectReport(Report report)
+    {
+        try
+        {
+            selectedReport = await ReportService.GetReportByIdAsync(report.ReportId);
+
+            if (selectedReport != null)
+            {
+                // Initialize finalization form
+                finalDescription = selectedReport.Description;
+                finalizationNotes = string.Empty;
+
+                // Clear messages
+                errorMessage = null;
+                successMessage = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading report details: {ex.Message}";
+        }
+    }
+
+    private async Task HandleFinalize()
+    {
+        if (isFinalizing || selectedReport == null) return;
+
+        // Confirm finalization
+        if (!string.IsNullOrEmpty(finalDescription))
+        {
+            isFinalizing = true;
+            errorMessage = null;
+            successMessage = null;
+
+            try
+            {
+                // Update the report description if it has changed
+                if (finalDescription != selectedReport.Description)
+                {
+                    selectedReport.Description = finalDescription;
+                    await ReportService.UpdateReportAsync(selectedReport);
+                }
+
+                // Create a final review from the head steward
+                var finalReview = new Review
+                {
+                    ReportId = selectedReport.ReportId,
+                    UserId = currentUser.UserId,
+                    IncidentDescription = finalDescription,
+                    ReviewNotes = $"FINALIZATION: {finalizationNotes}"
+                };
+
+                await ReviewService.CreateReviewAsync(finalReview);
+
+                // Finalize the report
+                await ReportService.FinalizeReportAsync(selectedReport.ReportId);
+
+                successMessage = "Report finalized successfully! Redirecting...";
+
+                // Navigate to home after a short delay
+                await Task.Delay(2000);
+                NavigationManager.NavigateTo("/");
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+            finally
+            {
+                isFinalizing = false;
+            }
+        }
+        else
+        {
+            errorMessage = "Please provide a final incident description.";
+        }
+    }
+
+    private void HandleCancel()
+    {
+        selectedReport = null;
+        finalDescription = string.Empty;
+        finalizationNotes = string.Empty;
+        errorMessage = null;
+        successMessage = null;
+    }
+}

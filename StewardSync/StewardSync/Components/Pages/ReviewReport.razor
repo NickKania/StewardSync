@@ -1,0 +1,265 @@
+@page "/review-report"
+@using StewardSync.Models
+@using StewardSync.Services
+@inject ReportService ReportService
+@inject ReviewService ReviewService
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Review Report</PageTitle>
+
+<h3>Review Report</h3>
+
+@if (selectedReport == null)
+{
+    <div class="row">
+        <div class="col-md-8">
+            <h4>Select a Report to Review</h4>
+            <div class="list-group">
+                @foreach (var report in unfinalizedReports)
+                {
+                    <button class="list-group-item list-group-item-action" @onclick="() => SelectReport(report)">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Report #@report.ReportId</h6>
+                            <small>@report.ReportDate:yyyy-MM-dd HH:mm</small>
+                        </div>
+                        <p class="mb-1">
+                            <strong>@report.ReportingDriver.DriverName</strong> reported <strong>@report.ReportedDriver.DriverName</strong>
+                        </p>
+                        <small>
+                            @report.Event.Series - Race @report.Race.RaceNumber - Turn @report.Turn
+                        </small>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Incident Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Report ID:</strong></div>
+                        <div class="col-sm-8">@selectedReport.ReportId</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Date:</strong></div>
+                        <div class="col-sm-8">@selectedReport.ReportDate:yyyy-MM-dd HH:mm</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Event:</strong></div>
+                        <div class="col-sm-8">@selectedReport.Event.Series - @selectedReport.Event.TrackName</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Race:</strong></div>
+                        <div class="col-sm-8">Race @selectedReport.Race.RaceNumber</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Turn:</strong></div>
+                        <div class="col-sm-8">@selectedReport.Turn</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Reporting Driver:</strong></div>
+                        <div class="col-sm-8">@selectedReport.ReportingDriver.DriverNumber - @selectedReport.ReportingDriver.DriverName</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Reported Driver:</strong></div>
+                        <div class="col-sm-8">@selectedReport.ReportedDriver.DriverNumber - @selectedReport.ReportedDriver.DriverName</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Description:</strong></div>
+                        <div class="col-sm-8">@selectedReport.Description</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <EditForm Model="@reviewModel" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Review Form</h5>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="@reviewModel" OnValidSubmit="HandleValidSubmit" FormName="reviewReportForm">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div class="form-group mb-3">
+                                <label class="form-label">Incident Description</label>
+                                <InputTextArea class="form-control" @bind-Value="reviewModel.IncidentDescription" rows="5" />
+                                <ValidationMessage For="@(() => reviewModel.IncidentDescription)" />
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label class="form-label">Review Notes</label>
+                                <InputTextArea class="form-control" @bind-Value="reviewModel.ReviewNotes" rows="3" />
+                                <ValidationMessage For="@(() => reviewModel.ReviewNotes)" />
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span class="ms-2">Submitting...</span>
+                                }
+                                else
+                                {
+                                    <span>Submit Review</span>
+                                }
+                            </button>
+
+                            <button type="button" class="btn btn-secondary ms-2" @onclick="HandleCancel">Cancel</button>
+                        </EditForm>
+                    </div>
+                </div>
+        </div>
+    </div>
+
+    @if (selectedReport.Reviews.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <h4>Previous Reviews</h4>
+                @foreach (var review in selectedReport.Reviews)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>@review.User.UserName</strong> (@review.User.Role.RoleName) - @review.ReviewDate:yyyy-MM-dd HH:mm
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Incident Description:</strong> @review.IncidentDescription</p>
+                            @if (!string.IsNullOrEmpty(review.ReviewNotes))
+                            {
+                                <p><strong>Review Notes:</strong> @review.ReviewNotes</p>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-3" role="alert">
+        @errorMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success mt-3" role="alert">
+        @successMessage
+    </div>
+}
+
+@code {
+    private Report? selectedReport;
+    private List<Report> unfinalizedReports = new();
+    private Review reviewModel = new Review();
+    private bool isSubmitting = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    // Hardcoded current user - in a real app, this would come from authentication
+    private readonly User currentUser = new User { UserId = 2, UserName = "steward1" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUnfinalizedReports();
+    }
+
+    private async Task LoadUnfinalizedReports()
+    {
+        try
+        {
+            unfinalizedReports = await ReportService.GetUnfinalizedReportsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading reports: {ex.Message}";
+        }
+    }
+
+    private async Task SelectReport(Report report)
+    {
+        try
+        {
+            selectedReport = await ReportService.GetReportByIdAsync(report.ReportId);
+
+            if (selectedReport != null)
+            {
+                // Initialize review model
+                reviewModel = new Review
+                {
+                    ReportId = selectedReport.ReportId,
+                    UserId = currentUser.UserId,
+                    IncidentDescription = selectedReport.Description // Pre-populate with original description
+                };
+
+                // Clear messages
+                errorMessage = null;
+                successMessage = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading report details: {ex.Message}";
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (isSubmitting || selectedReport == null) return;
+
+        isSubmitting = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            await ReviewService.CreateReviewAsync(reviewModel);
+            successMessage = "Review submitted successfully!";
+
+            // Reload selected report to show new review
+            await SelectReport(selectedReport);
+
+            // Reload unfinalized reports list
+            await LoadUnfinalizedReports();
+
+            // Clear the form
+            reviewModel = new Review
+            {
+                ReportId = selectedReport.ReportId,
+                UserId = currentUser.UserId
+            };
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void HandleCancel()
+    {
+        selectedReport = null;
+        reviewModel = new Review();
+        errorMessage = null;
+        successMessage = null;
+    }
+}

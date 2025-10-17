@@ -1,0 +1,261 @@
+@page "/reports"
+@using StewardSync.Models
+@using StewardSync.Services
+@inject ReportService ReportService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Reports</PageTitle>
+
+<h3>Incident Reports</h3>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="form-check form-check-inline">
+            <InputRadioGroup @bind-Value="selectedFilter" Name="reportFilter">
+                <div class="form-check form-check-inline">
+                    <InputRadio class="form-check-input" Id="allReports" Value="@("all")" />
+                    <label class="form-check-label" for="allReports">All Reports</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <InputRadio class="form-check-input" Id="unfinalizedReports" Value="@("unfinalized")" />
+                    <label class="form-check-label" for="unfinalizedReports">Unfinalized</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <InputRadio class="form-check-input" Id="finalizedReports" Value="@("finalized")" />
+                    <label class="form-check-label" for="finalizedReports">Finalized</label>
+                </div>
+            </InputRadioGroup>
+        </div>
+    </div>
+    <div class="col-md-6 text-end">
+        <button class="btn btn-primary" @onclick="LoadReports">
+            <span class="bi bi-arrow-clockwise" aria-hidden="true"></span> Refresh
+        </button>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (filteredReports.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Event</th>
+                    <th>Race</th>
+                    <th>Turn</th>
+                    <th>Reporting Driver</th>
+                    <th>Reported Driver</th>
+                    <th>Status</th>
+                    <th>Reviews</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var report in filteredReports)
+                {
+                    <tr>
+                        <td>@report.ReportId</td>
+                        <td>@report.ReportDate:yyyy-MM-dd HH:mm</td>
+                        <td>@report.Event.Series - @report.Event.TrackName</td>
+                        <td>Race @report.Race.RaceNumber</td>
+                        <td>@report.Turn</td>
+                        <td>@report.ReportingDriver.DriverNumber - @report.ReportingDriver.DriverName</td>
+                        <td>@report.ReportedDriver.DriverNumber - @report.ReportedDriver.DriverName</td>
+                        <td>
+                            @if (report.IsFinalized)
+                            {
+                                <span class="badge bg-success">Finalized</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">Open</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge bg-info">@report.Reviews.Count</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewReportDetails(report.ReportId)">
+                                <span class="bi bi-eye" aria-hidden="true"></span> View
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-info" role="alert">
+        No reports found matching the selected criteria.
+    </div>
+}
+
+<!-- Report Details Modal -->
+@if (selectedReport != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Report #@selectedReport.ReportId Details</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Date:</strong> @selectedReport.ReportDate:yyyy-MM-dd HH:mm
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Status:</strong>
+                            @if (selectedReport.IsFinalized)
+                            {
+                                <span class="badge bg-success">Finalized</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">Open</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Event:</strong> @selectedReport.Event.Series - @selectedReport.Event.TrackName
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Race:</strong> Race @selectedReport.Race.RaceNumber
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Turn:</strong> @selectedReport.Turn
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Reviews:</strong> @selectedReport.Reviews.Count
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Reporting Driver:</strong><br/>
+                            @selectedReport.ReportingDriver.DriverNumber - @selectedReport.ReportingDriver.DriverName
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Reported Driver:</strong><br/>
+                            @selectedReport.ReportedDriver.DriverNumber - @selectedReport.ReportedDriver.DriverName
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Description:</strong><br/>
+                        <p class="border rounded p-3 bg-light">@selectedReport.Description</p>
+                    </div>
+
+                    @if (selectedReport.Reviews.Any())
+                    {
+                        <div class="mb-3">
+                            <strong>Reviews:</strong>
+                            @foreach (var review in selectedReport.Reviews)
+                            {
+                                <div class="card mt-2">
+                                    <div class="card-header">
+                                        <strong>@review.User.UserName</strong> (@review.User.Role.RoleName) - @review.ReviewDate:yyyy-MM-dd HH:mm
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Incident Description:</strong> @review.IncidentDescription</p>
+                                        @if (!string.IsNullOrEmpty(review.ReviewNotes))
+                                        {
+                                            <p><strong>Review Notes:</strong> @review.ReviewNotes</p>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Report> allReports = new();
+    private List<Report> filteredReports = new();
+    private Report? selectedReport;
+    private string selectedFilter = "all";
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReports();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await ApplyFilter();
+    }
+
+    private async Task LoadReports()
+    {
+        isLoading = true;
+        try
+        {
+            allReports = await ReportService.GetAllReportsAsync();
+            await ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            // Handle error - in a real app, you might want to show a toast or alert
+            Console.WriteLine($"Error loading reports: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ApplyFilter()
+    {
+        await Task.Run(() =>
+        {
+            switch (selectedFilter)
+            {
+                case "unfinalized":
+                    filteredReports = allReports.Where(r => !r.IsFinalized).ToList();
+                    break;
+                case "finalized":
+                    filteredReports = allReports.Where(r => r.IsFinalized).ToList();
+                    break;
+                default:
+                    filteredReports = allReports;
+                    break;
+            }
+        });
+    }
+
+    private async Task ViewReportDetails(int reportId)
+    {
+        selectedReport = await ReportService.GetReportByIdAsync(reportId);
+    }
+
+    private void CloseModal()
+    {
+        selectedReport = null;
+    }
+}

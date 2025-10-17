@@ -1,0 +1,12 @@
+﻿services:
+  stewardsync:
+    image: stewardsync
+    build:
+      context: .
+      dockerfile: StewardSync/StewardSync/Dockerfile
+
+  stewardsync.client:
+    image: stewardsync.client
+    build:
+      context: .
+      dockerfile: StewardSync/StewardSync.Client/Dockerfile
