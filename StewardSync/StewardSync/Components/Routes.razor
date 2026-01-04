@@ -1,6 +1,24 @@
-﻿<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }">
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager NavigationManager
+
+<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)"/>
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1"/>
     </Found>
+    <NotFound>
+        <div class="content fade-in">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="alert alert-warning">
+                        <h4>Page Not Found</h4>
+                        <p>Sorry, there's nothing at this address.</p>
+                        <button class="btn btn-primary" onclick="window.location.href='/'">
+                            Go Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </NotFound>
 </Router>

@@ -81,7 +81,7 @@ namespace StewardSync.Services
                 throw new ArgumentException("Report not found.");
             }
 
-            if (report.IsFinalized)
+            if (report.Status == ReportStatus.DecisionReached || report.Status == ReportStatus.Closed)
             {
                 throw new InvalidOperationException("Cannot review a finalized report.");
             }
@@ -125,7 +125,7 @@ namespace StewardSync.Services
 
             // Check if the associated report is not finalized
             var report = await _context.Reports.FindAsync(existingReview.ReportId);
-            if (report != null && report.IsFinalized)
+            if (report != null && (report.Status == ReportStatus.DecisionReached || report.Status == ReportStatus.Closed))
             {
                 throw new InvalidOperationException("Cannot update a review for a finalized report.");
             }
@@ -145,7 +145,7 @@ namespace StewardSync.Services
 
             // Check if the associated report is not finalized
             var report = await _context.Reports.FindAsync(review.ReportId);
-            if (report != null && report.IsFinalized)
+            if (report != null && (report.Status == ReportStatus.DecisionReached || report.Status == ReportStatus.Closed))
             {
                 throw new InvalidOperationException("Cannot delete a review for a finalized report.");
             }

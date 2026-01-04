@@ -21,15 +21,20 @@ namespace StewardSync.Models
         [Required]
         public int RaceId { get; set; }
 
-        [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "Turn number must be positive")]
-        public int Turn { get; set; }
 
         [Required]
+        public string Turn { get; set; } = string.Empty;
+
+        [Required]
+
         [StringLength(2000, MinimumLength = 10, ErrorMessage = "Description must be between 10 and 2000 characters")]
         public string Description { get; set; } = string.Empty;
 
-        public bool IsFinalized { get; set; } = false;
+        [Required]
+        [Url]
+        public string VideoUrl { get; set; } = string.Empty;
+
+        public ReportStatus Status { get; set; } = ReportStatus.Pending;
 
         // Navigation properties
         public Driver ReportingDriver { get; set; } = null!;

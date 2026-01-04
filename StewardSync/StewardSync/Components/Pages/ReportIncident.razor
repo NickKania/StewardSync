@@ -6,102 +6,248 @@
 @inject AuthenticationService AuthService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Report Incident</PageTitle>
+<PageTitle>Report Incident - StewardSync</PageTitle>
 
-<h3>Report Incident</h3>
+<div class="content fade-in">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header Section -->
+            <div class="text-center mb-4">
+                <h1 class="display-5 fw-bold text-gradient mb-3">Report Incident</h1>
+                <p class="lead text-muted">Submit a detailed report of a racing incident for steward review</p>
+            </div>
 
-<EditForm Model="@reportModel" OnValidSubmit="HandleValidSubmit" FormName="reportIncidentForm">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+            <!-- Main Form Container -->
+            <div class="form-container form-enhanced">
+                <EditForm Model="@reportModel" OnValidSubmit="HandleValidSubmit" FormName="reportIncidentForm" class="@formLoadingClass">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
 
-    <div class="form-group mb-3">
-        <label class="form-label">Reporting Driver</label>
-        <InputSelect class="form-control" @bind-Value="reportModel.ReportingDriverId">
-            <option value="">Select Reporting Driver</option>
-            @foreach (var driver in drivers)
+                    <!-- Incident Details Section -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            Incident Details
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Reporting Driver</label>
+                                    @if (AuthService.CurrentUser?.DriverId.HasValue == true)
+                                    {
+                                        var currentDriver = drivers.FirstOrDefault(d => d.DriverId == AuthService.CurrentUser.DriverId.Value);
+                                        if (currentDriver != null)
+                                        {
+                                            <div class="form-control bg-light">
+                                                <i class="bi bi-person-badge-fill me-2"></i>
+                                                #@currentDriver.DriverNumber - @currentDriver.DriverName
+                                                <input type="hidden" @bind="reportModel.ReportingDriverId" />
+                                            </div>
+                                        }
+                                        else 
+                                        {
+                                           <div class="custom-select-wrapper">
+                                            <InputSelect class="form-control" @bind-Value="reportModel.ReportingDriverId">
+                                                <option value="">Select Reporting Driver</option>
+                                                @foreach (var driver in drivers)
+                                                {
+                                                    <option value="@driver.DriverId">
+                                                        #@driver.DriverNumber - @driver.DriverName
+                                                        @if (!string.IsNullOrEmpty(driver.DriverClass))
+                                                        {
+                                                            <text> (@driver.DriverClass)</text>
+                                                        }
+                                                    </option>
+                                                }
+                                            </InputSelect>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="custom-select-wrapper">
+                                        <InputSelect class="form-control" @bind-Value="reportModel.ReportingDriverId">
+                                            <option value="">Select Reporting Driver</option>
+                                            @foreach (var driver in drivers)
+                                            {
+                                                <option value="@driver.DriverId">
+                                                    #@driver.DriverNumber - @driver.DriverName
+                                                    @if (!string.IsNullOrEmpty(driver.DriverClass))
+                                                    {
+                                                        <text> (@driver.DriverClass)</text>
+                                                    }
+                                                </option>
+                                            }
+                                        </InputSelect>
+                                        </div>
+                                    }
+                                    <ValidationMessage For="@(() => reportModel.ReportingDriverId)" />
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Reported Driver</label>
+                                    <div class="custom-select-wrapper">
+                                        <InputSelect class="form-control" @bind-Value="reportModel.ReportedDriverId">
+                                            <option value="">Select Reported Driver</option>
+                                            @foreach (var driver in drivers)
+                                            {
+                                                <option value="@driver.DriverId">
+                                                    #@driver.DriverNumber - @driver.DriverName
+                                                    @if (!string.IsNullOrEmpty(driver.DriverClass))
+                                                    {
+                                                        <text> (@driver.DriverClass)</text>
+                                                    }
+                                                </option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <ValidationMessage For="@(() => reportModel.ReportedDriverId)" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Event</label>
+                                    <div class="custom-select-wrapper">
+                                        <InputSelect class="form-control" @bind-Value="reportModel.EventId" @onchange="HandleEventChange">
+                                            <option value="">Select Event</option>
+                                            @foreach (var evt in events)
+                                            {
+                                                <option value="@evt.EventId">
+                                                    @evt.Series - Round @evt.EventNumber - @evt.TrackName
+                                                    <small class="text-muted">(@evt.EventDate:yyyy-MM-dd)</small>
+                                                </option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <ValidationMessage For="@(() => reportModel.EventId)" />
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label required">Race</label>
+                                    <div class="custom-select-wrapper">
+                                        <InputSelect class="form-control" @bind-Value="reportModel.RaceId" disabled="@racesDisabled">
+                                            <option value="">Select Race</option>
+                                            @foreach (var race in races)
+                                            {
+                                                <option value="@race.RaceId">Race @race.RaceNumber</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <ValidationMessage For="@(() => reportModel.RaceId)" />
+                                    @if (racesDisabled)
+                                    {
+                                        <small class="form-text">Please select an event first</small>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="form-label required">Turn Number</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="bi bi-signpost-2"></i>
+                                        </span>
+                                        <InputText class="form-control" @bind-Value="reportModel.Turn" placeholder="e.g. T1, Main Straight" />
+                                    </div>
+                                    <ValidationMessage For="@(() => reportModel.Turn)" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Incident Description Section -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="bi bi-file-text-fill"></i>
+                            Incident Description
+                        </div>
+ 
+                        <div class="form-group mb-4">
+                            <label class="form-label required">Video Evidence URL</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-camera-video"></i>
+                                </span>
+                                <InputText class="form-control" @bind-Value="reportModel.VideoUrl" placeholder="https://youtube.com/..." />
+                            </div>
+                            <small class="form-text text-muted">Please provide a link to the video evidence (YouTube, Streamable, etc.)</small>
+                            <ValidationMessage For="@(() => reportModel.VideoUrl)" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label required">Detailed Description</label>
+                            <InputTextArea class="form-control form-control-lg" @bind-Value="reportModel.Description"
+                                         rows="6" placeholder="Please provide a detailed description of the incident..." />
+                            <div class="textarea-character-count">
+                                <span>@reportModel.Description?.Length ?? 0</span> / 2000 characters
+                            </div>
+                            <ValidationMessage For="@(() => reportModel.Description)" />
+                        </div>
+
+                        <div class="alert alert-info" role="alert">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>Tips for a good report:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Be specific about what happened</li>
+                                <li>Include the turn number and track position</li>
+                                <li>Describe the sequence of events chronologically</li>
+                                <li>Mention any witnesses if applicable</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" @onclick="HandleCancel" disabled="@isSubmitting">
+                            <i class="bi bi-x-circle me-2"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Submitting...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-send-fill me-2"></i>
+                                <span>Submit Report</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+
+            <!-- Success/Error Messages -->
+            @if (!string.IsNullOrEmpty(successMessage))
             {
-                <option value="@driver.DriverId">@driver.DriverNumber - @driver.DriverName</option>
+                <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    @successMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             }
-        </InputSelect>
-        <ValidationMessage For="@(() => reportModel.ReportingDriverId)" />
-    </div>
 
-    <div class="form-group mb-3">
-        <label class="form-label">Reported Driver</label>
-        <InputSelect class="form-control" @bind-Value="reportModel.ReportedDriverId">
-            <option value="">Select Reported Driver</option>
-            @foreach (var driver in drivers)
+            @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <option value="@driver.DriverId">@driver.DriverNumber - @driver.DriverName</option>
+                <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    @errorMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             }
-        </InputSelect>
-        <ValidationMessage For="@(() => reportModel.ReportedDriverId)" />
+        </div>
     </div>
-
-    <div class="form-group mb-3">
-        <label class="form-label">Event</label>
-        <InputSelect class="form-control" @bind-Value="reportModel.EventId" @onchange="HandleEventChange">
-            <option value="">Select Event</option>
-            @foreach (var evt in events)
-            {
-                <option value="@evt.EventId">@evt.Series - @evt.EventNumber - @evt.TrackName (@evt.EventDate:yyyy-MM-dd)</option>
-            }
-        </InputSelect>
-        <ValidationMessage For="@(() => reportModel.EventId)" />
-    </div>
-
-    <div class="form-group mb-3">
-        <label class="form-label">Race</label>
-        <InputSelect class="form-control" @bind-Value="reportModel.RaceId" disabled="@racesDisabled">
-            <option value="">Select Race</option>
-            @foreach (var race in races)
-            {
-                <option value="@race.RaceId">Race @race.RaceNumber</option>
-            }
-        </InputSelect>
-        <ValidationMessage For="@(() => reportModel.RaceId)" />
-    </div>
-
-    <div class="form-group mb-3">
-        <label class="form-label">Turn</label>
-        <InputNumber class="form-control" @bind-Value="reportModel.Turn" />
-        <ValidationMessage For="@(() => reportModel.Turn)" />
-    </div>
-
-    <div class="form-group mb-3">
-        <label class="form-label">Incident Description</label>
-        <InputTextArea class="form-control" @bind-Value="reportModel.Description" rows="5" />
-        <ValidationMessage For="@(() => reportModel.Description)" />
-    </div>
-
-    <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
-        @if (isSubmitting)
-        {
-            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            <span class="ms-2">Submitting...</span>
-        }
-        else
-        {
-            <span>Submit Report</span>
-        }
-    </button>
-
-    <button type="button" class="btn btn-secondary ms-2" @onclick="HandleCancel">Cancel</button>
-</EditForm>
-
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger mt-3" role="alert">
-        @errorMessage
-    </div>
-}
-
-@if (!string.IsNullOrEmpty(successMessage))
-{
-    <div class="alert alert-success mt-3" role="alert">
-        @successMessage
-    </div>
-}
+</div>
 
 @code {
     private Report reportModel = new Report();
@@ -112,6 +258,7 @@
     private bool racesDisabled = true;
     private string? errorMessage;
     private string? successMessage;
+    private string formLoadingClass = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -131,6 +278,12 @@
         {
             drivers = await ReportService.GetAllDriversAsync();
             events = await ReportService.GetAllEventsAsync();
+
+            // Auto-select reporting driver if user is linked to a driver
+            if (AuthService.CurrentUser?.DriverId.HasValue == true)
+            {
+                reportModel.ReportingDriverId = AuthService.CurrentUser.DriverId.Value;
+            }
         }
         catch (Exception ex)
         {
@@ -167,13 +320,14 @@
         if (isSubmitting) return;
 
         isSubmitting = true;
+        formLoadingClass = "form-loading";
         errorMessage = null;
         successMessage = null;
 
         try
         {
             var createdReport = await ReportService.CreateReportAsync(reportModel);
-            successMessage = "Report submitted successfully!";
+            successMessage = "Incident report submitted successfully! You will be redirected to the dashboard.";
 
             // Reset form after successful submission
             reportModel = new Report();
@@ -181,7 +335,7 @@
             racesDisabled = true;
 
             // Navigate to home after a short delay
-            await Task.Delay(2000);
+            await Task.Delay(3000);
             NavigationManager.NavigateTo("/");
         }
         catch (Exception ex)
@@ -191,6 +345,7 @@
         finally
         {
             isSubmitting = false;
+            formLoadingClass = "";
         }
     }
 

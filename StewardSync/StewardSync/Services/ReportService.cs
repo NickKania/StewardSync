@@ -44,7 +44,8 @@ namespace StewardSync.Services
                 .Include(r => r.ReportedDriver)
                 .Include(r => r.Event)
                 .Include(r => r.Race)
-                .Where(r => !r.IsFinalized)
+                .Include(r => r.Race)
+                .Where(r => r.Status == ReportStatus.Pending || r.Status == ReportStatus.UnderReview)
                 .OrderByDescending(r => r.ReportDate)
                 .ToListAsync();
         }
@@ -71,7 +72,7 @@ namespace StewardSync.Services
 
         public async Task<Report> UpdateReportAsync(Report report)
         {
-            if (report.IsFinalized)
+            if (report.Status == ReportStatus.DecisionReached || report.Status == ReportStatus.Closed)
             {
                 throw new InvalidOperationException("Cannot update a finalized report.");
             }
@@ -89,13 +90,27 @@ namespace StewardSync.Services
                 throw new ArgumentException("Report not found.");
             }
 
-            if (report.IsFinalized)
+            if (report.Status == ReportStatus.DecisionReached || report.Status == ReportStatus.Closed)
             {
                 throw new InvalidOperationException("Report is already finalized.");
             }
 
-            report.IsFinalized = true;
+            report.Status = ReportStatus.DecisionReached;
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<Penalty> CreatePenaltyAsync(Penalty penalty)
+        {
+            _context.Penalties.Add(penalty);
+            await _context.SaveChangesAsync();
+            return penalty;
+        }
+
+        public async Task<List<Penalty>> GetPenaltiesByReportIdAsync(int reportId)
+        {
+            return await _context.Penalties
+                .Where(p => p.ReportId == reportId)
+                .ToListAsync();
         }
 
         public async Task<List<Driver>> GetAllDriversAsync()

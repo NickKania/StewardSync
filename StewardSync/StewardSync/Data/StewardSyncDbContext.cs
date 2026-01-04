@@ -17,6 +17,7 @@ namespace StewardSync.Data
         public DbSet<Driver> Drivers { get; set; }
         public DbSet<Event> Events { get; set; }
         public DbSet<Race> Races { get; set; }
+        public DbSet<Penalty> Penalties { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -47,6 +48,14 @@ namespace StewardSync.Data
                 .HasOne(r => r.Race)
                 .WithMany(race => race.Reports)
                 .HasForeignKey(r => r.RaceId)
+
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Penalty relationships
+            modelBuilder.Entity<Penalty>()
+                .HasOne(p => p.Report)
+                .WithMany()
+                .HasForeignKey(p => p.ReportId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Review relationships
@@ -67,7 +76,14 @@ namespace StewardSync.Data
                 .HasOne(u => u.Role)
                 .WithMany(r => r.Users)
                 .HasForeignKey(u => u.RoleId)
+
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Driver)
+                .WithMany()
+                .HasForeignKey(u => u.DriverId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Race relationships
             modelBuilder.Entity<Race>()
@@ -94,15 +110,7 @@ namespace StewardSync.Data
             modelBuilder.Entity<Role>().HasData(roles);
 
             // Seed sample users (in production, these would be created through proper user management)
-            var users = new[]
-            {
-                new User { UserId = 1, UserName = "headsteward", RoleId = 3 },
-                new User { UserId = 2, UserName = "steward1", RoleId = 2 },
-                new User { UserId = 3, UserName = "eventmanager", RoleId = 4 },
-                new User { UserId = 4, UserName = "driver1", RoleId = 1 }
-            };
 
-            modelBuilder.Entity<User>().HasData(users);
 
             // Seed sample drivers
             var drivers = new[]
@@ -114,6 +122,17 @@ namespace StewardSync.Data
             };
 
             modelBuilder.Entity<Driver>().HasData(drivers);
+
+            // Seed sample users (in production, these would be created through proper user management)
+            var users = new[]
+            {
+                new User { UserId = 1, UserName = "headsteward", RoleId = 3, DriverId = 1 },
+                new User { UserId = 2, UserName = "steward1", RoleId = 2, DriverId = 2 },
+                new User { UserId = 3, UserName = "eventmanager", RoleId = 4, DriverId = 3 },
+                new User { UserId = 4, UserName = "driver1", RoleId = 1, DriverId = 4 }
+            };
+
+            modelBuilder.Entity<User>().HasData(users);
 
             // Seed sample events
             var events = new[]

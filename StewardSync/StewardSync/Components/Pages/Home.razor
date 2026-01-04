@@ -1,5 +1,4 @@
 @page "/"
-@page "/"
 @using StewardSync.Models
 @using StewardSync.Services
 @using StewardSync.Services.Authentication
@@ -8,137 +7,206 @@
 @inject AuthenticationService AuthService
 @inject NavigationManager NavigationManager
 
-<PageTitle>StewardSync Dashboard</PageTitle>
+<PageTitle>Dashboard - StewardSync</PageTitle>
 
-<div class="row mb-4">
-    <div class="col-12">
-        <h1>StewardSync Dashboard</h1>
-        <p class="lead">Unified Racing Steward Reports Management System</p>
+<div class="content fade-in">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="text-center">
+                <h1 class="display-4 fw-bold text-gradient mb-3">StewardSync Dashboard</h1>
+                <p class="lead text-muted">Unified Racing Steward Reports Management System</p>
+                <div class="d-flex justify-content-center align-items-center gap-3">
+                    <span class="badge bg-primary bg-gradient px-3 py-2">
+                        <i class="bi bi-person-circle me-2"></i>@AuthService.CurrentUser!.UserName
+                    </span>
+                    <span class="badge bg-info bg-gradient px-3 py-2">
+                        <i class="bi bi-shield-check me-2"></i>@AuthService.CurrentUser.Role.RoleName
+                    </span>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
 
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center bg-primary text-white">
-            <div class="card-body">
-                <h2 class="card-title">@totalReports</h2>
-                <p class="card-text">Total Reports</p>
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="dashboard-card bg-primary">
+                <i class="bi bi-file-earmark-text display-6 mb-3"></i>
+                <h2>@totalReports</h2>
+                <p>Total Reports</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="dashboard-card bg-warning">
+                <i class="bi bi-exclamation-triangle display-6 mb-3"></i>
+                <h2>@openReports</h2>
+                <p>Open Reports</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="dashboard-card bg-success">
+                <i class="bi bi-check-circle display-6 mb-3"></i>
+                <h2>@finalizedReports</h2>
+                <p>Finalized Reports</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="dashboard-card bg-info">
+                <i class="bi bi-clipboard-check display-6 mb-3"></i>
+                <h2>@totalReviews</h2>
+                <p>Total Reviews</p>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center bg-warning text-dark">
-            <div class="card-body">
-                <h2 class="card-title">@openReports</h2>
-                <p class="card-text">Open Reports</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center bg-success text-white">
-            <div class="card-body">
-                <h2 class="card-title">@finalizedReports</h2>
-                <p class="card-text">Finalized Reports</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center bg-info text-white">
-            <div class="card-body">
-                <h2 class="card-title">@totalReviews</h2>
-                <p class="card-text">Total Reviews</p>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5>Recent Reports</h5>
-            </div>
-            <div class="card-body">
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Recent Reports Section -->
+        <div class="col-lg-7 mb-4">
+            <div class="form-container form-enhanced">
+                <div class="form-section-title">
+                    <i class="bi bi-clock-history"></i>
+                    Recent Reports
+                </div>
+
                 @if (recentReports.Any())
                 {
-                    <div class="list-group list-group-flush">
+                    <div class="list-group">
                         @foreach (var report in recentReports.Take(5))
                         {
-                            <div class="list-group-item">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">Report #@report.ReportId</h6>
-                                    <small>@report.ReportDate:yyyy-MM-dd</small>
+                            <div class="list-group-item list-group-item-action" onclick="window.location.href='/reports'">
+                                <div class="d-flex w-100 justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1 fw-bold">
+                                            <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+                                            Report #@report.ReportId
+                                        </h6>
+                                        <p class="mb-2">
+                                            <span class="badge bg-info me-2">@report.ReportingDriver.DriverName</span>
+                                            reported
+                                            <span class="badge bg-warning ms-2">@report.ReportedDriver.DriverName</span>
+                                        </p>
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            <small class="text-muted">
+                                                <i class="bi bi-geo-alt me-1"></i>@report.Event.Series
+                                            </small>
+                                            <small class="text-muted">
+                                                <i class="bi bi-flag me-1"></i>Race @report.Race.RaceNumber
+                                            </small>
+                                            <small class="text-muted">
+                                                <i class="bi bi-signpost-2 me-1"></i>Turn @report.Turn
+                                            </small>
+                                            @if (report.Status == ReportStatus.DecisionReached || report.Status == ReportStatus.Closed)
+                                            {
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle me-1"></i>@report.Status
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning">
+                                                    <i class="bi bi-clock me-1"></i>@report.Status
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <small class="text-nowrap ms-3">
+                                        <i class="bi bi-calendar me-1"></i>@report.ReportDate:yyyy-MM-dd
+                                    </small>
                                 </div>
-                                <p class="mb-1">
-                                    <strong>@report.ReportingDriver.DriverName</strong> reported <strong>@report.ReportedDriver.DriverName</strong>
-                                </p>
-                                <small>
-                                    @report.Event.Series - Race @report.Race.RaceNumber - Turn @report.Turn
-                                    @if (report.IsFinalized)
-                                    {
-                                        <span class="badge bg-success ms-2">Finalized</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-warning ms-2">Open</span>
-                                    }
-                                </small>
                             </div>
                         }
                     </div>
                     <div class="text-center mt-3">
-                        <a href="/reports" class="btn btn-outline-primary">View All Reports</a>
+                        <a href="/reports" class="btn btn-primary">
+                            <i class="bi bi-list-ul me-2"></i>View All Reports
+                        </a>
                     </div>
                 }
                 else
                 {
-                    <p class="text-muted">No reports found.</p>
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox display-4 text-muted"></i>
+                        <p class="text-muted mt-3">No reports found.</p>
+                        <a href="/report-incident" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Create First Report
+                        </a>
+                    </div>
                 }
             </div>
         </div>
-    </div>
 
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5>Quick Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="/report-incident" class="btn btn-primary">
-                        <span class="bi bi-exclamation-triangle-fill" aria-hidden="true"></span> Report New Incident
+        <!-- Quick Actions Section -->
+        <div class="col-lg-5 mb-4">
+            <div class="form-container form-enhanced">
+                <div class="form-section-title">
+                    <i class="bi bi-lightning-fill"></i>
+                    Quick Actions
+                </div>
+
+                <div class="d-grid gap-3">
+                    <a href="/report-incident" class="btn btn-primary btn-lg">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Report New Incident
                     </a>
 
                     @if (canReviewReports)
                     {
-                        <a href="/review-report" class="btn btn-outline-primary">
-                            <span class="bi bi-clipboard-check-fill" aria-hidden="true"></span> Review Reports
+                        <a href="/review-report" class="btn btn-outline-primary btn-lg">
+                            <i class="bi bi-clipboard-check-fill me-2"></i>
+                            Review Reports
                         </a>
                     }
 
                     @if (canFinalizeReports)
                     {
-                        <a href="/finalize-report" class="btn btn-outline-danger">
-                            <span class="bi bi-check-circle-fill" aria-hidden="true"></span> Finalize Reports
+                        <a href="/finalize-report" class="btn btn-outline-danger btn-lg">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            Finalize Reports
                         </a>
                     }
 
-                    <a href="/reports" class="btn btn-outline-secondary">
-                        <span class="bi bi-list-ul" aria-hidden="true"></span> View All Reports
+                    <a href="/reports" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-list-ul me-2"></i>
+                        View All Reports
                     </a>
                 </div>
             </div>
-        </div>
 
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5>System Information</h5>
-            </div>
-            <div class="card-body">
-                <p><strong>Application:</strong> StewardSync</p>
-                <p><strong>Purpose:</strong> Racing Steward Reports Management</p>
-                <p><strong>Version:</strong> 1.0.0</p>
-                <p><strong>Current User:</strong> @AuthService.CurrentUser!.UserName (@AuthService.CurrentUser.Role.RoleName)</p>
+            <!-- System Info Card -->
+            <div class="form-container form-enhanced mt-4">
+                <div class="form-section-title">
+                    <i class="bi bi-info-circle-fill"></i>
+                    System Information
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted d-block">Application</small>
+                            <strong>StewardSync</strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted d-block">Version</small>
+                            <strong>1.0.0</strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted d-block">Purpose</small>
+                            <strong>Racing Steward Mgmt</strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded">
+                            <small class="text-muted d-block">Status</small>
+                            <strong class="text-success">Online</strong>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -146,10 +214,8 @@
 
 @if (isLoading)
 {
-    <div class="text-center">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
+    <div class="loading-overlay">
+        <div class="loading-spinner"></div>
     </div>
 }
 
@@ -174,6 +240,7 @@
             return;
         }
 
+        SetPermissions();
         await LoadDashboardData();
     }
 
@@ -186,8 +253,8 @@
             allReviews = await ReviewService.GetAllReviewsAsync();
 
             totalReports = allReports.Count;
-            openReports = allReports.Count(r => !r.IsFinalized);
-            finalizedReports = allReports.Count(r => r.IsFinalized);
+            openReports = allReports.Count(r => r.Status == ReportStatus.Pending || r.Status == ReportStatus.UnderReview);
+            finalizedReports = allReports.Count(r => r.Status == ReportStatus.DecisionReached || r.Status == ReportStatus.Closed);
             totalReviews = allReviews.Count;
         }
         catch (Exception ex)

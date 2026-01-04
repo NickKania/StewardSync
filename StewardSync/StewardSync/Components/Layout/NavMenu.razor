@@ -1,4 +1,4 @@
-```@using StewardSync.Models
+@using StewardSync.Models
 @using StewardSync.Services
 @using StewardSync.Services.Authentication
 @inject UserService UserService
@@ -38,13 +38,13 @@
         <nav class="nav flex-column">
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                    <i class="bi bi-house-door-fill me-2" aria-hidden="true"></i> Home
                 </NavLink>
             </div>
 
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="report-incident">
-                    <span class="bi bi-exclamation-triangle-fill-nav-menu" aria-hidden="true"></span> Report Incident
+                    <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i> Report Incident
                 </NavLink>
             </div>
 
@@ -52,7 +52,7 @@
             {
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="review-report">
-                        <span class="bi bi-clipboard-check-fill-nav-menu" aria-hidden="true"></span> Review Report
+                        <i class="bi bi-clipboard-check-fill me-2" aria-hidden="true"></i> Review Report
                     </NavLink>
                 </div>
             }
@@ -61,14 +61,14 @@
             {
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="finalize-report">
-                        <span class="bi bi-check-circle-fill-nav-menu" aria-hidden="true"></span> Finalize Report
+                        <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i> Finalize Report
                     </NavLink>
                 </div>
             }
 
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="reports">
-                    <span class="bi bi-list-ul-nav-menu" aria-hidden="true"></span> View Reports
+                    <i class="bi bi-list-ul me-2" aria-hidden="true"></i> View Reports
                 </NavLink>
             </div>
         </nav>
@@ -78,7 +78,7 @@
         <nav class="nav flex-column">
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="/login">
-                    <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Login
+                    <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i> Login
                 </NavLink>
             </div>
         </nav>
@@ -86,12 +86,4 @@
 </div>
 
 @code {
-    protected override void OnInitialized()
-    {
-        // Force navigation to login if not authenticated
-        if (!AuthService.IsAuthenticated)
-        {
-            NavigationManager.NavigateTo("/login", forceLoad: true);
-        }
-    }
 }

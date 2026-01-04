@@ -1,124 +1,281 @@
 @page "/finalize-report"
 @using StewardSync.Models
 @using StewardSync.Services
+@using StewardSync.Services.Authentication
 @inject ReportService ReportService
 @inject ReviewService ReviewService
 @inject UserService UserService
+@inject AuthenticationService AuthService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Finalize Report</PageTitle>
+<PageTitle>Finalize Report - StewardSync</PageTitle>
 
-<h3>Finalize Report</h3>
+<div class="content fade-in">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="text-center">
+                <h1 class="display-5 fw-bold text-gradient mb-3">Finalize Report</h1>
+                <p class="lead text-muted">Complete and finalize incident reports with official steward decisions</p>
+            </div>
+        </div>
+    </div>
 
 @if (selectedReport == null)
 {
-    <div class="row">
-        <div class="col-md-8">
-            <h4>Select a Report to Finalize</h4>
-            <div class="list-group">
+    <div class="form-container form-enhanced">
+        <div class="form-section-title">
+            <i class="bi bi-check-circle-fill"></i>
+            Select a Report to Finalize (@unfinalizedReports.Count available)
+        </div>
+        
+        @if (unfinalizedReports.Any())
+        {
+            <div class="reports-list">
                 @foreach (var report in unfinalizedReports)
                 {
-                    <button class="list-group-item list-group-item-action" @onclick="() => SelectReport(report)">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">Report #@report.ReportId</h6>
-                            <small>@report.ReportDate:yyyy-MM-dd HH:mm</small>
+                    <div class="report-select-card" @onclick="() => SelectReport(report)">
+                        <div class="report-select-header">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="badge bg-primary fs-6">#@report.ReportId</span>
+                                    <h6 class="mt-2 mb-1">Incident Report</h6>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar me-1"></i>@report.ReportDate:yyyy-MM-dd HH:mm
+                                </small>
+                            </div>
                         </div>
-                        <p class="mb-1">
-                            <strong>@report.ReportingDriver.DriverName</strong> reported <strong>@report.ReportedDriver.DriverName</strong>
-                        </p>
-                        <small>
-                            @report.Event.Series - Race @report.Race.RaceNumber - Turn @report.Turn
+                        <div class="report-select-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <i class="bi bi-person-up text-primary me-2"></i>
+                                        <strong>Reporting:</strong> @report.ReportingDriver.DriverName
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <i class="bi bi-person-down text-warning me-2"></i>
+                                        <strong>Reported:</strong> @report.ReportedDriver.DriverName
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <i class="bi bi-geo-alt text-info me-2"></i>
+                                        <strong>@report.Event.Series</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-item">
+                                        <i class="bi bi-flag text-secondary me-2"></i>
+                                        Race @report.Race.RaceNumber - Turn @report.Turn
+                                    </div>
+                                </div>
+                            </div>
                             @if (report.Reviews.Any())
                             {
-                                <span class="badge bg-info ms-2">@report.Reviews.Count Review(s)</span>
+                                <div class="mt-2">
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-chat-dots me-1"></i>@report.Reviews.Count Review(s)
+                                    </span>
+                                </div>
                             }
-                        </small>
-                    </button>
+                            else
+                            {
+                                <div class="mt-2">
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>No Reviews Yet
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 }
             </div>
-        </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-check-circle display-1 text-muted"></i>
+                <h3 class="mt-3 text-muted">No Reports to Finalize</h3>
+                <p class="text-muted">All reports have been finalized or there are no unfinalized reports.</p>
+                <a href="/reports" class="btn btn-primary">
+                    <i class="bi bi-list-ul me-2"></i>View All Reports
+                </a>
+            </div>
+        }
     </div>
 }
 else
 {
     <div class="row">
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5>Incident Details</h5>
+        <!-- Incident Details Column -->
+        <div class="col-lg-6">
+            <div class="form-container form-enhanced">
+                <div class="form-section-title">
+                    <i class="bi bi-info-circle-fill"></i>
+                    Incident Details
                 </div>
-                <div class="card-body">
-                    <div class="row mb-2">
-                        <div class="col-sm-4"><strong>Report ID:</strong></div>
-                        <div class="col-sm-8">@selectedReport.ReportId</div>
+                
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="info-card">
+                            <small class="text-muted d-block">Report ID</small>
+                            <strong class="text-primary">#@selectedReport.ReportId</strong>
+                        </div>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-4"><strong>Date:</strong></div>
-                        <div class="col-sm-8">@selectedReport.ReportDate:yyyy-MM-dd HH:mm</div>
+                    <div class="col-6">
+                        <div class="info-card">
+                            <small class="text-muted d-block">Date & Time</small>
+                            <strong>@selectedReport.ReportDate:yyyy-MM-dd HH:mm</strong>
+                        </div>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-4"><strong>Event:</strong></div>
-                        <div class="col-sm-8">@selectedReport.Event.Series - @selectedReport.Event.TrackName</div>
+                    <div class="col-12">
+                        <div class="info-card">
+                            <small class="text-muted d-block">Event</small>
+                            <strong>@selectedReport.Event.Series - @selectedReport.Event.TrackName</strong>
+                        </div>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-4"><strong>Race:</strong></div>
-                        <div class="col-sm-8">Race @selectedReport.Race.RaceNumber</div>
+                    <div class="col-6">
+                        <div class="info-card">
+                            <small class="text-muted d-block">Race</small>
+                            <span class="badge bg-info">Race @selectedReport.Race.RaceNumber</span>
+                        </div>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-4"><strong>Turn:</strong></div>
-                        <div class="col-sm-8">@selectedReport.Turn</div>
+                    <div class="col-6">
+                        <div class="info-card">
+                            <small class="text-muted d-block">Turn</small>
+                            <span class="badge bg-secondary">Turn @selectedReport.Turn</span>
+                        </div>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-4"><strong>Reporting Driver:</strong></div>
-                        <div class="col-sm-8">@selectedReport.ReportingDriver.DriverNumber - @selectedReport.ReportingDriver.DriverName</div>
+                </div>
+
+                <div class="form-section mt-4">
+                    <div class="form-section-title">
+                        <i class="bi bi-people-fill"></i>
+                        Drivers Involved
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-4"><strong>Reported Driver:</strong></div>
-                        <div class="col-sm-8">@selectedReport.ReportedDriver.DriverNumber - @selectedReport.ReportedDriver.DriverName</div>
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="driver-card">
+                                <small class="text-muted d-block">Reporting Driver</small>
+                                <div class="d-flex align-items-center">
+                                    <span class="driver-number-large">@selectedReport.ReportingDriver.DriverNumber</span>
+                                    <div>
+                                        <strong>@selectedReport.ReportingDriver.DriverName</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="driver-card reported">
+                                <small class="text-muted d-block">Reported Driver</small>
+                                <div class="d-flex align-items-center">
+                                    <span class="driver-number-large">@selectedReport.ReportedDriver.DriverNumber</span>
+                                    <div>
+                                        <strong>@selectedReport.ReportedDriver.DriverName</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-4"><strong>Original Description:</strong></div>
-                        <div class="col-sm-8">@selectedReport.Description</div>
+                </div>
+
+                <div class="form-section mt-4">
+                    <div class="form-section-title">
+                        <i class="bi bi-file-text-fill"></i>
+                        Original Description
+                    </div>
+                    <div class="description-box">
+                        @selectedReport.Description
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Finalization Form</h5>
+        <!-- Finalization Form Column -->
+        <div class="col-lg-6">
+            <div class="form-container form-enhanced">
+                <div class="form-section-title">
+                    <i class="bi bi-check-circle-fill text-danger"></i>
+                    Finalization Form
                 </div>
-                <div class="card-body">
-                    <div class="form-group mb-3">
-                        <label class="form-label">Final Incident Description</label>
-                        <InputTextArea class="form-control" @bind-Value="finalDescription" rows="5" />
-                        <small class="form-text text-muted">This will be the final description for the incident record.</small>
+                
+                    <div class="form-group">
+                        <label class="form-label required">Analysis / Verdict</label>
+                        <textarea class="form-control form-control-lg" @bind="finalDescription" 
+                                     rows="6" placeholder="Enter the official verdict and analysis of the incident..."></textarea>
+                        <div class="textarea-character-count">
+                            <span>@finalDescription?.Length ?? 0</span> / 2000 characters
+                        </div>
                     </div>
 
-                    <div class="form-group mb-3">
-                        <label class="form-label">Finalization Notes</label>
-                        <InputTextArea class="form-control" @bind-Value="finalizationNotes" rows="3" />
-                        <small class="form-text text-muted">Any additional notes from other stewards or final comments.</small>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" @bind="finalizationNotes" 
+                                     rows="4" placeholder="Additional notes..."></textarea>
+                        <div class="textarea-character-count">
+                            <span>@finalizationNotes?.Length ?? 0</span> / 1000 characters
+                        </div>
                     </div>
 
-                    <div class="alert alert-warning" role="alert">
-                        <strong>Warning:</strong> Once finalized, this report cannot be modified. Please ensure all reviews have been completed and the incident description is accurate.
+                    <div class="form-section-title mt-4">
+                        <i class="bi bi-gavel text-warning"></i>
+                        Penalty Decision
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Penalty Type</label>
+                        <select class="form-control" @bind="penaltyType">
+                            @foreach (var type in Enum.GetValues<PenaltyType>())
+                            {
+                                <option value="@type">@type</option>
+                            }
+                        </select>
                     </div>
 
-                    <button class="btn btn-danger" @onclick="HandleFinalize" disabled="@isFinalizing">
+                    @if (penaltyType != PenaltyType.NoAction && penaltyType != PenaltyType.Warning)
+                    {
+                        <div class="form-group">
+                            <label class="form-label">Penalty Value (Seconds/Grid Spots)</label>
+                            <input type="number" class="form-control" @bind="penaltyValue" />
+                        </div>
+                    }
+
+                    <div class="form-group">
+                         <label class="form-label">Penalty Reason</label>
+                         <input type="text" class="form-control" @bind="penaltyReason" placeholder="e.g. Caused a collision" />
+                    </div>
+
+
+                <div class="finalization-warning">
+                    <div class="d-flex align-items-start">
+                        <i class="bi bi-exclamation-triangle-fill me-3" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <strong>Finalization Warning:</strong>
+                            <p class="mb-0 mt-1">Once finalized, this report cannot be modified. Please ensure all reviews have been completed and the incident description is accurate.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" @onclick="HandleCancel" disabled="@isFinalizing">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-danger" @onclick="HandleFinalize" disabled="@isFinalizing">
                         @if (isFinalizing)
                         {
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            <span class="ms-2">Finalizing...</span>
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Finalizing Report...</span>
                         }
                         else
                         {
+                            <i class="bi bi-check-circle-fill me-2"></i>
                             <span>Finalize Report</span>
                         }
                     </button>
-
-                    <button class="btn btn-secondary ms-2" @onclick="HandleCancel">Cancel</button>
                 </div>
             </div>
         </div>
@@ -128,22 +285,43 @@ else
     {
         <div class="row mt-4">
             <div class="col-12">
-                <h4>Steward Reviews</h4>
-                @foreach (var review in selectedReport.Reviews)
-                {
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <strong>@review.User.UserName</strong> (@review.User.Role.RoleName) - @review.ReviewDate:yyyy-MM-dd HH:mm
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Incident Description:</strong> @review.IncidentDescription</p>
-                            @if (!string.IsNullOrEmpty(review.ReviewNotes))
-                            {
-                                <p><strong>Review Notes:</strong> @review.ReviewNotes</p>
-                            }
-                        </div>
+                <div class="form-container form-enhanced">
+                    <div class="form-section-title">
+                        <i class="bi bi-people-fill"></i>
+                        Steward Reviews (@selectedReport.Reviews.Count)
                     </div>
-                }
+                    
+                    <div class="reviews-container">
+                        @foreach (var review in selectedReport.Reviews)
+                        {
+                            <div class="review-card">
+                                <div class="review-header">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-person-circle me-2"></i>
+                                            <strong>@review.User.UserName</strong>
+                                            <span class="badge bg-info ms-2">@review.User.Role.RoleName</span>
+                                        </div>
+                                        <small class="text-muted">@review.ReviewDate:yyyy-MM-dd HH:mm</small>
+                                    </div>
+                                </div>
+                                <div class="review-body">
+                                    <div class="mb-3">
+                                        <strong>Analysis:</strong>
+                                        <p class="mb-0 mt-1">@review.Analysis</p>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(review.Notes))
+                                    {
+                                        <div>
+                                            <strong>Notes:</strong>
+                                            <p class="mb-0 mt-1">@review.Notes</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     }
@@ -151,8 +329,15 @@ else
     {
         <div class="row mt-4">
             <div class="col-12">
-                <div class="alert alert-info" role="alert">
-                    <strong>Info:</strong> This report has not been reviewed by any stewards yet. Consider having stewards review this report before finalizing.
+                <div class="form-container form-enhanced">
+                    <div class="text-center py-4">
+                        <i class="bi bi-info-circle display-4 text-info"></i>
+                        <h5 class="mt-3">No Reviews Yet</h5>
+                        <p class="text-muted">This report has not been reviewed by any stewards yet. Consider having stewards review this report before finalizing.</p>
+                        <a href="/review-report" class="btn btn-info">
+                            <i class="bi bi-clipboard-check me-2"></i>Review This Report
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -178,15 +363,24 @@ else
     private List<Report> unfinalizedReports = new();
     private string finalDescription = string.Empty;
     private string finalizationNotes = string.Empty;
+    private PenaltyType penaltyType = PenaltyType.NoAction;
+    private int penaltyValue;
+    private string penaltyReason = string.Empty;
     private bool isFinalizing = false;
     private string? errorMessage;
     private string? successMessage;
+    private string formLoadingClass = "";
 
-    // Hardcoded current user - in a real app, this would come from authentication
-    private readonly User currentUser = new User { UserId = 1, UserName = "headsteward" };
 
     protected override async Task OnInitializedAsync()
     {
+        // Redirect to login if not authenticated
+        if (!AuthService.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/login");
+            return;
+        }
+
         await LoadUnfinalizedReports();
     }
 
@@ -233,30 +427,44 @@ else
         if (!string.IsNullOrEmpty(finalDescription))
         {
             isFinalizing = true;
+            formLoadingClass = "form-loading";
             errorMessage = null;
             successMessage = null;
 
             try
             {
-                // Update the report description if it has changed
+                // Update report description if it has changed
                 if (finalDescription != selectedReport.Description)
                 {
                     selectedReport.Description = finalDescription;
                     await ReportService.UpdateReportAsync(selectedReport);
                 }
 
-                // Create a final review from the head steward
+                // Create a final review from head steward
                 var finalReview = new Review
                 {
                     ReportId = selectedReport.ReportId,
-                    UserId = currentUser.UserId,
-                    IncidentDescription = finalDescription,
-                    ReviewNotes = $"FINALIZATION: {finalizationNotes}"
+                    UserId = AuthService.CurrentUser!.UserId,
+                    Analysis = finalDescription,
+                    Notes = $"FINALIZATION: {finalizationNotes}"
                 };
 
                 await ReviewService.CreateReviewAsync(finalReview);
 
-                // Finalize the report
+                // Create Penalty
+                if (penaltyType != PenaltyType.NoAction)
+                {
+                     var penalty = new Penalty
+                     {
+                         ReportId = selectedReport.ReportId,
+                         PenaltyType = penaltyType,
+                         PenaltyValue = penaltyValue,
+                         Reason = penaltyReason
+                     };
+                     await ReportService.CreatePenaltyAsync(penalty);
+                }
+
+                // Finalize report
                 await ReportService.FinalizeReportAsync(selectedReport.ReportId);
 
                 successMessage = "Report finalized successfully! Redirecting...";
@@ -272,6 +480,7 @@ else
             finally
             {
                 isFinalizing = false;
+                formLoadingClass = "";
             }
         }
         else
@@ -279,6 +488,8 @@ else
             errorMessage = "Please provide a final incident description.";
         }
     }
+
+
 
     private void HandleCancel()
     {
@@ -289,3 +500,4 @@ else
         successMessage = null;
     }
 }
+</div>

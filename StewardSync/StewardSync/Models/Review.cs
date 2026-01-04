@@ -16,11 +16,11 @@ namespace StewardSync.Models
         public int ReportId { get; set; }
 
         [Required]
-        [StringLength(2000, MinimumLength = 10, ErrorMessage = "Incident description must be between 10 and 2000 characters")]
-        public string IncidentDescription { get; set; } = string.Empty;
+        [StringLength(2000, MinimumLength = 10, ErrorMessage = "Analysis must be between 10 and 2000 characters")]
+        public string Analysis { get; set; } = string.Empty;
 
-        [StringLength(1000, ErrorMessage = "Review notes cannot exceed 1000 characters")]
-        public string? ReviewNotes { get; set; }
+        [StringLength(1000, ErrorMessage = "Notes cannot exceed 1000 characters")]
+        public string? Notes { get; set; }
 
         // Navigation properties
         public User User { get; set; } = null!;

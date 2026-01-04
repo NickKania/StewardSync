@@ -13,8 +13,11 @@ namespace StewardSync.Models
         [Required]
         public int RoleId { get; set; }
 
+        public int? DriverId { get; set; }
+
         // Navigation properties
         public Role Role { get; set; } = null!;
+        public Driver? Driver { get; set; }
 
         // Collection of reviews made by this user
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
