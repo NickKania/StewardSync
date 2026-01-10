@@ -1,0 +1,299 @@
+import { Component, inject, OnInit, OnDestroy, signal, Input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
+import { ConvexService } from '@core/services/convex.service';
+import { AuthService } from '@core/services/auth.service';
+import { CardComponent } from '@shared/components/card/card.component';
+import { ButtonComponent } from '@shared/components/button/button.component';
+import { BadgeComponent } from '@shared/components/badge/badge.component';
+import { LoadingComponent } from '@shared/components/loading/loading.component';
+import { HasRoleDirective } from '@shared/directives/has-role.directive';
+import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
+
+@Component({
+  selector: 'app-report-detail',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterLink,
+    CardComponent,
+    ButtonComponent,
+    BadgeComponent,
+    LoadingComponent,
+    HasRoleDirective,
+    DateFormatPipe,
+    TimeAgoPipe
+  ],
+  template: `
+    <div class="space-y-6">
+      @if (loading()) {
+        <app-loading text="Loading report..." />
+      } @else if (report()) {
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-3 mb-2">
+              <h1 class="text-2xl font-bold text-gray-900">
+                Incident Report
+              </h1>
+              <app-badge [variant]="getStatusVariant(report()?.status)">
+                {{ report()?.status }}
+              </app-badge>
+            </div>
+            <p class="text-gray-500">
+              Filed {{ report()?.reportDate | timeAgo }} at {{ report()?.event?.trackName }}
+            </p>
+          </div>
+          <div class="flex gap-3">
+            @if (!report()?.isFinalized) {
+              <a [routerLink]="['/reports', report()?._id, 'edit']">
+                <app-button variant="secondary">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                  Edit
+                </app-button>
+              </a>
+            }
+            <div *appHasRole="['steward', 'head_steward', 'event_manager']">
+              @if (!report()?.isFinalized) {
+                <a [routerLink]="['/reviews', report()?._id]">
+                  <app-button variant="primary">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    Review
+                  </app-button>
+                </a>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+          <!-- Main content -->
+          <div class="lg:col-span-2 space-y-6">
+            <!-- Incident details -->
+            <app-card title="Incident Details">
+              <dl class="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <dt class="text-sm text-gray-500">Event</dt>
+                  <dd class="font-medium text-gray-900">{{ report()?.event?.trackName }}</dd>
+                  <dd class="text-sm text-gray-500">{{ report()?.event?.series }} Round {{ report()?.event?.eventNumber }}</dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500">Race & Turn</dt>
+                  <dd class="font-medium text-gray-900">Race {{ report()?.race?.raceNumber }}, Turn {{ report()?.turn }}</dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500">Reported Driver</dt>
+                  <dd class="font-medium text-gray-900">{{ report()?.reportedDriver?.driverName }}</dd>
+                  <dd class="text-sm text-gray-500">#{{ report()?.reportedDriver?.driverNumber }} - {{ report()?.reportedDriver?.driverClass }}</dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500">Reporting Driver</dt>
+                  <dd class="font-medium text-gray-900">{{ report()?.reportingDriver?.driverName }}</dd>
+                  <dd class="text-sm text-gray-500">#{{ report()?.reportingDriver?.driverNumber }}</dd>
+                </div>
+              </dl>
+
+              <div class="mt-6 pt-6 border-t border-gray-200">
+                <dt class="text-sm text-gray-500 mb-2">Description</dt>
+                <dd class="text-gray-900 whitespace-pre-wrap">{{ report()?.description }}</dd>
+              </div>
+            </app-card>
+
+            <!-- Final decision (if finalized) -->
+            @if (report()?.isFinalized) {
+              <app-card title="Official Decision">
+                <div class="space-y-4">
+                  <div>
+                    <dt class="text-sm text-gray-500">Decision</dt>
+                    <dd class="font-medium text-gray-900">{{ report()?.finalDecision }}</dd>
+                  </div>
+                  @if (report()?.appliedPenalty && report()?.appliedPenalty !== 'none') {
+                    <div>
+                      <dt class="text-sm text-gray-500">Penalty Applied</dt>
+                      <dd class="font-medium text-gray-900 capitalize">
+                        {{ report()?.appliedPenalty?.replace('_', ' ') }}
+                      </dd>
+                    </div>
+                  }
+                  @if (report()?.officialNotes) {
+                    <div>
+                      <dt class="text-sm text-gray-500">Official Notes</dt>
+                      <dd class="text-gray-900 whitespace-pre-wrap">{{ report()?.officialNotes }}</dd>
+                    </div>
+                  }
+                  <div class="text-sm text-gray-500">
+                    Finalized {{ report()?.finalizedAt | dateFormat:'PPp' }}
+                  </div>
+                </div>
+              </app-card>
+            }
+
+            <!-- Reviews -->
+            @if (report()?.reviews?.length > 0) {
+              <app-card title="Steward Reviews">
+                <div class="space-y-4">
+                  @for (review of report()?.reviews; track review._id) {
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                      <div class="flex items-start justify-between mb-3">
+                        <div>
+                          <p class="font-medium text-gray-900">{{ review.reviewer?.name }}</p>
+                          <p class="text-sm text-gray-500">{{ review.reviewDate | timeAgo }}</p>
+                        </div>
+                        @if (review.recommendedPenalty) {
+                          <app-badge variant="info">
+                            {{ review.recommendedPenalty.replace('_', ' ') }}
+                          </app-badge>
+                        }
+                      </div>
+                      <p class="text-gray-700 text-sm">{{ review.reviewNotes }}</p>
+                      @if (review.videoTimestamp) {
+                        <p class="text-sm text-gray-500 mt-2">
+                          Video timestamp: {{ review.videoTimestamp }}
+                        </p>
+                      }
+                    </div>
+                  }
+                </div>
+              </app-card>
+            }
+          </div>
+
+          <!-- Sidebar -->
+          <div class="space-y-6">
+            <!-- Status card -->
+            <app-card title="Status">
+              <div class="space-y-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                    [class.bg-amber-100]="report()?.status === 'pending'"
+                    [class.bg-blue-100]="report()?.status === 'reviewed'"
+                    [class.bg-green-100]="report()?.status === 'finalized'"
+                    [class.bg-red-100]="report()?.status === 'rejected'"
+                  >
+                    @switch (report()?.status) {
+                      @case ('pending') {
+                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                      }
+                      @case ('reviewed') {
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                      }
+                      @case ('finalized') {
+                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                      }
+                      @case ('rejected') {
+                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                      }
+                    }
+                  </div>
+                  <div>
+                    <p class="font-medium text-gray-900 capitalize">{{ report()?.status }}</p>
+                    <p class="text-sm text-gray-500">
+                      @switch (report()?.status) {
+                        @case ('pending') { Awaiting steward review }
+                        @case ('reviewed') { Ready for finalization }
+                        @case ('finalized') { Decision published }
+                        @case ('rejected') { Report dismissed }
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-200">
+                  <p class="text-sm text-gray-500">
+                    {{ report()?.reviews?.length || 0 }} review(s) submitted
+                  </p>
+                </div>
+              </div>
+            </app-card>
+
+            <!-- Quick actions -->
+            <div *appHasRole="['head_steward', 'event_manager']">
+              @if (report()?.status === 'reviewed' && !report()?.isFinalized) {
+                <app-card title="Actions">
+                  <a [routerLink]="['/finalize', report()?._id]" class="block">
+                    <app-button variant="success" [fullWidth]="true">
+                      Finalize Report
+                    </app-button>
+                  </a>
+                </app-card>
+              }
+            </div>
+          </div>
+        </div>
+      } @else {
+        <app-card>
+          <div class="text-center py-12">
+            <p class="text-gray-500">Report not found</p>
+            <a routerLink="/reports" class="mt-4 inline-block">
+              <app-button variant="primary">Back to Reports</app-button>
+            </a>
+          </div>
+        </app-card>
+      }
+    </div>
+  `
+})
+export class ReportDetailComponent implements OnInit, OnDestroy {
+  @Input() id!: string;
+
+  private convex = inject(ConvexService);
+  authService = inject(AuthService);
+
+  report = signal<any>(null);
+  loading = signal(true);
+
+  private unsubscribes: (() => void)[] = [];
+
+  ngOnInit(): void {
+    this.loadReport();
+  }
+
+  ngOnDestroy(): void {
+    this.unsubscribes.forEach(unsub => unsub());
+  }
+
+  private loadReport(): void {
+    if (!this.id) {
+      this.loading.set(false);
+      return;
+    }
+
+    const reportQuery = this.convex.createReactiveQuery(
+      this.convex.api.reports.getById,
+      { reportId: this.id as any }
+    );
+    this.unsubscribes.push(reportQuery.unsubscribe);
+
+    const checkReport = setInterval(() => {
+      const data = reportQuery.data();
+      if (data !== undefined) {
+        this.report.set(data);
+        this.loading.set(false);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkReport));
+  }
+
+  getStatusVariant(status: string | undefined): 'warning' | 'info' | 'success' | 'danger' {
+    switch (status) {
+      case 'pending': return 'warning';
+      case 'reviewed': return 'info';
+      case 'finalized': return 'success';
+      case 'rejected': return 'danger';
+      default: return 'info';
+    }
+  }
+}

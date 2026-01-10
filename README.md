@@ -1,6 +1,53 @@
-#  StewardSync
-The goal of this project is to provide a unified application for reviewing racing stweard reports.
+# StewardSync
 
+A unified application for reviewing racing steward reports.
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- A Convex account (free tier available)
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Set up Convex (first time only)
+npx convex dev
+```
+
+### Development
+
+```bash
+# Run both Angular and Convex dev servers
+npm run dev
+
+# Or run them separately:
+npm run start        # Angular dev server
+npm run convex:dev   # Convex dev server
+```
+
+The app will be available at `http://localhost:4200`
+
+### Configuration
+
+1. Copy environment template and configure:
+   - Update `src/environments/environment.ts` with your Convex URL
+   - Set up Google OAuth credentials if using Google sign-in
+
+2. Seed initial data (optional):
+   - Run `npx convex run seed:seedRoles` to create roles
+   - Run `npx convex run seed:seedSampleData` to add sample drivers/events
+
+## Technical Details
+- **Frontend:** Angular 17+ (standalone components, signals)
+- **Backend:** Convex (real-time BaaS)
+- **Auth:** Google OAuth 2.0 + Demo mode
+- **Styling:** Tailwind CSS
+# Architectural Details
 ## Models
 ### Report
 - ReportId (pk)
