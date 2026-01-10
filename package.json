@@ -5,12 +5,19 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:local": "ng serve --configuration local",
     "build": "ng build",
+    "build:local": "ng build --configuration local",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "dev": "concurrently \"npx convex dev\" \"ng serve\"",
+    "dev:local": "concurrently \"docker compose -f docker-compose.local.yml up\" \"ng serve --configuration local\"",
     "convex:dev": "convex dev",
-    "convex:deploy": "convex deploy"
+    "convex:deploy": "convex deploy",
+    "convex:local:start": "docker compose -f docker-compose.local.yml up -d",
+    "convex:local:stop": "docker compose -f docker-compose.local.yml down",
+    "convex:local:logs": "docker compose -f docker-compose.local.yml logs -f",
+    "convex:local:push": "CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 npx convex deploy --admin-key $CONVEX_SELF_HOSTED_ADMIN_KEY"
   },
   "private": true,
   "dependencies": {
