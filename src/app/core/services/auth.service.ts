@@ -105,7 +105,7 @@ export class AuthService {
         email: 'demo@stewardsync.com',
         name: 'Demo User',
         avatarUrl: undefined,
-        googleId: 'demo-user-123'
+        discordId: 'demo-user-123'
       }
     );
 

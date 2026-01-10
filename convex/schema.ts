@@ -12,11 +12,11 @@ export default defineSchema({
     name: v.string(),
     avatarUrl: v.optional(v.string()),
     roleId: v.id("roles"),
-    googleId: v.optional(v.string()),
+    discordId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_email", ["email"])
-    .index("by_google_id", ["googleId"]),
+    .index("by_discord_id", ["discordId"]),
 
   drivers: defineTable({
     driverNumber: v.number(),

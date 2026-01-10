@@ -6,13 +6,13 @@ export const getOrCreateUser = mutation({
     email: v.string(),
     name: v.string(),
     avatarUrl: v.optional(v.string()),
-    googleId: v.string(),
+    discordId: v.string(),
   },
   handler: async (ctx, args) => {
-    // Check if user exists by Google ID
+    // Check if user exists by Discord ID
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_google_id", (q) => q.eq("googleId", args.googleId))
+      .withIndex("by_discord_id", (q) => q.eq("discordId", args.discordId))
       .first();
 
     if (existingUser) {
@@ -39,7 +39,7 @@ export const getOrCreateUser = mutation({
       email: args.email,
       name: args.name,
       avatarUrl: args.avatarUrl,
-      googleId: args.googleId,
+      discordId: args.discordId,
       roleId: defaultRole!._id,
       createdAt: Date.now(),
     });
