@@ -202,7 +202,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
           { value: '', label: 'All events' },
           ...data.map((e: any) => ({
             value: e._id,
-            label: `${e.trackName} (${e.series})`
+            label: `${e.trackName} (${e.series.name})`
           }))
         ]);
       }

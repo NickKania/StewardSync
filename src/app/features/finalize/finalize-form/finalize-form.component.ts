@@ -51,20 +51,21 @@ import { Penalty } from '@core/models/series.model';
           <!-- Finalization form -->
           <div class="lg:col-span-2">
             <form [formGroup]="form" (ngSubmit)="onSubmit()">
-              <app-card title="Final Decision">
+              <app-card title="Finalize Report">
                 <div class="space-y-4">
-                  <!-- Final decision -->
+                  <!-- Incident description -->
                   <div>
-                    <label class="label">Final Decision *</label>
+                    <label class="label">Incident Description *</label>
                     <textarea
-                      formControlName="finalDecision"
+                      formControlName="incidentDescription"
                       class="input min-h-[100px]"
-                      [class.input-error]="form.get('finalDecision')?.invalid && form.get('finalDecision')?.touched"
-                      placeholder="State the official decision regarding this incident..."
+                      [class.input-error]="form.get('incidentDescription')?.invalid && form.get('incidentDescription')?.touched"
+                      placeholder="Describe the incident as observed in the steward review..."
                       rows="4"
                     ></textarea>
-                    @if (form.get('finalDecision')?.invalid && form.get('finalDecision')?.touched) {
-                      <p class="mt-1 text-sm text-red-600">Final decision is required</p>
+                    <p class="text-xs text-gray-500 mt-1">You can modify the incident description if needed</p>
+                    @if (form.get('incidentDescription')?.invalid && form.get('incidentDescription')?.touched) {
+                      <p class="mt-1 text-sm text-red-600">Incident description is required</p>
                     }
                   </div>
 
@@ -126,7 +127,7 @@ import { Penalty } from '@core/models/series.model';
                       [loading]="submitting()"
                       [disabled]="form.invalid"
                     >
-                      Publish Decision
+                      Finalize Report
                     </app-button>
                   </div>
                 </div>
@@ -298,7 +299,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.form = this.fb.group({
-      finalDecision: ['', [Validators.required, Validators.minLength(10)]],
+      incidentDescription: ['', [Validators.required, Validators.minLength(10)]],
       appliedPenalty: ['', Validators.required],
       officialNotes: ['']
     });
@@ -329,6 +330,16 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       if (data !== undefined) {
         this.report.set(data);
         this.loading.set(false);
+
+        // Auto-fill incident description from first review
+        if (data?.reviews && data.reviews.length > 0) {
+          const firstReview = data.reviews[0];
+          if (firstReview?.incidentDescription) {
+            this.form.patchValue({
+              incidentDescription: firstReview.incidentDescription
+            });
+          }
+        }
 
         // Load penalties for this series
         if (data?.event?.seriesId) {
@@ -403,7 +414,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         {
           reportId: this.reportId as any,
           userId,
-          finalDecision: formValue.finalDecision,
+          finalDecision: formValue.incidentDescription,
           appliedPenalty: formValue.appliedPenalty,
           officialNotes: formValue.officialNotes || ''
         }
