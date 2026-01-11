@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
 import { ButtonComponent } from '@shared/components/button/button.component';
@@ -8,7 +8,7 @@ import { ButtonComponent } from '@shared/components/button/button.component';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ButtonComponent],
+  imports: [CommonModule, ButtonComponent, RouterLink],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-gray-900 p-4">
       <div class="w-full max-w-md">
@@ -60,6 +60,14 @@ import { ButtonComponent } from '@shared/components/button/button.component';
           <p class="mt-8 text-center text-sm text-gray-500">
             By signing in, you agree to our terms of service and privacy policy.
           </p>
+
+          <!-- Dev Mode Link -->
+          <div class="mt-4 text-center">
+            <a routerLink="/dev-login"
+               class="text-xs text-gray-400 hover:text-primary-600 transition-colors">
+              Developer Mode
+            </a>
+          </div>
         </div>
 
         <!-- Info cards -->

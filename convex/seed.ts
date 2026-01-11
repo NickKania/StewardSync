@@ -25,6 +25,64 @@ export const seedRoles = mutation({
   },
 });
 
+export const seedDemoUsers = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Get head_steward role
+    const headStewardRole = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", "head_steward"))
+      .first();
+
+    if (!headStewardRole) {
+      throw new Error("head_steward role not found. Run seedRoles first.");
+    }
+
+    // Get steward role
+    const stewardRole = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", "steward"))
+      .first();
+
+    if (!stewardRole) {
+      throw new Error("steward role not found. Run seedRoles first.");
+    }
+
+    // Define demo users
+    const demoUsers = [
+      {
+        email: "headsteward@demo.stewardsync.com",
+        name: "Demo Head Steward",
+        discordId: "demo-head-steward-001",
+        roleId: headStewardRole._id,
+      },
+      {
+        email: "steward@demo.stewardsync.com",
+        name: "Demo Steward",
+        discordId: "demo-steward-001",
+        roleId: stewardRole._id,
+      },
+    ];
+
+    for (const demoUser of demoUsers) {
+      // Check if demo user already exists
+      const existing = await ctx.db
+        .query("users")
+        .withIndex("by_discord_id", (q) => q.eq("discordId", demoUser.discordId))
+        .first();
+
+      if (!existing) {
+        await ctx.db.insert("users", {
+          ...demoUser,
+          createdAt: Date.now(),
+        });
+      }
+    }
+
+    return "Demo users seeded successfully";
+  },
+});
+
 export const seedSampleData = mutation({
   args: {},
   handler: async (ctx) => {

@@ -68,3 +68,47 @@ export const getCurrentUser = query({
     };
   },
 });
+
+export const getUserByDiscordId = query({
+  args: { discordId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_discord_id", (q) => q.eq("discordId", args.discordId))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    const role = await ctx.db.get(user.roleId);
+
+    return {
+      ...user,
+      role,
+    };
+  },
+});
+
+export const getDevUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+
+    // Filter for demo/dev users (those with discordId starting with "demo-")
+    const devUsers = users.filter((user) => user.discordId?.startsWith("demo-"));
+
+    // Get roles for each user
+    const usersWithRoles = await Promise.all(
+      devUsers.map(async (user) => {
+        const role = await ctx.db.get(user.roleId);
+        return {
+          ...user,
+          role,
+        };
+      })
+    );
+
+    return usersWithRoles;
+  },
+});

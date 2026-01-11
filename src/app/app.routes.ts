@@ -13,6 +13,10 @@ export const routes: Routes = [
     loadComponent: () => import('@features/auth/login/login.component').then(m => m.LoginComponent)
   },
   {
+    path: 'dev-login',
+    loadComponent: () => import('@features/auth/dev-login/dev-login.component').then(m => m.DevLoginComponent)
+  },
+  {
     path: 'auth/callback',
     loadComponent: () => import('@features/auth/callback/callback.component').then(m => m.CallbackComponent)
   },

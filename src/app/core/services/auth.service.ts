@@ -128,6 +128,23 @@ export class AuthService {
     this.router.navigate(['/']);
   }
 
+  async loginWithDiscordId(discordId: string): Promise<void> {
+    // Get user by Discord ID
+    const user = await this.convex.query(
+      this.convex.api.auth.getUserByDiscordId,
+      { discordId }
+    );
+
+    if (!user) {
+      throw new Error('User not found. Please run seedDemoUsers first.');
+    }
+
+    this._user.set(user as User);
+    this._userId.set(user._id);
+    localStorage.setItem(STORAGE_KEY, user._id);
+    this.router.navigate(['/']);
+  }
+
   logout(): void {
     this._user.set(null);
     this._userId.set(null);
