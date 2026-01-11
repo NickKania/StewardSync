@@ -30,7 +30,11 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">
-            Welcome back, {{ authService.user()?.name?.split(' ')[0] }}
+            @if (authService.user()) {
+              Welcome back, {{ authService.user()!.name.split(' ')[0] }}
+            } @else {
+              Welcome back
+            }
           </h1>
           <p class="text-gray-500 mt-1">Here's what's happening with your reports</p>
         </div>

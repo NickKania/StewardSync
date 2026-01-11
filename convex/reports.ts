@@ -15,15 +15,11 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let reportsQuery = ctx.db.query("reports");
+    let reports = await ctx.db.query("reports").order("desc").collect();
 
     if (args.status) {
-      reportsQuery = reportsQuery.withIndex("by_status", (q) =>
-        q.eq("status", args.status!)
-      );
+      reports = reports.filter((r) => r.status === args.status);
     }
-
-    let reports = await reportsQuery.order("desc").collect();
 
     if (args.eventId) {
       reports = reports.filter((r) => r.eventId === args.eventId);
@@ -139,7 +135,8 @@ export const getReadyForFinalization = query({
   handler: async (ctx) => {
     const reports = await ctx.db
       .query("reports")
-      .withIndex("by_status", (q) => q.eq("status", "reviewed"))
+      .withIndex("by_status")
+      .filter((q) => q.eq(q.field("status"), "reviewed"))
       .order("desc")
       .collect();
 

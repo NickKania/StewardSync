@@ -32,7 +32,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
       </div>
 
       <!-- Users table -->
-      <app-card title="All Users" noPadding>
+      <app-card title="All Users" [noPadding]="true">
         @if (loading()) {
           <div class="py-12">
             <app-loading text="Loading users..." />
@@ -138,7 +138,9 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
             </select>
           </div>
         </div>
+      }
 
+      @if (selectedUser) {
         <div modal-footer class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
           <app-button variant="secondary" (onClick)="closeEditModal()">
             Cancel

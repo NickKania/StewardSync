@@ -67,7 +67,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
       </app-card>
 
       <!-- Reports table -->
-      <app-card noPadding>
+      <app-card [noPadding]="true">
         @if (loading()) {
           <div class="py-12">
             <app-loading text="Loading reports..." />

@@ -64,15 +64,15 @@ export class AuthService {
           try {
             const decoded = this.decodeJwt(response.credential);
 
-            const userId = await this.convex.mutation(
-              this.convex.api.auth.getOrCreateUser,
-              {
-                email: decoded.email,
-                name: decoded.name,
-                avatarUrl: decoded.picture,
-                googleId: decoded.sub
-              }
-            );
+              const userId = await this.convex.mutation(
+                this.convex.api.auth.getOrCreateUser,
+                {
+                  email: decoded.email,
+                  name: decoded.name,
+                  avatarUrl: decoded.picture,
+                  discordId: decoded.sub
+                }
+              );
 
             const user = await this.convex.query(
               this.convex.api.auth.getCurrentUser,
@@ -109,17 +109,23 @@ export class AuthService {
       }
     );
 
+    if (!userId) {
+      throw new Error('Failed to create or get user');
+    }
+
     const user = await this.convex.query(
       this.convex.api.auth.getCurrentUser,
       { userId }
     );
 
-    if (user) {
-      this._user.set(user as User);
-      this._userId.set(userId);
-      localStorage.setItem(STORAGE_KEY, userId);
-      this.router.navigate(['/']);
+    if (!user) {
+      throw new Error('Failed to get user after creation');
     }
+
+    this._user.set(user as User);
+    this._userId.set(userId);
+    localStorage.setItem(STORAGE_KEY, userId);
+    this.router.navigate(['/']);
   }
 
   logout(): void {

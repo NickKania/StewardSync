@@ -59,7 +59,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
       </div>
 
       <!-- Pending reports -->
-      <app-card title="Pending Reviews" noPadding>
+      <app-card title="Pending Reviews" [noPadding]="true">
         @if (loading()) {
           <div class="py-12">
             <app-loading text="Loading reports..." />
@@ -128,7 +128,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
 
       <!-- Already reviewed (ready for finalization) -->
       @if (reviewedReports().length > 0) {
-        <app-card title="Ready for Finalization" subtitle="These reports have been reviewed and await final decision" noPadding>
+        <app-card title="Ready for Finalization" subtitle="These reports have been reviewed and await final decision" [noPadding]="true">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50">

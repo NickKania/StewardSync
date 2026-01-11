@@ -52,7 +52,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
       </div>
 
       <!-- Reports ready for finalization -->
-      <app-card title="Reports Awaiting Decision" noPadding>
+      <app-card title="Reports Awaiting Decision" [noPadding]="true">
         @if (loading()) {
           <div class="py-12">
             <app-loading text="Loading reports..." />
