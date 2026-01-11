@@ -21,12 +21,17 @@ export default defineSchema({
   drivers: defineTable({
     driverNumber: v.number(),
     driverName: v.string(),
+    username: v.optional(v.string()),
     externalId: v.optional(v.string()),
     driverClass: v.string(),
+    steamId: v.optional(v.string()),
+    championshipId: v.optional(v.id("series")),
     createdAt: v.number(),
   })
     .index("by_number", ["driverNumber"])
-    .index("by_external_id", ["externalId"]),
+    .index("by_external_id", ["externalId"])
+    .index("by_steam_id", ["steamId"])
+    .index("by_championship", ["championshipId"]),
 
   series: defineTable({
     name: v.string(),
@@ -52,7 +57,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_series", ["seriesId"])
-    .index("by_date", ["eventDate"]),
+    .index("by_date", ["eventDate"])
+    .index("by_series_and_number", ["seriesId", "eventNumber"]),
 
   races: defineTable({
     eventId: v.id("events"),

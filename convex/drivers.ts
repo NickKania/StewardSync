@@ -25,12 +25,35 @@ export const getByNumber = query({
   },
 });
 
+export const getBySteamId = query({
+  args: { steamId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("drivers")
+      .withIndex("by_steam_id", (q) => q.eq("steamId", args.steamId))
+      .first();
+  },
+});
+
+export const getByChampionship = query({
+  args: { championshipId: v.id("series") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("drivers")
+      .withIndex("by_championship", (q) => q.eq("championshipId", args.championshipId))
+      .collect();
+  },
+});
+
 export const create = mutation({
   args: {
     driverNumber: v.number(),
     driverName: v.string(),
+    username: v.optional(v.string()),
     externalId: v.optional(v.string()),
     driverClass: v.string(),
+    steamId: v.optional(v.string()),
+    championshipId: v.optional(v.id("series")),
   },
   handler: async (ctx, args) => {
     // Check if driver number already exists
@@ -57,8 +80,11 @@ export const update = mutation({
     driverId: v.id("drivers"),
     driverNumber: v.optional(v.number()),
     driverName: v.optional(v.string()),
+    username: v.optional(v.string()),
     externalId: v.optional(v.string()),
     driverClass: v.optional(v.string()),
+    steamId: v.optional(v.string()),
+    championshipId: v.optional(v.id("series")),
   },
   handler: async (ctx, args) => {
     const { driverId, ...updates } = args;
@@ -104,5 +130,44 @@ export const getDriverStats = query({
       pendingReports: reportsFiledAgainst.filter((r) => r.status === "pending").length,
       finalizedReports: reportsFiledAgainst.filter((r) => r.status === "finalized").length,
     };
+  },
+});
+
+export const importOrUpdateDriver = mutation({
+  args: {
+    championshipId: v.id("series"),
+    driverNumber: v.number(),
+    driverName: v.string(),
+    username: v.optional(v.string()),
+    driverClass: v.string(),
+    steamId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("drivers")
+      .withIndex("by_number", (q) => q.eq("driverNumber", args.driverNumber))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        driverName: args.driverName,
+        username: args.username,
+        driverClass: args.driverClass,
+        steamId: args.steamId,
+        championshipId: args.championshipId,
+      });
+      return { action: 'updated', driverId: existing._id };
+    } else {
+      const driverId = await ctx.db.insert("drivers", {
+        driverNumber: args.driverNumber,
+        driverName: args.driverName,
+        username: args.username,
+        driverClass: args.driverClass,
+        steamId: args.steamId,
+        championshipId: args.championshipId,
+        createdAt: Date.now(),
+      });
+      return { action: 'created', driverId };
+    }
   },
 });

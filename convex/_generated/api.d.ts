@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as actions from "../actions.js";
 import type * as auth from "../auth.js";
 import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
@@ -26,6 +27,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  actions: typeof actions;
   auth: typeof auth;
   drivers: typeof drivers;
   events: typeof events;

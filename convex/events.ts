@@ -101,6 +101,49 @@ export const update = mutation({
   },
 });
 
+export const importOrUpdateEvent = mutation({
+  args: {
+    seriesId: v.id("series"),
+    eventNumber: v.number(),
+    trackName: v.string(),
+    eventDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Verify series exists
+    const series = await ctx.db.get(args.seriesId);
+    if (!series) {
+      throw new Error("Series not found");
+    }
+
+    // Check if event with same seriesId and eventNumber exists
+    const existing = await ctx.db
+      .query("events")
+      .withIndex("by_series_and_number", (q) => 
+        q.eq("seriesId", args.seriesId).eq("eventNumber", args.eventNumber)
+      )
+      .first();
+
+    if (existing) {
+      // Update existing event
+      await ctx.db.patch(existing._id, {
+        trackName: args.trackName,
+        eventDate: args.eventDate,
+      });
+      return { action: 'updated', eventId: existing._id };
+    } else {
+      // Create new event
+      const eventId = await ctx.db.insert("events", {
+        seriesId: args.seriesId,
+        eventNumber: args.eventNumber,
+        trackName: args.trackName,
+        eventDate: args.eventDate,
+        createdAt: Date.now(),
+      });
+      return { action: 'created', eventId };
+    }
+  },
+});
+
 export const importFromSimGrid = action({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
@@ -149,15 +192,16 @@ export const importFromSimGrid = action({
 
       const trackName = race.track?.name || race.display_name || "Unknown Track";
 
-      try {
-        await ctx.runMutation(api.events.create, {
-          seriesId: args.seriesId,
-          eventNumber: i + 1,
-          trackName: trackName,
-          eventDate,
-        });
+      const result = await ctx.runMutation(api.events.importOrUpdateEvent, {
+        seriesId: args.seriesId,
+        eventNumber: i + 1,
+        trackName: trackName,
+        eventDate,
+      });
+
+      if (result.action === 'created') {
         created++;
-      } catch (e) {
+      } else {
         skipped++;
       }
     }

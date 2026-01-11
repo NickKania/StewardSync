@@ -75,6 +75,12 @@ import { Id } from '@convex/_generated/dataModel';
                         </svg>
                         {{ importing() ? 'Importing...' : 'Import Events' }}
                       </app-button>
+                      <app-button variant="secondary" size="sm" (click)="importDrivers(s._id)" [disabled]="importing()">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        {{ importing() ? 'Importing...' : 'Import Drivers' }}
+                      </app-button>
                     }
                     <app-button variant="danger" size="sm" (click)="deleteSeries(s._id)">
                       Delete
@@ -453,5 +459,50 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     } finally {
       this.importing.set(false);
     }
+  }
+
+  async importDrivers(seriesId: Id<'series'>): Promise<void> {
+    this.importing.set(true);
+    this.importResult.set(null);
+
+    try {
+      const series = await this.convex.query(this.convex.api.series.getById, { id: seriesId });
+      if (!series || !series.simgridLink) {
+        throw new Error('Series not found or simgridLink not configured');
+      }
+
+      const championshipId = this.extractChampionshipId(series.simgridLink);
+      if (!championshipId) {
+        throw new Error('Could not extract championship ID from simgridLink');
+      }
+
+      const result = await this.convex.action((this.convex.api as any).actions.importDriversFromSimGrid, {
+        championshipId: seriesId,
+        simgridChampionshipId: championshipId,
+      });
+
+      if (result.success) {
+        const createdCount = result.results.filter((r: any) => r.action === 'created').length;
+        const updatedCount = result.results.filter((r: any) => r.action === 'updated').length;
+        alert(`Successfully imported ${result.imported} drivers (${createdCount} created, ${updatedCount} updated)`);
+      } else {
+        alert(`Failed to import drivers: ${result.error}`);
+      }
+    } catch (error: any) {
+      alert(`Failed to import drivers: ${error.message}`);
+    } finally {
+      this.importing.set(false);
+    }
+  }
+
+  private extractChampionshipId(url: string): string | null {
+    const patterns = [/championship\/(\d+)/, /id=(\d+)/, /\/(\d+)\/?$/];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+
+    return null;
   }
 }
