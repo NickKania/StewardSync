@@ -29,10 +29,12 @@ export class CardComponent {
   @Input() subtitle = '';
   @Input() noPadding = false;
   @Input() hover = false;
+  @Input() overflowHidden = true;
 
   getCardClasses(): string {
-    const base = 'bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden';
+    const base = 'bg-white rounded-xl shadow-sm border border-gray-200';
+    const overflowClass = this.overflowHidden ? 'overflow-hidden' : 'overflow-visible';
     const hoverClass = this.hover ? 'hover:shadow-md transition-shadow cursor-pointer' : '';
-    return `${base} ${hoverClass}`;
+    return `${base} ${overflowClass} ${hoverClass}`;
   }
 }

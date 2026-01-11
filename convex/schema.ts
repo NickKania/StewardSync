@@ -97,6 +97,8 @@ export default defineSchema({
     reviewNotes: v.string(),
     recommendedPenalty: v.optional(v.string()),
     videoTimestamp: v.optional(v.string()),
+    secondStewardId: v.optional(v.id("users")),
+    linkedReviewId: v.optional(v.id("reviews")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

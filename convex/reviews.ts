@@ -8,15 +8,24 @@ export const list = query({
 
     const populatedReviews = await Promise.all(
       reviews.map(async (review) => {
-        const [user, report] = await Promise.all([
+        const [user, report, secondSteward, linkedReview] = await Promise.all([
           ctx.db.get(review.userId),
           ctx.db.get(review.reportId),
+          (review as any).secondStewardId ? ctx.db.get((review as any).secondStewardId) : null,
+          review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
         ]);
+
+        const linkedReviewWithReviewer = linkedReview ? {
+          ...linkedReview,
+          reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
+        } : null;
 
         return {
           ...review,
           reviewer: user,
           report,
+          secondSteward,
+          linkedReview: linkedReviewWithReviewer,
         };
       })
     );
@@ -35,10 +44,22 @@ export const getByReport = query({
 
     const populatedReviews = await Promise.all(
       reviews.map(async (review) => {
-        const user = await ctx.db.get(review.userId);
+        const [user, secondSteward, linkedReview] = await Promise.all([
+          ctx.db.get(review.userId),
+          (review as any).secondStewardId ? ctx.db.get((review as any).secondStewardId) : null,
+          review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
+        ]);
+
+        const linkedReviewWithReviewer = linkedReview ? {
+          ...linkedReview,
+          reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
+        } : null;
+
         return {
           ...review,
           reviewer: user,
+          secondSteward,
+          linkedReview: linkedReviewWithReviewer,
         };
       })
     );
@@ -76,15 +97,24 @@ export const getById = query({
     const review = await ctx.db.get(args.reviewId);
     if (!review) return null;
 
-    const [user, report] = await Promise.all([
+    const [user, report, secondSteward, linkedReview] = await Promise.all([
       ctx.db.get(review.userId),
       ctx.db.get(review.reportId),
+      (review as any).secondStewardId ? ctx.db.get((review as any).secondStewardId) : null,
+      review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
     ]);
+
+    const linkedReviewWithReviewer = linkedReview ? {
+      ...linkedReview,
+      reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
+    } : null;
 
     return {
       ...review,
       reviewer: user,
       report,
+      secondSteward,
+      linkedReview: linkedReviewWithReviewer,
     };
   },
 });
@@ -97,6 +127,7 @@ export const create = mutation({
     reviewNotes: v.string(),
     recommendedPenalty: v.optional(v.string()),
     videoTimestamp: v.optional(v.string()),
+    secondStewardId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     // Validate report exists and is not finalized
@@ -120,9 +151,61 @@ export const create = mutation({
       throw new Error("You have already submitted a review for this report");
     }
 
+    // If second steward is provided, check if they've also already reviewed
+    if (args.secondStewardId) {
+      const existingSecondReview = await ctx.db
+        .query("reviews")
+        .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
+        .filter((q) => q.eq(q.field("userId"), args.secondStewardId!))
+        .first();
+
+      if (existingSecondReview) {
+        throw new Error("Second steward has already submitted a review for this report");
+      }
+    }
+
     const now = Date.now();
+
+    // If second steward is provided, create two linked reviews
+    if (args.secondStewardId) {
+      const primaryReviewId = await ctx.db.insert("reviews", {
+        userId: args.userId,
+        reportId: args.reportId,
+        incidentDescription: args.incidentDescription,
+        reviewNotes: args.reviewNotes,
+        recommendedPenalty: args.recommendedPenalty,
+        videoTimestamp: args.videoTimestamp,
+        reviewDate: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const secondReviewId = await ctx.db.insert("reviews", {
+        userId: args.secondStewardId,
+        reportId: args.reportId,
+        incidentDescription: args.incidentDescription,
+        reviewNotes: args.reviewNotes,
+        recommendedPenalty: args.recommendedPenalty,
+        videoTimestamp: args.videoTimestamp,
+        linkedReviewId: primaryReviewId,
+        reviewDate: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await ctx.db.patch(primaryReviewId, { linkedReviewId: secondReviewId });
+
+      return primaryReviewId;
+    }
+
+    // Single review
     const reviewId = await ctx.db.insert("reviews", {
-      ...args,
+      userId: args.userId,
+      reportId: args.reportId,
+      incidentDescription: args.incidentDescription,
+      reviewNotes: args.reviewNotes,
+      recommendedPenalty: args.recommendedPenalty,
+      videoTimestamp: args.videoTimestamp,
       reviewDate: now,
       createdAt: now,
       updatedAt: now,
@@ -207,5 +290,51 @@ export const getStats = query({
       total: reviews.length,
       today: reviews.filter((r) => r.reviewDate >= todayTimestamp).length,
     };
+  },
+});
+
+export const migrateSecondStewardToLinkedReviews = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const reviews = await ctx.db.query("reviews").collect();
+
+    for (const review of reviews) {
+      const reviewDoc = review as any;
+
+      if (reviewDoc.secondStewardId && !reviewDoc.linkedReviewId) {
+        const now = Date.now();
+
+        const primaryReviewId = await ctx.db.insert("reviews", {
+          userId: reviewDoc.userId,
+          reportId: reviewDoc.reportId,
+          incidentDescription: reviewDoc.incidentDescription,
+          reviewNotes: reviewDoc.reviewNotes,
+          recommendedPenalty: reviewDoc.recommendedPenalty,
+          videoTimestamp: reviewDoc.videoTimestamp,
+          reviewDate: reviewDoc.reviewDate,
+          createdAt: reviewDoc.createdAt,
+          updatedAt: now,
+        });
+
+        const secondReviewId = await ctx.db.insert("reviews", {
+          userId: reviewDoc.secondStewardId,
+          reportId: reviewDoc.reportId,
+          incidentDescription: reviewDoc.incidentDescription,
+          reviewNotes: reviewDoc.reviewNotes,
+          recommendedPenalty: reviewDoc.recommendedPenalty,
+          videoTimestamp: reviewDoc.videoTimestamp,
+          linkedReviewId: primaryReviewId,
+          reviewDate: reviewDoc.reviewDate,
+          createdAt: reviewDoc.createdAt,
+          updatedAt: now,
+        });
+
+        await ctx.db.patch(primaryReviewId, { linkedReviewId: secondReviewId });
+
+        await ctx.db.delete(review._id);
+      }
+    }
+
+    return { success: true, migrated: reviews.length };
   },
 });

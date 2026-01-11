@@ -87,7 +87,16 @@ export const getById = query({
 
     const reviewsWithUsers = await Promise.all(
       reviews.map(async (review) => {
-        const user = await ctx.db.get(review.userId);
+        const [user, secondSteward, linkedReview] = await Promise.all([
+          ctx.db.get(review.userId),
+          (review as any).secondStewardId ? ctx.db.get((review as any).secondStewardId) : null,
+          review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
+        ]);
+
+        const linkedReviewWithReviewer = linkedReview ? {
+          ...linkedReview,
+          reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
+        } : null;
 
         // Populate recommended penalty if exists
         let recommendedPenaltyObj = null;
@@ -95,7 +104,7 @@ export const getById = query({
           recommendedPenaltyObj = await ctx.db.get(review.recommendedPenalty as any);
         }
 
-        return { ...review, reviewer: user, recommendedPenaltyObj };
+        return { ...review, reviewer: user, recommendedPenaltyObj, secondSteward, linkedReview: linkedReviewWithReviewer };
       })
     );
 
@@ -129,12 +138,12 @@ export const getPendingForReview = query({
           ctx.db.get(report.raceId),
         ]);
 
-        const reviewCount = (
-          await ctx.db
-            .query("reviews")
-            .withIndex("by_report", (q) => q.eq("reportId", report._id))
-            .collect()
-        ).length;
+        const reviews = await ctx.db
+          .query("reviews")
+          .withIndex("by_report", (q) => q.eq("reportId", report._id))
+          .collect();
+
+        const reviewCount = reviews.length;
 
         return {
           ...report,
@@ -175,13 +184,15 @@ export const getReadyForFinalization = query({
           .withIndex("by_report", (q) => q.eq("reportId", report._id))
           .collect();
 
+        const reviewCount = reviews.length;
+
         return {
           ...report,
           reportingDriver,
           reportedDriver,
           event,
           race,
-          reviewCount: reviews.length,
+          reviewCount,
         };
       })
     );
@@ -280,9 +291,9 @@ export const markAsReviewed = mutation({
     const reviews = await ctx.db
       .query("reviews")
       .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
-      .first();
+      .collect();
 
-    if (!reviews) {
+    if (reviews.length === 0) {
       throw new Error("Report must have at least one review before marking as reviewed");
     }
 

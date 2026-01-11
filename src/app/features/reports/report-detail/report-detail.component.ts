@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal, Input } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { ConvexService } from '@core/services/convex.service';
@@ -136,14 +136,21 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             }
 
             <!-- Reviews -->
-            @if (report()?.reviews?.length > 0) {
+            @if (reviews().length > 0) {
               <app-card title="Steward Reviews">
                 <div class="space-y-4">
-                  @for (review of report()?.reviews; track review._id) {
+                  @for (review of reviews(); track review._id) {
                     <div class="p-4 bg-gray-50 rounded-lg">
                       <div class="flex items-start justify-between mb-3">
                         <div>
-                          <p class="font-medium text-gray-900">{{ review.reviewer?.name }}</p>
+                          @if (review.linkedReview) {
+                            <div class="flex items-center gap-2">
+                              <app-badge variant="success" size="sm">Joint Review</app-badge>
+                              <p class="font-medium text-gray-900">{{ review.reviewer?.name }} & {{ review.linkedReview.reviewer?.name }}</p>
+                            </div>
+                          } @else {
+                            <p class="font-medium text-gray-900">{{ review.reviewer?.name }}</p>
+                          }
                           <p class="text-sm text-gray-500">{{ review.reviewDate | timeAgo }}</p>
                         </div>
                         @if (review.recommendedPenaltyObj) {
@@ -259,6 +266,28 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
   loading = signal(true);
 
   private unsubscribes: (() => void)[] = [];
+
+  reviews = computed(() => {
+    const allReviews = this.report()?.reviews || [];
+    const seen = new Set<string>();
+    const result: any[] = [];
+
+    for (const review of allReviews) {
+      const id = String(review._id);
+
+      if (seen.has(id)) continue;
+
+      if (review.linkedReviewId) {
+        seen.add(id);
+        const linkedId = String(review.linkedReviewId);
+        seen.add(linkedId);
+      }
+
+      result.push(review);
+    }
+
+    return result;
+  });
 
   ngOnInit(): void {
     this.loadReport();

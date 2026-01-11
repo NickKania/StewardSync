@@ -2,6 +2,7 @@ export * from './toast/toast.component';
 export * from './button/button.component';
 export * from './input/input.component';
 export * from './select/select.component';
+export * from './search-select/search-select.component';
 export * from './card/card.component';
 export * from './modal/modal.component';
 export * from './badge/badge.component';

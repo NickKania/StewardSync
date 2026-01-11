@@ -53,3 +53,25 @@ export const listRoles = query({
     return await ctx.db.query("roles").collect();
   },
 });
+
+export const listStewards = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const roles = await ctx.db.query("roles").collect();
+    const stewardRoleIds = roles.filter(r => 
+      r.name === 'steward' || r.name === 'head_steward' || r.name === 'event_manager'
+    ).map(r => r._id);
+
+    const stewards = users.filter(user => stewardRoleIds.includes(user.roleId));
+
+    const usersWithRoles = await Promise.all(
+      stewards.map(async (user) => {
+        const role = await ctx.db.get(user.roleId);
+        return { ...user, role };
+      })
+    );
+
+    return usersWithRoles;
+  },
+});

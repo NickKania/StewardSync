@@ -20,7 +20,7 @@ import { ToastComponent } from '@shared/components/toast/toast.component';
     <div class="min-h-screen bg-gray-50">
       @if (authService.isAuthenticated()) {
         <app-header />
-        <div class="flex">
+        <div class="flex mt-16">
           <app-sidebar />
           <main class="flex-1 p-6 lg:ml-64">
             <router-outlet />
