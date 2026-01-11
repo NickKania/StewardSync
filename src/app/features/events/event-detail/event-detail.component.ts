@@ -1,12 +1,14 @@
 import { Component, inject, OnInit, OnDestroy, signal, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
 import { CardComponent } from '@shared/components/card/card.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
+import { Id } from '@convex/_generated/dataModel';
 
 @Component({
   selector: 'app-event-detail',
@@ -14,6 +16,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
   imports: [
     CommonModule,
     RouterLink,
+    FormsModule,
     CardComponent,
     ButtonComponent,
     BadgeComponent,
@@ -72,6 +75,15 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
 
             <!-- Races -->
             <app-card title="Races">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm text-gray-500">Manage races for this event</span>
+                <app-button variant="secondary" size="sm" (click)="showAddRaceModal = true">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                  </svg>
+                  Add Race
+                </app-button>
+              </div>
               @if (event()?.races?.length > 0) {
                 <div class="space-y-3">
                   @for (race of event()?.races; track race._id) {
@@ -82,13 +94,24 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                         </div>
                         <span class="font-medium text-gray-900">Race {{ race.raceNumber }}</span>
                       </div>
-                      <a
-                        [routerLink]="['/reports']"
-                        [queryParams]="{ event: event()?._id, race: race._id }"
-                        class="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                      >
-                        View Reports
-                      </a>
+                      <div class="flex items-center gap-2">
+                        <button
+                          (click)="removeRace(race._id)"
+                          class="text-gray-400 hover:text-red-600 p-1"
+                          title="Delete race"
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                          </svg>
+                        </button>
+                        <a
+                          [routerLink]="['/reports']"
+                          [queryParams]="{ event: event()?._id, race: race._id }"
+                          class="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          View Reports
+                        </a>
+                      </div>
                     </div>
                   }
                 </div>
@@ -126,6 +149,33 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
           </div>
         </app-card>
       }
+
+      <!-- Add Race Modal -->
+      @if (showAddRaceModal) {
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold mb-4">Add Race</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Race Number</label>
+                <input
+                  type="number"
+                  class="input w-full"
+                  [(ngModel)]="raceForm.raceNumber"
+                  min="1"
+                  placeholder="e.g., 1, 2, 3"
+                />
+              </div>
+              <div class="flex gap-2 justify-end">
+                <app-button variant="secondary" (click)="closeAddRaceModal()">Cancel</app-button>
+                <app-button (click)="addRace()" [disabled]="raceForm.raceNumber < 1">
+                  Add Race
+                </app-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `
 })
@@ -136,6 +186,10 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
   event = signal<any>(null);
   loading = signal(true);
+  showAddRaceModal = false;
+  raceForm = {
+    raceNumber: 0
+  };
 
   private unsubscribes: (() => void)[] = [];
 
@@ -193,5 +247,40 @@ export class EventDetailComponent implements OnInit, OnDestroy {
       return 'Current';
     }
     return 'Upcoming';
+  }
+
+  closeAddRaceModal(): void {
+    this.showAddRaceModal = false;
+    this.raceForm.raceNumber = 0;
+  }
+
+  async addRace(): Promise<void> {
+    if (this.raceForm.raceNumber < 1) return;
+
+    try {
+      await this.convex.mutation(this.convex.api.races.create, {
+        eventId: this.event()?._id,
+        raceNumber: this.raceForm.raceNumber
+      });
+
+      this.closeAddRaceModal();
+
+      await this.loadEvent();
+    } catch (error: any) {
+      alert(`Failed to add race: ${error.message}`);
+    }
+  }
+
+  async removeRace(raceId: Id<'races'>): Promise<void> {
+    if (!confirm('Are you sure you want to delete this race? This will fail if there are existing reports.')) {
+      return;
+    }
+
+    try {
+      await this.convex.mutation(this.convex.api.races.remove, { raceId });
+      await this.loadEvent();
+    } catch (error: any) {
+      alert(`Failed to delete race: ${error.message}`);
+    }
   }
 }

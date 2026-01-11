@@ -1,5 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
+import { Console } from "console";
 
 export const list = query({
   args: {},
@@ -15,7 +17,7 @@ export const list = query({
       events.map(async (event) => {
         const series = await ctx.db.get(event.seriesId);
         return { ...event, series };
-      })
+      }),
     );
   },
 });
@@ -91,10 +93,86 @@ export const update = mutation({
     }
 
     const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined)
+      Object.entries(updates).filter(([_, v]) => v !== undefined),
     );
 
     await ctx.db.patch(eventId, cleanUpdates);
     return eventId;
   },
 });
+
+export const importFromSimGrid = action({
+  args: { seriesId: v.id("series") },
+  handler: async (ctx, args) => {
+    const apiKey = process.env["SIMGRID_API_KEY"];
+    if (!apiKey) {
+      throw new Error("SIMGRID_API_KEY environment variable not configured");
+    }
+
+    const series = await ctx.runQuery(api.series.getById, {
+      id: args.seriesId,
+    });
+    if (!series || !series.simgridLink) {
+      throw new Error("Series not found or simgridLink not configured");
+    }
+
+    const championshipId = extractChampionshipId(series.simgridLink);
+    if (!championshipId) {
+      throw new Error("Could not extract championship ID from simgridLink");
+    }
+
+    const response = await fetch(
+      `https://www.thesimgrid.com/api/v1/races?championship_id=${championshipId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`SimGrid API error: ${response.statusText}`);
+    }
+
+    const races = await response.json();
+
+    let created = 0;
+    let skipped = 0;
+
+    const sortedRaces = races.sort((a: any, b: any) =>
+      new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+    );
+
+    for (let i = 0; i < sortedRaces.length; i++) {
+      const race = sortedRaces[i];
+      const eventDate = new Date(race.starts_at).getTime();
+      if (isNaN(eventDate)) continue;
+
+      const trackName = race.track?.name || race.display_name || "Unknown Track";
+
+      try {
+        await ctx.runMutation(api.events.create, {
+          seriesId: args.seriesId,
+          eventNumber: i + 1,
+          trackName: trackName,
+          eventDate,
+        });
+        created++;
+      } catch (e) {
+        skipped++;
+      }
+    }
+
+    return { created, skipped };
+  },
+});
+
+function extractChampionshipId(url: string): string | null {
+  const patterns = [/championship\/(\d+)/, /id=(\d+)/, /\/(\d+)\/?$/];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+
+  return null;
+}

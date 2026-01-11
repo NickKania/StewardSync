@@ -68,6 +68,14 @@ import { Id } from '@convex/_generated/dataModel';
                     <app-button variant="secondary" size="sm" (click)="editSeries(s)">
                       Edit
                     </app-button>
+                    @if (s.simgridLink) {
+                      <app-button variant="secondary" size="sm" (click)="importEvents(s._id)" [disabled]="importing()">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                        {{ importing() ? 'Importing...' : 'Import Events' }}
+                      </app-button>
+                    }
                     <app-button variant="danger" size="sm" (click)="deleteSeries(s._id)">
                       Delete
                     </app-button>
@@ -270,6 +278,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   };
 
   private unsubscribes: (() => void)[] = [];
+  importing = signal(false);
+  importResult = signal<{ created: number; skipped: number } | null>(null);
 
   ngOnInit(): void {
     this.loadSeries();
@@ -421,5 +431,27 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       timePenaltyWithSelfReport: 0,
       licensePoints: 0
     };
+  }
+
+  async importEvents(seriesId: Id<'series'>): Promise<void> {
+    this.importing.set(true);
+    this.importResult.set(null);
+
+    try {
+      const result = await this.convex.action(this.convex.api.events.importFromSimGrid, { seriesId });
+      this.importResult.set(result);
+
+      if (result.created > 0) {
+        alert(`Successfully imported ${result.created} events${result.skipped > 0 ? ` (${result.skipped} already exist)` : ''}`);
+      } else if (result.skipped > 0) {
+        alert(`No new events imported. ${result.skipped} events already exist.`);
+      } else {
+        alert('No events found on SimGrid.');
+      }
+    } catch (error: any) {
+      alert(`Failed to import events: ${error.message}`);
+    } finally {
+      this.importing.set(false);
+    }
   }
 }

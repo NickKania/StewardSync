@@ -33,6 +33,13 @@ export class ConvexService implements OnDestroy {
     return this.client.mutation(func, args);
   }
 
+  async action<T extends FunctionReference<'action'>>(
+    func: T,
+    args: FunctionArgs<T>
+  ): Promise<FunctionReturnType<T>> {
+    return (this.client as any).action(func, args);
+  }
+
   subscribe<T extends FunctionReference<'query'>>(
     func: T,
     args: FunctionArgs<T>,
