@@ -1,12 +1,14 @@
 import { Id } from '@convex/_generated/dataModel';
+import { Series } from './series.model';
 
 export interface Event {
   _id: Id<'events'>;
-  series: string;
+  seriesId: Id<'series'>;
   eventNumber: number;
   trackName: string;
   eventDate: number;
   createdAt: number;
+  series?: Series;
 }
 
 export interface Race {

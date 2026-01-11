@@ -10,6 +10,7 @@ import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
+import { Penalty } from '@core/models/series.model';
 
 @Component({
   selector: 'app-review-form',
@@ -82,13 +83,15 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                     <label class="label">Recommended Penalty</label>
                     <select formControlName="recommendedPenalty" class="input">
                       <option value="">No penalty recommended</option>
-                      <option value="none">No Further Action</option>
-                      <option value="warning">Warning</option>
-                      <option value="time_penalty">Time Penalty</option>
-                      <option value="drive_through">Drive Through</option>
-                      <option value="stop_go">Stop & Go</option>
-                      <option value="disqualification">Disqualification</option>
+                      @for (penalty of availablePenalties(); track penalty._id) {
+                        <option [value]="penalty._id">
+                          {{ penalty.name }} ({{ penalty.timePenalty }}s / {{ penalty.timePenaltyWithSelfReport }}s SR, {{ penalty.licensePoints }} pts)
+                        </option>
+                      }
                     </select>
+                    @if (availablePenalties().length === 0) {
+                      <p class="text-xs text-yellow-600 mt-1">No penalties configured for this series</p>
+                    }
                   </div>
 
                   <!-- Video timestamp -->
@@ -219,6 +222,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
   form: FormGroup;
   report = signal<any>(null);
+  availablePenalties = signal<Penalty[]>([]);
   existingReviews = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
@@ -271,12 +275,33 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
             (r: any) => r.userId !== userId
           );
           this.existingReviews.set(otherReviews);
+
+          // Load penalties for this series
+          if (data?.event?.seriesId) {
+            this.loadPenalties(data.event.seriesId);
+          }
         }
 
         this.loading.set(false);
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkReport));
+  }
+
+  private loadPenalties(seriesId: string): void {
+    const penaltiesQuery = this.convex.createReactiveQuery(
+      this.convex.api.penalties.getBySeries,
+      { seriesId: seriesId as any }
+    );
+    this.unsubscribes.push(penaltiesQuery.unsubscribe);
+
+    const checkPenalties = setInterval(() => {
+      const data = penaltiesQuery.data();
+      if (data !== undefined) {
+        this.availablePenalties.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkPenalties));
   }
 
   async onSubmit(markAsReviewed = false): Promise<void> {

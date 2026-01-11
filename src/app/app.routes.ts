@@ -108,6 +108,10 @@ export const routes: Routes = [
       {
         path: 'users',
         loadComponent: () => import('@features/admin/user-management/user-management.component').then(m => m.UserManagementComponent)
+      },
+      {
+        path: 'series',
+        loadComponent: () => import('@features/admin/series-management/series-management.component').then(m => m.SeriesManagementComponent)
       }
     ]
   },

@@ -79,7 +79,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                 <div>
                   <dt class="text-sm text-gray-500">Event</dt>
                   <dd class="font-medium text-gray-900">{{ report()?.event?.trackName }}</dd>
-                  <dd class="text-sm text-gray-500">{{ report()?.event?.series }} Round {{ report()?.event?.eventNumber }}</dd>
+                  <dd class="text-sm text-gray-500">{{ report()?.event?.series?.name }} Round {{ report()?.event?.eventNumber }}</dd>
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Race & Turn</dt>
@@ -111,11 +111,14 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                     <dt class="text-sm text-gray-500">Decision</dt>
                     <dd class="font-medium text-gray-900">{{ report()?.finalDecision }}</dd>
                   </div>
-                  @if (report()?.appliedPenalty && report()?.appliedPenalty !== 'none') {
+                  @if (report()?.appliedPenaltyObj) {
                     <div>
                       <dt class="text-sm text-gray-500">Penalty Applied</dt>
-                      <dd class="font-medium text-gray-900 capitalize">
-                        {{ report()?.appliedPenalty?.replace('_', ' ') }}
+                      <dd class="font-medium text-gray-900">
+                        {{ report()?.appliedPenaltyObj?.name }}
+                      </dd>
+                      <dd class="text-sm text-gray-500 mt-1">
+                        Time: {{ report()?.appliedPenaltyObj?.timePenalty }}s / {{ report()?.appliedPenaltyObj?.timePenaltyWithSelfReport }}s (SR) | License Points: {{ report()?.appliedPenaltyObj?.licensePoints }}
                       </dd>
                     </div>
                   }
@@ -143,9 +146,9 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                           <p class="font-medium text-gray-900">{{ review.reviewer?.name }}</p>
                           <p class="text-sm text-gray-500">{{ review.reviewDate | timeAgo }}</p>
                         </div>
-                        @if (review.recommendedPenalty) {
+                        @if (review.recommendedPenaltyObj) {
                           <app-badge variant="info">
-                            {{ review.recommendedPenalty.replace('_', ' ') }}
+                            {{ review.recommendedPenaltyObj.name }}
                           </app-badge>
                         }
                       </div>

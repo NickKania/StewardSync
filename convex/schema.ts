@@ -28,14 +28,30 @@ export default defineSchema({
     .index("by_number", ["driverNumber"])
     .index("by_external_id", ["externalId"]),
 
+  series: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    simgridLink: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_name", ["name"]),
+
+  penalties: defineTable({
+    seriesId: v.id("series"),
+    name: v.string(),
+    timePenalty: v.number(),
+    timePenaltyWithSelfReport: v.number(),
+    licensePoints: v.number(),
+    createdAt: v.number(),
+  }).index("by_series", ["seriesId"]),
+
   events: defineTable({
-    series: v.string(),
+    seriesId: v.id("series"),
     eventNumber: v.number(),
     trackName: v.string(),
     eventDate: v.number(),
     createdAt: v.number(),
   })
-    .index("by_series", ["series"])
+    .index("by_series", ["seriesId"])
     .index("by_date", ["eventDate"]),
 
   races: defineTable({

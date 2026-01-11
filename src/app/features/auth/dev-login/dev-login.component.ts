@@ -107,7 +107,11 @@ interface DevUser {
         </div>
 
         <!-- Role Descriptions -->
-        <div class="mt-8 grid grid-cols-2 gap-4">
+        <div class="mt-8 grid grid-cols-3 gap-4">
+          <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-white">
+            <h3 class="font-semibold mb-1">Event Manager</h3>
+            <p class="text-sm text-white/70">Full admin access to all features</p>
+          </div>
           <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-white">
             <h3 class="font-semibold mb-1">Head Steward</h3>
             <p class="text-sm text-white/70">Can review and finalize reports</p>

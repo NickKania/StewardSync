@@ -43,7 +43,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                     </div>
                     <div>
                       <h3 class="font-semibold text-gray-900">{{ event.trackName }}</h3>
-                      <p class="text-sm text-gray-500">{{ event.series }} - Round {{ event.eventNumber }}</p>
+                      <p class="text-sm text-gray-500">{{ event.series?.name }} - Round {{ event.eventNumber }}</p>
                     </div>
                   </div>
                   <div class="flex items-center gap-4">

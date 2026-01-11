@@ -66,6 +66,19 @@ export const getById = query({
       ctx.db.get(report.raceId),
     ]);
 
+    // Populate event's series
+    let eventWithSeries: any = event;
+    if (event) {
+      const series = await ctx.db.get(event.seriesId);
+      eventWithSeries = { ...event, series };
+    }
+
+    // Populate applied penalty if exists
+    let appliedPenaltyObj = null;
+    if (report.appliedPenalty) {
+      appliedPenaltyObj = await ctx.db.get(report.appliedPenalty as any);
+    }
+
     // Get reviews for this report
     const reviews = await ctx.db
       .query("reviews")
@@ -75,7 +88,14 @@ export const getById = query({
     const reviewsWithUsers = await Promise.all(
       reviews.map(async (review) => {
         const user = await ctx.db.get(review.userId);
-        return { ...review, reviewer: user };
+
+        // Populate recommended penalty if exists
+        let recommendedPenaltyObj = null;
+        if (review.recommendedPenalty) {
+          recommendedPenaltyObj = await ctx.db.get(review.recommendedPenalty as any);
+        }
+
+        return { ...review, reviewer: user, recommendedPenaltyObj };
       })
     );
 
@@ -83,8 +103,9 @@ export const getById = query({
       ...report,
       reportingDriver,
       reportedDriver,
-      event,
+      event: eventWithSeries,
       race,
+      appliedPenaltyObj,
       reviews: reviewsWithUsers,
     };
   },

@@ -29,7 +29,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">{{ event()?.trackName }}</h1>
-            <p class="text-gray-500 mt-1">{{ event()?.series }} - Round {{ event()?.eventNumber }}</p>
+            <p class="text-gray-500 mt-1">{{ event()?.series?.name }} - Round {{ event()?.eventNumber }}</p>
           </div>
           <div class="flex gap-3">
             <a routerLink="/events">
@@ -57,7 +57,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Series</dt>
-                  <dd class="font-medium text-gray-900">{{ event()?.series }}</dd>
+                  <dd class="font-medium text-gray-900">{{ event()?.series?.name }}</dd>
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Round Number</dt>

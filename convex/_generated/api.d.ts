@@ -11,10 +11,12 @@
 import type * as auth from "../auth.js";
 import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
+import type * as penalties from "../penalties.js";
 import type * as races from "../races.js";
 import type * as reports from "../reports.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
+import type * as series from "../series.js";
 import type * as users from "../users.js";
 
 import type {
@@ -27,10 +29,12 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   drivers: typeof drivers;
   events: typeof events;
+  penalties: typeof penalties;
   races: typeof races;
   reports: typeof reports;
   reviews: typeof reviews;
   seed: typeof seed;
+  series: typeof series;
   users: typeof users;
 }>;
 

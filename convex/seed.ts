@@ -48,6 +48,16 @@ export const seedDemoUsers = mutation({
       throw new Error("steward role not found. Run seedRoles first.");
     }
 
+    // Get event_manager role
+    const eventManagerRole = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", "event_manager"))
+      .first();
+
+    if (!eventManagerRole) {
+      throw new Error("event_manager role not found. Run seedRoles first.");
+    }
+
     // Define demo users
     const demoUsers = [
       {
@@ -61,6 +71,12 @@ export const seedDemoUsers = mutation({
         name: "Demo Steward",
         discordId: "demo-steward-001",
         roleId: stewardRole._id,
+      },
+      {
+        email: "eventmanager@demo.stewardsync.com",
+        name: "Demo Event Manager",
+        discordId: "demo-event-manager-001",
+        roleId: eventManagerRole._id,
       },
     ];
 
@@ -112,11 +128,30 @@ export const seedSampleData = mutation({
       }
     }
 
+    // Seed sample series first
+    let seriesId = await ctx.db
+      .query("series")
+      .withIndex("by_name", (q) => q.eq("name", "F1 Sim League"))
+      .first();
+
+    if (!seriesId) {
+      const newSeriesId = await ctx.db.insert("series", {
+        name: "F1 Sim League",
+        description: "Demo F1 racing series",
+        createdAt: Date.now(),
+      });
+      seriesId = await ctx.db.get(newSeriesId);
+    }
+
+    if (!seriesId) {
+      throw new Error("Failed to create or find series");
+    }
+
     // Seed sample events
     const sampleEvents = [
-      { series: "F1 Sim League", eventNumber: 1, trackName: "Bahrain International Circuit", eventDate: Date.now() - 7 * 24 * 60 * 60 * 1000 },
-      { series: "F1 Sim League", eventNumber: 2, trackName: "Jeddah Corniche Circuit", eventDate: Date.now() },
-      { series: "F1 Sim League", eventNumber: 3, trackName: "Albert Park Circuit", eventDate: Date.now() + 7 * 24 * 60 * 60 * 1000 },
+      { seriesId: seriesId._id, eventNumber: 1, trackName: "Bahrain International Circuit", eventDate: Date.now() - 7 * 24 * 60 * 60 * 1000 },
+      { seriesId: seriesId._id, eventNumber: 2, trackName: "Jeddah Corniche Circuit", eventDate: Date.now() },
+      { seriesId: seriesId._id, eventNumber: 3, trackName: "Albert Park Circuit", eventDate: Date.now() + 7 * 24 * 60 * 60 * 1000 },
     ];
 
     for (const event of sampleEvents) {
@@ -124,7 +159,7 @@ export const seedSampleData = mutation({
         .query("events")
         .filter((q) =>
           q.and(
-            q.eq(q.field("series"), event.series),
+            q.eq(q.field("seriesId"), event.seriesId),
             q.eq(q.field("eventNumber"), event.eventNumber)
           )
         )

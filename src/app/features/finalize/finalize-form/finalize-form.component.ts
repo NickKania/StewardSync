@@ -11,6 +11,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
 import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
+import { Penalty } from '@core/models/series.model';
 
 @Component({
   selector: 'app-finalize-form',
@@ -76,15 +77,17 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                       [class.input-error]="form.get('appliedPenalty')?.invalid && form.get('appliedPenalty')?.touched"
                     >
                       <option value="">Select penalty</option>
-                      <option value="none">No Further Action</option>
-                      <option value="warning">Warning</option>
-                      <option value="time_penalty">Time Penalty</option>
-                      <option value="drive_through">Drive Through</option>
-                      <option value="stop_go">Stop & Go</option>
-                      <option value="disqualification">Disqualification</option>
+                      @for (penalty of availablePenalties(); track penalty._id) {
+                        <option [value]="penalty._id">
+                          {{ penalty.name }} ({{ penalty.timePenalty }}s / {{ penalty.timePenaltyWithSelfReport }}s SR, {{ penalty.licensePoints }} pts)
+                        </option>
+                      }
                     </select>
                     @if (form.get('appliedPenalty')?.invalid && form.get('appliedPenalty')?.touched) {
                       <p class="mt-1 text-sm text-red-600">Penalty selection is required</p>
+                    }
+                    @if (availablePenalties().length === 0) {
+                      <p class="mt-1 text-sm text-yellow-600">No penalties configured for this series. Please configure penalties first.</p>
                     }
                   </div>
 
@@ -141,9 +144,9 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                           <p class="font-medium text-gray-900">{{ review.reviewer?.name }}</p>
                           <p class="text-sm text-gray-500">{{ review.reviewDate | timeAgo }}</p>
                         </div>
-                        @if (review.recommendedPenalty) {
+                        @if (review.recommendedPenaltyObj) {
                           <app-badge variant="info">
-                            Recommends: {{ review.recommendedPenalty.replace('_', ' ') }}
+                            Recommends: {{ review.recommendedPenaltyObj.name }}
                           </app-badge>
                         }
                       </div>
@@ -187,9 +190,9 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             @if (penaltyRecommendations().length > 0) {
               <app-card title="Penalty Recommendations">
                 <div class="space-y-2">
-                  @for (rec of penaltyRecommendations(); track rec.penalty) {
+                  @for (rec of penaltyRecommendations(); track rec.penaltyId) {
                     <div class="flex items-center justify-between">
-                      <span class="text-sm text-gray-700 capitalize">{{ rec.penalty.replace('_', ' ') }}</span>
+                      <span class="text-sm text-gray-700">{{ rec.penaltyName }}</span>
                       <app-badge variant="default">{{ rec.count }}</app-badge>
                     </div>
                   }
@@ -255,6 +258,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
   form: FormGroup;
   report = signal<any>(null);
+  availablePenalties = signal<Penalty[]>([]);
   loading = signal(true);
   submitting = signal(false);
 
@@ -296,23 +300,56 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       if (data !== undefined) {
         this.report.set(data);
         this.loading.set(false);
+
+        // Load penalties for this series
+        if (data?.event?.seriesId) {
+          this.loadPenalties(data.event.seriesId);
+        }
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkReport));
   }
 
-  penaltyRecommendations(): { penalty: string; count: number }[] {
+  private loadPenalties(seriesId: string): void {
+    const penaltiesQuery = this.convex.createReactiveQuery(
+      this.convex.api.penalties.getBySeries,
+      { seriesId: seriesId as any }
+    );
+    this.unsubscribes.push(penaltiesQuery.unsubscribe);
+
+    const checkPenalties = setInterval(() => {
+      const data = penaltiesQuery.data();
+      if (data !== undefined) {
+        this.availablePenalties.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkPenalties));
+  }
+
+  penaltyRecommendations(): { penaltyId: string; penaltyName: string; count: number }[] {
     const reviews = this.report()?.reviews || [];
-    const counts: Record<string, number> = {};
+    const counts: Record<string, { name: string; count: number }> = {};
 
     reviews.forEach((r: any) => {
-      if (r.recommendedPenalty) {
-        counts[r.recommendedPenalty] = (counts[r.recommendedPenalty] || 0) + 1;
+      if (r.recommendedPenaltyObj) {
+        const penaltyId = r.recommendedPenaltyObj._id;
+        if (counts[penaltyId]) {
+          counts[penaltyId].count++;
+        } else {
+          counts[penaltyId] = {
+            name: r.recommendedPenaltyObj.name,
+            count: 1
+          };
+        }
       }
     });
 
     return Object.entries(counts)
-      .map(([penalty, count]) => ({ penalty, count }))
+      .map(([penaltyId, data]) => ({
+        penaltyId,
+        penaltyName: data.name,
+        count: data.count
+      }))
       .sort((a, b) => b.count - a.count);
   }
 
