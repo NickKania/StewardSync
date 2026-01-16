@@ -15,6 +15,7 @@ export interface Report {
   description: string;
   status: ReportStatus;
   isFinalized: boolean;
+  isSelfReport?: boolean;
   createdAt: number;
   updatedAt: number;
 

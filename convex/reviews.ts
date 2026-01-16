@@ -128,6 +128,7 @@ export const create = mutation({
     recommendedPenalty: v.optional(v.string()),
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
+    isSelfReport: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Validate report exists and is not finalized
@@ -175,6 +176,7 @@ export const create = mutation({
         reviewNotes: args.reviewNotes,
         recommendedPenalty: args.recommendedPenalty,
         videoTimestamp: args.videoTimestamp,
+        isSelfReport: args.isSelfReport,
         reviewDate: now,
         createdAt: now,
         updatedAt: now,
@@ -187,6 +189,7 @@ export const create = mutation({
         reviewNotes: args.reviewNotes,
         recommendedPenalty: args.recommendedPenalty,
         videoTimestamp: args.videoTimestamp,
+        isSelfReport: args.isSelfReport,
         linkedReviewId: primaryReviewId,
         reviewDate: now,
         createdAt: now,
@@ -206,6 +209,7 @@ export const create = mutation({
       reviewNotes: args.reviewNotes,
       recommendedPenalty: args.recommendedPenalty,
       videoTimestamp: args.videoTimestamp,
+      isSelfReport: args.isSelfReport,
       reviewDate: now,
       createdAt: now,
       updatedAt: now,

@@ -13,6 +13,7 @@ export interface Review {
   reviewNotes: string;
   recommendedPenalty?: PenaltyType;
   videoTimestamp?: string;
+  isSelfReport?: boolean;
   createdAt: number;
   updatedAt: number;
 
@@ -27,6 +28,7 @@ export interface CreateReviewDto {
   reviewNotes: string;
   recommendedPenalty?: PenaltyType;
   videoTimestamp?: string;
+  isSelfReport?: boolean;
 }
 
 export interface UpdateReviewDto {

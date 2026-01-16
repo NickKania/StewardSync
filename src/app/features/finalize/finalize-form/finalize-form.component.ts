@@ -10,6 +10,7 @@ import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { ModalComponent } from '@shared/components/modal/modal.component';
+import { ToggleComponent } from '@shared/components/toggle/toggle.component';
 import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
 import { Penalty } from '@core/models/series.model';
 
@@ -26,6 +27,7 @@ import { Penalty } from '@core/models/series.model';
     BadgeComponent,
     LoadingComponent,
     ModalComponent,
+    ToggleComponent,
     DateFormatPipe,
     TimeAgoPipe
   ],
@@ -90,6 +92,15 @@ import { Penalty } from '@core/models/series.model';
                     @if (availablePenalties().length === 0) {
                       <p class="mt-1 text-sm text-yellow-600">No penalties configured for this series. Please configure penalties first.</p>
                     }
+                  </div>
+
+                  <!-- Self report toggle -->
+                  <div>
+                    <app-toggle
+                      formControlName="isSelfReport"
+                      label="Self Report"
+                      hint="Mark if this is a self-reported incident"
+                    />
                   </div>
 
                   <!-- Official notes -->
@@ -301,7 +312,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     this.form = this.fb.group({
       incidentDescription: ['', [Validators.required, Validators.minLength(10)]],
       appliedPenalty: ['', Validators.required],
-      officialNotes: ['']
+      officialNotes: [''],
+      isSelfReport: [false]
     });
   }
 
@@ -331,12 +343,13 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         this.report.set(data);
         this.loading.set(false);
 
-        // Auto-fill incident description from first review
+        // Auto-fill incident description and isSelfReport from first review
         if (data?.reviews && data.reviews.length > 0) {
           const firstReview = data.reviews[0];
           if (firstReview?.incidentDescription) {
             this.form.patchValue({
-              incidentDescription: firstReview.incidentDescription
+              incidentDescription: firstReview.incidentDescription,
+              isSelfReport: firstReview.isSelfReport || false
             });
           }
         }
@@ -416,7 +429,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           userId,
           finalDecision: formValue.incidentDescription,
           appliedPenalty: formValue.appliedPenalty,
-          officialNotes: formValue.officialNotes || ''
+          officialNotes: formValue.officialNotes || '',
+          isSelfReport: formValue.isSelfReport || false
         }
       );
 

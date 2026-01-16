@@ -313,6 +313,7 @@ export const finalize = mutation({
     finalDecision: v.string(),
     appliedPenalty: v.string(),
     officialNotes: v.string(),
+    isSelfReport: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const report = await ctx.db.get(args.reportId);
@@ -331,6 +332,7 @@ export const finalize = mutation({
       finalDecision: args.finalDecision,
       appliedPenalty: args.appliedPenalty,
       officialNotes: args.officialNotes,
+      isSelfReport: args.isSelfReport,
       finalizedBy: args.userId,
       finalizedAt: now,
       updatedAt: now,

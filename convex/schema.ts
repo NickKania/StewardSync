@@ -86,6 +86,7 @@ export default defineSchema({
     officialNotes: v.optional(v.string()),
     finalizedBy: v.optional(v.id("users")),
     finalizedAt: v.optional(v.number()),
+    isSelfReport: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -105,6 +106,7 @@ export default defineSchema({
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
     linkedReviewId: v.optional(v.id("reviews")),
+    isSelfReport: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

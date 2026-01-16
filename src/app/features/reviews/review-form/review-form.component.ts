@@ -23,6 +23,7 @@ import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { SearchSelectComponent } from "@shared/components/search-select/search-select.component";
+import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
 
@@ -38,6 +39,7 @@ import { Penalty } from "@core/models/series.model";
     BadgeComponent,
     LoadingComponent,
     SearchSelectComponent,
+    ToggleComponent,
     DateFormatPipe,
     TimeAgoPipe,
   ],
@@ -132,6 +134,15 @@ import { Penalty } from "@core/models/series.model";
                     }
                   </div>
 
+                  <!-- Self report toggle -->
+                  <div>
+                    <app-toggle
+                      formControlName="isSelfReport"
+                      label="Self Report"
+                      hint="Driver self reported?"
+                    />
+                  </div>
+
                   <!-- Video timestamp -->
                   <div>
                     <label class="label">Video Timestamp</label>
@@ -204,15 +215,17 @@ import { Penalty } from "@core/models/series.model";
                     "steward",
                     "head_steward",
                     "event_manager"
-                  ) && !canMarkAsReviewed() && !form.invalid
+                  ) &&
+                  !canMarkAsReviewed() &&
+                  !form.invalid
                 ) {
                   <div
                     card-footer
                     class="px-6 py-2 bg-amber-50 border-t border-amber-100 text-center"
                   >
                     <p class="text-xs text-amber-800">
-                      Need at least 2 reviews or review with a second
-                      steward to mark as reviewed
+                      Need at least 2 reviews or review with a second steward to
+                      mark as reviewed
                     </p>
                   </div>
                 }
@@ -232,7 +245,8 @@ import { Penalty } from "@core/models/series.model";
                           </p>
                           @if (review.linkedReview) {
                             <p class="text-xs text-gray-500">
-                              Joint review with {{ review.linkedReview.reviewer?.name }}
+                              Joint review with
+                              {{ review.linkedReview.reviewer?.name }}
                             </p>
                           }
                           <p class="text-sm text-gray-500">
@@ -367,6 +381,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       recommendedPenalty: [""],
       videoTimestamp: [""],
       secondStewardId: [""],
+      isSelfReport: [false],
     });
   }
 
@@ -498,6 +513,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         recommendedPenalty: formValue.recommendedPenalty || undefined,
         videoTimestamp: formValue.videoTimestamp || undefined,
         secondStewardId: formValue.secondStewardId || undefined,
+        isSelfReport: formValue.isSelfReport || false,
       });
 
       // Optionally mark report as reviewed
