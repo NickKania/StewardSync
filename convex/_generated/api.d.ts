@@ -18,6 +18,7 @@ import type * as reports from "../reports.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
 import type * as series from "../series.js";
+import type * as statistics from "../statistics.js";
 import type * as users from "../users.js";
 
 import type {
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   reviews: typeof reviews;
   seed: typeof seed;
   series: typeof series;
+  statistics: typeof statistics;
   users: typeof users;
 }>;
 

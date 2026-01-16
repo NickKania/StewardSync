@@ -101,6 +101,12 @@ export const routes: Routes = [
     ]
   },
   {
+    path: 'statistics',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['steward', 'head_steward', 'event_manager'] },
+    loadComponent: () => import('@features/statistics/statistics-dashboard/statistics-dashboard.component').then(m => m.StatisticsDashboardComponent)
+  },
+  {
     path: 'admin',
     canActivate: [authGuard, roleGuard],
     data: { roles: ['event_manager'] },
