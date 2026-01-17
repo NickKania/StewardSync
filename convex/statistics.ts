@@ -30,6 +30,7 @@ export const getEventRundown = query({
           reportId: report._id,
           carNumber: reportedDriver?.driverNumber ?? null,
           driverName: reportedDriver?.driverName ?? null,
+          driverClass: reportedDriver?.driverClass ?? null,
           incidentDescription: report.finalDecision ?? "",
           penaltyName: appliedPenalty?.name ?? null,
           timePenaltySeconds,
