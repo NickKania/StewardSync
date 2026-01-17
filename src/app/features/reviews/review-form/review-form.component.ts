@@ -115,17 +115,15 @@ import { Penalty } from "@core/models/series.model";
                   <div>
                     <label class="label">Recommended Penalty</label>
                     <select formControlName="recommendedPenalty" class="input">
-                      <option value="">No penalty recommended</option>
-                      @for (
-                        penalty of availablePenalties();
-                        track penalty._id
-                      ) {
-                        <option [value]="penalty._id">
-                          {{ penalty.name }} ({{ penalty.timePenalty }}s /
-                          {{ penalty.timePenaltyWithSelfReport }}s SR,
-                          {{ penalty.licensePoints }} pts)
-                        </option>
-                      }
+                        <option value="">No penalty recommended</option>
+                        @for (
+                          penalty of availablePenalties();
+                          track penalty._id
+                        ) {
+                          <option [value]="penalty._id">
+                            {{ penalty.name }}
+                          </option>
+                        }
                     </select>
                     @if (availablePenalties().length === 0) {
                       <p class="text-xs text-yellow-600 mt-1">
@@ -292,11 +290,11 @@ import { Penalty } from "@core/models/series.model";
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Location</dt>
-                  <dd class="font-medium text-gray-900">
-                    Turn {{ report()?.turn }}
-                  </dd>
-                </div>
+                 <dt class="text-sm text-gray-500">Location</dt>
+                   <dd class="font-medium text-gray-900">
+                     Lap {{ report()?.lap }}, Turn {{ report()?.turn }}
+                   </dd>
+                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Filed</dt>
                   <dd class="text-gray-900">

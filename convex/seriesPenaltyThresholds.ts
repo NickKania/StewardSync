@@ -1,17 +1,34 @@
-import { mutation } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+
+export const listBySeriesPenalty = query({
+  args: { seriesPenaltyId: v.id("seriesPenalties") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("seriesPenaltyThresholds")
+      .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", args.seriesPenaltyId))
+      .collect();
+  },
+});
+
+export const getById = query({
+  args: { id: v.id("seriesPenaltyThresholds") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
 
 export const create = mutation({
   args: {
     seriesPenaltyId: v.id("seriesPenalties"),
-    driverClass: v.string(),
     threshold: v.number(),
+    driverClasses: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     const thresholdId = await ctx.db.insert("seriesPenaltyThresholds", {
       seriesPenaltyId: args.seriesPenaltyId,
-      driverClass: args.driverClass,
       threshold: args.threshold,
+      driverClasses: args.driverClasses,
       createdAt: Date.now(),
     });
     return thresholdId;
@@ -21,8 +38,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("seriesPenaltyThresholds"),
-    driverClass: v.string(),
     threshold: v.number(),
+    driverClasses: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;

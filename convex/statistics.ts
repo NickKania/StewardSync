@@ -20,9 +20,11 @@ export const getEventRundown = query({
           appliedPenalty = await ctx.db.get(report.appliedPenalty as any);
         }
 
+        const baseTimePenalty = appliedPenalty?.timePenalty ?? 0;
+        const selfReportReduction = appliedPenalty?.selfReportReduction ?? 0;
         const timePenaltySeconds = appliedPenalty && report.isSelfReport
-          ? appliedPenalty.timePenaltyWithSelfReport
-          : appliedPenalty?.timePenalty ?? 0;
+          ? Math.max(0, baseTimePenalty - selfReportReduction)
+          : baseTimePenalty;
 
         return {
           reportId: report._id,
@@ -133,6 +135,25 @@ export const getSeriesLicensePointsWithPenalties = query({
       }
     }
 
+    const allSeriesPenalties = await ctx.db
+      .query("seriesPenalties")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
+      .collect();
+
+    const seriesPenaltiesWithThresholds = await Promise.all(
+      allSeriesPenalties.map(async (sp) => {
+        const thresholds = await ctx.db
+          .query("seriesPenaltyThresholds")
+          .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", sp._id))
+          .collect();
+        
+        return {
+          ...sp,
+          thresholds,
+        };
+      })
+    );
+
     const driverPointsWithPenalties = await Promise.all(
       drivers.map(async (driver) => {
         const driverId = driver._id.toString();
@@ -158,12 +179,40 @@ export const getSeriesLicensePointsWithPenalties = query({
           })
         );
 
+        const eligibleSeriesPenalties: any[] = [];
+        
+        for (const sp of seriesPenaltiesWithThresholds) {
+          for (const threshold of sp.thresholds) {
+            const appliesToDriver = threshold.driverClasses.includes(driver.driverClass);
+            
+            if (appliesToDriver && totalPoints >= threshold.threshold) {
+              const alreadyAssigned = allDriverSeriesPenalties.some(
+                (dsp) => dsp.seriesPenaltyId === sp._id && dsp.seriesPenaltyThresholdId === threshold._id
+              );
+              
+              if (!alreadyAssigned) {
+                eligibleSeriesPenalties.push({
+                  seriesPenaltyId: sp._id,
+                  penaltyName: sp.penaltyName,
+                  penaltyDescription: sp.penaltyDescription,
+                  driverClasses: threshold.driverClasses,
+                  threshold: threshold.threshold,
+                  seriesPenaltyThresholdId: threshold._id,
+                  isAssigned: false,
+                });
+              }
+            }
+          }
+        }
+
         return {
           driverId: driver._id,
           driverNumber: driver.driverNumber,
           driverName: driver.driverName,
+          driverClass: driver.driverClass,
           totalLicensePoints: totalPoints,
           seriesPenalties: driverSeriesPenaltiesWithDetails,
+          eligibleSeriesPenalties,
         };
       })
     );

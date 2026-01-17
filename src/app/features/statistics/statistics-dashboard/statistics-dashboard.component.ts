@@ -8,6 +8,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { SelectComponent, SelectOption } from '@shared/components/select/select.component';
+import { TabsComponent, Tab } from '@shared/components/tabs/tabs.component';
 import html2canvas from 'html2canvas';
 
 interface EventRundownRow {
@@ -24,7 +25,9 @@ interface DriverPointsRow {
   driverId: string;
   driverNumber: number;
   driverName: string;
+  driverClass: string;
   totalLicensePoints: number;
+  eligibleSeriesPenalties: any[];
 }
 
 @Component({
@@ -37,18 +40,21 @@ interface DriverPointsRow {
     BadgeComponent,
     LoadingComponent,
     ButtonComponent,
-    SelectComponent
+    SelectComponent,
+    TabsComponent
   ],
   template: `
     <div class="space-y-6">
       <h1 class="text-2xl font-bold text-gray-900">Statistics</h1>
 
-      <div class="grid lg:grid-cols-2 gap-6">
-        @if (loading()) {
-          <div class="lg:col-span-2">
-            <app-loading text="Loading..." />
-          </div>
-        } @else {
+      @if (loading()) {
+        <div>
+          <app-loading text="Loading..." />
+        </div>
+      } @else {
+        <app-tabs [tabs]="visibleTabs()" [activeTab]="activeTab()" (activeTabChange)="selectTab($event)" />
+
+        @if (activeTab() === 'event_rundown') {
           <div class="space-y-6">
             <app-card title="Event Rundown">
               <div class="space-y-4">
@@ -124,10 +130,11 @@ interface DriverPointsRow {
               </div>
             </app-card>
           </div>
+        }
 
-          @if (canViewSeriesStats()) {
-            <div class="space-y-6">
-              <app-card title="Series Overview - License Points">
+        @if (activeTab() === 'series_overview' && canViewSeriesStats()) {
+          <div class="space-y-6">
+            <app-card title="Series Overview - License Points">
                 <div class="space-y-4">
                   <div>
                     <label class="label">Select Series</label>
@@ -152,13 +159,15 @@ interface DriverPointsRow {
                         Export as Image
                       </app-button>
                     </div>
-                    <div #seriesPointsTable class="overflow-x-auto">
+                     <div #seriesPointsTable class="overflow-x-auto">
                       <table class="w-full text-sm">
                         <thead class="bg-gray-50">
                           <tr class="text-left">
                             <th class="px-4 py-2 font-medium text-gray-500">Car #</th>
                             <th class="px-4 py-2 font-medium text-gray-500">Driver</th>
-                            <th class="px-4 py-2 font-medium text-gray-500">Total License Points</th>
+                            <th class="px-4 py-2 font-medium text-gray-500">Class</th>
+                            <th class="px-4 py-2 font-medium text-gray-500">Total Points</th>
+                            <th class="px-4 py-2 font-medium text-gray-500">Pending Penalties</th>
                           </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -166,6 +175,7 @@ interface DriverPointsRow {
                             <tr class="hover:bg-gray-50">
                               <td class="px-4 py-3">{{ row.driverNumber }}</td>
                               <td class="px-4 py-3 font-medium text-gray-900">{{ row.driverName }}</td>
+                              <td class="px-4 py-3 text-gray-600">{{ row.driverClass }}</td>
                               <td class="px-4 py-3">
                                 @if (row.totalLicensePoints > 0) {
                                   <app-badge variant="danger">
@@ -173,6 +183,19 @@ interface DriverPointsRow {
                                   </app-badge>
                                 } @else {
                                   <span class="text-gray-400">0</span>
+                                }
+                              </td>
+                              <td class="px-4 py-3">
+                                @if (row.eligibleSeriesPenalties.length > 0) {
+                                  <div class="flex flex-wrap gap-1">
+                                    @for (ep of row.eligibleSeriesPenalties; track ep.seriesPenaltyId) {
+                                      <app-badge variant="warning" size="sm">
+                                        {{ ep.penaltyName }} ({{ ep.threshold }}pts)
+                                      </app-badge>
+                                    }
+                                  </div>
+                                } @else {
+                                  <span class="text-gray-400">-</span>
                                 }
                               </td>
                             </tr>
@@ -190,7 +213,6 @@ interface DriverPointsRow {
             </div>
           }
         }
-      </div>
     </div>
   `
 })
@@ -203,6 +225,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   eventRundown = signal<EventRundownRow[]>([]);
   seriesPoints = signal<DriverPointsRow[]>([]);
   loading = signal(true);
+  activeTab = signal<'event_rundown' | 'series_overview'>('event_rundown');
 
   selectedEventId = '';
   selectedSeriesId = '';
@@ -230,6 +253,24 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   canViewSeriesStats = computed(() => {
     return this.authService.hasMinimumRole('head_steward');
   });
+
+  visibleTabs = computed((): Tab[] => {
+    const tabs: Tab[] = [
+      { id: 'event_rundown', label: 'Event Rundown' }
+    ];
+
+    if (this.canViewSeriesStats()) {
+      tabs.push({ id: 'series_overview', label: 'Series Overview' });
+    }
+
+    return tabs;
+  });
+
+  selectTab(tabId: string): void {
+    if (tabId === 'event_rundown' || tabId === 'series_overview') {
+      this.activeTab.set(tabId as 'event_rundown' | 'series_overview');
+    }
+  }
 
   @ViewChild('eventRundownTable') eventRundownTable!: ElementRef;
   @ViewChild('seriesPointsTable') seriesPointsTable!: ElementRef;
@@ -303,7 +344,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
     try {
       const data = await this.convex.query(
-        this.convex.api.statistics.getSeriesLicensePoints,
+        this.convex.api.statistics.getSeriesLicensePointsWithPenalties,
         { seriesId: this.selectedSeriesId as any }
       );
       this.seriesPoints.set(data || []);

@@ -111,6 +111,20 @@ export const update = mutation({
   },
 });
 
+export const getDriverClassesBySeries = query({
+  args: { seriesId: v.id("series") },
+  handler: async (ctx, args) => {
+    const drivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_championship", (q) => q.eq("championshipId", args.seriesId))
+      .collect();
+    
+    const driverClasses = [...new Set(drivers.map((d) => d.driverClass))];
+    
+    return driverClasses.sort();
+  },
+});
+
 export const getDriverStats = query({
   args: { driverId: v.id("drivers") },
   handler: async (ctx, args) => {

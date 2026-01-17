@@ -82,8 +82,8 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                   <dd class="text-sm text-gray-500">{{ report()?.event?.series?.name }} Round {{ report()?.event?.eventNumber }}</dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Race & Turn</dt>
-                  <dd class="font-medium text-gray-900">Race {{ report()?.race?.raceNumber }}, Turn {{ report()?.turn }}</dd>
+                  <dt class="text-sm text-gray-500">Race & Location</dt>
+                  <dd class="font-medium text-gray-900">Race {{ report()?.race?.raceNumber }}, Lap {{ report()?.lap }}, Turn {{ report()?.turn }}</dd>
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Reported Driver</dt>
@@ -118,7 +118,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                         {{ report()?.appliedPenaltyObj?.name }}
                       </dd>
                       <dd class="text-sm text-gray-500 mt-1">
-                        Time: {{ report()?.appliedPenaltyObj?.timePenalty }}s / {{ report()?.appliedPenaltyObj?.timePenaltyWithSelfReport }}s (SR) | License Points: {{ report()?.appliedPenaltyObj?.licensePoints }}
+                        Time: {{ report()?.appliedPenaltyObj?.timePenalty }}s / Lap 1: {{ report()?.appliedPenaltyObj?.timePenaltyLap1 }}s / SR Reduction: {{ report()?.appliedPenaltyObj?.selfReportReduction ?? 0 }}s | License Points: {{ report()?.appliedPenaltyObj?.licensePoints }}
                       </dd>
                     </div>
                   }

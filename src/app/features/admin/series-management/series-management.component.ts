@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
@@ -6,7 +6,8 @@ import { CardComponent } from '@shared/components/card/card.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
-import { Series, Penalty } from '@core/models/series.model';
+import { MultiSelectComponent, MultiSelectOption } from '@shared/components/multi-select/multi-select.component';
+import { Series, Penalty, SeriesPenalty, SeriesPenaltyThreshold } from '@core/models/series.model';
 import { Id } from '@convex/_generated/dataModel';
 
 @Component({
@@ -18,7 +19,8 @@ import { Id } from '@convex/_generated/dataModel';
     CardComponent,
     ButtonComponent,
     BadgeComponent,
-    LoadingComponent
+    LoadingComponent,
+    MultiSelectComponent
   ],
   template: `
     <div class="space-y-6">
@@ -131,8 +133,12 @@ import { Id } from '@convex/_generated/dataModel';
                               <span class="font-medium">{{ penalty.timePenalty }}s</span>
                             </div>
                             <div class="flex justify-between">
-                              <span>w/ Self Report:</span>
-                              <span class="font-medium">{{ penalty.timePenaltyWithSelfReport }}s</span>
+                              <span>Lap 1 Time:</span>
+                              <span class="font-medium">{{ penalty.timePenaltyLap1 }}s</span>
+                            </div>
+                            <div class="flex justify-between">
+                              <span>Self-Report Reduction:</span>
+                              <span class="font-medium">{{ penalty.selfReportReduction ?? 0 }}s</span>
                             </div>
                             <div class="flex justify-between">
                               <span>License Points:</span>
@@ -144,6 +150,76 @@ import { Id } from '@convex/_generated/dataModel';
                     </div>
                   } @else {
                     <p class="text-sm text-gray-500 text-center py-4 dark:text-gray-400">No penalties configured</p>
+                  }
+                </div>
+
+                <!-- Series Penalties for this series -->
+                <div class="border-t pt-4 dark:border-gray-700">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Series Penalties</h4>
+                    <app-button variant="secondary" size="sm" (click)="addSeriesPenalty(s._id)">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                      </svg>
+                      Add Series Penalty
+                    </app-button>
+                  </div>
+
+                   @if (getSeriesPenaltiesBySeries(s._id).length > 0) {
+                    <div class="space-y-3">
+                      @for (sp of getSeriesPenaltiesBySeries(s._id); track sp._id) {
+                        <div class="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                          <div class="flex items-start justify-between mb-2">
+                            <div class="flex-1">
+                              <span class="font-medium text-sm dark:text-gray-100">{{ sp.penaltyName }}</span>
+                              @if (sp.penaltyDescription) {
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ sp.penaltyDescription }}</p>
+                              }
+                            </div>
+                            <div class="flex gap-1 ml-2">
+                              <button
+                                (click)="editSeriesPenalty(sp)"
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+                              >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                              </button>
+                              <button
+                                (click)="deleteSeriesPenalty(sp._id)"
+                                class="text-gray-400 hover:text-red-600 p-1"
+                              >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          @if (sp.thresholds && sp.thresholds.length > 0) {
+                            <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Thresholds:</p>
+                              <div class="space-y-1">
+                                @for (threshold of sp.thresholds; track threshold._id) {
+                                  <div class="flex flex-wrap items-center gap-1">
+                                    <app-badge variant="danger">
+                                      {{ threshold.threshold }} pts
+                                    </app-badge>
+                                    <span class="text-xs text-gray-500">for:</span>
+                                    @for (driverClass of threshold.driverClasses; track driverClass) {
+                                      <app-badge variant="default" size="sm">
+                                        {{ driverClass }}
+                                      </app-badge>
+                                    }
+                                  </div>
+                                }
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <p class="text-sm text-gray-500 text-center py-4 dark:text-gray-400">No series penalties configured</p>
                   }
                 </div>
               </div>
@@ -227,13 +303,25 @@ import { Id } from '@convex/_generated/dataModel';
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Time Penalty with Self Report (seconds)</label>
+                 <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Self-Report Reduction (seconds)</label>
+                 <input
+                   type="number"
+                   class="input w-full"
+                   [(ngModel)]="penaltyForm.selfReportReduction"
+                   placeholder="e.g., 5"
+                   min="0"
+                 />
+                 <p class="text-xs text-gray-500 mt-1">Seconds subtracted from time penalties if driver self-reported</p>
+               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Lap 1 Time Penalty (seconds)</label>
                 <input
                   type="number"
                   class="input w-full"
-                  [(ngModel)]="penaltyForm.timePenaltyWithSelfReport"
-                  placeholder="e.g., 3"
+                  [(ngModel)]="penaltyForm.timePenaltyLap1"
+                  placeholder="e.g., 5"
                 />
+                <p class="text-xs text-gray-500 mt-1">Defaults to primary time penalty if not specified</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">License Points</label>
@@ -254,6 +342,92 @@ import { Id } from '@convex/_generated/dataModel';
           </div>
         </div>
       }
+
+       <!-- Series Penalty Modal -->
+      @if (showSeriesPenaltyModal) {
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div class="bg-white rounded-lg w-full max-w-2xl dark:bg-gray-800 flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b dark:border-gray-700">
+              <h3 class="text-lg font-semibold dark:text-gray-100">{{ editingSeriesPenaltyId ? 'Edit' : 'Add' }} Series Penalty</h3>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-5">
+              <div>
+                <label class="label">Penalty Name</label>
+                <input
+                  type="text"
+                  class="input w-full"
+                  [(ngModel)]="seriesPenaltyForm.penaltyName"
+                  placeholder="e.g., Race Ban"
+                />
+              </div>
+              <div>
+                <label class="label">Description (optional)</label>
+                <textarea
+                  class="input w-full"
+                  rows="3"
+                  [(ngModel)]="seriesPenaltyForm.penaltyDescription"
+                  placeholder="Penalty description..."
+                ></textarea>
+              </div>
+              
+              <div class="border-t pt-5 dark:border-gray-700">
+                <div class="flex items-center justify-between mb-3">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">License Points Thresholds</label>
+                  <app-button variant="secondary" size="sm" (click)="addThreshold()">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Add Threshold
+                  </app-button>
+                </div>
+                @if (thresholds.length === 0) {
+                  <p class="text-sm text-gray-500 dark:text-gray-400">No thresholds added. Add at least one threshold.</p>
+                }
+                @for (threshold of thresholds; track threshold.id) {
+                  <div class="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 dark:border-gray-700 mb-3">
+                    <div class="flex justify-between items-start mb-3">
+                      <div class="flex-1 mr-4">
+                        <label class="label">Threshold (points)</label>
+                        <input
+                          type="number"
+                          class="input w-full"
+                          [(ngModel)]="threshold.threshold"
+                          placeholder="e.g., 10"
+                          min="1"
+                        />
+                      </div>
+                      <button
+                        (click)="removeThreshold(threshold.id || '')"
+                        class="text-gray-400 hover:text-red-600 p-1"
+                        type="button"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div>
+                      <label class="label">Driver Classes</label>
+                      <app-multi-select
+                        [label]="''"
+                        [placeholder]="'Select driver classes for this threshold'"
+                        [options]="getDriverClassOptions(threshold.selectedDriverClasses)"
+                        (selectionChange)="onThresholdClassesChange(threshold.id || '', $event)"
+                      />
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="p-6 border-t dark:border-gray-700 flex gap-2 justify-end">
+              <app-button variant="secondary" (click)="closeSeriesPenaltyModal()">Cancel</app-button>
+              <app-button (click)="saveSeriesPenalty()" [disabled]="!seriesPenaltyForm.penaltyName || thresholds.length === 0">
+                {{ editingSeriesPenaltyId ? 'Update' : 'Create' }}
+              </app-button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `
 })
@@ -262,16 +436,18 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
 
   series = signal<Series[]>([]);
   penalties = signal<Penalty[]>([]);
+  seriesPenalties = signal<SeriesPenalty[]>([]);
   driverClasses = signal<string[]>([]);
   seriesPenaltyThresholds = signal<Map<string, any[]>>(new Map());
   loading = signal(true);
 
   showSeriesModal = false;
   showPenaltyModal = false;
+  showSeriesPenaltyModal = false;
   showSeriesPenaltyThresholdModal = false;
   editingSeriesId: Id<'series'> | null = null;
   editingPenaltyId: Id<'penalties'> | null = null;
-  editingSeriesPenaltyId: Id<'series'> | null = null;
+  editingSeriesPenaltyId: Id<'seriesPenalties'> | null = null;
   editingSeriesPenaltyThresholdId: Id<'seriesPenaltyThresholds'> | null = null;
   isEditingThresholds = false;
 
@@ -285,7 +461,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     seriesId: '' as Id<'series'> | '',
     name: '',
     timePenalty: 0,
-    timePenaltyWithSelfReport: 0,
+    selfReportReduction: 0,
+    timePenaltyLap1: 0,
     licensePoints: 0
   };
 
@@ -300,6 +477,24 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     threshold: 0
   };
 
+  selectedDriverClasses = signal<MultiSelectOption[]>([]);
+  classThresholds: Record<string, number> = {};
+  loadingDriverClasses = false;
+
+  thresholds: Array<{
+    id?: string;
+    threshold: number;
+    selectedDriverClasses: string[];
+  }> = [];
+
+  selectedClassCount = computed(() => 
+    this.selectedDriverClasses().filter(opt => opt.selected).length
+  );
+
+  selectedClasses = computed(() =>
+    this.selectedDriverClasses().filter(opt => opt.selected)
+  );
+
   private unsubscribes: (() => void)[] = [];
   importing = signal(false);
   importResult = signal<{ created: number; skipped: number } | null>(null);
@@ -307,6 +502,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadSeries();
     this.loadPenalties();
+    this.loadSeriesPenalties();
   }
 
   ngOnDestroy(): void {
@@ -349,6 +545,26 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkPenalties));
+  }
+
+  private loadSeriesPenalties(): void {
+    const seriesPenaltiesQuery = this.convex.createReactiveQuery(
+      this.convex.api.seriesPenalties.list,
+      {}
+    );
+    this.unsubscribes.push(seriesPenaltiesQuery.unsubscribe);
+
+    const checkSeriesPenalties = setInterval(() => {
+      const data = seriesPenaltiesQuery.data();
+      if (data !== undefined) {
+        const validSeriesPenalties = data.map((sp: any) => ({
+          ...sp,
+          series: sp.series || undefined
+        }));
+        this.seriesPenalties.set(validSeriesPenalties);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkSeriesPenalties));
   }
 
   getSeriesPenalties(seriesId: Id<'series'>): Penalty[] {
@@ -410,7 +626,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       seriesId: penalty.seriesId,
       name: penalty.name,
       timePenalty: penalty.timePenalty,
-      timePenaltyWithSelfReport: penalty.timePenaltyWithSelfReport,
+      selfReportReduction: penalty.selfReportReduction ?? 0,
+      timePenaltyLap1: penalty.timePenaltyLap1,
       licensePoints: penalty.licensePoints
     };
     this.showPenaltyModal = true;
@@ -422,7 +639,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         id: this.editingPenaltyId,
         name: this.penaltyForm.name,
         timePenalty: this.penaltyForm.timePenalty,
-        timePenaltyWithSelfReport: this.penaltyForm.timePenaltyWithSelfReport,
+        selfReportReduction: this.penaltyForm.selfReportReduction,
+        timePenaltyLap1: this.penaltyForm.timePenaltyLap1,
         licensePoints: this.penaltyForm.licensePoints
       });
     } else {
@@ -431,7 +649,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         seriesId: this.penaltyForm.seriesId as Id<'series'>,
         name: this.penaltyForm.name,
         timePenalty: this.penaltyForm.timePenalty,
-        timePenaltyWithSelfReport: this.penaltyForm.timePenaltyWithSelfReport,
+        selfReportReduction: this.penaltyForm.selfReportReduction,
+        timePenaltyLap1: this.penaltyForm.timePenaltyLap1,
         licensePoints: this.penaltyForm.licensePoints
       });
     }
@@ -451,9 +670,169 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       seriesId: '' as Id<'series'> | '',
       name: '',
       timePenalty: 0,
-      timePenaltyWithSelfReport: 0,
+      selfReportReduction: 0,
+      timePenaltyLap1: 0,
       licensePoints: 0
     };
+  }
+
+  getSeriesPenaltiesBySeries(seriesId: Id<'series'>): SeriesPenalty[] {
+    return this.seriesPenalties().filter(sp => sp.seriesId === seriesId);
+  }
+
+  async addSeriesPenalty(seriesId: Id<'series'>): Promise<void> {
+    this.loadingDriverClasses = true;
+    this.editingSeriesPenaltyId = null;
+    this.seriesPenaltyForm.seriesId = seriesId;
+    this.seriesPenaltyForm.penaltyName = '';
+    this.seriesPenaltyForm.penaltyDescription = '';
+    this.thresholds = [];
+
+    try {
+      const classes = await this.convex.query(
+        this.convex.api.drivers.getDriverClassesBySeries,
+        { seriesId }
+      );
+      
+      this.driverClasses.set(classes);
+    } catch (error) {
+      console.error('Failed to load driver classes:', error);
+    } finally {
+      this.loadingDriverClasses = false;
+    }
+
+    this.showSeriesPenaltyModal = true;
+  }
+
+  editSeriesPenalty(seriesPenalty: SeriesPenalty): void {
+    this.editingSeriesPenaltyId = seriesPenalty._id;
+    this.seriesPenaltyForm.seriesId = seriesPenalty.seriesId;
+    this.seriesPenaltyForm.penaltyName = seriesPenalty.penaltyName;
+    this.seriesPenaltyForm.penaltyDescription = seriesPenalty.penaltyDescription || '';
+    
+    this.thresholds = seriesPenalty.thresholds?.map((t: SeriesPenaltyThreshold) => ({
+      id: t._id,
+      threshold: t.threshold,
+      selectedDriverClasses: t.driverClasses
+    })) || [];
+
+    this.showSeriesPenaltyModal = true;
+  }
+
+  addThreshold(): void {
+    this.thresholds.push({
+      id: `new-${Date.now()}`,
+      threshold: 0,
+      selectedDriverClasses: []
+    });
+  }
+
+  removeThreshold(id: string): void {
+    this.thresholds = this.thresholds.filter(t => t.id !== id);
+  }
+
+  getDriverClassOptions(selectedClasses: string[]): MultiSelectOption[] {
+    return this.driverClasses().map(c => ({
+      value: c,
+      label: c,
+      selected: selectedClasses.includes(c)
+    }));
+  }
+
+  onThresholdClassesChange(thresholdId: string, selectedValues: string[]): void {
+    const threshold = this.thresholds.find(t => t.id === thresholdId);
+    if (threshold) {
+      threshold.selectedDriverClasses = selectedValues;
+    }
+  }
+
+  async saveSeriesPenalty(): Promise<void> {
+    const validThresholds = this.thresholds.filter(t => t.threshold > 0 && t.selectedDriverClasses.length > 0);
+
+    if (validThresholds.length === 0) {
+      alert('Please add at least one valid threshold with selected driver classes');
+      return;
+    }
+
+    try {
+      if (this.editingSeriesPenaltyId) {
+        await this.convex.mutation(this.convex.api.seriesPenalties.update, {
+          id: this.editingSeriesPenaltyId,
+          penaltyName: this.seriesPenaltyForm.penaltyName,
+          penaltyDescription: this.seriesPenaltyForm.penaltyDescription || undefined
+        });
+
+        const existingThresholds = await this.convex.query(
+          this.convex.api.seriesPenaltyThresholds.listBySeriesPenalty,
+          { seriesPenaltyId: this.editingSeriesPenaltyId }
+        );
+
+        for (const existing of existingThresholds) {
+          await this.convex.mutation(this.convex.api.seriesPenaltyThresholds.remove, {
+            id: existing._id
+          });
+        }
+
+        for (const threshold of validThresholds) {
+          await this.convex.mutation(this.convex.api.seriesPenaltyThresholds.create, {
+            seriesPenaltyId: this.editingSeriesPenaltyId,
+            threshold: threshold.threshold,
+            driverClasses: threshold.selectedDriverClasses
+          });
+        }
+      } else {
+        const seriesPenaltyId = await this.convex.mutation(this.convex.api.seriesPenalties.create, {
+          seriesId: this.seriesPenaltyForm.seriesId as Id<'series'>,
+          penaltyName: this.seriesPenaltyForm.penaltyName,
+          penaltyDescription: this.seriesPenaltyForm.penaltyDescription || undefined
+        });
+
+        for (const threshold of validThresholds) {
+          await this.convex.mutation(this.convex.api.seriesPenaltyThresholds.create, {
+            seriesPenaltyId,
+            threshold: threshold.threshold,
+            driverClasses: threshold.selectedDriverClasses
+          });
+        }
+      }
+      this.closeSeriesPenaltyModal();
+    } catch (error: any) {
+      alert(`Failed to save series penalty: ${error.message}`);
+    }
+  }
+
+  async deleteSeriesPenalty(seriesPenaltyId: Id<'seriesPenalties'>): Promise<void> {
+    if (confirm('Are you sure you want to delete this series penalty?')) {
+      try {
+        const thresholds = await this.convex.query(
+          this.convex.api.seriesPenaltyThresholds.listBySeriesPenalty,
+          { seriesPenaltyId }
+        );
+
+        for (const threshold of thresholds) {
+          await this.convex.mutation(this.convex.api.seriesPenaltyThresholds.remove, {
+            id: threshold._id
+          });
+        }
+
+        await this.convex.mutation(this.convex.api.seriesPenalties.remove, {
+          id: seriesPenaltyId
+        });
+      } catch (error: any) {
+        alert(`Failed to delete series penalty: ${error.message}`);
+      }
+    }
+  }
+
+  closeSeriesPenaltyModal(): void {
+    this.showSeriesPenaltyModal = false;
+    this.editingSeriesPenaltyId = null;
+    this.seriesPenaltyForm = {
+      seriesId: '' as Id<'series'> | '',
+      penaltyName: '',
+      penaltyDescription: ''
+    };
+    this.thresholds = [];
   }
 
   async importEvents(seriesId: Id<'series'>): Promise<void> {

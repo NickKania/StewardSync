@@ -44,7 +44,8 @@ export default defineSchema({
     seriesId: v.id("series"),
     name: v.string(),
     timePenalty: v.number(),
-    timePenaltyWithSelfReport: v.number(),
+    selfReportReduction: v.optional(v.number()),
+    timePenaltyLap1: v.number(),
     licensePoints: v.number(),
     createdAt: v.number(),
   }).index("by_series", ["seriesId"]),
@@ -68,8 +69,6 @@ export default defineSchema({
 
   seriesPenalties: defineTable({
     seriesId: v.id("series"),
-    driverClass: v.optional(v.string()),
-    threshold: v.number(),
     penaltyName: v.string(),
     penaltyDescription: v.optional(v.string()),
     createdAt: v.number(),
@@ -77,8 +76,8 @@ export default defineSchema({
 
   seriesPenaltyThresholds: defineTable({
     seriesPenaltyId: v.id("seriesPenalties"),
-    driverClass: v.string(),
     threshold: v.number(),
+    driverClasses: v.array(v.string()),
     createdAt: v.number(),
   }).index("by_series_penalty", ["seriesPenaltyId"]),
 
@@ -102,13 +101,14 @@ export default defineSchema({
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
     raceId: v.id("races"),
+    lap: v.number(),
     turn: v.number(),
     description: v.string(),
     status: v.union(
       v.literal("pending"),
       v.literal("reviewed"),
       v.literal("finalized"),
-      v.literal("rejected")
+      v.literal("rejected"),
     ),
     isFinalized: v.boolean(),
     finalDecision: v.optional(v.string()),

@@ -41,11 +41,11 @@ export const create = mutation({
     seriesId: v.id("series"),
     name: v.string(),
     timePenalty: v.number(),
-    timePenaltyWithSelfReport: v.number(),
+    selfReportReduction: v.optional(v.number()),
+    timePenaltyLap1: v.optional(v.number()),
     licensePoints: v.number(),
   },
   handler: async (ctx, args) => {
-    // Verify series exists
     const series = await ctx.db.get(args.seriesId);
     if (!series) {
       throw new Error("Series not found");
@@ -55,7 +55,8 @@ export const create = mutation({
       seriesId: args.seriesId,
       name: args.name,
       timePenalty: args.timePenalty,
-      timePenaltyWithSelfReport: args.timePenaltyWithSelfReport,
+      selfReportReduction: args.selfReportReduction ?? 0,
+      timePenaltyLap1: args.timePenaltyLap1 ?? args.timePenalty,
       licensePoints: args.licensePoints,
       createdAt: Date.now(),
     });
@@ -69,12 +70,22 @@ export const update = mutation({
     id: v.id("penalties"),
     name: v.string(),
     timePenalty: v.number(),
-    timePenaltyWithSelfReport: v.number(),
+    selfReportReduction: v.optional(v.number()),
+    timePenaltyLap1: v.optional(v.number()),
     licensePoints: v.number(),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
-    await ctx.db.patch(id, updates);
+
+    const cleanUpdates = {
+      name: updates.name,
+      timePenalty: updates.timePenalty,
+      selfReportReduction: updates.selfReportReduction ?? 0,
+      licensePoints: updates.licensePoints,
+      ...(updates.timePenaltyLap1 !== undefined && { timePenaltyLap1: updates.timePenaltyLap1 }),
+    };
+
+    await ctx.db.patch(id, cleanUpdates);
     return id;
   },
 });

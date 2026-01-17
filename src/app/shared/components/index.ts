@@ -8,3 +8,4 @@ export * from './modal/modal.component';
 export * from './badge/badge.component';
 export * from './loading/loading.component';
 export * from './toggle/toggle.component';
+export * from './tabs/tabs.component';

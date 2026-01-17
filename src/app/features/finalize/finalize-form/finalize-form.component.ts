@@ -82,7 +82,7 @@ import { Penalty } from '@core/models/series.model';
                       <option value="">Select penalty</option>
                       @for (penalty of availablePenalties(); track penalty._id) {
                         <option [value]="penalty._id">
-                          {{ penalty.name }} ({{ penalty.timePenalty }}s / {{ penalty.timePenaltyWithSelfReport }}s SR, {{ penalty.licensePoints }} pts)
+                          {{ penalty.name }}
                         </option>
                       }
                     </select>

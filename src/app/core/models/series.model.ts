@@ -9,10 +9,8 @@ export interface Series {
 }
 
 export interface SeriesPenalty {
-  _id: Id<'series'>;
+  _id: Id<'seriesPenalties'>;
   seriesId: Id<'series'>;
-  driverClass?: string;
-  threshold: number;
   penaltyName: string;
   penaltyDescription?: string;
   createdAt: number;
@@ -22,9 +20,9 @@ export interface SeriesPenalty {
 
 export interface SeriesPenaltyThreshold {
   _id: Id<'seriesPenaltyThresholds'>;
-  seriesPenaltyId: Id<'series'>;
-  driverClass: string;
+  seriesPenaltyId: Id<'seriesPenalties'>;
   threshold: number;
+  driverClasses: string[];
   createdAt: number;
 }
 
@@ -57,7 +55,8 @@ export interface Penalty {
   seriesId: Id<'series'>;
   name: string;
   timePenalty: number;
-  timePenaltyWithSelfReport: number;
+  selfReportReduction?: number;
+  timePenaltyLap1: number;
   licensePoints: number;
   createdAt: number;
   series?: Series;

@@ -207,6 +207,7 @@ export const create = mutation({
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
     raceId: v.id("races"),
+    lap: v.number(),
     turn: v.number(),
     description: v.string(),
   },
@@ -251,6 +252,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     reportId: v.id("reports"),
+    lap: v.optional(v.number()),
     turn: v.optional(v.number()),
     description: v.optional(v.string()),
   },

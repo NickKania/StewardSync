@@ -99,10 +99,7 @@ export const checkAndAssignThresholds = mutation({
 
       const assignedThresholds = existingDriverSeriesPenalties
         .filter((dsp: any) => !dsp.isServed)
-        .map((dsp: any) => {
-          const thresholdId = dsp.seriesPenaltyThresholdId as any;
-          return `${thresholdId}-${(thresholdId ? 'hasValue' : 'null')}-${driverClass}`;
-        });
+        .map((dsp: any) => dsp.seriesPenaltyThresholdId);
 
       for (const seriesPenalty of seriesPenalties) {
         const thresholds = await ctx.db
@@ -110,29 +107,31 @@ export const checkAndAssignThresholds = mutation({
           .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", seriesPenalty._id))
           .collect();
 
-        const applicableThreshold = thresholds.find(t => t.driverClass === driverClass);
+        for (const threshold of thresholds) {
+          const appliesToDriver = threshold.driverClasses.includes(driverClass);
 
-        if (applicableThreshold &&
-          totalPoints >= applicableThreshold.threshold &&
-          !assignedThresholds.includes(`${applicableThreshold._id}-hasValue-${driverClass}`)) {
-          const driverSeriesPenaltyId = await ctx.db.insert("driverSeriesPenalties", {
-            driverId: driver._id,
-            seriesId: args.seriesId,
-            seriesPenaltyId: seriesPenalty._id,
-            seriesPenaltyThresholdId: applicableThreshold._id,
-            isServed: false,
-            pointsAtAssignment: totalPoints,
-            assignedAt: Date.now(),
-          });
+          if (appliesToDriver &&
+            totalPoints >= threshold.threshold &&
+            !assignedThresholds.includes(threshold._id)) {
+            const driverSeriesPenaltyId = await ctx.db.insert("driverSeriesPenalties", {
+              driverId: driver._id,
+              seriesId: args.seriesId,
+              seriesPenaltyId: seriesPenalty._id,
+              seriesPenaltyThresholdId: threshold._id,
+              isServed: false,
+              pointsAtAssignment: totalPoints,
+              assignedAt: Date.now(),
+            });
 
-          assignedPenalties.push({
-            driverSeriesPenaltyId,
-            driverName: driver.driverName,
-            driverClass: driver.driverClass,
-            penaltyName: seriesPenalty.penaltyName,
-            threshold: applicableThreshold.threshold,
-            pointsAtAssignment: totalPoints,
-          });
+            assignedPenalties.push({
+              driverSeriesPenaltyId,
+              driverName: driver.driverName,
+              driverClass: driver.driverClass,
+              penaltyName: seriesPenalty.penaltyName,
+              threshold: threshold.threshold,
+              pointsAtAssignment: totalPoints,
+            });
+          }
         }
       }
     }

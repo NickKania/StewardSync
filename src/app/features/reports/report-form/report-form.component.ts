@@ -138,6 +138,22 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
                 }
               </div>
 
+              <!-- Lap -->
+              <div>
+                <label class="label">Lap Number *</label>
+                <input
+                  type="number"
+                  formControlName="lap"
+                  class="input"
+                  [class.input-error]="form.get('lap')?.invalid && form.get('lap')?.touched"
+                  placeholder="Enter the lap number"
+                  min="1"
+                />
+                @if (form.get('lap')?.invalid && form.get('lap')?.touched) {
+                  <p class="mt-1 text-sm text-red-600">Lap number is required and must be positive</p>
+                }
+              </div>
+
               <!-- Description -->
               <div>
                 <label class="label">Incident Description *</label>
@@ -204,6 +220,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       reportedDriverId: ['', Validators.required],
       eventId: ['', Validators.required],
       raceId: ['', Validators.required],
+      lap: ['', [Validators.required, Validators.min(1)]],
       turn: ['', [Validators.required, Validators.min(1)]],
       description: ['', [Validators.required, Validators.minLength(20)]]
     });
@@ -263,6 +280,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
             reportedDriverId: report.reportedDriverId,
             eventId: report.eventId,
             raceId: report.raceId,
+            lap: report.lap,
             turn: report.turn,
             description: report.description
           });
@@ -318,7 +336,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
           this.convex.api.reports.update,
           {
             reportId: this.id as any,
-            turn: formValue.turn,
+            lap: parseInt(formValue.lap, 10),
+            turn: parseInt(formValue.turn, 10),
             description: formValue.description
           }
         );
@@ -331,6 +350,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
             reportedDriverId: formValue.reportedDriverId,
             eventId: formValue.eventId,
             raceId: formValue.raceId,
+            lap: parseInt(formValue.lap, 10),
             turn: parseInt(formValue.turn, 10),
             description: formValue.description
           }
