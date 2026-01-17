@@ -340,6 +340,93 @@ export const finalize = mutation({
       updatedAt: now,
     });
 
+    const event = await ctx.db.get(report.eventId);
+    if (event) {
+      const events = await ctx.db
+        .query("events")
+        .withIndex("by_series", (q) => q.eq("seriesId", event.seriesId))
+        .collect();
+
+      const drivers = await ctx.db
+        .query("drivers")
+        .withIndex("by_championship", (q) => q.eq("championshipId", event.seriesId))
+        .collect();
+
+      const penaltyAccumulator: Record<string, number> = {};
+
+      for (const evt of events) {
+        const evtReports = await ctx.db
+          .query("reports")
+          .withIndex("by_event", (q) => q.eq("eventId", evt._id))
+          .collect();
+
+        const finalizedReports = evtReports.filter((r) => r.status === "finalized");
+
+        for (const finalizedReport of finalizedReports) {
+          let penalty: any = null;
+          if (finalizedReport.appliedPenalty) {
+            penalty = await ctx.db.get(finalizedReport.appliedPenalty as any);
+          }
+
+          const points = penalty?.licensePoints ?? 0;
+          const driverId = finalizedReport.reportedDriverId.toString();
+
+          if (penaltyAccumulator[driverId]) {
+            penaltyAccumulator[driverId] += points;
+          } else {
+            penaltyAccumulator[driverId] = points;
+          }
+        }
+      }
+
+      const seriesPenalties = await ctx.db
+        .query("seriesPenalties")
+        .withIndex("by_series", (q) => q.eq("seriesId", event.seriesId))
+        .collect();
+
+      for (const driver of drivers) {
+        const driverId = driver._id.toString();
+        const totalPoints = penaltyAccumulator[driverId] ?? 0;
+        const driverClass = driver.driverClass || "";
+
+        const existingDriverSeriesPenalties = await ctx.db
+          .query("driverSeriesPenalties")
+          .withIndex("by_driver_and_series", (q) =>
+            q.eq("driverId", driver._id).eq("seriesId", event.seriesId)
+          )
+          .collect();
+
+        const assignedThresholds = existingDriverSeriesPenalties
+          .filter((dsp: any) => !dsp.isServed)
+          .map((dsp: any) => dsp.seriesPenaltyThresholdId);
+
+        for (const seriesPenalty of seriesPenalties) {
+          const thresholds = await ctx.db
+            .query("seriesPenaltyThresholds")
+            .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", seriesPenalty._id))
+            .collect();
+
+          for (const threshold of thresholds) {
+            const appliesToDriver = threshold.driverClasses.includes(driverClass);
+
+            if (appliesToDriver &&
+              totalPoints >= threshold.threshold &&
+              !assignedThresholds.includes(threshold._id)) {
+              await ctx.db.insert("driverSeriesPenalties", {
+                driverId: driver._id,
+                seriesId: event.seriesId,
+                seriesPenaltyId: seriesPenalty._id,
+                seriesPenaltyThresholdId: threshold._id,
+                isServed: false,
+                pointsAtAssignment: totalPoints,
+                assignedAt: Date.now(),
+              });
+            }
+          }
+        }
+      }
+    }
+
     return args.reportId;
   },
 });

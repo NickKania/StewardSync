@@ -27,10 +27,10 @@ export interface SeriesPenaltyThreshold {
 }
 
 export interface DriverSeriesPenalty {
-  _id: Id<'drivers'>;
+  _id: Id<'driverSeriesPenalties'>;
   driverId: Id<'drivers'>;
   seriesId: Id<'series'>;
-  seriesPenaltyId: Id<'series'>;
+  seriesPenaltyId: Id<'seriesPenalties'>;
   seriesPenaltyThresholdId: Id<'seriesPenaltyThresholds'>;
   isServed: boolean;
   pointsAtAssignment: number;
@@ -40,6 +40,24 @@ export interface DriverSeriesPenalty {
   seriesPenalty?: SeriesPenalty;
   seriesPenaltyThreshold?: SeriesPenaltyThreshold;
   servedByUser?: any;
+}
+
+export interface DriverSeriesPenaltyDetails {
+  _id: Id<'driverSeriesPenalties'>;
+  driverId: Id<'drivers'>;
+  seriesId: Id<'series'>;
+  seriesName: string | null;
+  seriesPenaltyId: Id<'seriesPenalties'>;
+  seriesPenaltyThresholdId: Id<'seriesPenaltyThresholds'>;
+  penaltyName: string | null;
+  penaltyDescription: string | null;
+  threshold: number | null;
+  isServed: boolean;
+  pointsAtAssignment: number;
+  assignedAt: number;
+  servedAt?: number;
+  servedBy?: Id<'users'>;
+  servedByUserName: string | null;
 }
 
 export interface SeriesLicensePointsWithPenalties {

@@ -206,3 +206,56 @@ export const getBySeries = query({
     return driverSeriesPenaltiesWithDetails;
   },
 });
+
+export const getDriverPenaltyDetails = query({
+  args: {
+    driverId: v.id("drivers"),
+    seriesId: v.optional(v.id("series")),
+  },
+  handler: async (ctx, args) => {
+    let driverSeriesPenalties: any[] = [];
+
+    if (args.seriesId) {
+      driverSeriesPenalties = await ctx.db
+        .query("driverSeriesPenalties")
+        .withIndex("by_driver_and_series", (q) =>
+          q.eq("driverId", args.driverId).eq("seriesId", args.seriesId as any)
+        )
+        .collect();
+    } else {
+      driverSeriesPenalties = await ctx.db
+        .query("driverSeriesPenalties")
+        .filter((q) => q.eq(q.field("driverId"), args.driverId))
+        .collect();
+    }
+
+    const driverSeriesPenaltiesWithDetails = await Promise.all(
+      driverSeriesPenalties.map(async (dsp: any) => {
+        const series = await ctx.db.get(dsp.seriesId);
+        const seriesPenalty = await ctx.db.get(dsp.seriesPenaltyId);
+        const seriesPenaltyThreshold = await ctx.db.get(dsp.seriesPenaltyThresholdId);
+        const servedByUser = dsp.servedBy ? await ctx.db.get(dsp.servedBy) : null;
+
+        return {
+          _id: dsp._id,
+          driverId: dsp.driverId,
+          seriesId: dsp.seriesId,
+          seriesName: (series as any)?.name ?? null,
+          seriesPenaltyId: dsp.seriesPenaltyId,
+          seriesPenaltyThresholdId: dsp.seriesPenaltyThresholdId,
+          penaltyName: (seriesPenalty as any)?.penaltyName ?? null,
+          penaltyDescription: (seriesPenalty as any)?.penaltyDescription ?? null,
+          threshold: (seriesPenaltyThreshold as any)?.threshold ?? null,
+          isServed: dsp.isServed,
+          pointsAtAssignment: dsp.pointsAtAssignment,
+          assignedAt: dsp.assignedAt,
+          servedAt: dsp.servedAt,
+          servedBy: dsp.servedBy,
+          servedByUserName: (servedByUser as any)?.name ?? null,
+        };
+      })
+    );
+
+    return driverSeriesPenaltiesWithDetails.sort((a, b) => b.assignedAt - a.assignedAt);
+  },
+});

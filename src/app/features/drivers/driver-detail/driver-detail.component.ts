@@ -1,11 +1,15 @@
-import { Component, inject, OnInit, OnDestroy, signal, Input } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, Input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
+import { AuthService } from '@core/services/auth.service';
 import { CardComponent } from '@shared/components/card/card.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
+import { SelectComponent, SelectOption } from '@shared/components/select/select.component';
+import { DriverSeriesPenaltyDetails } from '@core/models';
 
 @Component({
   selector: 'app-driver-detail',
@@ -13,10 +17,12 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
   imports: [
     CommonModule,
     RouterLink,
+    FormsModule,
     CardComponent,
     ButtonComponent,
     BadgeComponent,
-    LoadingComponent
+    LoadingComponent,
+    SelectComponent
   ],
   template: `
     <div class="space-y-6">
@@ -102,6 +108,78 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
             }
           </dl>
         </app-card>
+
+        <!-- Series Penalties -->
+        <app-card title="Series Penalties">
+          <div class="space-y-4">
+            @if (seriesOptions().length > 1) {
+              <div>
+                <label class="label">Select Series</label>
+                <app-select
+                  [options]="seriesOptions()"
+                  [(ngModel)]="selectedSeriesId"
+                  (ngModelChange)="loadPenalties()"
+                  placeholder="All Series"
+                />
+              </div>
+            }
+
+            @if (penaltiesLoading()) {
+              <app-loading text="Loading penalties..." />
+            } @else if (penalties().length > 0) {
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50">
+                    <tr class="text-left">
+                      <th class="px-4 py-2 font-medium text-gray-500">Penalty</th>
+                      <th class="px-4 py-2 font-medium text-gray-500">Threshold</th>
+                      <th class="px-4 py-2 font-medium text-gray-500">Points at Assignment</th>
+                      <th class="px-4 py-2 font-medium text-gray-500">Assigned Date</th>
+                      <th class="px-4 py-2 font-medium text-gray-500">Status</th>
+                      <th class="px-4 py-2 font-medium text-gray-500">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    @for (penalty of penalties(); track penalty._id) {
+                      <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 font-medium text-gray-900">{{ penalty.penaltyName }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ penalty.threshold }} pts</td>
+                        <td class="px-4 py-3 text-gray-600">{{ penalty.pointsAtAssignment }} pts</td>
+                        <td class="px-4 py-3 text-gray-600">{{ formatDate(penalty.assignedAt) }}</td>
+                        <td class="px-4 py-3">
+                          @if (penalty.isServed) {
+                            <app-badge variant="success">Served</app-badge>
+                          } @else {
+                            <app-badge variant="danger">Active</app-badge>
+                          }
+                        </td>
+                        <td class="px-4 py-3">
+                          @if (!penalty.isServed && canMarkAsServed()) {
+                            <app-button
+                              variant="primary"
+                              size="sm"
+                              (onClick)="markAsServed(penalty._id)"
+                            >
+                              Mark as Served
+                            </app-button>
+                          } @else if (penalty.isServed && penalty.servedByUserName) {
+                            <span class="text-sm text-gray-500">
+                              By {{ penalty.servedByUserName }} on {{ formatDate(penalty.servedAt!) }}
+                            </span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else if (selectedSeriesId || seriesOptions().length === 1) {
+              <p class="text-gray-500 text-center py-4">No series penalties assigned to this driver</p>
+            } @else {
+              <p class="text-gray-500 text-center py-4">Select a series to view penalties</p>
+            }
+          </div>
+        </app-card>
       } @else {
         <app-card>
           <div class="text-center py-12">
@@ -119,10 +197,17 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
   @Input() id!: string;
 
   private convex = inject(ConvexService);
+  authService = inject(AuthService);
 
   driver = signal<any>(null);
   stats = signal<any>(null);
   loading = signal(true);
+
+  penalties = signal<DriverSeriesPenaltyDetails[]>([]);
+  penaltiesLoading = signal(false);
+  selectedSeriesId = '';
+
+  series = signal<any[]>([]);
 
   private unsubscribes: (() => void)[] = [];
 
@@ -154,6 +239,9 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
           { driverId: this.id as any }
         );
         this.stats.set(stats);
+
+        await this.loadSeries();
+        await this.loadPenalties();
       }
     } catch (error) {
       console.error('Failed to load driver:', error);
@@ -161,4 +249,79 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
       this.loading.set(false);
     }
   }
+
+  private async loadSeries(): Promise<void> {
+    const seriesQuery = this.convex.createReactiveQuery(
+      this.convex.api.series.list,
+      {}
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
+
+    const checkSeries = setInterval(() => {
+      const data = seriesQuery.data();
+      if (data) {
+        this.series.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkSeries));
+  }
+
+  async loadPenalties(): Promise<void> {
+    this.penaltiesLoading.set(true);
+    try {
+      const data = await this.convex.query(
+        this.convex.api.driverSeriesPenalties.getDriverPenaltyDetails,
+        {
+          driverId: this.id as any,
+          seriesId: this.selectedSeriesId ? this.selectedSeriesId as any : undefined
+        }
+      );
+      this.penalties.set(data || []);
+    } catch (error: any) {
+      console.error('Failed to load penalties:', error);
+      this.penalties.set([]);
+    } finally {
+      this.penaltiesLoading.set(false);
+    }
+  }
+
+  async markAsServed(penaltyId: string): Promise<void> {
+    try {
+      const userId = this.authService.getUserId();
+      if (!userId) {
+        console.error('User not authenticated');
+        return;
+      }
+
+      await this.convex.mutation(
+        this.convex.api.driverSeriesPenalties.markAsServed,
+        {
+          id: penaltyId as any,
+          servedBy: userId
+        }
+      );
+
+      await this.loadPenalties();
+    } catch (error: any) {
+      console.error('Failed to mark penalty as served:', error);
+    }
+  }
+
+  canMarkAsServed(): boolean {
+    return this.authService.hasMinimumRole('head_steward');
+  }
+
+  formatDate(timestamp: number): string {
+    return new Date(timestamp).toLocaleDateString();
+  }
+
+  seriesOptions = computed(() => {
+    return [
+      { value: '', label: 'All Series' },
+      ...this.series().map((s: any) => ({
+        value: s._id,
+        label: s.name
+      }))
+    ];
+  });
 }
