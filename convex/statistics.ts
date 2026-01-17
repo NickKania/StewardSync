@@ -92,3 +92,84 @@ export const getSeriesLicensePoints = query({
     return driverPoints;
   },
 });
+
+export const getSeriesLicensePointsWithPenalties = query({
+  args: { seriesId: v.id("series") },
+  handler: async (ctx, args) => {
+    const drivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_championship", (q) => q.eq("championshipId", args.seriesId))
+      .collect();
+
+    const events = await ctx.db
+      .query("events")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
+      .collect();
+
+    const penaltyAccumulator: Record<string, number> = {};
+
+    for (const event of events) {
+      const reports = await ctx.db
+        .query("reports")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .collect();
+
+      const finalizedReports = reports.filter((r) => r.status === "finalized");
+
+      for (const report of finalizedReports) {
+        let penalty: any = null;
+        if (report.appliedPenalty) {
+          penalty = await ctx.db.get(report.appliedPenalty as any);
+        }
+
+        const points = penalty?.licensePoints ?? 0;
+        const driverId = report.reportedDriverId.toString();
+
+        if (penaltyAccumulator[driverId]) {
+          penaltyAccumulator[driverId] += points;
+        } else {
+          penaltyAccumulator[driverId] = points;
+        }
+      }
+    }
+
+    const driverPointsWithPenalties = await Promise.all(
+      drivers.map(async (driver) => {
+        const driverId = driver._id.toString();
+        const totalPoints = penaltyAccumulator[driverId] ?? 0;
+
+        const allDriverSeriesPenalties = await ctx.db
+          .query("driverSeriesPenalties")
+          .withIndex("by_driver_and_series", (q) =>
+            q.eq("driverId", driver._id).eq("seriesId", args.seriesId)
+          )
+          .collect();
+
+        const driverSeriesPenaltiesWithDetails = await Promise.all(
+          allDriverSeriesPenalties.map(async (dsp) => {
+            const seriesPenalty = await ctx.db.get(dsp.seriesPenaltyId);
+            const servedByUser = dsp.servedBy ? await ctx.db.get(dsp.servedBy) : null;
+
+            return {
+              ...dsp,
+              seriesPenalty,
+              servedByUser,
+            };
+          })
+        );
+
+        return {
+          driverId: driver._id,
+          driverNumber: driver.driverNumber,
+          driverName: driver.driverName,
+          totalLicensePoints: totalPoints,
+          seriesPenalties: driverSeriesPenaltiesWithDetails,
+        };
+      })
+    );
+
+    driverPointsWithPenalties.sort((a, b) => b.totalLicensePoints - a.totalLicensePoints);
+
+    return driverPointsWithPenalties;
+  },
+});

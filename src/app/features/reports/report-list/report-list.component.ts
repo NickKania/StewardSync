@@ -26,11 +26,11 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
   ],
   template: `
     <div class="space-y-6">
-      <!-- Header -->
+       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Reports</h1>
-          <p class="text-gray-500 mt-1">View and manage incident reports</p>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Reports</h1>
+          <p class="text-gray-500 mt-1 dark:text-gray-400">View and manage incident reports</p>
         </div>
         <a routerLink="/reports/new">
           <app-button variant="primary">
@@ -66,7 +66,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
         </div>
       </app-card>
 
-      <!-- Reports table -->
+       <!-- Reports table -->
       <app-card [noPadding]="true">
         @if (loading()) {
           <div class="py-12">
@@ -75,8 +75,8 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
         } @else if (filteredReports().length > 0) {
           <div class="overflow-x-auto">
             <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr class="text-left text-sm text-gray-500">
+              <thead class="bg-gray-50 dark:bg-gray-800">
+                <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th class="px-6 py-3 font-medium">Reported Driver</th>
                   <th class="px-6 py-3 font-medium">Reporting Driver</th>
                   <th class="px-6 py-3 font-medium">Event</th>
@@ -86,23 +86,23 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                   <th class="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 @for (report of filteredReports(); track report._id) {
-                  <tr class="hover:bg-gray-50">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900">{{ report.reportedDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500">#{{ report.reportedDriver?.driverNumber }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ report.reportedDriver?.driverName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.reportedDriver?.driverNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900">{{ report.reportingDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500">#{{ report.reportingDriver?.driverNumber }}</p>
+                      <p class="text-gray-900 dark:text-gray-100">{{ report.reportingDriver?.driverName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.reportingDriver?.driverNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900">{{ report.event?.trackName }}</p>
-                      <p class="text-sm text-gray-500">Race {{ report.race?.raceNumber }}</p>
+                      <p class="text-gray-900 dark:text-gray-100">{{ report.event?.trackName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ report.race?.raceNumber }}</p>
                     </td>
-                    <td class="px-6 py-4 text-gray-900">{{ report.turn }}</td>
-                    <td class="px-6 py-4 text-gray-500">
+                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100">{{ report.turn }}</td>
+                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
                       {{ report.reportDate | dateFormat:'PP' }}
                     </td>
                     <td class="px-6 py-4">
@@ -113,7 +113,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                     <td class="px-6 py-4">
                       <a
                         [routerLink]="['/reports', report._id]"
-                        class="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                        class="text-primary-600 hover:text-primary-700 font-medium text-sm dark:text-primary-400 dark:hover:text-primary-300"
                       >
                         View
                       </a>
@@ -125,10 +125,10 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
           </div>
         } @else {
           <div class="text-center py-12">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <p class="text-gray-500 mb-4">No reports found</p>
+            <p class="text-gray-500 mb-4 dark:text-gray-400">No reports found</p>
             <a routerLink="/reports/new">
               <app-button variant="primary">File a Report</app-button>
             </a>

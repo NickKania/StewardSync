@@ -19,14 +19,14 @@ interface NavItem {
     <!-- Mobile overlay -->
     @if (isMobileOpen) {
       <div
-        class="fixed inset-0 bg-black/50 z-30 lg:hidden"
+        class="fixed inset-0 bg-black/50 z-30 lg:hidden dark:bg-black/70"
         (click)="closeMobile()"
       ></div>
     }
 
     <!-- Sidebar -->
     <aside
-      class="fixed top-16 left-0 bottom-0 w-64 bg-white border-r border-gray-200 z-30 transform transition-transform duration-200 ease-in-out"
+      class="fixed top-16 left-0 bottom-0 w-64 bg-white border-r border-gray-200 z-30 transform transition-transform duration-200 ease-in-out dark:bg-gray-900 dark:border-gray-700"
       [class.translate-x-0]="isMobileOpen"
       [class.-translate-x-full]="!isMobileOpen"
       [class.lg:translate-x-0]="true"
@@ -36,9 +36,9 @@ interface NavItem {
           @if (!item.roles || hasAnyRole(item.roles)) {
             <a
               [routerLink]="item.path"
-              routerLinkActive="bg-primary-50 text-primary-700 border-primary-500"
+              routerLinkActive="bg-primary-50 text-primary-700 border-primary-500 dark:bg-primary-900/30 dark:text-primary-200 dark:border-primary-400"
               [routerLinkActiveOptions]="{ exact: item.path === '/' }"
-              class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border-l-2 border-transparent"
+              class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border-l-2 border-transparent dark:text-gray-200 dark:hover:bg-gray-800"
               (click)="closeMobile()"
             >
               <span [innerHTML]="item.icon"></span>
@@ -49,8 +49,8 @@ interface NavItem {
       </nav>
 
       <!-- Bottom section -->
-      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-        <div class="text-xs text-gray-500">
+      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="text-xs text-gray-500 dark:text-gray-400">
           <p>StewardSync v0.1.0</p>
           <p class="mt-1">Racing Incident Review System</p>
         </div>

@@ -1,8 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
+import { ThemeService } from '@core/services/theme.service';
 import { ButtonComponent } from '@shared/components/button/button.component';
 
 @Component({
@@ -11,8 +12,23 @@ import { ButtonComponent } from '@shared/components/button/button.component';
   imports: [CommonModule, ButtonComponent, RouterLink],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-gray-900 p-4">
+      <button
+        class="fixed top-4 right-4 p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+        (click)="themeService.toggleTheme()"
+        [attr.aria-label]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+      >
+        @if (themeService.isDark()) {
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M12 5a7 7 0 100 14 7 7 0 000-14z"></path>
+          </svg>
+        } @else {
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"></path>
+          </svg>
+        }
+      </button>
       <div class="w-full max-w-md">
-        <div class="bg-white rounded-2xl shadow-2xl p-8">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 dark:bg-gray-900">
           <!-- Logo and branding -->
           <div class="text-center mb-8">
             <div class="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -20,14 +36,14 @@ import { ButtonComponent } from '@shared/components/button/button.component';
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
               </svg>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900">StewardSync</h1>
-            <p class="text-gray-500 mt-2">Racing Incident Review System</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">StewardSync</h1>
+            <p class="text-gray-500 mt-2 dark:text-gray-400">Racing Incident Review System</p>
           </div>
 
           <!-- Login options -->
           <div class="space-y-4">
             <button
-              class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
               [disabled]="isLoading"
               (click)="loginDemo()"
             >
@@ -39,14 +55,14 @@ import { ButtonComponent } from '@shared/components/button/button.component';
           </div>
 
           <!-- Footer -->
-          <p class="mt-8 text-center text-sm text-gray-500">
+          <p class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
             By signing in, you agree to our terms of service and privacy policy.
           </p>
 
           <!-- Dev Mode Link -->
           <div class="mt-4 text-center">
             <a routerLink="/dev-login"
-               class="text-xs text-gray-400 hover:text-primary-600 transition-colors">
+               class="text-xs text-gray-400 hover:text-primary-600 transition-colors dark:text-gray-500 dark:hover:text-primary-300">
               Developer Mode
             </a>
           </div>
@@ -70,7 +86,7 @@ import { ButtonComponent } from '@shared/components/button/button.component';
 export class LoginComponent {
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
-  private router = inject(Router);
+  public readonly themeService = inject(ThemeService);
 
   isLoading = false;
 

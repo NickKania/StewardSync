@@ -22,11 +22,11 @@ import { Id } from '@convex/_generated/dataModel';
   ],
   template: `
     <div class="space-y-6">
-      <!-- Header -->
+       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Series Management</h1>
-          <p class="text-gray-500 mt-1">Manage racing series and their penalty configurations</p>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Series Management</h1>
+          <p class="text-gray-500 mt-1 dark:text-gray-400">Manage racing series and their penalty configurations</p>
         </div>
         <app-button (click)="showSeriesModal = true">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,9 +89,9 @@ import { Id } from '@convex/_generated/dataModel';
                 </div>
 
                 <!-- Penalties for this series -->
-                <div class="border-t pt-4">
+                <div class="border-t pt-4 dark:border-gray-700">
                   <div class="flex items-center justify-between mb-3">
-                    <h4 class="text-sm font-medium text-gray-700">Penalties</h4>
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Penalties</h4>
                     <app-button variant="secondary" size="sm" (click)="addPenalty(s._id)">
                       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -100,16 +100,16 @@ import { Id } from '@convex/_generated/dataModel';
                     </app-button>
                   </div>
 
-                  @if (getSeriesPenalties(s._id).length > 0) {
+                   @if (getSeriesPenalties(s._id).length > 0) {
                     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
                       @for (penalty of getSeriesPenalties(s._id); track penalty._id) {
-                        <div class="border rounded-lg p-3 bg-gray-50">
+                        <div class="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
                           <div class="flex items-start justify-between mb-2">
-                            <span class="font-medium text-sm">{{ penalty.name }}</span>
+                            <span class="font-medium text-sm dark:text-gray-100">{{ penalty.name }}</span>
                             <div class="flex gap-1">
                               <button
                                 (click)="editPenalty(penalty)"
-                                class="text-gray-400 hover:text-gray-600 p-1"
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
                               >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -125,7 +125,7 @@ import { Id } from '@convex/_generated/dataModel';
                               </button>
                             </div>
                           </div>
-                          <div class="space-y-1 text-xs text-gray-600">
+                          <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
                             <div class="flex justify-between">
                               <span>Time Penalty:</span>
                               <span class="font-medium">{{ penalty.timePenalty }}s</span>
@@ -143,29 +143,29 @@ import { Id } from '@convex/_generated/dataModel';
                       }
                     </div>
                   } @else {
-                    <p class="text-sm text-gray-500 text-center py-4">No penalties configured</p>
+                    <p class="text-sm text-gray-500 text-center py-4 dark:text-gray-400">No penalties configured</p>
                   }
                 </div>
               </div>
             </app-card>
           }
         </div>
-      } @else {
+       } @else {
         <app-card>
           <div class="text-center py-12">
-            <p class="text-gray-500">No series found. Create one to get started.</p>
+            <p class="text-gray-500 dark:text-gray-400">No series found. Create one to get started.</p>
           </div>
         </app-card>
       }
 
-      <!-- Series Modal -->
+       <!-- Series Modal -->
       @if (showSeriesModal) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 class="text-lg font-semibold mb-4">{{ editingSeriesId ? 'Edit' : 'Add' }} Series</h3>
+          <div class="bg-white rounded-lg p-6 w-full max-w-md dark:bg-gray-800">
+            <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">{{ editingSeriesId ? 'Edit' : 'Add' }} Series</h3>
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Name</label>
                 <input
                   type="text"
                   class="input w-full"
@@ -174,7 +174,7 @@ import { Id } from '@convex/_generated/dataModel';
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Description (optional)</label>
                 <textarea
                   class="input w-full"
                   rows="3"
@@ -183,7 +183,7 @@ import { Id } from '@convex/_generated/dataModel';
                 ></textarea>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">SimGrid Link (optional)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">SimGrid Link (optional)</label>
                 <input
                   type="text"
                   class="input w-full"
@@ -202,14 +202,14 @@ import { Id } from '@convex/_generated/dataModel';
         </div>
       }
 
-      <!-- Penalty Modal -->
+       <!-- Penalty Modal -->
       @if (showPenaltyModal) {
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 class="text-lg font-semibold mb-4">{{ editingPenaltyId ? 'Edit' : 'Add' }} Penalty</h3>
+          <div class="bg-white rounded-lg p-6 w-full max-w-md dark:bg-gray-800">
+            <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">{{ editingPenaltyId ? 'Edit' : 'Add' }} Penalty</h3>
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Penalty Name</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Penalty Name</label>
                 <input
                   type="text"
                   class="input w-full"
@@ -218,7 +218,7 @@ import { Id } from '@convex/_generated/dataModel';
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Time Penalty (seconds)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Time Penalty (seconds)</label>
                 <input
                   type="number"
                   class="input w-full"
@@ -227,7 +227,7 @@ import { Id } from '@convex/_generated/dataModel';
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Time Penalty with Self Report (seconds)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Time Penalty with Self Report (seconds)</label>
                 <input
                   type="number"
                   class="input w-full"
@@ -236,7 +236,7 @@ import { Id } from '@convex/_generated/dataModel';
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">License Points</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">License Points</label>
                 <input
                   type="number"
                   class="input w-full"
@@ -262,12 +262,18 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
 
   series = signal<Series[]>([]);
   penalties = signal<Penalty[]>([]);
+  driverClasses = signal<string[]>([]);
+  seriesPenaltyThresholds = signal<Map<string, any[]>>(new Map());
   loading = signal(true);
 
   showSeriesModal = false;
   showPenaltyModal = false;
+  showSeriesPenaltyThresholdModal = false;
   editingSeriesId: Id<'series'> | null = null;
   editingPenaltyId: Id<'penalties'> | null = null;
+  editingSeriesPenaltyId: Id<'series'> | null = null;
+  editingSeriesPenaltyThresholdId: Id<'seriesPenaltyThresholds'> | null = null;
+  isEditingThresholds = false;
 
   seriesForm = {
     name: '',
@@ -281,6 +287,17 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     timePenalty: 0,
     timePenaltyWithSelfReport: 0,
     licensePoints: 0
+  };
+
+  seriesPenaltyForm = {
+    seriesId: '' as Id<'series'> | '',
+    penaltyName: '',
+    penaltyDescription: ''
+  };
+
+  seriesPenaltyThresholdForm = {
+    driverClass: '',
+    threshold: 0
   };
 
   private unsubscribes: (() => void)[] = [];

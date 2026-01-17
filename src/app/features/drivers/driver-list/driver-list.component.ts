@@ -24,11 +24,11 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
   ],
   template: `
     <div class="space-y-6">
-      <!-- Header -->
+       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Drivers</h1>
-          <p class="text-gray-500 mt-1">View all registered drivers</p>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Drivers</h1>
+          <p class="text-gray-500 mt-1 dark:text-gray-400">View all registered drivers</p>
         </div>
       </div>
 
@@ -60,23 +60,23 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
         <app-loading text="Loading drivers..." />
       } @else if (filteredDrivers().length > 0) {
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          @for (driver of filteredDrivers(); track driver._id) {
+           @for (driver of filteredDrivers(); track driver._id) {
             <a [routerLink]="['/drivers', driver._id]">
               <app-card [hover]="true">
                 <div class="flex items-center gap-4">
-                  <div class="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center">
-                    <span class="text-xl font-bold text-primary-700">{{ driver.driverNumber }}</span>
+                  <div class="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center dark:bg-primary-900/40">
+                    <span class="text-xl font-bold text-primary-700 dark:text-primary-200">{{ driver.driverNumber }}</span>
                   </div>
                   <div class="flex-1">
-                    <h3 class="font-semibold text-gray-900">{{ driver.driverName }}</h3>
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ driver.driverName }}</h3>
                     <div class="flex items-center gap-2 mt-1">
                       <app-badge variant="default">{{ driver.driverClass }}</app-badge>
                       @if (driver.externalId) {
-                        <span class="text-xs text-gray-500">{{ driver.externalId }}</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ driver.externalId }}</span>
                       }
                     </div>
                   </div>
-                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>
                 </div>
@@ -84,13 +84,13 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
             </a>
           }
         </div>
-      } @else {
+       } @else {
         <app-card>
           <div class="text-center py-12">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
             </svg>
-            <p class="text-gray-500">No drivers found</p>
+            <p class="text-gray-500 dark:text-gray-400">No drivers found</p>
           </div>
         </app-card>
       }

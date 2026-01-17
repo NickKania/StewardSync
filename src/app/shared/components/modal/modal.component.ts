@@ -14,14 +14,14 @@ import { CommonModule } from '@angular/common';
       >
         <!-- Backdrop -->
         <div
-          class="fixed inset-0 bg-black/50 transition-opacity"
+          class="fixed inset-0 bg-black/50 transition-opacity dark:bg-black/70"
           (click)="closeOnBackdrop && close.emit()"
         ></div>
 
         <!-- Modal container -->
         <div class="flex min-h-full items-center justify-center p-4">
           <div
-            class="relative bg-white rounded-xl shadow-xl max-w-lg w-full transform transition-all"
+            class="relative bg-white rounded-xl shadow-xl max-w-lg w-full transform transition-all dark:bg-gray-900"
             [class.max-w-md]="size === 'sm'"
             [class.max-w-lg]="size === 'md'"
             [class.max-w-2xl]="size === 'lg'"
@@ -29,12 +29,12 @@ import { CommonModule } from '@angular/common';
           >
             <!-- Header -->
             @if (title) {
-              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">{{ title }}</h3>
+              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ title }}</h3>
                 @if (showClose) {
                   <button
                     type="button"
-                    class="p-1 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
+                    class="p-1 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-gray-800"
                     (click)="close.emit()"
                     aria-label="Close"
                   >

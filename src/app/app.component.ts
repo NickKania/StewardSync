@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { HeaderComponent } from '@app/layout/header/header.component';
 import { SidebarComponent } from '@app/layout/sidebar/sidebar.component';
 import { AuthService } from '@core/services/auth.service';
+import { ThemeService } from '@core/services/theme.service';
 import { ToastComponent } from '@shared/components/toast/toast.component';
 
 @Component({
@@ -17,7 +18,7 @@ import { ToastComponent } from '@shared/components/toast/toast.component';
     ToastComponent
   ],
   template: `
-    <div class="min-h-screen bg-gray-50">
+    <div class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       @if (authService.isAuthenticated()) {
         <app-header />
         <div class="flex mt-16">
@@ -35,8 +36,10 @@ import { ToastComponent } from '@shared/components/toast/toast.component';
 })
 export class AppComponent implements OnInit {
   authService = inject(AuthService);
+  themeService = inject(ThemeService);
 
   ngOnInit(): void {
+    this.themeService.initialize();
     this.authService.initialize();
   }
 }

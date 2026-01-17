@@ -10,6 +10,7 @@
 
 import type * as actions from "../actions.js";
 import type * as auth from "../auth.js";
+import type * as driverSeriesPenalties from "../driverSeriesPenalties.js";
 import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
 import type * as penalties from "../penalties.js";
@@ -18,6 +19,8 @@ import type * as reports from "../reports.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
 import type * as series from "../series.js";
+import type * as seriesPenalties from "../seriesPenalties.js";
+import type * as seriesPenaltyThresholds from "../seriesPenaltyThresholds.js";
 import type * as statistics from "../statistics.js";
 import type * as users from "../users.js";
 
@@ -30,6 +33,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   auth: typeof auth;
+  driverSeriesPenalties: typeof driverSeriesPenalties;
   drivers: typeof drivers;
   events: typeof events;
   penalties: typeof penalties;
@@ -38,6 +42,8 @@ declare const fullApi: ApiFromModules<{
   reviews: typeof reviews;
   seed: typeof seed;
   series: typeof series;
+  seriesPenalties: typeof seriesPenalties;
+  seriesPenaltyThresholds: typeof seriesPenaltyThresholds;
   statistics: typeof statistics;
   users: typeof users;
 }>;

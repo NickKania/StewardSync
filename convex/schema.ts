@@ -66,6 +66,36 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_event", ["eventId"]),
 
+  seriesPenalties: defineTable({
+    seriesId: v.id("series"),
+    driverClass: v.optional(v.string()),
+    threshold: v.number(),
+    penaltyName: v.string(),
+    penaltyDescription: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_series", ["seriesId"]),
+
+  seriesPenaltyThresholds: defineTable({
+    seriesPenaltyId: v.id("seriesPenalties"),
+    driverClass: v.string(),
+    threshold: v.number(),
+    createdAt: v.number(),
+  }).index("by_series_penalty", ["seriesPenaltyId"]),
+
+  driverSeriesPenalties: defineTable({
+    driverId: v.id("drivers"),
+    seriesId: v.id("series"),
+    seriesPenaltyId: v.id("seriesPenalties"),
+    seriesPenaltyThresholdId: v.id("seriesPenaltyThresholds"),
+    isServed: v.boolean(),
+    pointsAtAssignment: v.number(),
+    assignedAt: v.number(),
+    servedAt: v.optional(v.number()),
+    servedBy: v.optional(v.id("users")),
+  })
+    .index("by_driver_and_series", ["driverId", "seriesId"])
+    .index("by_series", ["seriesId"]),
+
   reports: defineTable({
     reportDate: v.number(),
     reportingDriverId: v.id("drivers"),

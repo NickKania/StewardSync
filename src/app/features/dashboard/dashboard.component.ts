@@ -26,17 +26,17 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
   ],
   template: `
     <div class="space-y-6">
-      <!-- Welcome header -->
+       <!-- Welcome header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
             @if (authService.user()) {
               Welcome back, {{ authService.user()!.name.split(' ')[0] }}
             } @else {
               Welcome back
             }
           </h1>
-          <p class="text-gray-500 mt-1">Here's what's happening with your reports</p>
+          <p class="text-gray-500 mt-1 dark:text-gray-400">Here's what's happening with your reports</p>
         </div>
         <a routerLink="/reports/new">
           <app-button variant="primary">
@@ -48,31 +48,31 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
         </a>
       </div>
 
-      <!-- Stats grid -->
+       <!-- Stats grid -->
       @if (stats()) {
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <app-card>
             <div class="text-center">
-              <p class="text-3xl font-bold text-gray-900">{{ stats()?.total || 0 }}</p>
-              <p class="text-sm text-gray-500 mt-1">Total Reports</p>
+              <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats()?.total || 0 }}</p>
+              <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Total Reports</p>
             </div>
           </app-card>
           <app-card>
             <div class="text-center">
-              <p class="text-3xl font-bold text-amber-600">{{ stats()?.pending || 0 }}</p>
-              <p class="text-sm text-gray-500 mt-1">Pending Review</p>
+              <p class="text-3xl font-bold text-amber-600 dark:text-amber-400">{{ stats()?.pending || 0 }}</p>
+              <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Pending Review</p>
             </div>
           </app-card>
           <app-card>
             <div class="text-center">
-              <p class="text-3xl font-bold text-blue-600">{{ stats()?.reviewed || 0 }}</p>
-              <p class="text-sm text-gray-500 mt-1">Under Review</p>
+              <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ stats()?.reviewed || 0 }}</p>
+              <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Under Review</p>
             </div>
           </app-card>
           <app-card>
             <div class="text-center">
-              <p class="text-3xl font-bold text-green-600">{{ stats()?.finalized || 0 }}</p>
-              <p class="text-sm text-gray-500 mt-1">Finalized</p>
+              <p class="text-3xl font-bold text-green-600 dark:text-green-400">{{ stats()?.finalized || 0 }}</p>
+              <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Finalized</p>
             </div>
           </app-card>
         </div>
@@ -81,8 +81,8 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
           @for (i of [1,2,3,4]; track i) {
             <app-card>
               <div class="animate-pulse text-center">
-                <div class="h-8 bg-gray-200 rounded w-16 mx-auto"></div>
-                <div class="h-4 bg-gray-200 rounded w-24 mx-auto mt-2"></div>
+                <div class="h-8 bg-gray-200 rounded w-16 mx-auto dark:bg-gray-700"></div>
+                <div class="h-4 bg-gray-200 rounded w-24 mx-auto mt-2 dark:bg-gray-700"></div>
               </div>
             </app-card>
           }
@@ -91,19 +91,19 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
 
       <!-- Quick actions for stewards -->
       <div *appHasRole="['steward', 'head_steward', 'event_manager']" class="grid md:grid-cols-2 gap-6">
-        <app-card title="Pending Reviews" subtitle="Reports waiting for your review">
+         <app-card title="Pending Reviews" subtitle="Reports waiting for your review">
           @if (pendingReports().length > 0) {
             <div class="space-y-3">
               @for (report of pendingReports().slice(0, 5); track report._id) {
                 <a
                   [routerLink]="['/reviews', report._id]"
-                  class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors dark:hover:bg-gray-800"
                 >
                   <div>
-                    <p class="font-medium text-gray-900">
+                    <p class="font-medium text-gray-900 dark:text-gray-100">
                       {{ report.reportedDriver?.driverName }} - Turn {{ report.turn }}
                     </p>
-                    <p class="text-sm text-gray-500">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
                       {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
                     </p>
                   </div>
@@ -112,30 +112,30 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
               }
             </div>
             @if (pendingReports().length > 5) {
-              <div class="mt-4 pt-4 border-t border-gray-200">
-                <a routerLink="/reviews" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+              <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <a routerLink="/reviews" class="text-sm text-primary-600 hover:text-primary-700 font-medium dark:text-primary-400 dark:hover:text-primary-300">
                   View all {{ pendingReports().length }} pending reports →
                 </a>
               </div>
             }
           } @else {
-            <p class="text-gray-500 text-center py-8">No reports pending review</p>
+            <p class="text-gray-500 text-center py-8 dark:text-gray-400">No reports pending review</p>
           }
         </app-card>
 
-        <app-card title="Recent Activity">
+         <app-card title="Recent Activity">
           @if (recentReports().length > 0) {
             <div class="space-y-3">
               @for (report of recentReports().slice(0, 5); track report._id) {
                 <a
                   [routerLink]="['/reports', report._id]"
-                  class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors dark:hover:bg-gray-800"
                 >
                   <div>
-                    <p class="font-medium text-gray-900">
+                    <p class="font-medium text-gray-900 dark:text-gray-100">
                       {{ report.reportedDriver?.driverName }}
                     </p>
-                    <p class="text-sm text-gray-500">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
                       {{ report.reportDate | timeAgo }}
                     </p>
                   </div>
@@ -146,18 +146,18 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
               }
             </div>
           } @else {
-            <p class="text-gray-500 text-center py-8">No recent activity</p>
+            <p class="text-gray-500 text-center py-8 dark:text-gray-400">No recent activity</p>
           }
         </app-card>
       </div>
 
-      <!-- Recent reports for drivers -->
+       <!-- Recent reports for drivers -->
       <app-card title="Recent Reports" subtitle="Your latest incident reports">
         @if (recentReports().length > 0) {
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
-                <tr class="text-left text-sm text-gray-500 border-b border-gray-200">
+                <tr class="text-left text-sm text-gray-500 border-b border-gray-200 dark:text-gray-400 dark:border-gray-700">
                   <th class="pb-3 font-medium">Reported Driver</th>
                   <th class="pb-3 font-medium">Event</th>
                   <th class="pb-3 font-medium">Date</th>
@@ -165,18 +165,18 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                   <th class="pb-3 font-medium"></th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 @for (report of recentReports(); track report._id) {
-                  <tr class="hover:bg-gray-50">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="py-3">
-                      <p class="font-medium text-gray-900">{{ report.reportedDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500">#{{ report.reportedDriver?.driverNumber }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ report.reportedDriver?.driverName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.reportedDriver?.driverNumber }}</p>
                     </td>
                     <td class="py-3">
-                      <p class="text-gray-900">{{ report.event?.trackName }}</p>
-                      <p class="text-sm text-gray-500">Race {{ report.race?.raceNumber }}, Turn {{ report.turn }}</p>
+                      <p class="text-gray-900 dark:text-gray-100">{{ report.event?.trackName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ report.race?.raceNumber }}, Turn {{ report.turn }}</p>
                     </td>
-                    <td class="py-3 text-gray-500">
+                    <td class="py-3 text-gray-500 dark:text-gray-400">
                       {{ report.reportDate | dateFormat:'PP' }}
                     </td>
                     <td class="py-3">
@@ -187,7 +187,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                     <td class="py-3">
                       <a
                         [routerLink]="['/reports', report._id]"
-                        class="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                        class="text-primary-600 hover:text-primary-700 font-medium text-sm dark:text-primary-400 dark:hover:text-primary-300"
                       >
                         View
                       </a>
@@ -199,10 +199,10 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
           </div>
         } @else {
           <div class="text-center py-12">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <p class="text-gray-500 mb-4">No reports filed yet</p>
+            <p class="text-gray-500 mb-4 dark:text-gray-400">No reports filed yet</p>
             <a routerLink="/reports/new">
               <app-button variant="primary">File Your First Report</app-button>
             </a>

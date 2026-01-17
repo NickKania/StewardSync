@@ -8,12 +8,12 @@ import { CommonModule } from '@angular/common';
   template: `
     <div [class]="getCardClasses()">
       @if (title || subtitle) {
-        <div class="px-6 py-4 border-b border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           @if (title) {
-            <h3 class="text-lg font-semibold text-gray-900">{{ title }}</h3>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ title }}</h3>
           }
           @if (subtitle) {
-            <p class="mt-1 text-sm text-gray-500">{{ subtitle }}</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ subtitle }}</p>
           }
         </div>
       }
@@ -32,7 +32,7 @@ export class CardComponent {
   @Input() overflowHidden = true;
 
   getCardClasses(): string {
-    const base = 'bg-white rounded-xl shadow-sm border border-gray-200';
+    const base = 'bg-white rounded-xl shadow-sm border border-gray-200 dark:bg-gray-900 dark:border-gray-700';
     const overflowClass = this.overflowHidden ? 'overflow-hidden' : 'overflow-visible';
     const hoverClass = this.hover ? 'hover:shadow-md transition-shadow cursor-pointer' : '';
     return `${base} ${overflowClass} ${hoverClass}`;

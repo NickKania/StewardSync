@@ -16,10 +16,10 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/f
   template: `
     <div class="w-full">
       @if (label) {
-        <label class="block text-sm font-medium text-gray-700 mb-2">
+        <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">
           {{ label }}
           @if (required) {
-            <span class="text-red-500">*</span>
+            <span class="text-red-500 dark:text-red-400">*</span>
           }
         </label>
       }
@@ -34,17 +34,19 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/f
           />
           <div
             class="w-11 h-6 rounded-full transition-colors duration-200 ease-in-out"
-            [class.bg-gray-200]="!value"
-            [class.bg-primary-500]="value"
-            [class.opacity-50]="disabled"
+            [ngClass]="{
+              'bg-gray-200 dark:bg-gray-700': !value,
+              'bg-primary-500 dark:bg-primary-400': value,
+              'opacity-50': disabled
+            }"
           ></div>
           <div
-            class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out shadow"
+            class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out shadow dark:bg-gray-100"
             [class.translate-x-5]="value"
           ></div>
         </div>
         @if (hint) {
-          <span class="ml-3 text-sm text-gray-600">{{ hint }}</span>
+          <span class="ml-3 text-sm text-gray-600 dark:text-gray-300">{{ hint }}</span>
         }
       </label>
     </div>
