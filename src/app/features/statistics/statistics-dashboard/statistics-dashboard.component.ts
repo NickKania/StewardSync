@@ -31,6 +31,7 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
 interface EventRundownRow {
   reportId: string;
+  driverId: string;
   carNumber: number | null;
   driverName: string | null;
   driverClass: string | null;
@@ -218,8 +219,19 @@ interface DriverPointsRow {
                               <td class="px-4 py-3">
                                 {{ row.carNumber ?? "-" }}
                               </td>
-                              <td class="px-4 py-3 font-medium text-gray-900">
-                                {{ row.driverName ?? "-" }}
+                              <td class="px-4 py-3 font-medium">
+                                @if (row.driverId) {
+                                  <a
+                                    [routerLink]="['/drivers', row.driverId]"
+                                    class="text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    {{ row.driverName ?? "-" }}
+                                  </a>
+                                } @else {
+                                  <span class="text-gray-900">
+                                    {{ row.driverName ?? "-" }}
+                                  </span>
+                                }
                               </td>
                               <td class="px-4 py-3 text-gray-600">
                                 {{ row.driverClass ?? "-" }}
@@ -392,8 +404,13 @@ interface DriverPointsRow {
                           ) {
                             <tr class="hover:bg-gray-50">
                               <td class="px-4 py-3">{{ row.driverNumber }}</td>
-                              <td class="px-4 py-3 font-medium text-gray-900">
-                                {{ row.driverName }}
+                              <td class="px-4 py-3 font-medium">
+                                <a
+                                  [routerLink]="['/drivers', row.driverId]"
+                                  class="text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  {{ row.driverName }}
+                                </a>
                               </td>
                               <td class="px-4 py-3 text-gray-600">
                                 {{ row.driverClass }}
