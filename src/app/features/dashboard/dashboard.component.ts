@@ -9,6 +9,7 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { HasRoleDirective } from '@shared/directives/has-role.directive';
 import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
+import { DriverDashboardComponent } from './driver-dashboard/driver-dashboard.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -22,10 +23,14 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
     LoadingComponent,
     HasRoleDirective,
     DateFormatPipe,
-    TimeAgoPipe
+    TimeAgoPipe,
+    DriverDashboardComponent
   ],
   template: `
-    <div class="space-y-6">
+    @if (authService.userRole() === 'driver') {
+      <app-driver-dashboard />
+    } @else {
+      <div class="space-y-6">
        <!-- Welcome header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -202,14 +207,15 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             <svg class="w-12 h-12 text-gray-300 mx-auto mb-4 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            <p class="text-gray-500 mb-4 dark:text-gray-400">No reports filed yet</p>
+             <p class="text-gray-500 mb-4 dark:text-gray-400">No reports filed yet</p>
             <a routerLink="/reports/new">
               <app-button variant="primary">File Your First Report</app-button>
             </a>
           </div>
         }
       </app-card>
-    </div>
+      </div>
+    }
   `
 })
 export class DashboardComponent implements OnInit, OnDestroy {

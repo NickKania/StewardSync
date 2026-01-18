@@ -471,3 +471,93 @@ export const getStats = query({
     };
   },
 });
+
+export const getDriverFinalizedReports = query({
+  args: {
+    driverId: v.id("drivers"),
+    limit: v.optional(v.number()),
+    skip: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let reports = await ctx.db
+      .query("reports")
+      .withIndex("by_reporting_driver", (q) => q.eq("reportingDriverId", args.driverId))
+      .filter((q) => q.eq(q.field("status"), "finalized"))
+      .order("desc")
+      .collect();
+
+    const total = reports.length;
+
+    if (args.skip) {
+      reports = reports.slice(args.skip);
+    }
+    if (args.limit) {
+      reports = reports.slice(0, args.limit);
+    }
+
+    const populatedReports = await Promise.all(
+      reports.map(async (report) => {
+        const [reportingDriver, reportedDriver, event, race] = await Promise.all([
+          ctx.db.get(report.reportingDriverId),
+          ctx.db.get(report.reportedDriverId),
+          ctx.db.get(report.eventId),
+          ctx.db.get(report.raceId),
+        ]);
+
+        let appliedPenaltyObj = null;
+        if (report.appliedPenalty) {
+          appliedPenaltyObj = await ctx.db.get(report.appliedPenalty as any);
+        }
+
+        return { ...report, reportingDriver, reportedDriver, event, race, appliedPenalty: appliedPenaltyObj };
+      })
+    );
+
+    return { reports: populatedReports, total };
+  },
+});
+
+export const getDriverIndividualPenalties = query({
+  args: { driverId: v.id("drivers") },
+  handler: async (ctx, args) => {
+    const reports = await ctx.db
+      .query("reports")
+      .withIndex("by_reported_driver", (q) => q.eq("reportedDriverId", args.driverId))
+      .filter((q) => q.eq(q.field("status"), "finalized"))
+      .collect();
+
+    const penalties = await Promise.all(
+      reports.map(async (report) => {
+        const [event, race, appliedPenalty] = await Promise.all([
+          ctx.db.get(report.eventId),
+          ctx.db.get(report.raceId),
+          report.appliedPenalty ? await ctx.db.get(report.appliedPenalty as any) : null,
+        ]);
+
+        return {
+          reportId: report._id,
+          reportDate: report.reportDate,
+          finalizedAt: report.finalizedAt ?? report.reportDate,
+          event,
+          race,
+          turn: report.turn,
+          appliedPenalty,
+          finalDecision: report.finalDecision,
+        };
+      })
+    );
+
+    const penaltiesWithPenalty = penalties.filter(p => p.appliedPenalty !== null);
+
+    return penaltiesWithPenalty.sort((a, b) => {
+      const pointsA = (a.appliedPenalty as any)?.licensePoints ?? 0;
+      const pointsB = (b.appliedPenalty as any)?.licensePoints ?? 0;
+
+      if (pointsA !== pointsB) {
+        return pointsB - pointsA;
+      }
+
+      return b.finalizedAt - a.finalizedAt;
+    });
+  },
+});

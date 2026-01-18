@@ -35,6 +35,17 @@ export const getBySteamId = query({
   },
 });
 
+export const getByUsername = query({
+  args: { username: v.string() },
+  handler: async (ctx, args) => {
+    const drivers = await ctx.db
+      .query("drivers")
+      .collect();
+
+    return drivers.find(d => d.username === args.username);
+  },
+});
+
 export const getByChampionship = query({
   args: { championshipId: v.id("series") },
   handler: async (ctx, args) => {
