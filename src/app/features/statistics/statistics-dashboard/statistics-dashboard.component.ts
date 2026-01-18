@@ -131,7 +131,7 @@ interface DriverPointsRow {
                         <thead class="bg-gray-50">
                           <tr class="text-left">
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortEventRundown('carNumber')"
                             >
                               Car #
@@ -144,7 +144,7 @@ interface DriverPointsRow {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortEventRundown('driverName')"
                             >
                               Driver
@@ -157,7 +157,7 @@ interface DriverPointsRow {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortEventRundown('driverClass')"
                             >
                               Class
@@ -170,7 +170,7 @@ interface DriverPointsRow {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortEventRundown('incidentDescription')"
                             >
                               Incident Description
@@ -183,7 +183,7 @@ interface DriverPointsRow {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortEventRundown('penaltyName')"
                             >
                               Penalty
@@ -196,7 +196,7 @@ interface DriverPointsRow {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortEventRundown('timePenaltySeconds')"
                             >
                               Time Penalty
@@ -216,10 +216,10 @@ interface DriverPointsRow {
                             track row.reportId
                           ) {
                             <tr class="hover:bg-gray-50">
-                              <td class="px-4 py-3">
+                              <td class="px-4 py-3 align-middle leading-tight">
                                 {{ row.carNumber ?? "-" }}
                               </td>
-                              <td class="px-4 py-3 font-medium">
+                              <td class="px-4 py-3 font-medium align-middle leading-tight">
                                 @if (row.driverId) {
                                   <a
                                     [routerLink]="['/drivers', row.driverId]"
@@ -233,15 +233,15 @@ interface DriverPointsRow {
                                   </span>
                                 }
                               </td>
-                              <td class="px-4 py-3 text-gray-600">
+                              <td class="px-4 py-3 text-gray-600 align-middle leading-tight">
                                 {{ row.driverClass ?? "-" }}
                               </td>
                               <td
-                                class="px-4 py-3 text-gray-700 max-w-md truncate"
+                                class="px-4 py-3 text-gray-700 max-w-md truncate align-middle leading-tight"
                               >
                                 {{ row.incidentDescription }}
                               </td>
-                              <td class="px-4 py-3">
+                              <td class="px-4 py-3 align-middle leading-tight">
                                 @if (row.penaltyName) {
                                   <span class="text-gray-700">{{
                                     row.penaltyName
@@ -250,7 +250,7 @@ interface DriverPointsRow {
                                   <span class="text-gray-400">-</span>
                                 }
                               </td>
-                              <td class="px-4 py-3">
+                              <td class="px-4 py-3 align-middle leading-tight">
                                 @if (row.timePenaltySeconds > 0) {
                                   <app-badge
                                     [variant]="
@@ -341,7 +341,7 @@ interface DriverPointsRow {
                         <thead class="bg-gray-50">
                           <tr class="text-left">
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortSeriesPoints('driverNumber')"
                             >
                               Car #
@@ -354,7 +354,7 @@ interface DriverPointsRow {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortSeriesPoints('driverName')"
                             >
                               Driver
@@ -367,7 +367,7 @@ interface DriverPointsRow {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortSeriesPoints('driverClass')"
                             >
                               Class
@@ -380,7 +380,7 @@ interface DriverPointsRow {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                               (click)="sortSeriesPoints('totalLicensePoints')"
                             >
                               Total Points
@@ -392,7 +392,7 @@ interface DriverPointsRow {
                                 )
                               }}
                             </th>
-                            <th class="px-4 py-2 font-medium text-gray-500">
+                            <th class="px-4 py-3 font-medium text-gray-500 align-middle leading-tight">
                               Series Penalties
                             </th>
                           </tr>
@@ -403,8 +403,8 @@ interface DriverPointsRow {
                             track row.driverId
                           ) {
                             <tr class="hover:bg-gray-50">
-                              <td class="px-4 py-3">{{ row.driverNumber }}</td>
-                              <td class="px-4 py-3 font-medium">
+                              <td class="px-4 py-3 align-middle leading-tight">{{ row.driverNumber }}</td>
+                              <td class="px-4 py-3 font-medium align-middle leading-tight">
                                 <a
                                   [routerLink]="['/drivers', row.driverId]"
                                   class="text-blue-600 hover:text-blue-800 hover:underline"
@@ -412,10 +412,10 @@ interface DriverPointsRow {
                                   {{ row.driverName }}
                                 </a>
                               </td>
-                              <td class="px-4 py-3 text-gray-600">
+                              <td class="px-4 py-3 text-gray-600 align-middle leading-tight">
                                 {{ row.driverClass }}
                               </td>
-                              <td class="px-4 py-3">
+                              <td class="px-4 py-3 align-middle leading-tight">
                                 @if (row.totalLicensePoints > 0) {
                                   <app-badge>
                                     {{ row.totalLicensePoints }}
@@ -424,7 +424,7 @@ interface DriverPointsRow {
                                   <span class="text-gray-400">0</span>
                                 }
                               </td>
-                              <td class="px-4 py-3">
+                              <td class="px-4 py-3 align-middle leading-tight">
                                 @if (
                                   row.seriesPenalties &&
                                   row.seriesPenalties.length > 0
@@ -669,6 +669,8 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
         );
       });
     }
+
+    data = data.filter((row) => row.totalLicensePoints > 0);
 
     if (this.seriesSortColumn()) {
       data = [...data].sort((a, b) => {
@@ -996,11 +998,14 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   async exportEventRundownAsImage(): Promise<void> {
     if (!this.eventRundownTable) return;
 
+    const element = this.eventRundownTable.nativeElement;
+
     try {
-      const canvas = await html2canvas(this.eventRundownTable.nativeElement, {
+      const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: "#ffffff",
         logging: false,
+        useCORS: true,
       });
 
       const link = document.createElement("a");
@@ -1015,11 +1020,14 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   async exportSeriesPointsAsImage(): Promise<void> {
     if (!this.seriesPointsTable) return;
 
+    const element = this.seriesPointsTable.nativeElement;
+
     try {
-      const canvas = await html2canvas(this.seriesPointsTable.nativeElement, {
+      const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: "#ffffff",
         logging: false,
+        useCORS: true,
       });
 
       const link = document.createElement("a");

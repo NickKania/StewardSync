@@ -9,7 +9,7 @@ export type BadgeSize = 'sm' | 'md';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <span [class]="getBadgeClasses()">
+    <span [class]="getBadgeClasses()" class="align-middle">
       <ng-content></ng-content>
     </span>
   `
@@ -19,7 +19,7 @@ export class BadgeComponent {
   @Input() size: BadgeSize = 'md';
 
   getBadgeClasses(): string {
-    const base = 'inline-flex items-center font-medium rounded-full';
+    const base = 'inline-block font-medium rounded-full align-middle leading-tight';
 
     const variants: Record<BadgeVariant, string> = {
       default: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
