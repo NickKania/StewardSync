@@ -28,6 +28,7 @@ export const getEventRundown = query({
 
         return {
           reportId: report._id,
+          driverId: report.reportedDriverId,
           carNumber: reportedDriver?.driverNumber ?? null,
           driverName: reportedDriver?.driverName ?? null,
           driverClass: reportedDriver?.driverClass ?? null,

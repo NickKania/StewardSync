@@ -7,6 +7,7 @@ import {
   computed,
   ElementRef,
   ViewChild,
+  untracked,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
@@ -22,6 +23,11 @@ import {
 } from "@shared/components/select/select.component";
 import { TabsComponent, Tab } from "@shared/components/tabs/tabs.component";
 import html2canvas from "html2canvas";
+import { RouterModule } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
+import { effect, DestroyRef } from "@angular/core";
+import { debounceTime, Subject } from "rxjs";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
 interface EventRundownRow {
   reportId: string;
@@ -50,6 +56,7 @@ interface DriverPointsRow {
   imports: [
     CommonModule,
     FormsModule,
+    RouterModule,
     CardComponent,
     BadgeComponent,
     LoadingComponent,
@@ -460,6 +467,8 @@ interface DriverPointsRow {
 export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   events = signal<any[]>([]);
   series = signal<any[]>([]);
@@ -470,6 +479,83 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   selectedEventId = "";
   selectedSeriesId = "";
+  eventsLoaded = signal(false);
+  seriesLoaded = signal(false);
+  private eventFilterSubject = new Subject<string>();
+  private seriesFilterSubject = new Subject<string>();
+  private queryParamsApplied = signal(false);
+  private destroyRef = inject(DestroyRef);
+
+  private loadingEffect = effect(
+    () => {
+      const eventsReady = this.eventsLoaded();
+      const seriesReady = this.seriesLoaded();
+      if (eventsReady && seriesReady) {
+        this.loading.set(false);
+      }
+    },
+    { allowSignalWrites: true },
+  );
+
+  private queryParamsEffect = effect(
+    () => {
+      if (
+        this.eventsLoaded() &&
+        this.seriesLoaded() &&
+        !this.queryParamsApplied()
+      ) {
+        this.route.queryParams.subscribe((params) => {
+          this.applyQueryParamsFromUrl(params);
+          this.queryParamsApplied.set(true);
+        });
+      }
+    },
+    { allowSignalWrites: true },
+  );
+
+  private eventFilterEffect = effect(
+    () => {
+      const filterText = this.eventFilterText();
+      this.eventFilterSubject.next(filterText);
+    },
+    { allowSignalWrites: true },
+  );
+
+  private seriesFilterEffect = effect(
+    () => {
+      const filterText = this.seriesFilterText();
+      this.seriesFilterSubject.next(filterText);
+    },
+    { allowSignalWrites: true },
+  );
+
+  private eventSortEffect = effect(
+    () => {
+      const column = this.eventSortColumn();
+      const direction = this.eventSortDirection();
+      if (this.activeTab() === "event_rundown" && column) {
+        this.updateQueryParams({
+          sortColumn: column,
+          sortDirection: direction,
+        });
+      }
+    },
+    { allowSignalWrites: true },
+  );
+
+  private seriesSortEffect = effect(
+    () => {
+      const column = this.seriesSortColumn();
+      const direction = this.seriesSortDirection();
+      if (this.activeTab() === "series_overview" && column) {
+        this.updateQueryParams({
+          sortColumn: column,
+          sortDirection: direction,
+        });
+      }
+    },
+    { allowSignalWrites: true },
+  );
 
   eventFilterText = signal("");
   eventSortColumn = signal<keyof EventRundownRow | "">("");
@@ -607,7 +693,35 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   selectTab(tabId: string): void {
     if (tabId === "event_rundown" || tabId === "series_overview") {
-      this.activeTab.set(tabId as "event_rundown" | "series_overview");
+      untracked(() => {
+        this.activeTab.set(tabId as "event_rundown" | "series_overview");
+
+        if (tabId === "event_rundown") {
+          this.eventFilterText.set(this.seriesFilterText());
+        } else {
+          this.seriesFilterText.set(this.eventFilterText());
+        }
+
+        this.updateQueryParams({
+          tab: tabId,
+          event:
+            tabId === "series_overview"
+              ? undefined
+              : this.selectedEventId || undefined,
+          series:
+            tabId === "event_rundown"
+              ? undefined
+              : this.selectedSeriesId || undefined,
+          sortColumn:
+            tabId === "event_rundown"
+              ? this.eventSortColumn() || undefined
+              : this.seriesSortColumn() || undefined,
+          sortDirection:
+            tabId === "event_rundown"
+              ? this.eventSortDirection() || undefined
+              : this.seriesSortDirection() || undefined,
+        });
+      });
     }
   }
 
@@ -643,7 +757,133 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   private unsubscribes: (() => void)[] = [];
 
+  private updateQueryParams(params: Record<string, string | undefined>): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: params,
+      queryParamsHandling: "merge",
+    });
+  }
+
+  private setupFilterDebounce(): void {
+    this.eventFilterSubject
+      .pipe(debounceTime(1000), takeUntilDestroyed(this.destroyRef))
+      .subscribe((filterText) => {
+        if (this.activeTab() === "event_rundown") {
+          this.updateQueryParams({ filter: filterText || undefined });
+        }
+      });
+
+    this.seriesFilterSubject
+      .pipe(debounceTime(1000), takeUntilDestroyed(this.destroyRef))
+      .subscribe((filterText) => {
+        if (this.activeTab() === "series_overview") {
+          this.updateQueryParams({ filter: filterText || undefined });
+        }
+      });
+  }
+
+  private applyQueryParamsFromUrl(
+    params: Record<string, string | undefined>,
+  ): void {
+    let needsUpdate = false;
+    const paramsToUpdate: Record<string, string | undefined> = {};
+
+    if (
+      params["tab"] === "event_rundown" ||
+      params["tab"] === "series_overview"
+    ) {
+      this.activeTab.set(params["tab"] as "event_rundown" | "series_overview");
+    }
+
+    if (params["event"]) {
+      const eventExists = this.events().some((e) => e._id === params["event"]);
+      if (eventExists) {
+        this.selectedEventId = params["event"];
+        if (params["tab"] === "event_rundown") {
+          this.loadEventRundown();
+        }
+      } else {
+        paramsToUpdate["event"] = undefined;
+        needsUpdate = true;
+      }
+    }
+
+    if (params["series"]) {
+      const seriesExists = this.series().some(
+        (s) => s._id === params["series"],
+      );
+      if (seriesExists) {
+        this.selectedSeriesId = params["series"];
+        if (params["tab"] === "series_overview") {
+          this.loadSeriesPoints();
+        }
+      } else {
+        paramsToUpdate["series"] = undefined;
+        needsUpdate = true;
+      }
+    }
+
+    if (params["filter"]) {
+      this.eventFilterText.set(params["filter"]);
+      this.seriesFilterText.set(params["filter"]);
+    }
+
+    if (params["sortColumn"] && params["sortDirection"]) {
+      const validEventColumns = [
+        "carNumber",
+        "driverName",
+        "driverClass",
+        "incidentDescription",
+        "penaltyName",
+        "timePenaltySeconds",
+      ];
+      const validDirections = ["asc", "desc"];
+
+      if (
+        validEventColumns.includes(params["sortColumn"]) &&
+        validDirections.includes(params["sortDirection"])
+      ) {
+        this.eventSortColumn.set(params["sortColumn"] as keyof EventRundownRow);
+        this.eventSortDirection.set(params["sortDirection"] as "asc" | "desc");
+      } else {
+        paramsToUpdate["sortColumn"] = undefined;
+        paramsToUpdate["sortDirection"] = undefined;
+        needsUpdate = true;
+      }
+    }
+
+    if (params["sortColumn"] && params["sortDirection"]) {
+      const validSeriesColumns = [
+        "driverNumber",
+        "driverName",
+        "driverClass",
+        "totalLicensePoints",
+      ];
+      const validDirections = ["asc", "desc"];
+
+      if (
+        validSeriesColumns.includes(params["sortColumn"]) &&
+        validDirections.includes(params["sortDirection"])
+      ) {
+        this.seriesSortColumn.set(
+          params["sortColumn"] as keyof DriverPointsRow,
+        );
+        this.seriesSortDirection.set(params["sortDirection"] as "asc" | "desc");
+      } else if (!paramsToUpdate["sortColumn"]) {
+        paramsToUpdate["sortColumn"] = undefined;
+        paramsToUpdate["sortDirection"] = undefined;
+        needsUpdate = true;
+      }
+    }
+
+    if (needsUpdate) {
+      this.updateQueryParams(paramsToUpdate);
+    }
+  }
+
   ngOnInit(): void {
+    this.setupFilterDebounce();
     this.loadData();
   }
 
@@ -664,6 +904,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       const data = eventsQuery.data();
       if (data) {
         this.events.set(data);
+        this.eventsLoaded.set(true);
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkEvents));
@@ -678,15 +919,21 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       const data = seriesQuery.data();
       if (data) {
         this.series.set(data);
-        this.loading.set(false);
+        this.seriesLoaded.set(true);
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkSeries));
+
+    // Failsafe: stop loading after 10 seconds regardless of state
+    setTimeout(() => {
+      this.loading.set(false);
+    }, 10000);
   }
 
   async loadEventRundown(): Promise<void> {
     if (!this.selectedEventId) {
       this.eventRundown.set([]);
+      this.updateQueryParams({ event: undefined });
       return;
     }
 
@@ -696,6 +943,10 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
         { eventId: this.selectedEventId as any },
       );
       this.eventRundown.set(data || []);
+      this.updateQueryParams({
+        event: this.selectedEventId,
+        series: undefined,
+      });
     } catch (error: any) {
       console.error("Failed to load event rundown:", error);
       this.eventRundown.set([]);
@@ -705,6 +956,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   async loadSeriesPoints(): Promise<void> {
     if (!this.selectedSeriesId) {
       this.seriesPoints.set([]);
+      this.updateQueryParams({ series: undefined });
       return;
     }
 
@@ -714,6 +966,10 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
         { seriesId: this.selectedSeriesId as any },
       );
       this.seriesPoints.set(data || []);
+      this.updateQueryParams({
+        series: this.selectedSeriesId,
+        event: undefined,
+      });
     } catch (error: any) {
       console.error("Failed to load series points:", error);
       this.seriesPoints.set([]);
