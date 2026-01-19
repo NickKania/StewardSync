@@ -7,6 +7,8 @@ import {
   computed,
   ElementRef,
   ViewChild,
+  ViewChildren,
+  QueryList,
   untracked,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
@@ -35,10 +37,21 @@ interface EventRundownRow {
   carNumber: number | null;
   driverName: string | null;
   driverClass: string | null;
+  lap: number | null;
+  turn: number | null;
   incidentDescription: string;
   penaltyName: string | null;
   timePenaltySeconds: number;
+  licensePoints: number | null;
   isSelfReport: boolean;
+  isFinalized: boolean;
+}
+
+interface RaceRundown {
+  raceId: string;
+  raceNumber: number;
+  raceName: string;
+  reports: EventRundownRow[];
 }
 
 interface DriverPointsRow {
@@ -125,156 +138,227 @@ interface DriverPointsRow {
                       Export as Image
                     </app-button>
                   </div>
-                  @if (filteredAndSortedEventRundown().length > 0) {
-                    <div #eventRundownTable class="overflow-x-auto">
-                      <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
-                          <tr class="text-left">
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortEventRundown('carNumber')"
-                            >
-                              Car #
-                              {{
-                                getSortIcon(
-                                  "carNumber",
-                                  eventSortColumn(),
-                                  eventSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortEventRundown('driverName')"
-                            >
-                              Driver
-                              {{
-                                getSortIcon(
-                                  "driverName",
-                                  eventSortColumn(),
-                                  eventSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortEventRundown('driverClass')"
-                            >
-                              Class
-                              {{
-                                getSortIcon(
-                                  "driverClass",
-                                  eventSortColumn(),
-                                  eventSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortEventRundown('incidentDescription')"
-                            >
-                              Incident Description
-                              {{
-                                getSortIcon(
-                                  "incidentDescription",
-                                  eventSortColumn(),
-                                  eventSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortEventRundown('penaltyName')"
-                            >
-                              Penalty
-                              {{
-                                getSortIcon(
-                                  "penaltyName",
-                                  eventSortColumn(),
-                                  eventSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortEventRundown('timePenaltySeconds')"
-                            >
-                              Time Penalty
-                              {{
-                                getSortIcon(
-                                  "timePenaltySeconds",
-                                  eventSortColumn(),
-                                  eventSortDirection()
-                                )
-                              }}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                          @for (
-                            row of filteredAndSortedEventRundown();
-                            track row.reportId
-                          ) {
-                            <tr class="hover:bg-gray-50">
-                              <td class="px-4 py-3 align-middle leading-tight">
-                                {{ row.carNumber ?? "-" }}
-                              </td>
-                              <td class="px-4 py-3 font-medium align-middle leading-tight">
-                                @if (row.driverId) {
-                                  <a
-                                    [routerLink]="['/drivers', row.driverId]"
-                                    class="text-blue-600 hover:text-blue-800 hover:underline"
-                                  >
-                                    {{ row.driverName ?? "-" }}
-                                  </a>
-                                } @else {
-                                  <span class="text-gray-900">
-                                    {{ row.driverName ?? "-" }}
-                                  </span>
-                                }
-                              </td>
-                              <td class="px-4 py-3 text-gray-600 align-middle leading-tight">
-                                {{ row.driverClass ?? "-" }}
-                              </td>
-                              <td
-                                class="px-4 py-3 text-gray-700 max-w-md truncate align-middle leading-tight"
-                              >
-                                {{ row.incidentDescription }}
-                              </td>
-                              <td class="px-4 py-3 align-middle leading-tight">
-                                @if (row.penaltyName) {
-                                  <span class="text-gray-700">{{
-                                    row.penaltyName
-                                  }}</span>
-                                } @else {
-                                  <span class="text-gray-400">-</span>
-                                }
-                              </td>
-                              <td class="px-4 py-3 align-middle leading-tight">
-                                @if (row.timePenaltySeconds > 0) {
-                                  <app-badge
-                                    [variant]="
-                                      row.isSelfReport ? 'success' : 'default'
-                                    "
-                                  >
-                                    {{ row.timePenaltySeconds }}s
-                                    @if (row.isSelfReport) {
-                                      (SR)
+                  @for (race of filteredAndSortedRaces(); track race.raceId) {
+                    <div class="space-y-4">
+                      <div class="flex items-center gap-2 pt-4">
+                        <h3 class="text-lg font-semibold text-gray-900">
+                          {{ race.raceName }}
+                        </h3>
+                      </div>
+                      @if (getRaceReports(race.raceId).length > 0) {
+                        <div #eventRundownTable class="overflow-x-auto">
+                          <table class="w-full text-sm">
+                            <thead class="bg-gray-50">
+                              <tr class="text-left">
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'carNumber')"
+                                >
+                                  Car #
+                                  {{
+                                    getSortIcon(
+                                      "carNumber",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'driverName')"
+                                >
+                                  Driver
+                                  {{
+                                    getSortIcon(
+                                      "driverName",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'driverClass')"
+                                >
+                                  Class
+                                  {{
+                                    getSortIcon(
+                                      "driverClass",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'lap')"
+                                >
+                                  Lap
+                                  {{
+                                    getSortIcon(
+                                      "lap",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'turn')"
+                                >
+                                  Turn
+                                  {{
+                                    getSortIcon(
+                                      "turn",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'incidentDescription')"
+                                >
+                                  Incident Description
+                                  {{
+                                    getSortIcon(
+                                      "incidentDescription",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'penaltyName')"
+                                >
+                                  Penalty
+                                  {{
+                                    getSortIcon(
+                                      "penaltyName",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'timePenaltySeconds')"
+                                >
+                                  Time Penalty
+                                  {{
+                                    getSortIcon(
+                                      "timePenaltySeconds",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                  (click)="sortEventRundown(race.raceNumber, 'licensePoints')"
+                                >
+                                  License Points
+                                  {{
+                                    getSortIcon(
+                                      "licensePoints",
+                                      getRaceSortColumn(race.raceNumber),
+                                      getRaceSortDirection(race.raceNumber)
+                                    )
+                                  }}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                              @for (
+                                row of getRaceReports(race.raceId);
+                                track row.reportId
+                              ) {
+                                <tr class="hover:bg-gray-50">
+                                  <td class="px-4 py-3 align-middle leading-tight">
+                                    {{ row.carNumber ?? "-" }}
+                                  </td>
+                                  <td class="px-4 py-3 font-medium align-middle leading-tight">
+                                    @if (row.driverId) {
+                                      <a
+                                        [routerLink]="['/drivers', row.driverId]"
+                                        class="text-blue-600 hover:text-blue-800 hover:underline"
+                                      >
+                                        {{ row.driverName ?? "-" }}
+                                      </a>
+                                    } @else {
+                                      <span class="text-gray-900">
+                                        {{ row.driverName ?? "-" }}
+                                      </span>
                                     }
-                                  </app-badge>
-                                } @else {
-                                  <span class="text-gray-400">-</span>
-                                }
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
+                                  </td>
+                                  <td class="px-4 py-3 text-gray-600 align-middle leading-tight">
+                                    {{ row.driverClass ?? "-" }}
+                                  </td>
+                                  <td class="px-4 py-3 align-middle leading-tight">
+                                    {{ row.lap ?? "-" }}
+                                  </td>
+                                  <td class="px-4 py-3 align-middle leading-tight">
+                                    {{ row.turn ?? "-" }}
+                                  </td>
+                                  <td
+                                    class="px-4 py-3 text-gray-700 max-w-md truncate align-middle leading-tight"
+                                  >
+                                    {{ row.incidentDescription }}
+                                  </td>
+                                  <td class="px-4 py-3 align-middle leading-tight">
+                                    @if (row.penaltyName) {
+                                      <span class="text-gray-700">
+                                        {{ row.penaltyName }}{{ !row.isFinalized ? '*' : '' }}
+                                      </span>
+                                    } @else {
+                                      <span class="text-gray-400">-</span>
+                                    }
+                                  </td>
+                                  <td class="px-4 py-3 align-middle leading-tight">
+                                    @if (row.timePenaltySeconds > 0) {
+                                      <app-badge
+                                        [variant]="
+                                          row.isSelfReport ? 'success' : 'default'
+                                        "
+                                      >
+                                        {{ row.timePenaltySeconds }}s
+                                        @if (row.isSelfReport) {
+                                          (SR)
+                                        }
+                                      </app-badge>
+                                    } @else {
+                                      <span class="text-gray-400">-</span>
+                                    }
+                                  </td>
+                                  <td class="px-4 py-3 align-middle leading-tight">
+                                    @if (row.licensePoints && row.licensePoints > 0) {
+                                      <app-badge variant="danger">
+                                        {{ row.licensePoints }}
+                                      </app-badge>
+                                    } @else {
+                                      <span class="text-gray-400">-</span>
+                                    }
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      } @else {
+                        <p class="text-gray-500 text-center py-4">
+                          No reviewed reports
+                        </p>
+                      }
                     </div>
-                  } @else {
-                    <p class="text-gray-500 text-center py-4">
-                      No results match your filter
-                    </p>
+                  }
+                  @if (filteredAndSortedRaces().length > 0) {
+                    <div class="mt-6 pt-4 border-t border-gray-200">
+                      <p class="text-sm text-gray-600">
+                        <span class="font-semibold">*</span> Indicates an
+                        incident that has been reviewed but not yet finalized.
+                      </p>
+                    </div>
                   }
                 } @else if (selectedEventId) {
                   <p class="text-gray-500 text-center py-4">
@@ -489,7 +573,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   events = signal<any[]>([]);
   series = signal<any[]>([]);
-  eventRundown = signal<EventRundownRow[]>([]);
+  eventRundown = signal<RaceRundown[]>([]);
   seriesPoints = signal<DriverPointsRow[]>([]);
   loading = signal(true);
   activeTab = signal<"event_rundown" | "series_overview">("event_rundown");
@@ -546,20 +630,6 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     { allowSignalWrites: true },
   );
 
-  private eventSortEffect = effect(
-    () => {
-      const column = this.eventSortColumn();
-      const direction = this.eventSortDirection();
-      if (this.activeTab() === "event_rundown" && column) {
-        this.updateQueryParams({
-          sortColumn: column,
-          sortDirection: direction,
-        });
-      }
-    },
-    { allowSignalWrites: true },
-  );
-
   private seriesSortEffect = effect(
     () => {
       const column = this.seriesSortColumn();
@@ -575,8 +645,8 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   );
 
   eventFilterText = signal("");
-  eventSortColumn = signal<keyof EventRundownRow | "">("");
-  eventSortDirection = signal<"asc" | "desc">("asc");
+  eventSortColumn = signal<Record<number, keyof EventRundownRow>>({});
+  eventSortDirection = signal<Record<number, "asc" | "desc">>({});
 
   seriesFilterText = signal("");
   seriesSortColumn = signal<keyof DriverPointsRow | "">("");
@@ -602,52 +672,41 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     ];
   });
 
-  filteredAndSortedEventRundown = computed(() => {
-    let data = this.eventRundown();
+  filteredAndSortedRaces = computed(() => {
+    let races = this.eventRundown();
 
     if (this.eventFilterText()) {
       const filter = this.eventFilterText().toLowerCase();
-      data = data.filter((row) => {
-        const carNumber = row.carNumber?.toString() ?? "";
-        const driverName = row.driverName?.toLowerCase() ?? "";
-        const driverClass = row.driverClass?.toLowerCase() ?? "";
-        const incident = row.incidentDescription?.toLowerCase() ?? "";
-        const penalty = row.penaltyName?.toLowerCase() ?? "";
-        const timePenalty = row.timePenaltySeconds?.toString() ?? "";
 
-        return (
-          carNumber.includes(filter) ||
-          driverName.includes(filter) ||
-          driverClass.includes(filter) ||
-          incident.includes(filter) ||
-          penalty.includes(filter) ||
-          timePenalty.includes(filter)
-        );
-      });
+      races = races.map((race) => ({
+        ...race,
+        reports: race.reports.filter((row) => {
+          const carNumber = row.carNumber?.toString() ?? "";
+          const driverName = row.driverName?.toLowerCase() ?? "";
+          const driverClass = row.driverClass?.toLowerCase() ?? "";
+          const lap = row.lap?.toString() ?? "";
+          const turn = row.turn?.toString() ?? "";
+          const incident = row.incidentDescription?.toLowerCase() ?? "";
+          const penalty = row.penaltyName?.toLowerCase() ?? "";
+          const timePenalty = row.timePenaltySeconds?.toString() ?? "";
+          const licensePoints = row.licensePoints?.toString() ?? "";
+
+          return (
+            carNumber.includes(filter) ||
+            driverName.includes(filter) ||
+            driverClass.includes(filter) ||
+            lap.includes(filter) ||
+            turn.includes(filter) ||
+            incident.includes(filter) ||
+            penalty.includes(filter) ||
+            timePenalty.includes(filter) ||
+            licensePoints.includes(filter)
+          );
+        }),
+      }));
     }
 
-    if (this.eventSortColumn()) {
-      data = [...data].sort((a, b) => {
-        const aVal = a[this.eventSortColumn() as keyof EventRundownRow] ?? "";
-        const bVal = b[this.eventSortColumn() as keyof EventRundownRow] ?? "";
-
-        if (typeof aVal === "string" && typeof bVal === "string") {
-          return this.eventSortDirection() === "asc"
-            ? aVal.localeCompare(bVal)
-            : bVal.localeCompare(aVal);
-        }
-
-        if (typeof aVal === "number" && typeof bVal === "number") {
-          return this.eventSortDirection() === "asc"
-            ? aVal - bVal
-            : bVal - aVal;
-        }
-
-        return 0;
-      });
-    }
-
-    return data;
+    return races;
   });
 
   filteredAndSortedSeriesPoints = computed(() => {
@@ -710,6 +769,42 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     return tabs;
   });
 
+  getRaceReports(raceId: string): EventRundownRow[] {
+    const race = this.filteredAndSortedRaces().find((r) => r.raceId === raceId);
+    if (!race) return [];
+
+    const raceNumber = race.raceNumber;
+    const column = this.getRaceSortColumn(raceNumber);
+    const direction = this.getRaceSortDirection(raceNumber);
+
+    if (!column) return race.reports;
+
+    return [...race.reports].sort((a, b) => {
+      const aVal = a[column] ?? "";
+      const bVal = b[column] ?? "";
+
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return direction === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return direction === "asc" ? aVal - bVal : bVal - aVal;
+      }
+
+      return 0;
+    });
+  }
+
+  getRaceSortColumn(raceNumber: number): keyof EventRundownRow | "" {
+    return this.eventSortColumn()[raceNumber] ?? "";
+  }
+
+  getRaceSortDirection(raceNumber: number): "asc" | "desc" {
+    return this.eventSortDirection()[raceNumber] ?? "asc";
+  }
+
   selectTab(tabId: string): void {
     if (tabId === "event_rundown" || tabId === "series_overview") {
       untracked(() => {
@@ -732,27 +827,38 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
               ? undefined
               : this.selectedSeriesId || undefined,
           sortColumn:
-            tabId === "event_rundown"
-              ? this.eventSortColumn() || undefined
-              : this.seriesSortColumn() || undefined,
+            tabId === "series_overview"
+              ? this.seriesSortColumn() || undefined
+              : undefined,
           sortDirection:
-            tabId === "event_rundown"
-              ? this.eventSortDirection() || undefined
-              : this.seriesSortDirection() || undefined,
+            tabId === "series_overview"
+              ? this.seriesSortDirection() || undefined
+              : undefined,
         });
       });
     }
   }
 
-  sortEventRundown(column: keyof EventRundownRow): void {
-    if (this.eventSortColumn() === column) {
-      this.eventSortDirection.set(
-        this.eventSortDirection() === "asc" ? "desc" : "asc",
-      );
-    } else {
-      this.eventSortColumn.set(column);
-      this.eventSortDirection.set("asc");
-    }
+  sortEventRundown(raceNumber: number, column: keyof EventRundownRow): void {
+    const currentSortColumn = this.eventSortColumn();
+    const currentSortDirection = this.eventSortDirection();
+
+    const newDirection =
+      currentSortColumn[raceNumber] === column
+        ? currentSortDirection[raceNumber] === "asc"
+          ? "desc"
+          : "asc"
+        : "asc";
+
+    this.eventSortColumn.update((state) => ({
+      ...state,
+      [raceNumber]: column,
+    }));
+
+    this.eventSortDirection.update((state) => ({
+      ...state,
+      [raceNumber]: newDirection,
+    }));
   }
 
   sortSeriesPoints(column: keyof DriverPointsRow): void {
@@ -771,7 +877,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     return direction === "asc" ? "↑" : "↓";
   }
 
-  @ViewChild("eventRundownTable") eventRundownTable!: ElementRef;
+  @ViewChildren("eventRundownTable") eventRundownTables!: QueryList<ElementRef>;
   @ViewChild("seriesPointsTable") seriesPointsTable!: ElementRef;
 
   private unsubscribes: (() => void)[] = [];
@@ -849,30 +955,6 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     }
 
     if (params["sortColumn"] && params["sortDirection"]) {
-      const validEventColumns = [
-        "carNumber",
-        "driverName",
-        "driverClass",
-        "incidentDescription",
-        "penaltyName",
-        "timePenaltySeconds",
-      ];
-      const validDirections = ["asc", "desc"];
-
-      if (
-        validEventColumns.includes(params["sortColumn"]) &&
-        validDirections.includes(params["sortDirection"])
-      ) {
-        this.eventSortColumn.set(params["sortColumn"] as keyof EventRundownRow);
-        this.eventSortDirection.set(params["sortDirection"] as "asc" | "desc");
-      } else {
-        paramsToUpdate["sortColumn"] = undefined;
-        paramsToUpdate["sortDirection"] = undefined;
-        needsUpdate = true;
-      }
-    }
-
-    if (params["sortColumn"] && params["sortDirection"]) {
       const validSeriesColumns = [
         "driverNumber",
         "driverName",
@@ -889,7 +971,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
           params["sortColumn"] as keyof DriverPointsRow,
         );
         this.seriesSortDirection.set(params["sortDirection"] as "asc" | "desc");
-      } else if (!paramsToUpdate["sortColumn"]) {
+      } else {
         paramsToUpdate["sortColumn"] = undefined;
         paramsToUpdate["sortDirection"] = undefined;
         needsUpdate = true;
@@ -996,24 +1078,41 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   }
 
   async exportEventRundownAsImage(): Promise<void> {
-    if (!this.eventRundownTable) return;
+    if (
+      !this.eventRundownTables ||
+      this.eventRundownTables.length === 0
+    )
+      return;
 
-    const element = this.eventRundownTable.nativeElement;
+    const tables = this.eventRundownTables.toArray();
+    const races = this.filteredAndSortedRaces();
 
-    try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        logging: false,
-        useCORS: true,
-      });
+    for (let i = 0; i < tables.length; i++) {
+      const element = tables[i].nativeElement;
+      const race = races[i];
 
-      const link = document.createElement("a");
-      link.download = `event-rundown-${new Date().toISOString().split("T")[0]}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    } catch (error) {
-      console.error("Failed to export event rundown as image:", error);
+      try {
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          backgroundColor: "#ffffff",
+          logging: false,
+          useCORS: true,
+        });
+
+        const link = document.createElement("a");
+        link.download = `race-${race.raceNumber}-${new Date().toISOString().split("T")[0]}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+
+        if (i < tables.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      } catch (error) {
+        console.error(
+          `Failed to export race ${race.raceNumber} as image:`,
+          error
+        );
+      }
     }
   }
 

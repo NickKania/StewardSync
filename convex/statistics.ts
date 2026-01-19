@@ -1,43 +1,133 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
+interface EventRundownRow {
+  reportId: string;
+  driverId: string;
+  carNumber: number | null;
+  driverName: string | null;
+  driverClass: string | null;
+  lap: number | null;
+  turn: number | null;
+  incidentDescription: string;
+  penaltyName: string | null;
+  timePenaltySeconds: number;
+  licensePoints: number | null;
+  isSelfReport: boolean;
+  isFinalized: boolean;
+}
+
 export const getEventRundown = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    const reports = await ctx.db
-      .query("reports")
+    const races = await ctx.db
+      .query("races")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
 
-    const finalizedReports = reports.filter((r) => r.status === "finalized");
+    races.sort((a, b) => a.raceNumber - b.raceNumber);
 
     const rundown = await Promise.all(
-      finalizedReports.map(async (report) => {
-        const reportedDriver = await ctx.db.get(report.reportedDriverId);
-        let appliedPenalty: any = null;
+      races.map(async (race) => {
+        const reports = await ctx.db
+          .query("reports")
+          .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+          .collect();
 
-        if (report.appliedPenalty) {
-          appliedPenalty = await ctx.db.get(report.appliedPenalty as any);
-        }
+        const raceReports = reports.filter((r) => r.raceId === race._id);
 
-        const baseTimePenalty = appliedPenalty?.timePenalty ?? 0;
-        const selfReportReduction = appliedPenalty?.selfReportReduction ?? 0;
-        const timePenaltySeconds = appliedPenalty && report.isSelfReport
-          ? Math.max(0, baseTimePenalty - selfReportReduction)
-          : baseTimePenalty;
+        const eventRundownRows = await Promise.all(
+          raceReports.map(async (report) => {
+            if (report.status !== "finalized" && report.status !== "reviewed") {
+              return null;
+            }
+
+            let review: any = null;
+            if (report.status === "reviewed") {
+              const reviews = await ctx.db
+                .query("reviews")
+                .withIndex("by_report", (q) => q.eq("reportId", report._id))
+                .collect();
+
+              if (reviews.length > 0) {
+                review = reviews[0];
+              }
+
+              if (!review?.recommendedPenalty) {
+                return null;
+              }
+            }
+
+            const reportedDriver = await ctx.db.get(report.reportedDriverId);
+            let appliedPenalty: any = null;
+            let recommendedPenaltyObj: any = null;
+
+            if (report.status === "finalized" && report.appliedPenalty) {
+              appliedPenalty = await ctx.db.get(report.appliedPenalty as any);
+            }
+
+            if (report.status === "reviewed" && review?.recommendedPenalty) {
+              recommendedPenaltyObj = await ctx.db.get(
+                review.recommendedPenalty as any,
+              );
+            }
+
+            let penaltyName: string | null = null;
+            let timePenaltySeconds = 0;
+            let licensePoints: number | null = null;
+
+            if (report.status === "finalized") {
+              penaltyName = appliedPenalty?.name ?? null;
+              const baseTimePenalty = appliedPenalty?.timePenalty ?? 0;
+              const selfReportReduction =
+                appliedPenalty?.selfReportReduction ?? 0;
+              timePenaltySeconds =
+                appliedPenalty && report.isSelfReport
+                  ? Math.max(0, baseTimePenalty - selfReportReduction)
+                  : baseTimePenalty;
+              licensePoints = appliedPenalty?.licensePoints ?? null;
+            } else {
+              penaltyName = recommendedPenaltyObj?.name ?? null;
+              const baseTimePenalty = recommendedPenaltyObj?.timePenalty ?? 0;
+              const selfReportReduction =
+                recommendedPenaltyObj?.selfReportReduction ?? 0;
+              timePenaltySeconds =
+                recommendedPenaltyObj && report.isSelfReport
+                  ? Math.max(0, baseTimePenalty - selfReportReduction)
+                  : baseTimePenalty;
+              licensePoints = recommendedPenaltyObj?.licensePoints ?? null;
+            }
+
+            return {
+              reportId: report._id,
+              driverId: report.reportedDriverId,
+              carNumber: reportedDriver?.driverNumber ?? null,
+              driverName: reportedDriver?.driverName ?? null,
+              driverClass: reportedDriver?.driverClass ?? null,
+              lap: report.lap ?? null,
+              turn: report.turn ?? null,
+              incidentDescription:
+                report.status === "finalized"
+                  ? (report.finalDecision ?? "")
+                  : (review?.incidentDescription ?? ""),
+              penaltyName,
+              timePenaltySeconds,
+              licensePoints,
+              isSelfReport: report.isSelfReport ?? false,
+              isFinalized: report.status === "finalized",
+            };
+          }),
+        );
+
+        const validRows = eventRundownRows.filter((row) => row !== null);
 
         return {
-          reportId: report._id,
-          driverId: report.reportedDriverId,
-          carNumber: reportedDriver?.driverNumber ?? null,
-          driverName: reportedDriver?.driverName ?? null,
-          driverClass: reportedDriver?.driverClass ?? null,
-          incidentDescription: report.finalDecision ?? "",
-          penaltyName: appliedPenalty?.name ?? null,
-          timePenaltySeconds,
-          isSelfReport: report.isSelfReport ?? false,
+          raceId: race._id,
+          raceNumber: race.raceNumber,
+          raceName: `Race ${race.raceNumber}`,
+          reports: validRows as EventRundownRow[],
         };
-      })
+      }),
     );
 
     return rundown;
@@ -49,7 +139,9 @@ export const getSeriesLicensePoints = query({
   handler: async (ctx, args) => {
     const drivers = await ctx.db
       .query("drivers")
-      .withIndex("by_championship", (q) => q.eq("championshipId", args.seriesId))
+      .withIndex("by_championship", (q) =>
+        q.eq("championshipId", args.seriesId),
+      )
       .collect();
 
     const events = await ctx.db
@@ -102,7 +194,9 @@ export const getSeriesLicensePointsWithPenalties = query({
   handler: async (ctx, args) => {
     const drivers = await ctx.db
       .query("drivers")
-      .withIndex("by_championship", (q) => q.eq("championshipId", args.seriesId))
+      .withIndex("by_championship", (q) =>
+        q.eq("championshipId", args.seriesId),
+      )
       .collect();
 
     const events = await ctx.db
@@ -146,14 +240,16 @@ export const getSeriesLicensePointsWithPenalties = query({
       allSeriesPenalties.map(async (sp) => {
         const thresholds = await ctx.db
           .query("seriesPenaltyThresholds")
-          .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", sp._id))
+          .withIndex("by_series_penalty", (q) =>
+            q.eq("seriesPenaltyId", sp._id),
+          )
           .collect();
-        
+
         return {
           ...sp,
           thresholds,
         };
-      })
+      }),
     );
 
     const driverPointsWithPenalties = await Promise.all(
@@ -164,34 +260,44 @@ export const getSeriesLicensePointsWithPenalties = query({
         const allDriverSeriesPenalties = await ctx.db
           .query("driverSeriesPenalties")
           .withIndex("by_driver_and_series", (q) =>
-            q.eq("driverId", driver._id).eq("seriesId", args.seriesId)
+            q.eq("driverId", driver._id).eq("seriesId", args.seriesId),
           )
           .collect();
 
         const driverSeriesPenaltiesWithDetails = await Promise.all(
           allDriverSeriesPenalties.map(async (dsp) => {
             const seriesPenalty = await ctx.db.get(dsp.seriesPenaltyId);
-            const servedByUser = dsp.servedBy ? await ctx.db.get(dsp.servedBy) : null;
+            const seriesPenaltyThreshold = await ctx.db.get(
+              dsp.seriesPenaltyThresholdId,
+            );
+            const servedByUser = dsp.servedBy
+              ? await ctx.db.get(dsp.servedBy)
+              : null;
 
             return {
               ...dsp,
               seriesPenalty,
+              seriesPenaltyThreshold,
               servedByUser,
             };
-          })
+          }),
         );
 
         const eligibleSeriesPenalties: any[] = [];
-        
+
         for (const sp of seriesPenaltiesWithThresholds) {
           for (const threshold of sp.thresholds) {
-            const appliesToDriver = threshold.driverClasses.includes(driver.driverClass);
-            
+            const appliesToDriver = threshold.driverClasses.includes(
+              driver.driverClass,
+            );
+
             if (appliesToDriver && totalPoints >= threshold.threshold) {
               const alreadyAssigned = allDriverSeriesPenalties.some(
-                (dsp) => dsp.seriesPenaltyId === sp._id && dsp.seriesPenaltyThresholdId === threshold._id
+                (dsp) =>
+                  dsp.seriesPenaltyId === sp._id &&
+                  dsp.seriesPenaltyThresholdId === threshold._id,
               );
-              
+
               if (!alreadyAssigned) {
                 eligibleSeriesPenalties.push({
                   seriesPenaltyId: sp._id,
@@ -216,10 +322,12 @@ export const getSeriesLicensePointsWithPenalties = query({
           seriesPenalties: driverSeriesPenaltiesWithDetails,
           eligibleSeriesPenalties,
         };
-      })
+      }),
     );
 
-    driverPointsWithPenalties.sort((a, b) => b.totalLicensePoints - a.totalLicensePoints);
+    driverPointsWithPenalties.sort(
+      (a, b) => b.totalLicensePoints - a.totalLicensePoints,
+    );
 
     return driverPointsWithPenalties;
   },
