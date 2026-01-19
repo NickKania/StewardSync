@@ -114,8 +114,15 @@ import { Penalty } from "@core/models/series.model";
                   <!-- Recommended penalty -->
                   <div>
                     <label class="label">Recommended Penalty</label>
-                    <select formControlName="recommendedPenalty" class="input">
-                        <option value="">No penalty recommended</option>
+                    <select
+                      formControlName="recommendedPenalty"
+                      class="input"
+                      [class.input-error]="
+                        form.get('recommendedPenalty')?.invalid &&
+                        form.get('recommendedPenalty')?.touched
+                      "
+                    >
+                        <option value="">Select penalty</option>
                         @for (
                           penalty of availablePenalties();
                           track penalty._id
@@ -125,6 +132,14 @@ import { Penalty } from "@core/models/series.model";
                           </option>
                         }
                     </select>
+                    @if (
+                      form.get('recommendedPenalty')?.invalid &&
+                      form.get('recommendedPenalty')?.touched
+                    ) {
+                      <p class="mt-1 text-sm text-red-600">
+                        Recommended penalty is required
+                      </p>
+                    }
                     @if (availablePenalties().length === 0) {
                       <p class="text-xs text-yellow-600 mt-1">
                         No penalties configured for this series
@@ -376,7 +391,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     this.form = this.fb.group({
       incidentDescription: ["", Validators.required],
       reviewNotes: ["", [Validators.required, Validators.minLength(10)]],
-      recommendedPenalty: [""],
+      recommendedPenalty: ["", Validators.required],
       videoTimestamp: [""],
       secondStewardId: [""],
       isSelfReport: [false],

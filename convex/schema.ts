@@ -97,7 +97,8 @@ export default defineSchema({
 
   reports: defineTable({
     reportDate: v.number(),
-    reportingDriverId: v.id("drivers"),
+    reportingDriverId: v.optional(v.id("drivers")),
+    reportingUserId: v.optional(v.id("users")),
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
     raceId: v.id("races"),
@@ -123,6 +124,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_event", ["eventId"])
     .index("by_reporting_driver", ["reportingDriverId"])
+    .index("by_reporting_user", ["reportingUserId"])
     .index("by_reported_driver", ["reportedDriverId"])
     .index("by_date", ["reportDate"]),
 

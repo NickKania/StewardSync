@@ -125,7 +125,7 @@ export const create = mutation({
     reportId: v.id("reports"),
     incidentDescription: v.string(),
     reviewNotes: v.string(),
-    recommendedPenalty: v.optional(v.string()),
+    recommendedPenalty: v.string(),
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
     isSelfReport: v.optional(v.boolean()),

@@ -52,6 +52,10 @@ export const routes: Routes = [
         loadComponent: () => import('@features/reviews/review-dashboard/review-dashboard.component').then(m => m.ReviewDashboardComponent)
       },
       {
+        path: 'steward-incident',
+        loadComponent: () => import('@features/reviews/steward-incident-form/steward-incident-form.component').then(m => m.StewardIncidentFormComponent)
+      },
+      {
         path: ':reportId',
         loadComponent: () => import('@features/reviews/review-form/review-form.component').then(m => m.ReviewFormComponent)
       }

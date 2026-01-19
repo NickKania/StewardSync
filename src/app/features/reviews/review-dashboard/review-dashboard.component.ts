@@ -24,10 +24,19 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
   ],
   template: `
     <div class="space-y-6">
-      <!-- Header -->
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">Review Queue</h1>
-        <p class="text-gray-500 mt-1">Reports pending your review</p>
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Review Queue</h1>
+          <p class="text-gray-500 mt-1">Reports pending your review</p>
+        </div>
+        <a routerLink="/reviews/steward-incident">
+          <app-button variant="primary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Create Incident
+          </app-button>
+        </a>
       </div>
 
       <!-- Stats -->

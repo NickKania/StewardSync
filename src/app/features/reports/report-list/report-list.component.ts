@@ -94,8 +94,15 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                       <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.reportedDriver?.driverNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900 dark:text-gray-100">{{ report.reportingDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.reportingDriver?.driverNumber }}</p>
+                      @if (report.reportingUser) {
+                        <p class="text-gray-900 dark:text-gray-100">{{ report.reportingUser?.name }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                          <app-badge variant="info" size="sm">Steward</app-badge>
+                        </p>
+                      } @else {
+                        <p class="text-gray-900 dark:text-gray-100">{{ report.reportingDriver?.driverName }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.reportingDriver?.driverNumber }}</p>
+                      }
                     </td>
                     <td class="px-6 py-4">
                       <p class="text-gray-900 dark:text-gray-100">{{ report.event?.trackName }}</p>
