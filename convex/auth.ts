@@ -96,7 +96,9 @@ export const getDevUsers = query({
     const users = await ctx.db.query("users").collect();
 
     // Filter for demo/dev users (those with discordId starting with "demo-")
-    const devUsers = users.filter((user) => user.discordId?.startsWith("demo-"));
+    const devUsers = users.filter((user) =>
+      user.email?.endsWith("demo.stewardsync.com"),
+    );
 
     // Get roles for each user
     const usersWithRoles = await Promise.all(
@@ -106,7 +108,7 @@ export const getDevUsers = query({
           ...user,
           role,
         };
-      })
+      }),
     );
 
     return usersWithRoles;

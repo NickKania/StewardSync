@@ -118,6 +118,7 @@ export default defineSchema({
     finalizedBy: v.optional(v.id("users")),
     finalizedAt: v.optional(v.number()),
     isSelfReport: v.optional(v.boolean()),
+    isStewardReported: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

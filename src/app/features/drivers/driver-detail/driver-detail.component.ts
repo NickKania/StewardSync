@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal, Input, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, Input, computed, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,6 +10,28 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { SelectComponent, SelectOption } from '@shared/components/select/select.component';
 import { DriverSeriesPenaltyDetails } from '@core/models';
+import { debounceTime, Subject } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DestroyRef } from '@angular/core';
+import { effect } from '@angular/core';
+
+interface SeriesPenaltyRow {
+  _id: string;
+  penaltyName: string | null;
+  penaltyDescription: string | null;
+  threshold: number | null;
+  pointsAtAssignment: number;
+  assignedAt: number;
+  isServed: boolean;
+  servedAt?: number;
+  servedByUserName: string | null;
+}
+
+interface SeriesPenaltyGroup {
+  seriesId: string;
+  seriesName: string;
+  penalties: SeriesPenaltyRow[];
+}
 
 @Component({
   selector: 'app-driver-detail',
@@ -126,53 +148,139 @@ import { DriverSeriesPenaltyDetails } from '@core/models';
 
             @if (penaltiesLoading()) {
               <app-loading text="Loading penalties..." />
-            } @else if (penalties().length > 0) {
-              <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                  <thead class="bg-gray-50">
-                    <tr class="text-left">
-                      <th class="px-4 py-2 font-medium text-gray-500">Penalty</th>
-                      <th class="px-4 py-2 font-medium text-gray-500">Threshold</th>
-                      <th class="px-4 py-2 font-medium text-gray-500">Points at Assignment</th>
-                      <th class="px-4 py-2 font-medium text-gray-500">Assigned Date</th>
-                      <th class="px-4 py-2 font-medium text-gray-500">Status</th>
-                      <th class="px-4 py-2 font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-100">
-                    @for (penalty of penalties(); track penalty._id) {
-                      <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3 font-medium text-gray-900">{{ penalty.penaltyName }}</td>
-                        <td class="px-4 py-3 text-gray-600">{{ penalty.threshold }} pts</td>
-                        <td class="px-4 py-3 text-gray-600">{{ penalty.pointsAtAssignment }} pts</td>
-                        <td class="px-4 py-3 text-gray-600">{{ formatDate(penalty.assignedAt) }}</td>
-                        <td class="px-4 py-3">
-                          @if (penalty.isServed) {
-                            <app-badge variant="success">Served</app-badge>
-                          } @else {
-                            <app-badge variant="danger">Active</app-badge>
-                          }
-                        </td>
-                        <td class="px-4 py-3">
-                          @if (!penalty.isServed && canMarkAsServed()) {
-                            <app-button
-                              variant="primary"
-                              size="sm"
-                              (onClick)="markAsServed(penalty._id)"
-                            >
-                              Mark as Served
-                            </app-button>
-                          } @else if (penalty.isServed && penalty.servedByUserName) {
-                            <span class="text-sm text-gray-500">
-                              By {{ penalty.servedByUserName }} on {{ formatDate(penalty.servedAt!) }}
-                            </span>
-                          }
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+            } @else if (filteredAndSortedSeriesPenalties().length > 0) {
+              <div class="flex items-center gap-4 mb-4">
+                <div class="flex-1 max-w-md">
+                  <input
+                    type="text"
+                    class="input w-full"
+                    placeholder="Filter by any field..."
+                    [(ngModel)]="seriesFilterText"
+                  />
+                </div>
               </div>
+              @for (seriesGroup of filteredAndSortedSeriesPenalties(); track seriesGroup.seriesId) {
+                <div class="space-y-4">
+                  <div class="flex items-center gap-2 pt-4">
+                    <h3 class="text-lg font-semibold text-gray-900">
+                      {{ seriesGroup.seriesName }}
+                    </h3>
+                  </div>
+                  @if (getSeriesPenalties(seriesGroup.seriesId).length > 0) {
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                          <tr class="text-left">
+                            <th
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              (click)="sortSeriesPenalties(seriesGroup.seriesId, 'penaltyName')"
+                            >
+                              Penalty
+                              {{
+                                getSortIcon(
+                                  'penaltyName',
+                                  getSeriesSortColumn(seriesGroup.seriesId),
+                                  getSeriesSortDirection(seriesGroup.seriesId)
+                                )
+                              }}
+                            </th>
+                            <th
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              (click)="sortSeriesPenalties(seriesGroup.seriesId, 'threshold')"
+                            >
+                              Threshold
+                              {{
+                                getSortIcon(
+                                  'threshold',
+                                  getSeriesSortColumn(seriesGroup.seriesId),
+                                  getSeriesSortDirection(seriesGroup.seriesId)
+                                )
+                              }}
+                            </th>
+                            <th
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              (click)="sortSeriesPenalties(seriesGroup.seriesId, 'pointsAtAssignment')"
+                            >
+                              Points at Assignment
+                              {{
+                                getSortIcon(
+                                  'pointsAtAssignment',
+                                  getSeriesSortColumn(seriesGroup.seriesId),
+                                  getSeriesSortDirection(seriesGroup.seriesId)
+                                )
+                              }}
+                            </th>
+                            <th
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              (click)="sortSeriesPenalties(seriesGroup.seriesId, 'assignedAt')"
+                            >
+                              Assigned Date
+                              {{
+                                getSortIcon(
+                                  'assignedAt',
+                                  getSeriesSortColumn(seriesGroup.seriesId),
+                                  getSeriesSortDirection(seriesGroup.seriesId)
+                                )
+                              }}
+                            </th>
+                            <th
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              (click)="sortSeriesPenalties(seriesGroup.seriesId, 'isServed')"
+                            >
+                              Status
+                              {{
+                                getSortIcon(
+                                  'isServed',
+                                  getSeriesSortColumn(seriesGroup.seriesId),
+                                  getSeriesSortDirection(seriesGroup.seriesId)
+                                )
+                              }}
+                            </th>
+                            <th class="px-4 py-2 font-medium text-gray-500 align-middle leading-tight">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                          @for (
+                            penalty of getSeriesPenalties(seriesGroup.seriesId);
+                            track penalty._id
+                          ) {
+                            <tr class="hover:bg-gray-50">
+                              <td class="px-4 py-3 font-medium text-gray-900">{{ penalty.penaltyName ?? '-' }}</td>
+                              <td class="px-4 py-3 text-gray-600">{{ penalty.threshold ?? '-' }} pts</td>
+                              <td class="px-4 py-3 text-gray-600">{{ penalty.pointsAtAssignment }} pts</td>
+                              <td class="px-4 py-3 text-gray-600">{{ formatDate(penalty.assignedAt) }}</td>
+                              <td class="px-4 py-3">
+                                @if (penalty.isServed) {
+                                  <app-badge variant="success">Served</app-badge>
+                                } @else {
+                                  <app-badge variant="danger">Active</app-badge>
+                                }
+                              </td>
+                              <td class="px-4 py-3">
+                                @if (!penalty.isServed && canMarkAsServed()) {
+                                  <app-button
+                                    variant="primary"
+                                    size="sm"
+                                    (onClick)="markAsServed(penalty._id)"
+                                  >
+                                    Mark as Served
+                                  </app-button>
+                                } @else if (penalty.isServed && penalty.servedByUserName) {
+                                  <span class="text-sm text-gray-500">
+                                    By {{ penalty.servedByUserName }} on {{ formatDate(penalty.servedAt!) }}
+                                  </span>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <p class="text-gray-500 text-center py-4">No penalties for this series</p>
+                  }
+                </div>
+              }
             } @else if (selectedSeriesId || seriesOptions().length === 1) {
               <p class="text-gray-500 text-center py-4">No series penalties assigned to this driver</p>
             } @else {
@@ -198,6 +306,7 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
 
   private convex = inject(ConvexService);
   authService = inject(AuthService);
+  private destroyRef = inject(DestroyRef);
 
   driver = signal<any>(null);
   stats = signal<any>(null);
@@ -209,9 +318,90 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
 
   series = signal<any[]>([]);
 
+  seriesFilterText = signal('');
+  seriesSortColumn = signal<Record<string, keyof SeriesPenaltyRow>>({});
+  seriesSortDirection = signal<Record<string, 'asc' | 'desc'>>({});
+  private seriesFilterSubject = new Subject<string>();
+
   private unsubscribes: (() => void)[] = [];
 
+  private seriesFilterEffect = effect(
+    () => {
+      const filterText = this.seriesFilterText();
+      this.seriesFilterSubject.next(filterText);
+    },
+    { allowSignalWrites: true },
+  );
+
+  groupedPenalties = computed((): SeriesPenaltyGroup[] => {
+    const penalties = this.penalties();
+    const grouped: Record<string, SeriesPenaltyGroup> = {};
+
+    for (const penalty of penalties) {
+      const seriesId = penalty.seriesId as string;
+      const seriesName = penalty.seriesName ?? 'Unknown Series';
+
+      if (!grouped[seriesId]) {
+        grouped[seriesId] = {
+          seriesId,
+          seriesName,
+          penalties: [],
+        };
+      }
+
+      grouped[seriesId].penalties.push({
+        _id: penalty._id as string,
+        penaltyName: penalty.penaltyName,
+        penaltyDescription: penalty.penaltyDescription,
+        threshold: penalty.threshold,
+        pointsAtAssignment: penalty.pointsAtAssignment,
+        assignedAt: penalty.assignedAt,
+        isServed: penalty.isServed,
+        servedAt: penalty.servedAt,
+        servedByUserName: penalty.servedByUserName,
+      });
+    }
+
+    return Object.values(grouped);
+  });
+
+  filteredAndSortedSeriesPenalties = computed(() => {
+    let groups = this.groupedPenalties();
+
+    if (this.selectedSeriesId) {
+      groups = groups.filter(g => g.seriesId === this.selectedSeriesId);
+    }
+
+    if (this.seriesFilterText()) {
+      const filter = this.seriesFilterText().toLowerCase();
+
+      groups = groups.map(group => ({
+        ...group,
+        penalties: group.penalties.filter(penalty => {
+          const penaltyName = penalty.penaltyName?.toLowerCase() ?? '';
+          const penaltyDescription = penalty.penaltyDescription?.toLowerCase() ?? '';
+          const threshold = penalty.threshold?.toString() ?? '';
+          const points = penalty.pointsAtAssignment?.toString() ?? '';
+          const assignedDate = new Date(penalty.assignedAt).toLocaleDateString().toLowerCase();
+          const status = penalty.isServed ? 'served' : 'active';
+
+          return (
+            penaltyName.includes(filter) ||
+            penaltyDescription.includes(filter) ||
+            threshold.includes(filter) ||
+            points.includes(filter) ||
+            assignedDate.includes(filter) ||
+            status.includes(filter)
+          );
+        }),
+      }));
+    }
+
+    return groups;
+  });
+
   ngOnInit(): void {
+    this.setupFilterDebounce();
     this.loadDriver();
   }
 
@@ -324,4 +514,79 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
       }))
     ];
   });
+
+  private setupFilterDebounce(): void {
+    this.seriesFilterSubject
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+      });
+  }
+
+  getSeriesPenalties(seriesId: string): SeriesPenaltyRow[] {
+    const group = this.filteredAndSortedSeriesPenalties().find(g => g.seriesId === seriesId);
+    if (!group) return [];
+
+    const column = this.getSeriesSortColumn(seriesId);
+    const direction = this.getSeriesSortDirection(seriesId);
+
+    if (!column) return group.penalties;
+
+    return [...group.penalties].sort((a, b) => {
+      const aVal = a[column] ?? '';
+      const bVal = b[column] ?? '';
+
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return direction === 'asc'
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return direction === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+
+      if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+        return direction === 'asc' ? (aVal ? 1 : 0) - (bVal ? 1 : 0) : (bVal ? 1 : 0) - (aVal ? 1 : 0);
+      }
+
+      return 0;
+    });
+  }
+
+  getSeriesSortColumn(seriesId: string): keyof SeriesPenaltyRow | '' {
+    return this.seriesSortColumn()[seriesId] ?? '';
+  }
+
+  getSeriesSortDirection(seriesId: string): 'asc' | 'desc' {
+    return this.seriesSortDirection()[seriesId] ?? 'asc';
+  }
+
+  sortSeriesPenalties(seriesId: string, column: keyof SeriesPenaltyRow): void {
+    const currentSortColumn = this.seriesSortColumn();
+    const currentSortDirection = this.seriesSortDirection();
+
+    const newDirection =
+      currentSortColumn[seriesId] === column
+        ? currentSortDirection[seriesId] === 'asc'
+          ? 'desc'
+          : 'asc'
+        : 'asc';
+
+    untracked(() => {
+      this.seriesSortColumn.update((state) => ({
+        ...state,
+        [seriesId]: column,
+      }));
+
+      this.seriesSortDirection.update((state) => ({
+        ...state,
+        [seriesId]: newDirection,
+      }));
+    });
+  }
+
+  getSortIcon(column: string, activeColumn: string, direction: string): string {
+    if (column !== activeColumn) return '→';
+    return direction === 'asc' ? '↑' : '↓';
+  }
 }

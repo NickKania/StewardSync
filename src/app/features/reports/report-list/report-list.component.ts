@@ -1,17 +1,21 @@
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
-import { ConvexService } from '@core/services/convex.service';
-import { CardComponent } from '@shared/components/card/card.component';
-import { ButtonComponent } from '@shared/components/button/button.component';
-import { BadgeComponent } from '@shared/components/badge/badge.component';
-import { SelectComponent, SelectOption } from '@shared/components/select/select.component';
-import { LoadingComponent } from '@shared/components/loading/loading.component';
-import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
+import { Component, inject, OnInit, OnDestroy, signal } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { RouterLink } from "@angular/router";
+import { FormsModule } from "@angular/forms";
+import { ConvexService } from "@core/services/convex.service";
+import { AuthService } from "@core/services/auth.service";
+import { CardComponent } from "@shared/components/card/card.component";
+import { ButtonComponent } from "@shared/components/button/button.component";
+import { BadgeComponent } from "@shared/components/badge/badge.component";
+import {
+  SelectComponent,
+  SelectOption,
+} from "@shared/components/select/select.component";
+import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 
 @Component({
-  selector: 'app-report-list',
+  selector: "app-report-list",
   standalone: true,
   imports: [
     CommonModule,
@@ -22,20 +26,36 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
     BadgeComponent,
     SelectComponent,
     LoadingComponent,
-    DateFormatPipe
+    DateFormatPipe,
   ],
   template: `
     <div class="space-y-6">
-       <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <!-- Header -->
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      >
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Reports</h1>
-          <p class="text-gray-500 mt-1 dark:text-gray-400">View and manage incident reports</p>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Reports
+          </h1>
+          <p class="text-gray-500 mt-1 dark:text-gray-400">
+            View and manage incident reports
+          </p>
         </div>
         <a routerLink="/reports/new">
           <app-button variant="primary">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            <svg
+              class="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              ></path>
             </svg>
             New Report
           </app-button>
@@ -66,7 +86,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
         </div>
       </app-card>
 
-       <!-- Reports table -->
+      <!-- Reports table -->
       <app-card [noPadding]="true">
         @if (loading()) {
           <div class="py-12">
@@ -90,27 +110,45 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                 @for (report of filteredReports(); track report._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ report.reportedDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.reportedDriver?.driverNumber }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">
+                        {{ report.reportedDriver?.driverName }}
+                      </p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        #{{ report.reportedDriver?.driverNumber }}
+                      </p>
                     </td>
                     <td class="px-6 py-4">
-                      @if (report.reportingUser) {
-                        <p class="text-gray-900 dark:text-gray-100">{{ report.reportingUser?.name }}</p>
+                      @if (report.isStewardReported) {
+                        <p class="text-gray-900 dark:text-gray-100">
+                          {{ report.reportingUser?.name }}
+                        </p>
                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                          <app-badge variant="info" size="sm">Steward</app-badge>
+                          <app-badge variant="info" size="sm"
+                            >Steward</app-badge
+                          >
                         </p>
                       } @else {
-                        <p class="text-gray-900 dark:text-gray-100">{{ report.reportingDriver?.driverName }}</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.reportingDriver?.driverNumber }}</p>
+                        <p class="text-gray-900 dark:text-gray-100">
+                          {{ report.reportingDriver?.driverName }}
+                        </p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                          #{{ report.reportingDriver?.driverNumber }}
+                        </p>
                       }
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900 dark:text-gray-100">{{ report.event?.trackName }}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ report.race?.raceNumber }}</p>
+                      <p class="text-gray-900 dark:text-gray-100">
+                        {{ report.event?.trackName }}
+                      </p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Race {{ report.race?.raceNumber }}
+                      </p>
                     </td>
-                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100">{{ report.turn }}</td>
+                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100">
+                      {{ report.turn }}
+                    </td>
                     <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
-                      {{ report.reportDate | dateFormat:'PP' }}
+                      {{ report.reportDate | dateFormat: "PP" }}
                     </td>
                     <td class="px-6 py-4">
                       <app-badge [variant]="getStatusVariant(report.status)">
@@ -132,10 +170,22 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
           </div>
         } @else {
           <div class="text-center py-12">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            <svg
+              class="w-12 h-12 text-gray-300 mx-auto mb-4 dark:text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              ></path>
             </svg>
-            <p class="text-gray-500 mb-4 dark:text-gray-400">No reports found</p>
+            <p class="text-gray-500 mb-4 dark:text-gray-400">
+              No reports found
+            </p>
             <a routerLink="/reports/new">
               <app-button variant="primary">File a Report</app-button>
             </a>
@@ -143,28 +193,29 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
         }
       </app-card>
     </div>
-  `
+  `,
 })
 export class ReportListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
+  private authService = inject(AuthService);
 
   reports = signal<any[]>([]);
   filteredReports = signal<any[]>([]);
   events = signal<any[]>([]);
   loading = signal(true);
 
-  selectedStatus = '';
-  selectedEvent = '';
+  selectedStatus = "";
+  selectedEvent = "";
 
   statusOptions: SelectOption[] = [
-    { value: '', label: 'All statuses' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'reviewed', label: 'Reviewed' },
-    { value: 'finalized', label: 'Finalized' },
-    { value: 'rejected', label: 'Rejected' }
+    { value: "", label: "All statuses" },
+    { value: "pending", label: "Pending" },
+    { value: "reviewed", label: "Reviewed" },
+    { value: "finalized", label: "Finalized" },
+    { value: "rejected", label: "Rejected" },
   ];
 
-  eventOptions = signal<SelectOption[]>([{ value: '', label: 'All events' }]);
+  eventOptions = signal<SelectOption[]>([{ value: "", label: "All events" }]);
 
   private unsubscribes: (() => void)[] = [];
 
@@ -173,14 +224,14 @@ export class ReportListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.unsubscribes.forEach(unsub => unsub());
+    this.unsubscribes.forEach((unsub) => unsub());
   }
 
   private loadData(): void {
     // Load reports
     const reportsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.list,
-      {}
+      {},
     );
     this.unsubscribes.push(reportsQuery.unsubscribe);
 
@@ -197,7 +248,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
     // Load events for filter
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
-      {}
+      {},
     );
     this.unsubscribes.push(eventsQuery.unsubscribe);
 
@@ -206,11 +257,11 @@ export class ReportListComponent implements OnInit, OnDestroy {
       if (data) {
         this.events.set(data);
         this.eventOptions.set([
-          { value: '', label: 'All events' },
+          { value: "", label: "All events" },
           ...data.map((e: any) => ({
             value: e._id,
-            label: `${e.trackName} (${e.series.name})`
-          }))
+            label: `${e.trackName} (${e.series.name})`,
+          })),
         ]);
       }
     }, 100);
@@ -220,24 +271,38 @@ export class ReportListComponent implements OnInit, OnDestroy {
   filterReports(): void {
     let filtered = [...this.reports()];
 
+    // Filter by role: drivers can only see reports they filed
+    const userRole = this.authService.userRole();
+    if (userRole === "driver") {
+      const currentUserId = this.authService.getUserId();
+      // For drivers, filter to show only reports where they are the reporting user
+      // This handles both driver-filed reports and steward-filed reports on their behalf
+      filtered = filtered.filter((r) => r.reportingUserId === currentUserId);
+    }
+
     if (this.selectedStatus) {
-      filtered = filtered.filter(r => r.status === this.selectedStatus);
+      filtered = filtered.filter((r) => r.status === this.selectedStatus);
     }
 
     if (this.selectedEvent) {
-      filtered = filtered.filter(r => r.eventId === this.selectedEvent);
+      filtered = filtered.filter((r) => r.eventId === this.selectedEvent);
     }
 
     this.filteredReports.set(filtered);
   }
 
-  getStatusVariant(status: string): 'warning' | 'info' | 'success' | 'danger' {
+  getStatusVariant(status: string): "warning" | "info" | "success" | "danger" {
     switch (status) {
-      case 'pending': return 'warning';
-      case 'reviewed': return 'info';
-      case 'finalized': return 'success';
-      case 'rejected': return 'danger';
-      default: return 'info';
+      case "pending":
+        return "warning";
+      case "reviewed":
+        return "info";
+      case "finalized":
+        return "success";
+      case "rejected":
+        return "danger";
+      default:
+        return "info";
     }
   }
 }

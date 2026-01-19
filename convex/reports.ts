@@ -8,8 +8,8 @@ export const list = query({
         v.literal("pending"),
         v.literal("reviewed"),
         v.literal("finalized"),
-        v.literal("rejected")
-      )
+        v.literal("rejected"),
+      ),
     ),
     eventId: v.optional(v.id("events")),
     limit: v.optional(v.number()),
@@ -31,9 +31,15 @@ export const list = query({
 
     const populatedReports = await Promise.all(
       reports.map(async (report) => {
-        const reportingDriver = report.reportingDriverId ? await ctx.db.get(report.reportingDriverId) : null;
-        const reportingUser = report.reportingUserId ? await ctx.db.get(report.reportingUserId) : null;
-        const reportedDriver = report.reportedDriverId ? await ctx.db.get(report.reportedDriverId) : null;
+        const reportingDriver = report.reportingDriverId
+          ? await ctx.db.get(report.reportingDriverId)
+          : null;
+        const reportingUser = report.reportingUserId
+          ? await ctx.db.get(report.reportingUserId)
+          : null;
+        const reportedDriver = report.reportedDriverId
+          ? await ctx.db.get(report.reportedDriverId)
+          : null;
         const event = report.eventId ? await ctx.db.get(report.eventId) : null;
         const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
@@ -45,7 +51,7 @@ export const list = query({
           event,
           race,
         };
-      })
+      }),
     );
 
     return populatedReports;
@@ -58,9 +64,15 @@ export const getById = query({
     const report = await ctx.db.get(args.reportId);
     if (!report) return null;
 
-    const reportingDriver = report.reportingDriverId ? await ctx.db.get(report.reportingDriverId) : null;
-    const reportingUser = report.reportingUserId ? await ctx.db.get(report.reportingUserId) : null;
-    const reportedDriver = report.reportedDriverId ? await ctx.db.get(report.reportedDriverId) : null;
+    const reportingDriver = report.reportingDriverId
+      ? await ctx.db.get(report.reportingDriverId)
+      : null;
+    const reportingUser = report.reportingUserId
+      ? await ctx.db.get(report.reportingUserId)
+      : null;
+    const reportedDriver = report.reportedDriverId
+      ? await ctx.db.get(report.reportedDriverId)
+      : null;
     const event = report.eventId ? await ctx.db.get(report.eventId) : null;
     const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
@@ -84,22 +96,36 @@ export const getById = query({
       reviews.map(async (review) => {
         const [user, secondSteward, linkedReview] = await Promise.all([
           ctx.db.get(review.userId),
-          (review as any).secondStewardId ? ctx.db.get((review as any).secondStewardId) : null,
+          (review as any).secondStewardId
+            ? ctx.db.get((review as any).secondStewardId)
+            : null,
           review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
         ]);
 
-        const linkedReviewWithReviewer = linkedReview ? {
-          ...linkedReview,
-          reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
-        } : null;
+        const linkedReviewWithReviewer = linkedReview
+          ? {
+              ...linkedReview,
+              reviewer: linkedReview.userId
+                ? await ctx.db.get(linkedReview.userId)
+                : null,
+            }
+          : null;
 
         let recommendedPenaltyObj = null;
         if (review.recommendedPenalty) {
-          recommendedPenaltyObj = await ctx.db.get(review.recommendedPenalty as any);
+          recommendedPenaltyObj = await ctx.db.get(
+            review.recommendedPenalty as any,
+          );
         }
 
-        return { ...review, reviewer: user, recommendedPenaltyObj, secondSteward, linkedReview: linkedReviewWithReviewer };
-      })
+        return {
+          ...review,
+          reviewer: user,
+          recommendedPenaltyObj,
+          secondSteward,
+          linkedReview: linkedReviewWithReviewer,
+        };
+      }),
     );
 
     return {
@@ -126,9 +152,15 @@ export const getPendingForReview = query({
 
     const populatedReports = await Promise.all(
       reports.map(async (report) => {
-        const reportingDriver = report.reportingDriverId ? await ctx.db.get(report.reportingDriverId) : null;
-        const reportingUser = report.reportingUserId ? await ctx.db.get(report.reportingUserId) : null;
-        const reportedDriver = report.reportedDriverId ? await ctx.db.get(report.reportedDriverId) : null;
+        const reportingDriver = report.reportingDriverId
+          ? await ctx.db.get(report.reportingDriverId)
+          : null;
+        const reportingUser = report.reportingUserId
+          ? await ctx.db.get(report.reportingUserId)
+          : null;
+        const reportedDriver = report.reportedDriverId
+          ? await ctx.db.get(report.reportedDriverId)
+          : null;
         const event = report.eventId ? await ctx.db.get(report.eventId) : null;
         const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
@@ -148,7 +180,7 @@ export const getPendingForReview = query({
           race,
           reviewCount,
         };
-      })
+      }),
     );
 
     return populatedReports;
@@ -167,9 +199,15 @@ export const getReadyForFinalization = query({
 
     const populatedReports = await Promise.all(
       reports.map(async (report) => {
-        const reportingDriver = report.reportingDriverId ? await ctx.db.get(report.reportingDriverId) : null;
-        const reportingUser = report.reportingUserId ? await ctx.db.get(report.reportingUserId) : null;
-        const reportedDriver = report.reportedDriverId ? await ctx.db.get(report.reportedDriverId) : null;
+        const reportingDriver = report.reportingDriverId
+          ? await ctx.db.get(report.reportingDriverId)
+          : null;
+        const reportingUser = report.reportingUserId
+          ? await ctx.db.get(report.reportingUserId)
+          : null;
+        const reportedDriver = report.reportedDriverId
+          ? await ctx.db.get(report.reportedDriverId)
+          : null;
         const event = report.eventId ? await ctx.db.get(report.eventId) : null;
         const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
@@ -189,7 +227,7 @@ export const getReadyForFinalization = query({
           race,
           reviewCount,
         };
-      })
+      }),
     );
 
     return populatedReports;
@@ -198,6 +236,7 @@ export const getReadyForFinalization = query({
 
 export const create = mutation({
   args: {
+    reportingUserId: v.optional(v.id("users")),
     reportingDriverId: v.id("drivers"),
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
@@ -232,6 +271,7 @@ export const create = mutation({
 
     const now = Date.now();
     const reportId = await ctx.db.insert("reports", {
+      reportingUserId: args.reportingUserId,
       reportingDriverId: args.reportingDriverId,
       reportedDriverId: args.reportedDriverId,
       eventId: args.eventId,
@@ -270,7 +310,7 @@ export const update = mutation({
     }
 
     const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined)
+      Object.entries(updates).filter(([_, v]) => v !== undefined),
     );
 
     await ctx.db.patch(reportId, {
@@ -297,7 +337,9 @@ export const markAsReviewed = mutation({
       .collect();
 
     if (reviews.length === 0) {
-      throw new Error("Report must have at least one review before marking as reviewed");
+      throw new Error(
+        "Report must have at least one review before marking as reviewed",
+      );
     }
 
     await ctx.db.patch(args.reportId, {
@@ -350,7 +392,9 @@ export const finalize = mutation({
 
       const drivers = await ctx.db
         .query("drivers")
-        .withIndex("by_championship", (q) => q.eq("championshipId", event.seriesId))
+        .withIndex("by_championship", (q) =>
+          q.eq("championshipId", event.seriesId),
+        )
         .collect();
 
       const penaltyAccumulator: Record<string, number> = {};
@@ -361,7 +405,9 @@ export const finalize = mutation({
           .withIndex("by_event", (q) => q.eq("eventId", evt._id))
           .collect();
 
-        const finalizedReports = evtReports.filter((r) => r.status === "finalized");
+        const finalizedReports = evtReports.filter(
+          (r) => r.status === "finalized",
+        );
 
         for (const finalizedReport of finalizedReports) {
           let penalty: any = null;
@@ -393,7 +439,7 @@ export const finalize = mutation({
         const existingDriverSeriesPenalties = await ctx.db
           .query("driverSeriesPenalties")
           .withIndex("by_driver_and_series", (q) =>
-            q.eq("driverId", driver._id).eq("seriesId", event.seriesId)
+            q.eq("driverId", driver._id).eq("seriesId", event.seriesId),
           )
           .collect();
 
@@ -404,15 +450,20 @@ export const finalize = mutation({
         for (const seriesPenalty of seriesPenalties) {
           const thresholds = await ctx.db
             .query("seriesPenaltyThresholds")
-            .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", seriesPenalty._id))
+            .withIndex("by_series_penalty", (q) =>
+              q.eq("seriesPenaltyId", seriesPenalty._id),
+            )
             .collect();
 
           for (const threshold of thresholds) {
-            const appliesToDriver = threshold.driverClasses.includes(driverClass);
+            const appliesToDriver =
+              threshold.driverClasses.includes(driverClass);
 
-            if (appliesToDriver &&
+            if (
+              appliesToDriver &&
               totalPoints >= threshold.threshold &&
-              !assignedThresholds.includes(threshold._id)) {
+              !assignedThresholds.includes(threshold._id)
+            ) {
               await ctx.db.insert("driverSeriesPenalties", {
                 driverId: driver._id,
                 seriesId: event.seriesId,
@@ -463,6 +514,7 @@ export const createBySteward = mutation({
       status: "pending",
       isFinalized: false,
       isSelfReport: args.isSelfReport,
+      isStewardReported: true,
       createdAt: now,
       updatedAt: now,
     });
@@ -557,7 +609,9 @@ export const getDriverFinalizedReports = query({
   handler: async (ctx, args) => {
     let reports = await ctx.db
       .query("reports")
-      .withIndex("by_reporting_driver", (q) => q.eq("reportingDriverId", args.driverId))
+      .withIndex("by_reporting_driver", (q) =>
+        q.eq("reportingDriverId", args.driverId),
+      )
       .filter((q) => q.eq(q.field("status"), "finalized"))
       .order("desc")
       .collect();
@@ -573,8 +627,12 @@ export const getDriverFinalizedReports = query({
 
     const populatedReports = await Promise.all(
       reports.map(async (report) => {
-        const reportingDriver = report.reportingDriverId ? await ctx.db.get(report.reportingDriverId) : null;
-        const reportedDriver = report.reportedDriverId ? await ctx.db.get(report.reportedDriverId) : null;
+        const reportingDriver = report.reportingDriverId
+          ? await ctx.db.get(report.reportingDriverId)
+          : null;
+        const reportedDriver = report.reportedDriverId
+          ? await ctx.db.get(report.reportedDriverId)
+          : null;
         const event = report.eventId ? await ctx.db.get(report.eventId) : null;
         const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
@@ -583,8 +641,15 @@ export const getDriverFinalizedReports = query({
           appliedPenaltyObj = await ctx.db.get(report.appliedPenalty as any);
         }
 
-        return { ...report, reportingDriver, reportedDriver, event, race, appliedPenalty: appliedPenaltyObj };
-      })
+        return {
+          ...report,
+          reportingDriver,
+          reportedDriver,
+          event,
+          race,
+          appliedPenalty: appliedPenaltyObj,
+        };
+      }),
     );
 
     return { reports: populatedReports, total };
@@ -596,7 +661,9 @@ export const getDriverIndividualPenalties = query({
   handler: async (ctx, args) => {
     const reports = await ctx.db
       .query("reports")
-      .withIndex("by_reported_driver", (q) => q.eq("reportedDriverId", args.driverId))
+      .withIndex("by_reported_driver", (q) =>
+        q.eq("reportedDriverId", args.driverId),
+      )
       .filter((q) => q.eq(q.field("status"), "finalized"))
       .collect();
 
@@ -605,7 +672,9 @@ export const getDriverIndividualPenalties = query({
         const [event, race, appliedPenalty] = await Promise.all([
           ctx.db.get(report.eventId),
           ctx.db.get(report.raceId),
-          report.appliedPenalty ? await ctx.db.get(report.appliedPenalty as any) : null,
+          report.appliedPenalty
+            ? await ctx.db.get(report.appliedPenalty as any)
+            : null,
         ]);
 
         return {
@@ -614,14 +683,17 @@ export const getDriverIndividualPenalties = query({
           finalizedAt: report.finalizedAt ?? report.reportDate,
           event,
           race,
+          lap: report.lap,
           turn: report.turn,
           appliedPenalty,
           finalDecision: report.finalDecision,
         };
-      })
+      }),
     );
 
-    const penaltiesWithPenalty = penalties.filter(p => p.appliedPenalty !== null);
+    const penaltiesWithPenalty = penalties.filter(
+      (p) => p.appliedPenalty !== null,
+    );
 
     return penaltiesWithPenalty.sort((a, b) => {
       const pointsA = (a.appliedPenalty as any)?.licensePoints ?? 0;
