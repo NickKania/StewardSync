@@ -5,6 +5,7 @@ import {
   OnDestroy,
   signal,
   Input,
+  computed,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Router, ActivatedRoute } from "@angular/router";
@@ -25,6 +26,7 @@ import {
   SelectOption,
 } from "@shared/components/select/select.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { SearchSelectComponent } from "@shared/components/search-select/search-select.component";
 
 @Component({
   selector: "app-report-form",
@@ -37,6 +39,7 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
     InputComponent,
     SelectComponent,
     LoadingComponent,
+    SearchSelectComponent,
   ],
   template: `
     <div class="max-w-2xl mx-auto space-y-6">
@@ -62,58 +65,36 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
             <div class="space-y-4">
               <!-- Reporting Driver -->
               <div>
-                <label class="label">Reporting Driver *</label>
-                <select
+                <app-search-select
                   formControlName="reportingDriverId"
-                  class="input"
-                  [class.input-error]="
+                  label="Reporting Driver"
+                  [options]="driverOptions()"
+                  [error]="
                     form.get('reportingDriverId')?.invalid &&
                     form.get('reportingDriverId')?.touched
+                      ? 'Reporting driver is required'
+                      : ''
                   "
-                >
-                  <option value="">Select the reporting driver</option>
-                  @for (driver of drivers(); track driver._id) {
-                    <option [value]="driver._id">
-                      #{{ driver.driverNumber }} - {{ driver.driverName }}
-                    </option>
-                  }
-                </select>
-                @if (
-                  form.get("reportingDriverId")?.invalid &&
-                  form.get("reportingDriverId")?.touched
-                ) {
-                  <p class="mt-1 text-sm text-red-600">
-                    Reporting driver is required
-                  </p>
-                }
+                  placeholder="Search drivers by name or number..."
+                  [required]="true"
+                />
               </div>
 
               <!-- Reported Driver -->
               <div>
-                <label class="label">Reported Driver *</label>
-                <select
+                <app-search-select
                   formControlName="reportedDriverId"
-                  class="input"
-                  [class.input-error]="
+                  label="Reported Driver"
+                  [options]="driverOptions()"
+                  [error]="
                     form.get('reportedDriverId')?.invalid &&
                     form.get('reportedDriverId')?.touched
+                      ? 'Reported driver is required'
+                      : ''
                   "
-                >
-                  <option value="">Select the driver being reported</option>
-                  @for (driver of drivers(); track driver._id) {
-                    <option [value]="driver._id">
-                      #{{ driver.driverNumber }} - {{ driver.driverName }}
-                    </option>
-                  }
-                </select>
-                @if (
-                  form.get("reportedDriverId")?.invalid &&
-                  form.get("reportedDriverId")?.touched
-                ) {
-                  <p class="mt-1 text-sm text-red-600">
-                    Reported driver is required
-                  </p>
-                }
+                  placeholder="Search drivers by name or number..."
+                  [required]="true"
+                />
               </div>
 
               <!-- Event -->
@@ -276,6 +257,13 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   races = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
+
+  driverOptions = computed<SelectOption[]>(() => {
+    return this.drivers().map((driver) => ({
+      value: driver._id,
+      label: `#${driver.driverNumber} - ${driver.driverName}`,
+    }));
+  });
 
   private unsubscribes: (() => void)[] = [];
 

@@ -24,6 +24,7 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { SearchSelectComponent } from "@shared/components/search-select/search-select.component";
 import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { Penalty } from "@core/models/series.model";
+import { SelectOption } from "@shared/components/select/select.component";
 
 @Component({
   selector: "app-steward-incident-form",
@@ -59,30 +60,19 @@ import { Penalty } from "@core/models/series.model";
               <app-card title="Incident Details">
                 <div class="space-y-4">
                   <div>
-                    <label class="label">Reported Driver *</label>
-                    <select
+                    <app-search-select
                       formControlName="reportedDriverId"
-                      class="input"
-                      [class.input-error]="
+                      label="Reported Driver"
+                      [options]="driverOptions()"
+                      [error]="
                         form.get('reportedDriverId')?.invalid &&
                         form.get('reportedDriverId')?.touched
+                          ? 'Reported driver is required'
+                          : ''
                       "
-                    >
-                      <option value="">Select driver</option>
-                      @for (driver of drivers(); track driver._id) {
-                        <option [value]="driver._id">
-                          #{{ driver.driverNumber }} - {{ driver.driverName }}
-                        </option>
-                      }
-                    </select>
-                    @if (
-                      form.get("reportedDriverId")?.invalid &&
-                      form.get("reportedDriverId")?.touched
-                    ) {
-                      <p class="mt-1 text-sm text-red-600">
-                        Reported driver is required
-                      </p>
-                    }
+                      placeholder="Search drivers by name or number..."
+                      [required]="true"
+                    />
                   </div>
 
                   <div>
@@ -383,6 +373,13 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   secondStewardId = signal<string>("");
   eventId = signal<string>("");
   raceId = signal<string>("");
+
+  driverOptions = computed(() => {
+    return this.drivers().map((driver) => ({
+      value: driver._id,
+      label: `#${driver.driverNumber} - ${driver.driverName}`,
+    }));
+  });
 
   currentUser = computed(() => this.authService.user());
   selectedEvent = computed(() => {
