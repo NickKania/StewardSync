@@ -3,7 +3,6 @@ import {
   Input,
   forwardRef,
   signal,
-  computed,
   ViewChild,
   ElementRef,
 } from "@angular/core";
@@ -101,7 +100,16 @@ export class SearchSelectComponent implements ControlValueAccessor {
   @Input() id = `search-select-${Math.random().toString(36).substr(2, 9)}`;
   @Input() label = "";
   @Input() placeholder = "";
-  @Input() options: SelectOption[] = [];
+  @Input()
+  set options(value: SelectOption[]) {
+    this.optionsInternal = value ?? [];
+    if (!this.searchTerm && this.value()) {
+      this.syncSearchTermWithValue();
+    }
+  }
+  get options(): SelectOption[] {
+    return this.optionsInternal;
+  }
   @Input() required = false;
   @Input() disabled = false;
   @Input() error = "";
@@ -110,13 +118,14 @@ export class SearchSelectComponent implements ControlValueAccessor {
   searchTerm = "";
   isOpen = signal(false);
   selectedIndex = signal(0);
+  private optionsInternal: SelectOption[] = [];
   @ViewChild("searchInput", { static: false })
   searchInput!: ElementRef<HTMLInputElement>;
 
   onChange: (value: string) => void = () => {};
   onTouched: () => void = () => {};
 
-  filteredOptions = computed(() => {
+  filteredOptions(): SelectOption[] {
     if (!this.searchTerm) return this.options;
 
     const term = this.searchTerm.toLowerCase();
@@ -125,7 +134,7 @@ export class SearchSelectComponent implements ControlValueAccessor {
         option.label.toLowerCase().includes(term) ||
         option.value.toLowerCase().includes(term),
     );
-  });
+  }
 
   writeValue(value: string): void {
     this.value.set(value || "");
@@ -134,8 +143,22 @@ export class SearchSelectComponent implements ControlValueAccessor {
     );
     if (selectedOption) {
       this.searchTerm = selectedOption.label;
-    } else if (!value) {
+    } else {
       this.searchTerm = "";
+    }
+  }
+
+  private syncSearchTermWithValue(): void {
+    const currentValue = this.value();
+    if (!currentValue) {
+      return;
+    }
+
+    const selectedOption = this.options.find(
+      (o) => String(o.value) === String(currentValue),
+    );
+    if (selectedOption) {
+      this.searchTerm = selectedOption.label;
     }
   }
 
@@ -163,9 +186,9 @@ export class SearchSelectComponent implements ControlValueAccessor {
   }
 
   onClick(): void {
-    if (this.value()) {
-      this.searchTerm = "";
-    }
+    this.searchTerm = "";
+    this.isOpen.set(true);
+    this.selectedIndex.set(0);
   }
 
   onBlur(): void {
@@ -174,16 +197,28 @@ export class SearchSelectComponent implements ControlValueAccessor {
       this.onTouched();
 
       const match = this.options.find((o) => o.label === this.searchTerm);
-      if (match && String(match.value) !== String(this.value())) {
-        this.value.set(match.value);
-        this.onChange(match.value);
-      } else if (!match && this.searchTerm) {
+      if (match) {
+        if (String(match.value) !== String(this.value())) {
+          this.value.set(match.value);
+          this.onChange(match.value);
+        }
+        this.searchTerm = match.label;
+        return;
+      }
+
+      if (this.searchTerm) {
         this.searchTerm = "";
         if (!this.value()) {
           this.onChange("");
+        } else {
+          this.syncSearchTermWithValue();
         }
-      } else if (!this.searchTerm) {
-        this.value.set("");
+        return;
+      }
+
+      if (this.value()) {
+        this.syncSearchTermWithValue();
+      } else {
         this.onChange("");
       }
     }, 200);
