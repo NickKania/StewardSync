@@ -24,7 +24,6 @@ import {
   SelectOption,
 } from "@shared/components/select/select.component";
 import { TabsComponent, Tab } from "@shared/components/tabs/tabs.component";
-import html2canvas from "html2canvas";
 import { RouterModule } from "@angular/router";
 import { ActivatedRoute, Router } from "@angular/router";
 import { effect, DestroyRef } from "@angular/core";
@@ -117,26 +116,6 @@ interface DriverPointsRow {
                         [(ngModel)]="eventFilterText"
                       />
                     </div>
-                    <app-button
-                      variant="secondary"
-                      size="sm"
-                      (onClick)="exportEventRundownAsImage()"
-                    >
-                      <svg
-                        class="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                        ></path>
-                      </svg>
-                      Export as Image
-                    </app-button>
                   </div>
                   @for (race of filteredAndSortedRaces(); track race.raceId) {
                     <div class="space-y-4">
@@ -398,26 +377,6 @@ interface DriverPointsRow {
                         [(ngModel)]="seriesFilterText"
                       />
                     </div>
-                    <app-button
-                      variant="secondary"
-                      size="sm"
-                      (onClick)="exportSeriesPointsAsImage()"
-                    >
-                      <svg
-                        class="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                        ></path>
-                      </svg>
-                      Export as Image
-                    </app-button>
                   </div>
                   @if (filteredAndSortedSeriesPoints().length > 0) {
                     <div #seriesPointsTable class="overflow-x-auto">
@@ -1074,67 +1033,6 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     } catch (error: any) {
       console.error("Failed to load series points:", error);
       this.seriesPoints.set([]);
-    }
-  }
-
-  async exportEventRundownAsImage(): Promise<void> {
-    if (
-      !this.eventRundownTables ||
-      this.eventRundownTables.length === 0
-    )
-      return;
-
-    const tables = this.eventRundownTables.toArray();
-    const races = this.filteredAndSortedRaces();
-
-    for (let i = 0; i < tables.length; i++) {
-      const element = tables[i].nativeElement;
-      const race = races[i];
-
-      try {
-        const canvas = await html2canvas(element, {
-          scale: 2,
-          backgroundColor: "#ffffff",
-          logging: false,
-          useCORS: true,
-        });
-
-        const link = document.createElement("a");
-        link.download = `race-${race.raceNumber}-${new Date().toISOString().split("T")[0]}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-
-        if (i < tables.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-      } catch (error) {
-        console.error(
-          `Failed to export race ${race.raceNumber} as image:`,
-          error
-        );
-      }
-    }
-  }
-
-  async exportSeriesPointsAsImage(): Promise<void> {
-    if (!this.seriesPointsTable) return;
-
-    const element = this.seriesPointsTable.nativeElement;
-
-    try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        logging: false,
-        useCORS: true,
-      });
-
-      const link = document.createElement("a");
-      link.download = `series-points-${new Date().toISOString().split("T")[0]}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    } catch (error) {
-      console.error("Failed to export series points as image:", error);
     }
   }
 }
