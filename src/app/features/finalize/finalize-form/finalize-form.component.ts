@@ -371,6 +371,19 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
               selfReportControl.setValue(newValue);
             }
           }
+
+          // Pre-select applied penalty from latest review's recommended penalty
+          if (latestReview?.recommendedPenaltyObj && this.availablePenalties().length > 0) {
+            const appliedPenaltyControl = this.form.get('appliedPenalty');
+            if (appliedPenaltyControl) {
+              const recommendedPenaltyId = latestReview.recommendedPenaltyObj._id;
+              const currentValue = appliedPenaltyControl.value;
+
+              if (appliedPenaltyControl.pristine && currentValue !== recommendedPenaltyId) {
+                appliedPenaltyControl.setValue(recommendedPenaltyId);
+              }
+            }
+          }
         }
 
         // Load penalties for this series
@@ -393,6 +406,28 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       const data = penaltiesQuery.data();
       if (data !== undefined) {
         this.availablePenalties.set(data);
+
+        // Pre-select applied penalty from latest review when penalties are loaded
+        const report = this.report();
+        if (report?.reviews && report.reviews.length > 0) {
+          const latestReview = report.reviews.reduce((latest: any, current: any) => {
+            const latestDate = latest.reviewDate || latest.createdAt || 0;
+            const currentDate = current.reviewDate || current.createdAt || 0;
+            return currentDate > latestDate ? current : latest;
+          });
+
+          if (latestReview?.recommendedPenaltyObj && data.length > 0) {
+            const appliedPenaltyControl = this.form.get('appliedPenalty');
+            if (appliedPenaltyControl) {
+              const recommendedPenaltyId = latestReview.recommendedPenaltyObj._id;
+              const currentValue = appliedPenaltyControl.value;
+
+              if (appliedPenaltyControl.pristine && currentValue !== recommendedPenaltyId) {
+                appliedPenaltyControl.setValue(recommendedPenaltyId);
+              }
+            }
+          }
+        }
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkPenalties));
