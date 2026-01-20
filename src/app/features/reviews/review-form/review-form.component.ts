@@ -429,11 +429,14 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       if (data !== undefined) {
         this.report.set(data);
 
-        // Pre-fill incident description
+        // Pre-fill incident description (only if control is pristine and value has changed)
         if (data) {
-          this.form.patchValue({
-            incidentDescription: data.description,
-          });
+          const incidentControl = this.form.get('incidentDescription');
+          const newValue = data.description;
+
+          if (incidentControl && incidentControl.pristine && incidentControl.value !== newValue) {
+            incidentControl.setValue(newValue);
+          }
 
           // Filter out current user's review if exists
           const userId = this.authService.getUserId();

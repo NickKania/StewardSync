@@ -343,14 +343,33 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         this.report.set(data);
         this.loading.set(false);
 
-        // Auto-fill incident description and isSelfReport from first review
+        // Auto-fill incident description and isSelfReport from latest review
         if (data?.reviews && data.reviews.length > 0) {
-          const firstReview = data.reviews[0];
-          if (firstReview?.incidentDescription) {
-            this.form.patchValue({
-              incidentDescription: firstReview.incidentDescription,
-              isSelfReport: firstReview.isSelfReport || false
-            });
+          const latestReview = data.reviews.reduce((latest, current) => {
+            const latestDate = latest.reviewDate || latest.createdAt || 0;
+            const currentDate = current.reviewDate || current.createdAt || 0;
+            return currentDate > latestDate ? current : latest;
+          });
+
+          const incidentControl = this.form.get('incidentDescription');
+          const selfReportControl = this.form.get('isSelfReport');
+
+          if (latestReview?.incidentDescription && incidentControl) {
+            const currentValue = incidentControl.value;
+            const newValue = latestReview.incidentDescription;
+
+            if (incidentControl.pristine && currentValue !== newValue) {
+              incidentControl.setValue(newValue);
+            }
+          }
+
+          if (latestReview?.isSelfReport !== undefined && selfReportControl) {
+            const currentValue = selfReportControl.value;
+            const newValue = latestReview.isSelfReport;
+
+            if (selfReportControl.pristine && currentValue !== newValue) {
+              selfReportControl.setValue(newValue);
+            }
           }
         }
 
