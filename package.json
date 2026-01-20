@@ -12,12 +12,19 @@
     "test": "ng test",
     "dev": "concurrently \"npx convex dev\" \"ng serve\"",
     "dev:local": "concurrently \"docker compose -f docker-compose.local.yml up\" \"ng serve --configuration local\"",
+    "dev:docker": "docker compose -f docker-compose.local.yml up",
+    "dev:docker:build": "docker compose -f docker-compose.local.yml up --build",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
     "convex:local:start": "docker compose -f docker-compose.local.yml up -d",
     "convex:local:stop": "docker compose -f docker-compose.local.yml down",
     "convex:local:logs": "docker compose -f docker-compose.local.yml logs -f",
-    "convex:local:push": "CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 npx convex deploy --admin-key $CONVEX_SELF_HOSTED_ADMIN_KEY"
+    "convex:local:push": "CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 npx convex deploy --admin-key $CONVEX_SELF_HOSTED_ADMIN_KEY",
+    "docker:build": "docker compose -f docker-compose.local.yml build",
+    "docker:up": "docker compose -f docker-compose.local.yml up",
+    "docker:up:build": "docker compose -f docker-compose.local.yml up --build",
+    "docker:down": "docker compose -f docker-compose.local.yml down",
+    "docker:logs": "docker compose -f docker-compose.local.yml logs -f"
   },
   "private": true,
   "dependencies": {

@@ -1,25 +1,37 @@
-﻿**/.dockerignore
-**/.env
-**/.git
-**/.gitignore
-**/.project
-**/.settings
-**/.toolstarget
-**/.vs
-**/.vscode
-**/.idea
-**/*.*proj.user
-**/*.dbmdl
-**/*.jfm
-**/azds.yaml
-**/bin
-**/charts
-**/docker-compose*
-**/Dockerfile*
-**/node_modules
-**/npm-debug.log
-**/obj
-**/secrets.dev.yaml
-**/values.dev.yaml
-LICENSE
+﻿# Git files
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+!.env.local
+
+# IDE and editor files
+.vscode
+.idea
+.angular
+.opencode
+.claude
+
+# Build output
+dist
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Documentation
 README.md
+LICENSE
+*.md
+!package.json
+
+# Docker files (don't copy into container)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Test files
+*.spec.ts
+karma.conf.js
+tsconfig.spec.json
