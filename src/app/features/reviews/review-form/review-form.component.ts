@@ -122,19 +122,19 @@ import { Penalty } from "@core/models/series.model";
                         form.get('recommendedPenalty')?.touched
                       "
                     >
-                        <option value="">Select penalty</option>
-                        @for (
-                          penalty of availablePenalties();
-                          track penalty._id
-                        ) {
-                          <option [value]="penalty._id">
-                            {{ penalty.name }}
-                          </option>
-                        }
+                      <option value="">Select penalty</option>
+                      @for (
+                        penalty of availablePenalties();
+                        track penalty._id
+                      ) {
+                        <option [value]="penalty._id">
+                          {{ penalty.name }}
+                        </option>
+                      }
                     </select>
                     @if (
-                      form.get('recommendedPenalty')?.invalid &&
-                      form.get('recommendedPenalty')?.touched
+                      form.get("recommendedPenalty")?.invalid &&
+                      form.get("recommendedPenalty")?.touched
                     ) {
                       <p class="mt-1 text-sm text-red-600">
                         Recommended penalty is required
@@ -268,7 +268,12 @@ import { Penalty } from "@core/models/series.model";
                         </div>
                         @if (review.recommendedPenalty) {
                           <app-badge variant="info">
-                            {{ review.recommendedPenalty.replace("_", " ") }}
+                            {{
+                              review.recommendedPenaltyObj.name.replace(
+                                "_",
+                                " "
+                              )
+                            }}
                           </app-badge>
                         }
                       </div>
@@ -305,11 +310,11 @@ import { Penalty } from "@core/models/series.model";
                   </dd>
                 </div>
                 <div>
-                 <dt class="text-sm text-gray-500">Location</dt>
-                   <dd class="font-medium text-gray-900">
-                     Lap {{ report()?.lap }}, Turn {{ report()?.turn }}
-                   </dd>
-                 </div>
+                  <dt class="text-sm text-gray-500">Location</dt>
+                  <dd class="font-medium text-gray-900">
+                    Lap {{ report()?.lap }}, Turn {{ report()?.turn }}
+                  </dd>
+                </div>
                 <div>
                   <dt class="text-sm text-gray-500">Filed</dt>
                   <dd class="text-gray-900">
@@ -431,10 +436,14 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
         // Pre-fill incident description (only if control is pristine and value has changed)
         if (data) {
-          const incidentControl = this.form.get('incidentDescription');
+          const incidentControl = this.form.get("incidentDescription");
           const newValue = data.description;
 
-          if (incidentControl && incidentControl.pristine && incidentControl.value !== newValue) {
+          if (
+            incidentControl &&
+            incidentControl.pristine &&
+            incidentControl.value !== newValue
+          ) {
             incidentControl.setValue(newValue);
           }
 

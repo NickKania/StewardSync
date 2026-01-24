@@ -111,7 +111,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   <option value="">Select the event</option>
                   @for (event of events(); track event._id) {
                     <option [value]="event._id">
-                      {{ event.trackName }} - {{ event.series }} Round
+                      {{ event.trackName }} - {{ event.series?.name }} Round
                       {{ event.eventNumber }}
                     </option>
                   }
