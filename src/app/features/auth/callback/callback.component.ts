@@ -25,6 +25,7 @@ export class CallbackComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe(async (params) => {
       const code = params['code'];
+      const state = params['state'];
 
       if (!code) {
         this.handleAuthError('No authorization code received');
@@ -32,13 +33,12 @@ export class CallbackComponent implements OnInit {
       }
 
       try {
-        const tokenData = await this.exchangeCodeForToken(code);
-
         if (window.opener) {
           window.opener.postMessage(
             {
               type: 'discord-auth-success',
-              accessToken: tokenData.access_token,
+              code,
+              state,
             },
             window.location.origin
           );
@@ -50,32 +50,6 @@ export class CallbackComponent implements OnInit {
         this.handleAuthError('Failed to complete authentication');
       }
     });
-  }
-
-  private async exchangeCodeForToken(code: string): Promise<any> {
-    const clientId = import.meta.env['NG_APP_DISCORD_CLIENT_ID'] || '';
-    const clientSecret = import.meta.env['NG_APP_DISCORD_CLIENT_SECRET'] || '';
-    const redirectUri = `${window.location.origin}/auth/callback`;
-
-    const response = await fetch('https://discord.com/api/oauth2/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: redirectUri,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to exchange code for token');
-    }
-
-    return response.json();
   }
 
   private handleAuthError(error: string): void {

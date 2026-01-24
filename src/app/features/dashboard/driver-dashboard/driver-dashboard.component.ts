@@ -26,7 +26,7 @@ import { Id } from "@convex/_generated/dataModel";
     <div class="space-y-6">
       @if (loading()) {
         <app-loading text="Loading your dashboard..." />
-      } @else if (!driver()) {
+      } @else if (seriesGroups().length === 0) {
         <app-card>
           <div class="text-center py-12">
             <svg
@@ -43,11 +43,11 @@ import { Id } from "@convex/_generated/dataModel";
               ></path>
             </svg>
             <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-              Driver Record Not Found
+              Driver Profiles Not Found
             </h2>
             <p class="text-gray-500 dark:text-gray-400 mb-4">
-              We couldn't find a driver record linked to your Discord ID. Please
-              contact an administrator to link your account.
+              We couldn't find any driver profiles linked to your Discord account.
+              Please contact an administrator to link your account.
             </p>
             <a
               href="mailto:admin@stewardsync.com"
@@ -66,7 +66,7 @@ import { Id } from "@convex/_generated/dataModel";
               Welcome back, {{ authService.user()!.name.split(" ")[0] }}
             </h1>
             <p class="text-gray-500 dark:text-gray-400 mt-1">
-              Here's what's happening with your penalties and reports
+              Here's what's happening across your series
             </p>
           </div>
           <a routerLink="/reports/new">
@@ -89,170 +89,165 @@ import { Id } from "@convex/_generated/dataModel";
           </a>
         </div>
 
-        <app-card
-          title="Series Penalties"
-          subtitle="Accumulated penalties from license points"
-        >
-          @if (loadingSeriesPenalties()) {
-            <app-loading text="Loading penalties..." />
-          } @else if (seriesPenaltiesGrouped().length === 0) {
-            <p class="text-gray-500 dark:text-gray-400 text-center py-8">
-              No series penalties
-            </p>
-          } @else {
-            @for (
-              seriesGroup of seriesPenaltiesGrouped();
-              track seriesGroup.seriesName
-            ) {
-              <div class="mb-6 last:mb-0">
-                <h3
-                  class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center"
-                >
+        <div class="space-y-10">
+          @for (seriesGroup of seriesGroups(); track seriesGroup.seriesKey) {
+            <div class="space-y-6">
+              <div>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
                   {{ seriesGroup.seriesName }}
-                  <span
-                    class="ml-3 text-sm font-normal text-gray-500 dark:text-gray-400"
-                  >
-                    ({{ seriesGroup.penalties.length }}
-                    {{
-                      seriesGroup.penalties.length === 1
-                        ? "penalty"
-                        : "penalties"
-                    }})
-                  </span>
-                </h3>
-                <div class="overflow-x-auto">
-                  <table class="w-full">
-                    <thead>
-                      <tr
-                        class="text-left text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
-                      >
-                        <th class="pb-3 font-medium">Penalty</th>
-                        <th class="pb-3 font-medium">Threshold</th>
-                        <th class="pb-3 font-medium">Points at Assignment</th>
-                        <th class="pb-3 font-medium">Assigned Date</th>
-                        <th class="pb-3 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody
-                      class="divide-y divide-gray-100 dark:divide-gray-800"
-                    >
-                      @for (
-                        penalty of seriesGroup.penalties;
-                        track penalty._id
-                      ) {
-                        <tr>
-                          <td
-                            class="py-3 font-medium text-gray-900 dark:text-gray-100"
-                          >
-                            {{ penalty.penaltyName }}
-                          </td>
-                          <td class="py-3 text-gray-700 dark:text-gray-300">
-                            {{ penalty.threshold }} points
-                          </td>
-                          <td class="py-3 text-gray-700 dark:text-gray-300">
-                            {{ penalty.pointsAtAssignment }} points
-                          </td>
-                          <td class="py-3 text-gray-500 dark:text-gray-400">
-                            {{ penalty.assignedAt | dateFormat: "PPP" }}
-                          </td>
-                          <td class="py-3">
-                            <app-badge
-                              [variant]="
-                                penalty.isServed ? 'success' : 'danger'
-                              "
-                            >
-                              {{ penalty.isServed ? "Served" : "Active" }}
-                            </app-badge>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  Series overview and penalties
+                </p>
               </div>
-            }
-          }
-        </app-card>
 
-        <app-card
-          title="Individual Penalties"
-          subtitle="Penalties from specific incidents"
-        >
-          @if (loadingIndividualPenalties()) {
-            <app-loading text="Loading penalties..." />
-          } @else if (individualPenalties().length === 0) {
-            <p class="text-gray-500 dark:text-gray-400 text-center py-8">
-              No individual penalties
-            </p>
-          } @else {
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead>
-                  <tr
-                    class="text-left text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
-                  >
-                    <th class="pb-3 font-medium">Event</th>
-                    <th class="pb-3 font-medium">Race</th>
-                    <th class="pb-3 font-medium">Lap</th>
-                    <th class="pb-3 font-medium">Turn</th>
-                    <th class="pb-3 font-medium">Penalty</th>
-                    <th class="pb-3 font-medium">Severity</th>
-                    <th class="pb-3 font-medium">Time Penalty</th>
-                    <th class="pb-3 font-medium">Decision</th>
-                    <th class="pb-3 font-medium">Date</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                  @for (
-                    penalty of individualPenalties();
-                    track penalty.reportId
-                  ) {
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td
-                        class="py-3 font-medium text-gray-900 dark:text-gray-100"
-                      >
-                        {{ penalty.event?.trackName }}
-                      </td>
-                      <td class="py-3 text-gray-700 dark:text-gray-300">
-                        {{ penalty.race?.raceNumber }}
-                      </td>
-                      <td class="py-3 text-gray-700 dark:text-gray-300">
-                        {{ penalty.lap }}
-                      </td>
-                      <td class="py-3 text-gray-700 dark:text-gray-300">
-                        {{ penalty.turn }}
-                      </td>
-                      <td
-                        class="py-3 font-medium text-gray-900 dark:text-gray-100"
-                      >
-                        {{ penalty.appliedPenalty?.name }}
-                      </td>
-                      <td class="py-3">
-                        <app-badge variant="warning"
-                          >{{
-                            penalty.appliedPenalty?.licensePoints
-                          }}
-                          pts</app-badge
+              <app-card
+                title="Series Penalties"
+                subtitle="Accumulated penalties from license points"
+              >
+                @if (seriesGroup.loadingSeriesPenalties) {
+                  <app-loading text="Loading penalties..." />
+                } @else if (seriesGroup.seriesPenalties.length === 0) {
+                  <p class="text-gray-500 dark:text-gray-400 text-center py-8">
+                    No series penalties
+                  </p>
+                } @else {
+                  <div class="overflow-x-auto">
+                    <table class="w-full">
+                      <thead>
+                        <tr
+                          class="text-left text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
                         >
-                      </td>
-                      <td class="py-3 text-gray-700 dark:text-gray-300">
-                        {{ penalty.appliedPenalty?.timePenalty }}s
-                      </td>
-                      <td
-                        class="py-3 text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs"
+                          <th class="pb-3 font-medium">Penalty</th>
+                          <th class="pb-3 font-medium">Threshold</th>
+                          <th class="pb-3 font-medium">Points at Assignment</th>
+                          <th class="pb-3 font-medium">Assigned Date</th>
+                          <th class="pb-3 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody
+                        class="divide-y divide-gray-100 dark:divide-gray-800"
                       >
-                        {{ penalty.finalDecision }}
-                      </td>
-                      <td class="py-3 text-gray-500 dark:text-gray-400">
-                        {{ penalty.finalizedAt | dateFormat: "PPP" }}
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+                        @for (
+                          penalty of seriesGroup.seriesPenalties;
+                          track penalty._id
+                        ) {
+                          <tr>
+                            <td
+                              class="py-3 font-medium text-gray-900 dark:text-gray-100"
+                            >
+                              {{ penalty.penaltyName }}
+                            </td>
+                            <td class="py-3 text-gray-700 dark:text-gray-300">
+                              {{ penalty.threshold }} points
+                            </td>
+                            <td class="py-3 text-gray-700 dark:text-gray-300">
+                              {{ penalty.pointsAtAssignment }} points
+                            </td>
+                            <td class="py-3 text-gray-500 dark:text-gray-400">
+                              {{ penalty.assignedAt | dateFormat: "PPP" }}
+                            </td>
+                            <td class="py-3">
+                              <app-badge
+                                [variant]="
+                                  penalty.isServed ? 'success' : 'danger'
+                                "
+                              >
+                                {{ penalty.isServed ? "Served" : "Active" }}
+                              </app-badge>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </app-card>
+
+              <app-card
+                title="Individual Penalties"
+                subtitle="Penalties from specific incidents"
+              >
+                @if (seriesGroup.loadingIndividualPenalties) {
+                  <app-loading text="Loading penalties..." />
+                } @else if (seriesGroup.individualPenalties.length === 0) {
+                  <p class="text-gray-500 dark:text-gray-400 text-center py-8">
+                    No individual penalties
+                  </p>
+                } @else {
+                  <div class="overflow-x-auto">
+                    <table class="w-full">
+                      <thead>
+                        <tr
+                          class="text-left text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
+                        >
+                          <th class="pb-3 font-medium">Event</th>
+                          <th class="pb-3 font-medium">Race</th>
+                          <th class="pb-3 font-medium">Lap</th>
+                          <th class="pb-3 font-medium">Turn</th>
+                          <th class="pb-3 font-medium">Penalty</th>
+                          <th class="pb-3 font-medium">Severity</th>
+                          <th class="pb-3 font-medium">Time Penalty</th>
+                          <th class="pb-3 font-medium">Decision</th>
+                          <th class="pb-3 font-medium">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody
+                        class="divide-y divide-gray-100 dark:divide-gray-800"
+                      >
+                        @for (
+                          penalty of seriesGroup.individualPenalties;
+                          track penalty.reportId
+                        ) {
+                          <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <td
+                              class="py-3 font-medium text-gray-900 dark:text-gray-100"
+                            >
+                              {{ penalty.event?.trackName }}
+                            </td>
+                            <td class="py-3 text-gray-700 dark:text-gray-300">
+                              {{ penalty.race?.raceNumber }}
+                            </td>
+                            <td class="py-3 text-gray-700 dark:text-gray-300">
+                              {{ penalty.lap }}
+                            </td>
+                            <td class="py-3 text-gray-700 dark:text-gray-300">
+                              {{ penalty.turn }}
+                            </td>
+                            <td
+                              class="py-3 font-medium text-gray-900 dark:text-gray-100"
+                            >
+                              {{ penalty.appliedPenalty?.name }}
+                            </td>
+                            <td class="py-3">
+                              <app-badge variant="warning"
+                                >{{
+                                  penalty.appliedPenalty?.licensePoints
+                                }}
+                                pts</app-badge
+                              >
+                            </td>
+                            <td class="py-3 text-gray-700 dark:text-gray-300">
+                              {{ penalty.appliedPenalty?.timePenalty }}s
+                            </td>
+                            <td
+                              class="py-3 text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs"
+                            >
+                              {{ penalty.finalDecision }}
+                            </td>
+                            <td class="py-3 text-gray-500 dark:text-gray-400">
+                              {{ penalty.finalizedAt | dateFormat: "PPP" }}
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </app-card>
             </div>
           }
-        </app-card>
+        </div>
       }
     </div>
   `,
@@ -262,20 +257,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
 
   loading = signal(true);
-  driver = signal<any>(null);
-
-  loadingSeriesPenalties = signal(true);
-  seriesPenaltiesGrouped = signal<any[]>([]);
-
-  loadingIndividualPenalties = signal(true);
-  individualPenalties = signal<any[]>([]);
-
-  loadingReports = signal(true);
-  finalizedReports = signal<any[]>([]);
-  totalReports = signal(0);
-  currentPage = signal(1);
-
-  readonly PAGE_SIZE = 10;
+  seriesGroups = signal<any[]>([]);
   private unsubscribes: (() => void)[] = [];
 
   ngOnInit(): void {
@@ -287,130 +269,147 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
   }
 
   private async loadDriverAndData(): Promise<void> {
+    this.loading.set(true);
     const userId = this.authService.getUserId();
     if (!userId) {
+      this.seriesGroups.set([]);
       this.loading.set(false);
       return;
     }
 
-    const user = await this.convex.query(this.convex.api.auth.getCurrentUser, {
-      userId,
-    });
-
-    if (!user?.discordId) {
-      this.loading.set(false);
-      return;
-    }
-
-    const driver = await this.convex.query(
-      this.convex.api.drivers.getByUsername,
-      { username: user.discordId },
+    const drivers = await this.convex.query(this.convex.api.drivers.list, {});
+    const linkedDrivers = (drivers as any[]).filter(
+      (driver) => driver.userId === userId,
     );
 
-    this.driver.set(driver);
+    if (linkedDrivers.length === 0) {
+      this.seriesGroups.set([]);
+      this.loading.set(false);
+      return;
+    }
+
+    const seriesIds = Array.from(
+      new Set(
+        linkedDrivers
+          .map((driver) => driver.championshipId)
+          .filter((seriesId) => seriesId),
+      ),
+    );
+
+    const seriesNameMap = new Map<string, string>();
+    await Promise.all(
+      seriesIds.map(async (seriesId) => {
+        const series = await this.convex.query(
+          this.convex.api.series.getById,
+          { id: seriesId },
+        );
+
+        if (series) {
+          seriesNameMap.set(seriesId as string, series.name);
+        }
+      }),
+    );
+
+    const groupsMap = new Map<string, any>();
+    linkedDrivers.forEach((driver) => {
+      const seriesId = driver.championshipId ?? null;
+      const key = seriesId ? seriesId.toString() : 'unknown';
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
+          seriesKey: key,
+          seriesId,
+          seriesName: seriesId
+            ? seriesNameMap.get(seriesId as string) || 'Unknown Series'
+            : 'Unknown Series',
+          driverIds: [],
+          loadingSeriesPenalties: true,
+          loadingIndividualPenalties: true,
+          seriesPenalties: [],
+          individualPenalties: [],
+        });
+      }
+
+      groupsMap.get(key).driverIds.push(driver._id);
+    });
+
+    const groups = Array.from(groupsMap.values()).sort((a, b) =>
+      a.seriesName.localeCompare(b.seriesName),
+    );
+    this.seriesGroups.set(groups);
     this.loading.set(false);
 
-    if (!driver) return;
-
-    this.loadSeriesPenalties(driver._id);
-    this.loadIndividualPenalties(driver._id);
-  }
-
-  private loadSeriesPenalties(driverId: Id<"drivers">): void {
-    const query = this.convex.createReactiveQuery(
-      this.convex.api.driverSeriesPenalties.getDriverPenaltyDetails,
-      { driverId },
+    await Promise.all(
+      groups.map(async (group) => {
+        await Promise.all([
+          this.loadSeriesPenalties(group),
+          this.loadIndividualPenalties(group),
+        ]);
+      }),
     );
-    this.unsubscribes.push(query.unsubscribe);
-
-    const check = setInterval(() => {
-      const data = query.data();
-      if (data) {
-        const grouped = this.groupPenaltiesBySeries(data);
-        this.seriesPenaltiesGrouped.set(grouped);
-        this.loadingSeriesPenalties.set(false);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(check));
   }
 
-  private loadIndividualPenalties(driverId: Id<"drivers">): void {
-    const query = this.convex.createReactiveQuery(
-      this.convex.api.reports.getDriverIndividualPenalties,
-      { driverId },
+  private updateSeriesGroup(seriesKey: string, updates: Partial<any>): void {
+    this.seriesGroups.update((groups) =>
+      groups.map((group) =>
+        group.seriesKey === seriesKey ? { ...group, ...updates } : group,
+      ),
     );
-    this.unsubscribes.push(query.unsubscribe);
-
-    const check = setInterval(() => {
-      const data = query.data();
-      if (data) {
-        this.individualPenalties.set(data);
-        this.loadingIndividualPenalties.set(false);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(check));
   }
 
-  private groupPenaltiesBySeries(penalties: any[]): any[] {
-    const groups = new Map<string, any[]>();
+  private async loadSeriesPenalties(group: any): Promise<void> {
+    try {
+      const penaltiesByDriver = await Promise.all(
+        group.driverIds.map((driverId: Id<"drivers">) =>
+          this.convex.query(
+            this.convex.api.driverSeriesPenalties.getDriverPenaltyDetails,
+            { driverId, seriesId: group.seriesId || undefined },
+          ),
+        ),
+      );
+      const penalties = penaltiesByDriver
+        .flat()
+        .sort((a, b) => b.assignedAt - a.assignedAt);
 
-    penalties.forEach((p) => {
-      const key = p.seriesName || "Unknown Series";
-      if (!groups.has(key)) {
-        groups.set(key, []);
-      }
-      groups.get(key)!.push(p);
-    });
-
-    return Array.from(groups.entries())
-      .map(([seriesName, penalties]) => ({
-        seriesName,
-        penalties: penalties.sort((a, b) => b.assignedAt - a.assignedAt),
-      }))
-      .sort((a, b) => a.seriesName.localeCompare(b.seriesName));
-  }
-
-  maxShown(): number {
-    return Math.min(this.currentPage() * this.PAGE_SIZE, this.totalReports());
-  }
-
-  goToPage(page: number): void {
-    this.currentPage.set(page);
-  }
-
-  totalPages(): number {
-    return Math.ceil(this.totalReports() / this.PAGE_SIZE);
-  }
-
-  visiblePageNumbers(): number[] {
-    const total = this.totalPages();
-    const current = this.currentPage();
-    const delta = 2;
-
-    const range: number[] = [];
-    const rangeWithDots: (number | string)[] = [];
-    let l: number | undefined;
-
-    range.push(1);
-    for (let i = current - delta; i <= current + delta; i++) {
-      if (i > 1 && i < total) {
-        range.push(i);
-      }
+      this.updateSeriesGroup(group.seriesKey, {
+        seriesPenalties: penalties,
+        loadingSeriesPenalties: false,
+      });
+    } catch (error) {
+      console.error('Failed to load series penalties:', error);
+      this.updateSeriesGroup(group.seriesKey, {
+        seriesPenalties: [],
+        loadingSeriesPenalties: false,
+      });
     }
-    range.push(total);
+  }
 
-    for (let i of range) {
-      if (l) {
-        if (i - l === 2) {
-          rangeWithDots.push(l + 1);
-        } else if (i - l !== 1) {
-          rangeWithDots.push("...");
+  private async loadIndividualPenalties(group: any): Promise<void> {
+    try {
+      const penaltiesByDriver = await Promise.all(
+        group.driverIds.map((driverId: Id<"drivers">) =>
+          this.convex.query(this.convex.api.reports.getDriverIndividualPenalties, {
+            driverId,
+          }),
+        ),
+      );
+
+      const penalties = penaltiesByDriver.flat().filter((penalty) => {
+        if (!group.seriesId) {
+          return !penalty.event?.seriesId;
         }
-      }
-      rangeWithDots.push(i);
-      l = i;
-    }
+        return penalty.event?.seriesId === group.seriesId;
+      });
 
-    return rangeWithDots.filter((n) => n !== "...") as number[];
+      this.updateSeriesGroup(group.seriesKey, {
+        individualPenalties: penalties,
+        loadingIndividualPenalties: false,
+      });
+    } catch (error) {
+      console.error('Failed to load individual penalties:', error);
+      this.updateSeriesGroup(group.seriesKey, {
+        individualPenalties: [],
+        loadingIndividualPenalties: false,
+      });
+    }
   }
 }

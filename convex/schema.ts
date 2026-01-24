@@ -8,11 +8,13 @@ export default defineSchema({
   }).index("by_name", ["name"]),
 
   users: defineTable({
-    email: v.string(),
+    email: v.optional(v.string()),
     name: v.string(),
     avatarUrl: v.optional(v.string()),
     roleId: v.id("roles"),
     discordId: v.optional(v.string()),
+    discordUsername: v.optional(v.string()),
+    discordGlobalName: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_email", ["email"])
@@ -26,12 +28,15 @@ export default defineSchema({
     driverClass: v.string(),
     steamId: v.optional(v.string()),
     championshipId: v.optional(v.id("series")),
+    userId: v.optional(v.id("users")),
     createdAt: v.number(),
   })
     .index("by_number", ["driverNumber"])
+    .index("by_username", ["username"])
     .index("by_external_id", ["externalId"])
     .index("by_steam_id", ["steamId"])
-    .index("by_championship", ["championshipId"]),
+    .index("by_championship", ["championshipId"])
+    .index("by_user_id", ["userId"]),
 
   series: defineTable({
     name: v.string(),

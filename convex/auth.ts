@@ -3,10 +3,12 @@ import { v } from "convex/values";
 
 export const getOrCreateUser = mutation({
   args: {
-    email: v.string(),
+    email: v.optional(v.string()),
     name: v.string(),
     avatarUrl: v.optional(v.string()),
     discordId: v.string(),
+    discordUsername: v.optional(v.string()),
+    discordGlobalName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Check if user exists by Discord ID
@@ -16,6 +18,26 @@ export const getOrCreateUser = mutation({
       .first();
 
     if (existingUser) {
+      const updates = Object.fromEntries(
+        Object.entries({
+          email: args.email,
+          name: args.name,
+          avatarUrl: args.avatarUrl,
+          discordUsername: args.discordUsername,
+          discordGlobalName: args.discordGlobalName,
+        }).filter(([_, value]) => value !== undefined),
+      );
+
+      if (Object.keys(updates).length > 0) {
+        await ctx.db.patch(existingUser._id, updates);
+      }
+
+      await linkDriversByDiscordUsername(
+        ctx,
+        existingUser._id,
+        args.discordUsername,
+        args.discordGlobalName,
+      );
       return existingUser._id;
     }
 
@@ -40,13 +62,56 @@ export const getOrCreateUser = mutation({
       name: args.name,
       avatarUrl: args.avatarUrl,
       discordId: args.discordId,
+      discordUsername: args.discordUsername,
+      discordGlobalName: args.discordGlobalName,
       roleId: defaultRole!._id,
       createdAt: Date.now(),
     });
 
+    await linkDriversByDiscordUsername(
+      ctx,
+      userId,
+      args.discordUsername,
+      args.discordGlobalName,
+    );
     return userId;
   },
 });
+
+const linkDriversByDiscordUsername = async (
+  ctx: any,
+  userId: any,
+  discordUsername?: string,
+  discordGlobalName?: string,
+): Promise<void> => {
+  let matchedDrivers: any[] = [];
+
+  if (discordUsername) {
+    matchedDrivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_username", (q: any) => q.eq("username", discordUsername))
+      .collect();
+  }
+
+  if (matchedDrivers.length === 0 && discordGlobalName) {
+    matchedDrivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_username", (q: any) => q.eq("username", discordGlobalName))
+      .collect();
+  }
+
+  await Promise.all(
+    matchedDrivers.map(async (driver) => {
+      if (driver.userId && driver.userId !== userId) {
+        return;
+      }
+
+      if (!driver.userId) {
+        await ctx.db.patch(driver._id, { userId });
+      }
+    }),
+  );
+};
 
 export const getCurrentUser = query({
   args: { userId: v.optional(v.id("users")) },

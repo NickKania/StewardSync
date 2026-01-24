@@ -3,10 +3,15 @@ import { Router } from '@angular/router';
 import { ConvexService } from './convex.service';
 import { User, RoleName } from '@core/models';
 import { Id } from '@convex/_generated/dataModel';
+import { environment } from '../../../environments/environment';
 
 declare const google: any;
 
 const STORAGE_KEY = 'steward_sync_user';
+const DISCORD_STATE_KEY = 'steward_sync_discord_state';
+const DISCORD_VERIFIER_KEY = 'steward_sync_discord_verifier';
+const DISCORD_AUTH_SUCCESS = 'discord-auth-success';
+const DISCORD_AUTH_ERROR = 'discord-auth-error';
 
 @Injectable({
   providedIn: 'root'
@@ -59,7 +64,7 @@ export class AuthService {
       }
 
       google.accounts.id.initialize({
-        client_id: import.meta.env['NG_APP_GOOGLE_CLIENT_ID'] || '',
+        client_id: environment.googleClientId || '',
         callback: async (response: any) => {
           try {
             const decoded = this.decodeJwt(response.credential);
@@ -95,6 +100,125 @@ export class AuthService {
 
       google.accounts.id.prompt();
     });
+  }
+
+  async loginWithDiscord(): Promise<void> {
+    const clientId = environment.discordClientId;
+    if (!clientId) {
+      throw new Error('Discord client ID not configured');
+    }
+
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const state = this.generateRandomString(32);
+    const codeVerifier = this.generateRandomString(64);
+    const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+
+    sessionStorage.setItem(DISCORD_STATE_KEY, state);
+    sessionStorage.setItem(DISCORD_VERIFIER_KEY, codeVerifier);
+
+    const authUrl = new URL('https://discord.com/api/oauth2/authorize');
+    authUrl.search = new URLSearchParams({
+      client_id: clientId,
+      response_type: 'code',
+      redirect_uri: redirectUri,
+      scope: 'identify email',
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
+    }).toString();
+
+    const popup = window.open(
+      authUrl.toString(),
+      'discord_oauth',
+      'width=500,height=700,menubar=no,location=no,resizable=no,scrollbars=yes,status=no'
+    );
+
+    if (!popup) {
+      throw new Error('Failed to open Discord login window');
+    }
+
+    const { code, state: returnedState } = await new Promise<{ code: string; state: string }>(
+      (resolve, reject) => {
+        const timeout = setInterval(() => {
+          if (popup.closed) {
+            cleanup();
+            reject(new Error('Discord login window closed'));
+          }
+        }, 500);
+
+        const cleanup = () => {
+          window.removeEventListener('message', handleMessage);
+          clearInterval(timeout);
+        };
+
+        const handleMessage = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          const data = event.data || {};
+
+          if (data.type === DISCORD_AUTH_SUCCESS && data.code) {
+            cleanup();
+            resolve({ code: data.code, state: data.state });
+          }
+
+          if (data.type === DISCORD_AUTH_ERROR) {
+            cleanup();
+            reject(new Error(data.error || 'Discord authentication failed'));
+          }
+        };
+
+        window.addEventListener('message', handleMessage);
+      }
+    );
+
+    const storedState = sessionStorage.getItem(DISCORD_STATE_KEY);
+    const storedVerifier = sessionStorage.getItem(DISCORD_VERIFIER_KEY);
+    sessionStorage.removeItem(DISCORD_STATE_KEY);
+    sessionStorage.removeItem(DISCORD_VERIFIER_KEY);
+
+    if (!storedState || storedState !== returnedState) {
+      throw new Error('Discord login state mismatch');
+    }
+
+    if (!storedVerifier) {
+      throw new Error('Missing Discord code verifier');
+    }
+
+    const tokenData = await this.exchangeDiscordCodeForToken(
+      code,
+      storedVerifier,
+      redirectUri,
+      clientId
+    );
+
+    const profile = await this.fetchDiscordProfile(tokenData.access_token);
+    const name = profile.global_name || profile.username;
+    const avatarUrl = profile.avatar
+      ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
+      : undefined;
+
+    const userId = await this.convex.mutation(
+      this.convex.api.auth.getOrCreateUser as any,
+      {
+        email: profile.email || undefined,
+        name,
+        avatarUrl,
+        discordId: profile.id,
+        discordUsername: profile.username,
+        discordGlobalName: profile.global_name || undefined
+      } as any
+    );
+
+    const user = await this.convex.query(
+      this.convex.api.auth.getCurrentUser,
+      { userId }
+    );
+
+    if (user) {
+      this._user.set(user as User);
+      this._userId.set(userId);
+      localStorage.setItem(STORAGE_KEY, userId);
+      this.router.navigate(['/']);
+    }
   }
 
   async mockLogin(): Promise<void> {
@@ -183,5 +307,70 @@ export class AuthService {
         .join('')
     );
     return JSON.parse(jsonPayload);
+  }
+
+  private generateRandomString(length: number): string {
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+    const values = new Uint8Array(length);
+    crypto.getRandomValues(values);
+    return Array.from(values)
+      .map((value) => charset[value % charset.length])
+      .join('');
+  }
+
+  private async generateCodeChallenge(verifier: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return this.base64UrlEncode(new Uint8Array(digest));
+  }
+
+  private base64UrlEncode(data: Uint8Array): string {
+    let binary = '';
+    data.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  private async exchangeDiscordCodeForToken(
+    code: string,
+    codeVerifier: string,
+    redirectUri: string,
+    clientId: string
+  ): Promise<any> {
+    const response = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to exchange code for token');
+    }
+
+    return response.json();
+  }
+
+  private async fetchDiscordProfile(accessToken: string): Promise<any> {
+    const response = await fetch('https://discord.com/api/users/@me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch Discord profile');
+    }
+
+    return response.json();
   }
 }

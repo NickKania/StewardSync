@@ -38,11 +38,10 @@ export const getBySteamId = query({
 export const getByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {
-    const drivers = await ctx.db
+    return await ctx.db
       .query("drivers")
-      .collect();
-
-    return drivers.find(d => d.username === args.username);
+      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .first();
   },
 });
 
