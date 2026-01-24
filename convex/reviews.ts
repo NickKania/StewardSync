@@ -1,5 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { checkUserDriverConflict } from "./lib/reports";
+import { UserFacingError } from "./lib/errors";
+import { Result, success, failure } from "./lib/result";
 
 export const list = query({
   args: {},
@@ -138,7 +141,26 @@ export const create = mutation({
     }
 
     if (report.isFinalized) {
-      throw new Error("Cannot review a finalized report");
+      return failure("Cannot review a finalized report");
+    }
+
+    // Check if primary steward has driver conflict
+    const primaryConflict = await checkUserDriverConflict(ctx, args.userId, report);
+    if (primaryConflict.hasConflict) {
+      return failure(
+        `You cannot review this report because you are involved as the ${primaryConflict.conflictType === "reporting_driver" ? "reporting driver" : "reported driver"} (${primaryConflict.driverName}).`
+      );
+    }
+
+    // Check if second steward has driver conflict
+    if (args.secondStewardId) {
+      const secondConflict = await checkUserDriverConflict(ctx, args.secondStewardId, report);
+      if (secondConflict.hasConflict) {
+        const secondSteward = await ctx.db.get(args.secondStewardId);
+        return failure(
+          `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${secondConflict.conflictType === "reporting_driver" ? "reporting driver" : "reported driver"} (${secondConflict.driverName}).`
+        );
+      }
     }
 
     // Check if this user has already reviewed this report
@@ -149,7 +171,7 @@ export const create = mutation({
       .first();
 
     if (existingReview) {
-      throw new Error("You have already submitted a review for this report");
+      return failure("You have already submitted a review for this report");
     }
 
     // If second steward is provided, check if they've also already reviewed
@@ -161,7 +183,7 @@ export const create = mutation({
         .first();
 
       if (existingSecondReview) {
-        throw new Error("Second steward has already submitted a review for this report");
+        return failure("Second steward has already submitted a review for this report");
       }
     }
 
@@ -198,7 +220,7 @@ export const create = mutation({
 
       await ctx.db.patch(primaryReviewId, { linkedReviewId: secondReviewId });
 
-      return primaryReviewId;
+      return success(primaryReviewId);
     }
 
     // Single review
@@ -215,7 +237,7 @@ export const create = mutation({
       updatedAt: now,
     });
 
-    return reviewId;
+    return success(reviewId);
   },
 });
 
@@ -238,7 +260,7 @@ export const update = mutation({
     // Check if the report is finalized
     const report = await ctx.db.get(review.reportId);
     if (report?.isFinalized) {
-      throw new Error("Cannot update review for a finalized report");
+      throw new UserFacingError("Cannot update review for a finalized report");
     }
 
     const cleanUpdates = Object.fromEntries(
@@ -265,7 +287,7 @@ export const remove = mutation({
     // Check if the report is finalized
     const report = await ctx.db.get(review.reportId);
     if (report?.isFinalized) {
-      throw new Error("Cannot delete review for a finalized report");
+      throw new UserFacingError("Cannot delete review for a finalized report");
     }
 
     await ctx.db.delete(args.reviewId);

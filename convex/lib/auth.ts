@@ -1,4 +1,5 @@
 import { Id } from "../_generated/dataModel";
+import { UserFacingError } from "./errors";
 
 const ROLE_HIERARCHY = [
   "driver",
@@ -48,7 +49,7 @@ export async function requireRole(
   );
 
   if (!hasPermission) {
-    throw new Error(
+    throw new UserFacingError(
       `Unauthorized. Required roles: ${allowedRoles.join(", ")}. User role: ${userRole}`
     );
   }

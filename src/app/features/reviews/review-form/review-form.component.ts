@@ -178,6 +178,9 @@ import { Penalty } from "@core/models/series.model";
                       [options]="stewardOptions()"
                       placeholder="Search stewards by name..."
                     />
+                    <p class="text-xs text-gray-500 mt-1">
+                      Stewards involved as drivers in this incident are excluded from the list
+                    </p>
                   </div>
                 </div>
 
@@ -371,12 +374,38 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   });
 
   stewardOptions = computed(() => {
+    const currentUserId = this.authService.getUserId();
+    const report = this.report();
+
+    if (!currentUserId || !report) {
+      return [{ value: "", label: "Reviewing alone" }];
+    }
+
     return [
       { value: "", label: "Reviewing alone" },
-      ...this.availableStewards().map((s) => ({
-        value: s._id,
-        label: `${s.name} (${s.role?.name})`,
-      })),
+      ...this.stewards()
+        .filter((steward) => {
+          // Exclude current user
+          if (String(steward._id) === String(currentUserId)) return false;
+
+          // Exclude stewards who are involved as drivers
+          const reportingDriverUserId = report.reportingDriver?.userId;
+          const reportedDriverUserId = report.reportedDriver?.userId;
+
+          if (reportingDriverUserId && String(steward._id) === String(reportingDriverUserId)) {
+            return false;
+          }
+
+          if (reportedDriverUserId && String(steward._id) === String(reportedDriverUserId)) {
+            return false;
+          }
+
+          return true;
+        })
+        .map((steward) => ({
+          value: steward._id,
+          label: `${steward.name} (${steward.role?.name || "Unknown"})`,
+        })),
     ];
   });
 
@@ -530,7 +559,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       const formValue = this.form.value;
 
       // Create review
-      await this.convex.mutation(this.convex.api.reviews.create, {
+      const result = await this.convex.mutation(this.convex.api.reviews.create, {
         userId,
         reportId: this.reportId as any,
         incidentDescription: formValue.incidentDescription,
@@ -540,6 +569,12 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         secondStewardId: formValue.secondStewardId || undefined,
         isSelfReport: formValue.isSelfReport || false,
       });
+
+      if (!result.success) {
+        this.toast.error(result.error);
+        this.submitting.set(false);
+        return;
+      }
 
       // Optionally mark report as reviewed
       if (markAsReviewed) {

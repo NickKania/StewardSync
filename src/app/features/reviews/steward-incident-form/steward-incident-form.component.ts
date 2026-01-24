@@ -259,6 +259,9 @@ import { SelectOption } from "@shared/components/select/select.component";
                       [options]="stewardOptions()"
                       placeholder="Search stewards by name..."
                     />
+                    <p class="text-xs text-gray-500 mt-1">
+                      Stewards involved as drivers in this incident are excluded from the list
+                    </p>
                   </div>
                 </div>
 
@@ -397,12 +400,32 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   });
 
   stewardOptions = computed(() => {
+    const currentUserId = this.authService.getUserId();
+    const reportedDriverId = this.form.get('reportedDriverId')?.value;
+
+    // Get the reported driver to check their userId
+    const reportedDriver = reportedDriverId
+      ? this.drivers().find(d => d._id === reportedDriverId)
+      : null;
+
     return [
       { value: "", label: "Reviewing alone" },
-      ...this.availableStewards().map((s) => ({
-        value: s._id,
-        label: `${s.name} (${s.role?.name})`,
-      })),
+      ...this.stewards()
+        .filter((steward) => {
+          // Exclude current user
+          if (String(steward._id) === String(currentUserId)) return false;
+
+          // Exclude if steward is the reported driver
+          if (reportedDriver?.userId && String(steward._id) === String(reportedDriver.userId)) {
+            return false;
+          }
+
+          return true;
+        })
+        .map((steward) => ({
+          value: steward._id,
+          label: `${steward.name} (${steward.role?.name || "Unknown"})`,
+        })),
     ];
   });
 
@@ -628,55 +651,34 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       }
 
       const formValue = this.form.value;
-      const incidentDesc = formValue.incidentDescription || "";
 
-      await this.convex.mutation(this.convex.api.reports.createBySteward, {
-        reportingUserId: userId as any,
-        reportedDriverId: formValue.reportedDriverId,
-        eventId: formValue.eventId,
-        raceId: formValue.raceId,
-        lap: parseInt(formValue.lap, 10),
-        turn: parseInt(formValue.turn, 10),
-        description: incidentDesc,
-        incidentDescription: incidentDesc,
-        reviewNotes: formValue.reviewNotes || undefined,
-        recommendedPenalty: formValue.recommendedPenalty,
-        videoTimestamp: formValue.videoTimestamp || undefined,
-        secondStewardId: formValue.secondStewardId || undefined,
-        isSelfReport: formValue.isSelfReport || false,
-      });
-
-      this.toast.success("Incident created successfully");
-
-      if (formValue.createAnother) {
-        // Save current event and race selections
-        localStorage.setItem("selectedEventId", formValue.eventId);
-        localStorage.setItem("selectedRaceId", formValue.raceId);
-
-        this.form.reset({
-          reportedDriverId: "",
+      const result = await this.convex.mutation(
+        this.convex.api.reports.createBySteward,
+        {
+          reportingUserId: userId,
+          reportedDriverId: formValue.reportedDriverId as any,
           eventId: formValue.eventId,
           raceId: formValue.raceId,
-          lap: "",
-          turn: "",
-          incidentDescription: "",
-          reviewNotes: "",
-          recommendedPenalty: "",
-          videoTimestamp: "",
-          secondStewardId: localStorage.getItem("selectedSecondSteward") || "",
-          isSelfReport: false,
-          createAnother: true,
-        });
-        this.eventId.set(formValue.eventId);
-        this.raceId.set(formValue.raceId);
-
-        // Reload penalties for the same event
-        if (formValue.eventId) {
-          await this.loadPenalties(formValue.eventId);
+          lap: parseInt(formValue.lap, 10),
+          turn: parseInt(formValue.turn, 10),
+          description: formValue.description,
+          incidentDescription: formValue.incidentDescription,
+          reviewNotes: formValue.reviewNotes || "",
+          recommendedPenalty: formValue.recommendedPenalty,
+          videoTimestamp: formValue.videoTimestamp || "",
+          secondStewardId: formValue.secondStewardId || undefined,
+          isSelfReport: formValue.isSelfReport || false
         }
-      } else {
-        this.router.navigate(["/reports"]);
+      );
+
+      if (!result.success) {
+        this.toast.error(result.error);
+        this.submitting.set(false);
+        return;
       }
+
+      this.toast.success("Incident created successfully");
+      this.router.navigate(["/reports"]);
     } catch (error: any) {
       this.toast.error(error.message || "Failed to create incident");
     } finally {

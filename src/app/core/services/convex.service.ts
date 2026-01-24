@@ -3,6 +3,7 @@ import { ConvexClient } from 'convex/browser';
 import { api } from '@convex/_generated/api';
 import { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
 import { environment } from '../../../environments/environment';
+import { ConvexCustomLogger } from './convex-logger';
 
 @Injectable({
   providedIn: 'root'
@@ -12,7 +13,9 @@ export class ConvexService implements OnDestroy {
   private subscriptions: Map<string, () => void> = new Map();
 
   constructor() {
-    this.client = new ConvexClient(environment.convexUrl);
+    this.client = new ConvexClient(environment.convexUrl, {
+      logger: new ConvexCustomLogger()
+    });
   }
 
   get api() {

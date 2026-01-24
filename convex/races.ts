@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { UserFacingError } from "./lib/errors";
 
 export const list = query({
   args: {},
@@ -57,7 +58,7 @@ export const create = mutation({
       .collect();
 
     if (existingRaces.some((r) => r.raceNumber === args.raceNumber)) {
-      throw new Error(`Race ${args.raceNumber} already exists for this event`);
+      throw new UserFacingError(`Race ${args.raceNumber} already exists for this event`);
     }
 
     const raceId = await ctx.db.insert("races", {
@@ -79,7 +80,7 @@ export const remove = mutation({
       .first();
 
     if (reports) {
-      throw new Error("Cannot delete race with existing reports");
+      throw new UserFacingError("Cannot delete race with existing reports");
     }
 
     await ctx.db.delete(args.raceId);

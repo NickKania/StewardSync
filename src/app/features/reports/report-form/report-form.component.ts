@@ -412,10 +412,33 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
       this.router.navigate(["/reports"]);
     } catch (error: any) {
-      this.toast.error(error.message || "Failed to submit report");
+      const errorMessage = this.extractUserFacingError(error.message);
+      this.toast.error(errorMessage || "Failed to submit report");
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  private extractUserFacingError(errorMessage: string): string {
+    // Convex wraps errors with a prefix like:
+    // "[CONVEX M(reports:create)] [Request ID: xxx] Server Error Uncaught UserFacingError: ..."
+    // We want to extract just the part after "Uncaught UserFacingError: " or "Error: "
+    if (!errorMessage) return "";
+
+    // Try to extract UserFacingError message
+    const userFacingMatch = errorMessage.match(/Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s);
+    if (userFacingMatch) {
+      return userFacingMatch[1].trim();
+    }
+
+    // Try to extract regular Error message as fallback
+    const errorMatch = errorMessage.match(/Error:\s*(.+?)(?:\s+at\s+|$)/s);
+    if (errorMatch) {
+      return errorMatch[1].trim();
+    }
+
+    // If no pattern matches, return original message
+    return errorMessage;
   }
 
   cancel(): void {

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { UserFacingError } from "./lib/errors";
 
 export const list = query({
   args: {},
@@ -73,7 +74,7 @@ export const create = mutation({
       .first();
 
     if (existing) {
-      throw new Error(`Driver with number ${args.driverNumber} already exists`);
+      throw new UserFacingError(`Driver with number ${args.driverNumber} already exists`);
     }
 
     const driverId = await ctx.db.insert("drivers", {

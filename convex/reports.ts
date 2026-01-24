@@ -1,5 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { checkUserDriverConflict } from "./lib/reports";
+import { UserFacingError } from "./lib/errors";
+import { Result, success, failure } from "./lib/result";
 
 export const list = query({
   args: {
@@ -306,7 +309,7 @@ export const update = mutation({
     }
 
     if (report.isFinalized) {
-      throw new Error("Cannot edit a finalized report");
+      throw new UserFacingError("Cannot edit a finalized report");
     }
 
     const cleanUpdates = Object.fromEntries(
@@ -337,7 +340,7 @@ export const markAsReviewed = mutation({
       .collect();
 
     if (reviews.length === 0) {
-      throw new Error(
+      throw new UserFacingError(
         "Report must have at least one review before marking as reviewed",
       );
     }
@@ -367,7 +370,15 @@ export const finalize = mutation({
     }
 
     if (report.isFinalized) {
-      throw new Error("Report is already finalized");
+      return failure("Report is already finalized");
+    }
+
+    // Check if finalizing user has driver conflict
+    const finalizerConflict = await checkUserDriverConflict(ctx, args.userId, report);
+    if (finalizerConflict.hasConflict) {
+      return failure(
+        `You cannot finalize this report because you are involved as the ${finalizerConflict.conflictType === "reporting_driver" ? "reporting driver" : "reported driver"} (${finalizerConflict.driverName}).`
+      );
     }
 
     const now = Date.now();
@@ -479,7 +490,7 @@ export const finalize = mutation({
       }
     }
 
-    return args.reportId;
+    return success(args.reportId);
   },
 });
 
@@ -501,6 +512,40 @@ export const createBySteward = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+
+    // Get all drivers linked to reporting user
+    const reportingUserDrivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_user_id", (q: any) => q.eq("userId", args.reportingUserId))
+      .collect();
+
+    const reportingUserDriverIds = reportingUserDrivers.map((d: any) => d._id);
+
+    // Check if reporting steward is the reported driver
+    if (reportingUserDriverIds.some((id: any) => id === args.reportedDriverId)) {
+      const conflictDriver = reportingUserDrivers.find((d: any) => d._id === args.reportedDriverId);
+      return failure(
+        `You cannot create a steward incident for yourself. You are the reported driver (${conflictDriver?.driverName}).`
+      );
+    }
+
+    // Check if second steward has driver conflict
+    if (args.secondStewardId) {
+      const secondStewardDrivers = await ctx.db
+        .query("drivers")
+        .withIndex("by_user_id", (q: any) => q.eq("userId", args.secondStewardId))
+        .collect();
+
+      const secondStewardDriverIds = secondStewardDrivers.map((d: any) => d._id);
+
+      if (secondStewardDriverIds.some((id: any) => id === args.reportedDriverId)) {
+        const conflictDriver = secondStewardDrivers.find((d: any) => d._id === args.reportedDriverId);
+        const secondSteward = await ctx.db.get(args.secondStewardId);
+        return failure(
+          `${secondSteward?.name || "The second steward"} cannot review this report because they are the reported driver (${conflictDriver?.driverName}).`
+        );
+      }
+    }
 
     const reportId = await ctx.db.insert("reports", {
       reportingUserId: args.reportingUserId,
@@ -555,7 +600,7 @@ export const createBySteward = mutation({
       });
     }
 
-    return reportId;
+    return success(reportId);
   },
 });
 
@@ -571,7 +616,7 @@ export const reject = mutation({
     }
 
     if (report.isFinalized) {
-      throw new Error("Report is already finalized");
+      return failure("Report is already finalized");
     }
 
     await ctx.db.patch(args.reportId, {
@@ -581,7 +626,7 @@ export const reject = mutation({
       updatedAt: Date.now(),
     });
 
-    return args.reportId;
+    return success(args.reportId);
   },
 });
 

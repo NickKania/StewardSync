@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { UserFacingError } from "./lib/errors";
 
 export const list = query({
   handler: async (ctx) => {
@@ -55,7 +56,7 @@ export const remove = mutation({
       .first();
 
     if (events) {
-      throw new Error("Cannot delete series with existing events");
+      throw new UserFacingError("Cannot delete series with existing events");
     }
 
     await ctx.db.delete(args.id);

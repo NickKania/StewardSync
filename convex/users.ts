@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
+import { UserFacingError } from "./lib/errors";
 
 export const list = query({
   args: {},
@@ -43,7 +44,7 @@ export const updateRole = mutation({
 
     // Prevent self-role changes
     if (userId === currentUserId) {
-      throw new Error("Cannot change your own role");
+      throw new UserFacingError("Cannot change your own role");
     }
 
     // Verify role exists

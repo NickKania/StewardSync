@@ -476,7 +476,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
       const formValue = this.form.value;
 
-      await this.convex.mutation(
+      const result = await this.convex.mutation(
         this.convex.api.reports.finalize,
         {
           reportId: this.reportId as any,
@@ -488,6 +488,12 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         }
       );
 
+      if (!result.success) {
+        this.toast.error(result.error);
+        this.submitting.set(false);
+        return;
+      }
+
       this.toast.success('Report finalized successfully');
       this.router.navigate(['/reports', this.reportId]);
     } catch (error: any) {
@@ -497,19 +503,47 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     }
   }
 
+  private extractUserFacingError(errorMessage: string): string {
+    // Convex wraps errors with a prefix like:
+    // "[CONVEX M(reports:finalize)] [Request ID: xxx] Server Error Uncaught UserFacingError: ..."
+    // We want to extract just the part after "Uncaught UserFacingError: " or "Error: "
+    if (!errorMessage) return "";
+
+    // Try to extract UserFacingError message
+    const userFacingMatch = errorMessage.match(/Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s);
+    if (userFacingMatch) {
+      return userFacingMatch[1].trim();
+    }
+
+    // Try to extract regular Error message as fallback
+    const errorMatch = errorMessage.match(/Error:\s*(.+?)(?:\s+at\s+|$)/s);
+    if (errorMatch) {
+      return errorMatch[1].trim();
+    }
+
+    // If no pattern matches, return original message
+    return errorMessage;
+  }
+
   async rejectReport(): Promise<void> {
     if (!this.rejectionReason) return;
 
     this.submitting.set(true);
 
     try {
-      await this.convex.mutation(
+      const result = await this.convex.mutation(
         this.convex.api.reports.reject,
         {
           reportId: this.reportId as any,
           officialNotes: this.rejectionReason
         }
       );
+
+      if (!result.success) {
+        this.toast.error(result.error);
+        this.submitting.set(false);
+        return;
+      }
 
       this.toast.success('Report rejected');
       this.showRejectModal = false;
@@ -524,4 +558,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   cancel(): void {
     this.router.navigate(['/finalize']);
   }
+}
+
+export interface MarkAsReviewedOption {
+  value: boolean;
+  label: string;
 }

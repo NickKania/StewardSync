@@ -354,7 +354,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
       await this.loadEvent();
     } catch (error: any) {
-      alert(`Failed to add race: ${error.message}`);
+      alert(`Failed to add race: ${this.extractUserFacingError(error.message)}`);
     }
   }
 
@@ -371,7 +371,29 @@ export class EventDetailComponent implements OnInit, OnDestroy {
       await this.convex.mutation(this.convex.api.races.remove, { raceId });
       await this.loadEvent();
     } catch (error: any) {
-      alert(`Failed to delete race: ${error.message}`);
+      alert(`Failed to delete race: ${this.extractUserFacingError(error.message)}`);
     }
+  }
+
+  private extractUserFacingError(errorMessage: string): string {
+    // Convex wraps errors with a prefix like:
+    // "[CONVEX M(races:remove)] [Request ID: xxx] Server Error Uncaught UserFacingError: ..."
+    // We want to extract just the part after "Uncaught UserFacingError: " or "Error: "
+    if (!errorMessage) return "";
+
+    // Try to extract UserFacingError message
+    const userFacingMatch = errorMessage.match(/Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s);
+    if (userFacingMatch) {
+      return userFacingMatch[1].trim();
+    }
+
+    // Try to extract regular Error message as fallback
+    const errorMatch = errorMessage.match(/Error:\s*(.+?)(?:\s+at\s+|$)/s);
+    if (errorMatch) {
+      return errorMatch[1].trim();
+    }
+
+    // If no pattern matches, return original message
+    return errorMessage;
   }
 }
