@@ -1,6 +1,6 @@
 import { Id } from '@convex/_generated/dataModel';
 
-export type RoleName = 'driver' | 'steward' | 'head_steward' | 'event_manager';
+export type RoleName = 'driver' | 'steward' | 'head_steward' | 'event_manager' | 'league_manager';
 
 export interface Role {
   _id: Id<'roles'>;

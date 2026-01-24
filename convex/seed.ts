@@ -8,6 +8,7 @@ export const seedRoles = mutation({
       { name: "steward", displayName: "Steward" },
       { name: "head_steward", displayName: "Head Steward" },
       { name: "event_manager", displayName: "Event Manager" },
+      { name: "league_manager", displayName: "League Manager" },
     ];
 
     for (const role of roles) {
@@ -58,6 +59,16 @@ export const seedDemoUsers = mutation({
       throw new Error("event_manager role not found. Run seedRoles first.");
     }
 
+    // Get league_manager role
+    const leagueManagerRole = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", "league_manager"))
+      .first();
+
+    if (!leagueManagerRole) {
+      throw new Error("league_manager role not found. Run seedRoles first.");
+    }
+
     // Define demo users
     const demoUsers = [
       {
@@ -77,6 +88,12 @@ export const seedDemoUsers = mutation({
         name: "Demo Event Manager",
         discordId: "demo-event-manager-001",
         roleId: eventManagerRole._id,
+      },
+      {
+        email: "leaguemanager@demo.stewardsync.com",
+        name: "Demo League Manager",
+        discordId: "demo-league-manager-001",
+        roleId: leagueManagerRole._id,
       },
     ];
 

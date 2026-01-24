@@ -13,6 +13,7 @@ import type * as auth from "../auth.js";
 import type * as driverSeriesPenalties from "../driverSeriesPenalties.js";
 import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
+import type * as lib_auth from "../lib/auth.js";
 import type * as migrations from "../migrations.js";
 import type * as penalties from "../penalties.js";
 import type * as races from "../races.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   driverSeriesPenalties: typeof driverSeriesPenalties;
   drivers: typeof drivers;
   events: typeof events;
+  "lib/auth": typeof lib_auth;
   migrations: typeof migrations;
   penalties: typeof penalties;
   races: typeof races;

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireRole } from "./lib/auth";
 
 export const list = query({
   args: {},
@@ -32,9 +33,18 @@ export const updateRole = mutation({
   args: {
     userId: v.id("users"),
     roleId: v.id("roles"),
+    currentUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const { userId, roleId } = args;
+    const { userId, roleId, currentUserId } = args;
+
+    // Verify current user is league_manager
+    await requireRole(ctx, currentUserId, ["league_manager"]);
+
+    // Prevent self-role changes
+    if (userId === currentUserId) {
+      throw new Error("Cannot change your own role");
+    }
 
     // Verify role exists
     const role = await ctx.db.get(roleId);

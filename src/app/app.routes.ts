@@ -45,7 +45,7 @@ export const routes: Routes = [
   {
     path: 'reviews',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['steward', 'head_steward', 'event_manager'] },
+    data: { roles: ['steward', 'head_steward', 'event_manager', 'league_manager'] },
     children: [
       {
         path: '',
@@ -64,7 +64,7 @@ export const routes: Routes = [
   {
     path: 'finalize',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['head_steward', 'event_manager'] },
+    data: { roles: ['head_steward', 'event_manager', 'league_manager'] },
     children: [
       {
         path: '',
@@ -107,16 +107,18 @@ export const routes: Routes = [
   {
     path: 'statistics',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['steward', 'head_steward', 'event_manager'] },
+    data: { roles: ['steward', 'head_steward', 'event_manager', 'league_manager'] },
     loadComponent: () => import('@features/statistics/statistics-dashboard/statistics-dashboard.component').then(m => m.StatisticsDashboardComponent)
   },
   {
     path: 'admin',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['event_manager'] },
+    data: { roles: ['event_manager', 'league_manager'] },
     children: [
       {
         path: 'users',
+        canActivate: [roleGuard],
+        data: { roles: ['league_manager'] },
         loadComponent: () => import('@features/admin/user-management/user-management.component').then(m => m.UserManagementComponent)
       },
       {

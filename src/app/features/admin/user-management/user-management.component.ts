@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { CardComponent } from '@shared/components/card/card.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
@@ -160,6 +161,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
 export class UserManagementComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private toast = inject(ToastService);
+  private authService = inject(AuthService);
 
   users = signal<any[]>([]);
   roles = signal<any[]>([]);
@@ -213,10 +215,11 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.unsubscribes.push(() => clearInterval(checkRoles));
   }
 
-  getRoleVariant(roleName: string | undefined): 'default' | 'primary' | 'success' | 'warning' {
+  getRoleVariant(roleName: string | undefined): 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info' {
     switch (roleName) {
-      case 'event_manager': return 'success';
-      case 'head_steward': return 'primary';
+      case 'league_manager': return 'success';
+      case 'event_manager': return 'primary';
+      case 'head_steward': return 'info';
       case 'steward': return 'warning';
       default: return 'default';
     }
@@ -237,6 +240,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   async saveRole(): Promise<void> {
     if (!this.selectedUser || !this.selectedRoleId) return;
 
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId) {
+      this.toast.error('Not authenticated');
+      return;
+    }
+
     this.saving.set(true);
 
     try {
@@ -244,7 +253,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.convex.api.users.updateRole,
         {
           userId: this.selectedUser._id,
-          roleId: this.selectedRoleId as any
+          roleId: this.selectedRoleId as any,
+          currentUserId: currentUserId
         }
       );
 

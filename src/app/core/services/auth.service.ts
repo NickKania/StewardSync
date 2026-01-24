@@ -286,7 +286,7 @@ export class AuthService {
   }
 
   hasMinimumRole(minimumRole: RoleName): boolean {
-    const roleHierarchy: RoleName[] = ['driver', 'steward', 'head_steward', 'event_manager'];
+    const roleHierarchy: RoleName[] = ['driver', 'steward', 'head_steward', 'event_manager', 'league_manager'];
     const currentRole = this.userRole();
 
     if (!currentRole) return false;
