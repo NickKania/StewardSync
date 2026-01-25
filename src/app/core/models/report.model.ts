@@ -12,12 +12,20 @@ export interface Report {
   reportedDriverId: Id<'drivers'>;
   eventId: Id<'events'>;
   raceId: Id<'races'>;
+  lap?: number;
   turn: number;
   description: string;
   status: ReportStatus;
   isFinalized: boolean;
   isSelfReport?: boolean;
   isStewardReported?: boolean;
+  finalDecision?: string;
+  appliedPenalty?: string;
+  atFaultDriverId?: Id<'drivers'>;
+  officialNotes?: string;
+  finalizedBy?: Id<'users'>;
+  finalizedAt?: number;
+  isEdited?: boolean;
   createdAt: number;
   updatedAt: number;
 
@@ -27,6 +35,9 @@ export interface Report {
   reportedDriver?: Driver;
   event?: Event;
   race?: Race;
+  atFaultDriver?: Driver;
+  appliedPenaltyObj?: any;
+  reviews?: any[];
 }
 
 export interface CreateReportDto {

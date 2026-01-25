@@ -9,6 +9,8 @@ import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { HasRoleDirective } from '@shared/directives/has-role.directive';
 import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
+import { ModalComponent } from '@shared/components/modal/modal.component';
+import { EditDecisionComponent } from '../edit-decision/edit-decision.component';
 
 @Component({
   selector: 'app-report-detail',
@@ -22,7 +24,9 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
     LoadingComponent,
     HasRoleDirective,
     DateFormatPipe,
-    TimeAgoPipe
+    TimeAgoPipe,
+    ModalComponent,
+    EditDecisionComponent
   ],
   template: `
     <div class="space-y-6">
@@ -90,8 +94,8 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                   <dd class="font-medium text-gray-900">{{ report()?.reportedDriver?.driverName }}</dd>
                   <dd class="text-sm text-gray-500">#{{ report()?.reportedDriver?.driverNumber }} - {{ report()?.reportedDriver?.driverClass }}</dd>
                 </div>
-                  <div>
-                    <dt class="text-sm text-gray-500">Reported By</dt>
+                <div>
+                  <dt class="text-sm text-gray-500">Reported By</dt>
                     <dd class="font-medium text-gray-900">{{ report()?.reportingUser?.name || 'Unknown User' }}</dd>
                     @if (report()?.isStewardReported) {
                       <app-badge variant="info" size="sm">Steward</app-badge>
@@ -105,13 +109,42 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
               </div>
             </app-card>
 
-            <!-- Final decision (if finalized) -->
+             <!-- Final decision (if finalized) -->
             @if (report()?.isFinalized) {
-              <app-card title="Official Decision">
-                <div class="space-y-4">
+              <app-card>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <h3 class="text-lg font-semibold text-gray-900">Official Decision</h3>
+                    @if (report()?.isEdited) {
+                      <app-badge variant="warning" size="sm">Edited</app-badge>
+                    }
+                  </div>
+                  @if (authService.hasMinimumRole('event_manager')) {
+                    <app-button
+                      variant="secondary"
+                      size="sm"
+                      (onClick)="openEditDecisionModal()"
+                    >
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                      </svg>
+                      Edit
+                    </app-button>
+                  }
+                </div>
+                <div class="space-y-4 mt-4">
                   <div>
                     <dt class="text-sm text-gray-500">Decision</dt>
                     <dd class="font-medium text-gray-900">{{ report()?.finalDecision }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-sm text-gray-500">At Fault Driver</dt>
+                    @if (report()?.atFaultDriver) {
+                      <dd class="font-medium text-gray-900">{{ report()?.atFaultDriver?.driverName }}</dd>
+                      <dd class="text-sm text-gray-500">#{{ report()?.atFaultDriver?.driverNumber }} - {{ report()?.atFaultDriver?.driverClass }}</dd>
+                    } @else {
+                      <dd class="text-sm text-gray-500 italic">Not assigned</dd>
+                    }
                   </div>
                   @if (report()?.appliedPenaltyObj) {
                     <div>
@@ -253,9 +286,25 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
               <app-button variant="primary">Back to Reports</app-button>
             </a>
           </div>
-        </app-card>
+         </app-card>
+       }
+     </div>
+
+    <!-- Edit decision modal -->
+    <app-modal
+      [isOpen]="showEditDecisionModal()"
+      title="Edit Finalized Decision"
+      size="lg"
+      (close)="showEditDecisionModal.set(false)"
+    >
+      @if (report()) {
+        <app-edit-decision
+          [report]="report()"
+          (success)="editDecisionSuccess()"
+          (close)="showEditDecisionModal.set(false)"
+        />
       }
-    </div>
+    </app-modal>
   `
 })
 export class ReportDetailComponent implements OnInit, OnDestroy {
@@ -266,6 +315,7 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
 
   report = signal<any>(null);
   loading = signal(true);
+  showEditDecisionModal = signal(false);
 
   private unsubscribes: (() => void)[] = [];
 
@@ -329,5 +379,14 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
       case 'rejected': return 'danger';
       default: return 'info';
     }
+  }
+
+  editDecisionSuccess(): void {
+    this.showEditDecisionModal.set(false);
+    this.loadReport();
+  }
+
+  openEditDecisionModal(): void {
+    this.showEditDecisionModal.set(true);
   }
 }

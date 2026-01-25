@@ -24,6 +24,7 @@ import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { ModalComponent } from "@shared/components/modal/modal.component";
+import { SearchSelectComponent } from "@shared/components/search-select/search-select.component";
 import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
@@ -41,6 +42,7 @@ import { Penalty } from "@core/models/series.model";
     BadgeComponent,
     LoadingComponent,
     ModalComponent,
+    SearchSelectComponent,
     ToggleComponent,
     DateFormatPipe,
     TimeAgoPipe,
@@ -100,21 +102,12 @@ import { Penalty } from "@core/models/series.model";
 
                   <!-- At fault driver -->
                   <div>
-                    <label class="label">At Fault Driver</label>
-                    <select
+                    <app-search-select
                       formControlName="atFaultDriverId"
-                      class="input"
-                    >
-                      <option value="">Select driver</option>
-                      @for (
-                        driver of drivers();
-                        track driver._id
-                      ) {
-                        <option [value]="driver._id">
-                          {{ driver.driverName }} ({{ driver.driverNumber }})
-                        </option>
-                      }
-                    </select>
+                      label="At Fault Driver"
+                      [options]="driverOptions()"
+                      placeholder="Search drivers by name..."
+                    />
                     <p class="text-xs text-gray-500 mt-1">
                       Pre-selected from latest review, change if different
                     </p>
@@ -382,6 +375,13 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   loading = signal(true);
   submitting = signal(false);
 
+  driverOptions = computed(() => {
+    return this.drivers().map((driver) => ({
+      value: String(driver._id),
+      label: `${driver.driverName} (#${driver.driverNumber})`,
+    }));
+  });
+
   showRejectModal = false;
   rejectionReason = "";
 
@@ -499,7 +499,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           if (atFaultDriverControl && atFaultDriverControl.pristine) {
             const defaultDriver = latestReview?.atFaultDriverId || data?.reportedDriverId;
             if (defaultDriver) {
-              atFaultDriverControl.setValue(defaultDriver);
+              atFaultDriverControl.setValue(String(defaultDriver));
             }
           }
 

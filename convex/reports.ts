@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { checkUserDriverConflict } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
+import { requireRole } from "./lib/auth";
 
 export const list = query({
   args: {
@@ -571,6 +572,45 @@ export const finalize = mutation({
         }
       }
     }
+
+    return success(args.reportId);
+  },
+});
+
+export const updateFinalizedDecision = mutation({
+  args: {
+    reportId: v.id("reports"),
+    userId: v.id("users"),
+    finalDecision: v.string(),
+    appliedPenalty: v.string(),
+    atFaultDriverId: v.optional(v.id("drivers")),
+    officialNotes: v.string(),
+    isSelfReport: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const report = await ctx.db.get(args.reportId);
+    if (!report) {
+      throw new Error("Report not found");
+    }
+
+    if (!report.isFinalized) {
+      throw new UserFacingError("Cannot edit a report that has not been finalized");
+    }
+
+    await requireRole(ctx, args.userId, ["event_manager"]);
+
+    const now = Date.now();
+    await ctx.db.patch(args.reportId, {
+      finalDecision: args.finalDecision,
+      appliedPenalty: args.appliedPenalty,
+      atFaultDriverId: args.atFaultDriverId,
+      officialNotes: args.officialNotes,
+      isSelfReport: args.isSelfReport,
+      isEdited: true,
+      finalizedBy: args.userId,
+      finalizedAt: now,
+      updatedAt: now,
+    });
 
     return success(args.reportId);
   },
