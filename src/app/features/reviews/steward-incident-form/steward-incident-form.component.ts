@@ -231,19 +231,64 @@ import { SelectOption } from "@shared/components/select/select.component";
                       <p class="text-xs text-yellow-600 mt-1">
                         No penalties configured for this series
                       </p>
-                    }
-                  </div>
+                     }
+                   </div>
 
-                  <div>
-                    <app-toggle
-                      formControlName="isSelfReport"
-                      label="Self Report"
-                      hint="Driver self reported?"
-                    />
-                  </div>
+                   <div>
+                     <label class="label">At Fault Driver</label>
+                     <select
+                       formControlName="atFaultDriverId"
+                       class="input"
+                     >
+                       <option value="">Select driver</option>
+                       @for (
+                         driver of drivers();
+                         track driver._id
+                       ) {
+                         <option [value]="driver._id">
+                           {{ driver.driverName }} ({{ driver.driverNumber }})
+                         </option>
+                       }
+                     </select>
+                     <p class="text-xs text-gray-500 mt-1">
+                       Pre-selected to reported driver, change if different
+                     </p>
+                   </div>
 
-                  <div>
-                    <label class="label">Video Timestamp</label>
+                    <div>
+                      <app-toggle
+                        formControlName="isSelfReport"
+                        label="Self Report"
+                        hint="Driver self reported?"
+                      />
+                    </div>
+
+                   <div>
+                     <app-toggle
+                       formControlName="isAdjusted"
+                       label="Adjusted"
+                       hint="Incident description was adjusted?"
+                     />
+                   </div>
+
+                   <!-- Adjusted reason (conditionally shown) -->
+                   @if (form.get('isAdjusted')?.value) {
+                     <div>
+                       <label class="label">Adjusted Reason</label>
+                       <textarea
+                         formControlName="adjustedReason"
+                         class="input min-h-[80px]"
+                         placeholder="Explain why the incident was adjusted..."
+                         rows="3"
+                       ></textarea>
+                       <p class="text-xs text-gray-500 mt-1">
+                         This will be added as a note to the incident description
+                       </p>
+                     </div>
+                   }
+
+                   <div>
+                     <label class="label">Video Timestamp</label>
                     <input
                       type="text"
                       formControlName="videoTimestamp"
@@ -448,9 +493,12 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       ],
       reviewNotes: [""],
       recommendedPenalty: ["", Validators.required],
+      atFaultDriverId: [""],
       videoTimestamp: [""],
       secondStewardId: [""],
       isSelfReport: [false],
+      isAdjusted: [false],
+      adjustedReason: [""],
       createAnother: [false],
     });
   }
@@ -481,6 +529,14 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
         // Clear saved event and race when createAnother is unchecked
         localStorage.removeItem("selectedEventId");
         localStorage.removeItem("selectedRaceId");
+      }
+    });
+
+    // Pre-select atFaultDriverId when reportedDriverId changes
+    this.form.get("reportedDriverId")?.valueChanges.subscribe((value) => {
+      const atFaultDriverControl = this.form.get("atFaultDriverId");
+      if (atFaultDriverControl && atFaultDriverControl.pristine) {
+        atFaultDriverControl.setValue(value);
       }
     });
   }
@@ -665,9 +721,12 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           incidentDescription: formValue.incidentDescription,
           reviewNotes: formValue.reviewNotes || "",
           recommendedPenalty: formValue.recommendedPenalty,
+          atFaultDriverId: formValue.atFaultDriverId || undefined,
           videoTimestamp: formValue.videoTimestamp || "",
           secondStewardId: formValue.secondStewardId || undefined,
-          isSelfReport: formValue.isSelfReport || false
+          isSelfReport: formValue.isSelfReport || false,
+          isAdjusted: formValue.isAdjusted || false,
+          adjustedReason: formValue.isAdjusted && formValue.adjustedReason ? formValue.adjustedReason : undefined
         }
       );
 

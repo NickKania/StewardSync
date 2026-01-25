@@ -68,7 +68,7 @@ export const checkAndAssignThresholds = mutation({
         }
 
         const points = penalty?.licensePoints ?? 0;
-        const driverId = report.reportedDriverId.toString();
+        const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
 
         if (penaltyAccumulator[driverId]) {
           penaltyAccumulator[driverId] += points;
@@ -257,5 +257,107 @@ export const getDriverPenaltyDetails = query({
     );
 
     return driverSeriesPenaltiesWithDetails.sort((a, b) => b.assignedAt - a.assignedAt);
+  },
+});
+
+export const getUnservedPenaltiesBySeries = query({
+  args: {
+    seriesId: v.optional(v.id("series")),
+  },
+  handler: async (ctx, args) => {
+    let driverSeriesPenalties: any[] = [];
+
+    if (args.seriesId) {
+      driverSeriesPenalties = await ctx.db
+        .query("driverSeriesPenalties")
+        .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId as any))
+        .filter((q) => q.eq(q.field("isServed"), false))
+        .collect();
+    } else {
+      driverSeriesPenalties = await ctx.db
+        .query("driverSeriesPenalties")
+        .filter((q) => q.eq(q.field("isServed"), false))
+        .collect();
+    }
+
+    const penaltiesWithDetails = await Promise.all(
+      driverSeriesPenalties.map(async (dsp: any) => {
+        const driver = await ctx.db.get(dsp.driverId);
+        const series = await ctx.db.get(dsp.seriesId);
+        const seriesPenalty = await ctx.db.get(dsp.seriesPenaltyId);
+        const seriesPenaltyThreshold = await ctx.db.get(dsp.seriesPenaltyThresholdId);
+        const servedByUser = dsp.servedBy ? await ctx.db.get(dsp.servedBy) : null;
+
+        return {
+          _id: dsp._id,
+          driverId: dsp.driverId,
+          seriesId: dsp.seriesId,
+          seriesPenaltyId: dsp.seriesPenaltyId,
+          seriesPenaltyThresholdId: dsp.seriesPenaltyThresholdId,
+          driver,
+          series,
+          seriesPenalty,
+          seriesPenaltyThreshold,
+          servedByUser,
+          isServed: dsp.isServed,
+          pointsAtAssignment: dsp.pointsAtAssignment,
+          assignedAt: dsp.assignedAt,
+          servedAt: dsp.servedAt,
+          servedBy: dsp.servedBy,
+          servedByUserName: (servedByUser as any)?.name ?? null,
+        };
+      })
+    );
+
+    const penaltiesBySeries: Record<string, any[]> = {};
+
+    for (const penalty of penaltiesWithDetails) {
+      const seriesId = penalty.seriesId?.toString();
+      if (!seriesId) continue;
+      if (!penaltiesBySeries[seriesId]) {
+        penaltiesBySeries[seriesId] = [];
+      }
+      penaltiesBySeries[seriesId].push(penalty);
+    }
+
+    const result: any[] = [];
+
+    for (const [seriesId, penalties] of Object.entries(penaltiesBySeries)) {
+      const penaltiesByDriver: Record<string, any[]> = {};
+
+      for (const penalty of penalties) {
+        const driverId = penalty.driverId?.toString();
+        if (!driverId) continue;
+        if (!penaltiesByDriver[driverId]) {
+          penaltiesByDriver[driverId] = [];
+        }
+        penaltiesByDriver[driverId].push(penalty);
+      }
+
+      const sortedPenalties = Object.values(penaltiesByDriver)
+        .map((driverPenalties) => {
+          driverPenalties.sort(
+            (a, b) =>
+              (b.seriesPenaltyThreshold?.threshold ?? 0) -
+              (a.seriesPenaltyThreshold?.threshold ?? 0)
+          );
+          return driverPenalties[0];
+        })
+        .sort((a, b) => {
+          const driverNameA = a.driver?.driverName ?? "";
+          const driverNameB = b.driver?.driverName ?? "";
+          return driverNameA.localeCompare(driverNameB);
+        });
+
+      result.push({
+        seriesId,
+        seriesName: penalties[0].series?.name ?? null,
+        penalties: sortedPenalties,
+      });
+    }
+
+    result.sort((a, b) => (a.seriesName ?? "").localeCompare(b.seriesName ?? ""));
+
+    return result;
   },
 });

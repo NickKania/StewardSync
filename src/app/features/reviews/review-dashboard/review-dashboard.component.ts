@@ -78,7 +78,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             <table class="w-full">
               <thead class="bg-gray-50">
                 <tr class="text-left text-sm text-gray-500">
-                  <th class="px-6 py-3 font-medium">Reported Driver</th>
+                  <th class="px-6 py-3 font-medium">At Fault Driver</th>
                   <th class="px-6 py-3 font-medium">Event</th>
                   <th class="px-6 py-3 font-medium">Incident</th>
                   <th class="px-6 py-3 font-medium">Filed</th>
@@ -87,11 +87,11 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                @for (report of pendingReports(); track report._id) {
+                 @for (report of pendingReports(); track report._id) {
                   <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900">{{ report.reportedDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500">#{{ report.reportedDriver?.driverNumber }}</p>
+                      <p class="font-medium text-gray-900">{{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}</p>
+                      <p class="text-sm text-gray-500">#{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
                       <p class="text-gray-900">{{ report.event?.trackName }}</p>
@@ -142,7 +142,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             <table class="w-full">
               <thead class="bg-gray-50">
                 <tr class="text-left text-sm text-gray-500">
-                  <th class="px-6 py-3 font-medium">Reported Driver</th>
+                  <th class="px-6 py-3 font-medium">At Fault Driver</th>
                   <th class="px-6 py-3 font-medium">Event</th>
                   <th class="px-6 py-3 font-medium">Reviews</th>
                   <th class="px-6 py-3 font-medium">Status</th>
@@ -150,11 +150,11 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                @for (report of reviewedReports(); track report._id) {
+                 @for (report of reviewedReports(); track report._id) {
                   <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900">{{ report.reportedDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500">#{{ report.reportedDriver?.driverNumber }}</p>
+                      <p class="font-medium text-gray-900">{{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}</p>
+                      <p class="text-sm text-gray-500">#{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
                       <p class="text-gray-900">{{ report.event?.trackName }}</p>

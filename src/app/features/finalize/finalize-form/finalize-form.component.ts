@@ -1,21 +1,35 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
-import { ConvexService } from '@core/services/convex.service';
-import { AuthService } from '@core/services/auth.service';
-import { ToastService } from '@core/services/toast.service';
-import { CardComponent } from '@shared/components/card/card.component';
-import { ButtonComponent } from '@shared/components/button/button.component';
-import { BadgeComponent } from '@shared/components/badge/badge.component';
-import { LoadingComponent } from '@shared/components/loading/loading.component';
-import { ModalComponent } from '@shared/components/modal/modal.component';
-import { ToggleComponent } from '@shared/components/toggle/toggle.component';
-import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
-import { Penalty } from '@core/models/series.model';
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  signal,
+  computed,
+  Input,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { Router, RouterLink } from "@angular/router";
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  ReactiveFormsModule,
+  FormsModule,
+} from "@angular/forms";
+import { ConvexService } from "@core/services/convex.service";
+import { AuthService } from "@core/services/auth.service";
+import { ToastService } from "@core/services/toast.service";
+import { CardComponent } from "@shared/components/card/card.component";
+import { ButtonComponent } from "@shared/components/button/button.component";
+import { BadgeComponent } from "@shared/components/badge/badge.component";
+import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { ModalComponent } from "@shared/components/modal/modal.component";
+import { ToggleComponent } from "@shared/components/toggle/toggle.component";
+import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
+import { Penalty } from "@core/models/series.model";
 
 @Component({
-  selector: 'app-finalize-form',
+  selector: "app-finalize-form",
   standalone: true,
   imports: [
     CommonModule,
@@ -29,7 +43,7 @@ import { Penalty } from '@core/models/series.model';
     ModalComponent,
     ToggleComponent,
     DateFormatPipe,
-    TimeAgoPipe
+    TimeAgoPipe,
   ],
   template: `
     <div class="space-y-6">
@@ -37,11 +51,14 @@ import { Penalty } from '@core/models/series.model';
         <app-loading text="Loading report..." />
       } @else if (report()) {
         <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div
+          class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+        >
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Finalize Report</h1>
             <p class="text-gray-500 mt-1">
-              {{ report()?.event?.trackName }} - Race {{ report()?.race?.raceNumber }}
+              {{ report()?.event?.trackName }} - Race
+              {{ report()?.race?.raceNumber }}
             </p>
           </div>
           <a [routerLink]="['/reports', report()?._id]">
@@ -61,14 +78,46 @@ import { Penalty } from '@core/models/series.model';
                     <textarea
                       formControlName="incidentDescription"
                       class="input min-h-[100px]"
-                      [class.input-error]="form.get('incidentDescription')?.invalid && form.get('incidentDescription')?.touched"
+                      [class.input-error]="
+                        form.get('incidentDescription')?.invalid &&
+                        form.get('incidentDescription')?.touched
+                      "
                       placeholder="Describe the incident as observed in the steward review..."
                       rows="4"
                     ></textarea>
-                    <p class="text-xs text-gray-500 mt-1">You can modify the incident description if needed</p>
-                    @if (form.get('incidentDescription')?.invalid && form.get('incidentDescription')?.touched) {
-                      <p class="mt-1 text-sm text-red-600">Incident description is required</p>
+                    <p class="text-xs text-gray-500 mt-1">
+                      You can modify the incident description if needed
+                    </p>
+                    @if (
+                      form.get("incidentDescription")?.invalid &&
+                      form.get("incidentDescription")?.touched
+                    ) {
+                      <p class="mt-1 text-sm text-red-600">
+                        Incident description is required
+                      </p>
                     }
+                  </div>
+
+                  <!-- At fault driver -->
+                  <div>
+                    <label class="label">At Fault Driver</label>
+                    <select
+                      formControlName="atFaultDriverId"
+                      class="input"
+                    >
+                      <option value="">Select driver</option>
+                      @for (
+                        driver of drivers();
+                        track driver._id
+                      ) {
+                        <option [value]="driver._id">
+                          {{ driver.driverName }} ({{ driver.driverNumber }})
+                        </option>
+                      }
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">
+                      Pre-selected from latest review, change if different
+                    </p>
                   </div>
 
                   <!-- Applied penalty -->
@@ -77,22 +126,36 @@ import { Penalty } from '@core/models/series.model';
                     <select
                       formControlName="appliedPenalty"
                       class="input"
-                      [class.input-error]="form.get('appliedPenalty')?.invalid && form.get('appliedPenalty')?.touched"
+                      [class.input-error]="
+                        form.get('appliedPenalty')?.invalid &&
+                        form.get('appliedPenalty')?.touched
+                      "
                     >
                       <option value="">Select penalty</option>
-                      @for (penalty of availablePenalties(); track penalty._id) {
+                      @for (
+                        penalty of availablePenalties();
+                        track penalty._id
+                      ) {
                         <option [value]="penalty._id">
                           {{ penalty.name }}
                         </option>
                       }
                     </select>
-                    @if (form.get('appliedPenalty')?.invalid && form.get('appliedPenalty')?.touched) {
-                      <p class="mt-1 text-sm text-red-600">Penalty selection is required</p>
+                    @if (
+                      form.get("appliedPenalty")?.invalid &&
+                      form.get("appliedPenalty")?.touched
+                    ) {
+                      <p class="mt-1 text-sm text-red-600">
+                        Penalty selection is required
+                      </p>
                     }
                     @if (availablePenalties().length === 0) {
-                      <p class="mt-1 text-sm text-yellow-600">No penalties configured for this series. Please configure penalties first.</p>
-                    }
-                  </div>
+                      <p class="mt-1 text-sm text-yellow-600">
+                        No penalties configured for this series. Please
+                        configure penalties first.
+                      </p>
+                     }
+                   </div>
 
                   <!-- Self report toggle -->
                   <div>
@@ -116,7 +179,10 @@ import { Penalty } from '@core/models/series.model';
                 </div>
 
                 <!-- Footer -->
-                <div card-footer class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3">
+                <div
+                  card-footer
+                  class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3"
+                >
                   <app-button
                     type="button"
                     variant="danger"
@@ -155,13 +221,22 @@ import { Penalty } from '@core/models/series.model';
                         <div>
                           @if (review.linkedReview) {
                             <div class="flex items-center gap-2">
-                              <app-badge variant="success" size="sm">Joint Review</app-badge>
-                              <p class="font-medium text-gray-900">{{ review.reviewer?.name }} & {{ review.linkedReview.reviewer?.name }}</p>
+                              <app-badge variant="success" size="sm"
+                                >Joint Review</app-badge
+                              >
+                              <p class="font-medium text-gray-900">
+                                {{ review.reviewer?.name }} &
+                                {{ review.linkedReview.reviewer?.name }}
+                              </p>
                             </div>
                           } @else {
-                            <p class="font-medium text-gray-900">{{ review.reviewer?.name }}</p>
+                            <p class="font-medium text-gray-900">
+                              {{ review.reviewer?.name }}
+                            </p>
                           }
-                          <p class="text-sm text-gray-500">{{ review.reviewDate | timeAgo }}</p>
+                          <p class="text-sm text-gray-500">
+                            {{ review.reviewDate | timeAgo }}
+                          </p>
                         </div>
                         @if (review.recommendedPenaltyObj) {
                           <app-badge variant="info">
@@ -169,7 +244,14 @@ import { Penalty } from '@core/models/series.model';
                           </app-badge>
                         }
                       </div>
-                      <p class="text-gray-700 text-sm whitespace-pre-wrap">{{ review.reviewNotes }}</p>
+                      <p class="text-gray-700 text-sm whitespace-pre-wrap">
+                        {{ review.reviewNotes }}
+                        @if (review.isAdjusted && review.adjustedReason) {
+                          <br /><span class="text-amber-700"
+                            >[Adjusted: {{ review.adjustedReason }}]</span
+                          >
+                        }
+                      </p>
                     </div>
                   }
                 </div>
@@ -183,26 +265,38 @@ import { Penalty } from '@core/models/series.model';
               <dl class="space-y-4">
                 <div>
                   <dt class="text-sm text-gray-500">Reported Driver</dt>
-                  <dd class="font-medium text-gray-900">{{ report()?.reportedDriver?.driverName }}</dd>
-                  <dd class="text-sm text-gray-500">#{{ report()?.reportedDriver?.driverNumber }}</dd>
+                  <dd class="font-medium text-gray-900">
+                    {{ report()?.reportedDriver?.driverName }}
+                  </dd>
+                  <dd class="text-sm text-gray-500">
+                    #{{ report()?.reportedDriver?.driverNumber }}
+                  </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Reporting Driver</dt>
-                  <dd class="font-medium text-gray-900">{{ report()?.reportingDriver?.driverName }}</dd>
+                  <dt class="text-sm text-gray-500">Reported By</dt>
+                  <dd class="font-medium text-gray-900">
+                    {{ report()?.reportingUser?.name || "Unknown User" }}
+                  </dd>
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Location</dt>
-                  <dd class="font-medium text-gray-900">Turn {{ report()?.turn }}</dd>
+                  <dd class="font-medium text-gray-900">
+                    Turn {{ report()?.turn }}
+                  </dd>
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Reviews</dt>
-                  <dd class="font-medium text-gray-900">{{ report()?.reviews?.length || 0 }} review(s)</dd>
+                  <dd class="font-medium text-gray-900">
+                    {{ report()?.reviews?.length || 0 }} review(s)
+                  </dd>
                 </div>
               </dl>
             </app-card>
 
             <app-card title="Original Description">
-              <p class="text-gray-700 text-sm whitespace-pre-wrap">{{ report()?.description }}</p>
+              <p class="text-gray-700 text-sm whitespace-pre-wrap">
+                {{ report()?.description }}
+              </p>
             </app-card>
 
             <!-- Penalty recommendations summary -->
@@ -211,7 +305,9 @@ import { Penalty } from '@core/models/series.model';
                 <div class="space-y-2">
                   @for (rec of penaltyRecommendations(); track rec.penaltyId) {
                     <div class="flex items-center justify-between">
-                      <span class="text-sm text-gray-700">{{ rec.penaltyName }}</span>
+                      <span class="text-sm text-gray-700">{{
+                        rec.penaltyName
+                      }}</span>
                       <app-badge variant="default">{{ rec.count }}</app-badge>
                     </div>
                   }
@@ -239,7 +335,8 @@ import { Penalty } from '@core/models/series.model';
       (close)="showRejectModal = false"
     >
       <p class="text-gray-600 mb-4">
-        Are you sure you want to reject this report? This action cannot be undone.
+        Are you sure you want to reject this report? This action cannot be
+        undone.
       </p>
       <div>
         <label class="label">Rejection Reason</label>
@@ -250,7 +347,10 @@ import { Penalty } from '@core/models/series.model';
           rows="3"
         ></textarea>
       </div>
-      <div modal-footer class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+      <div
+        modal-footer
+        class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3"
+      >
         <app-button variant="secondary" (onClick)="showRejectModal = false">
           Cancel
         </app-button>
@@ -264,7 +364,7 @@ import { Penalty } from '@core/models/series.model';
         </app-button>
       </div>
     </app-modal>
-  `
+  `,
 })
 export class FinalizeFormComponent implements OnInit, OnDestroy {
   @Input() reportId!: string;
@@ -278,11 +378,12 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   form: FormGroup;
   report = signal<any>(null);
   availablePenalties = signal<Penalty[]>([]);
+  drivers = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
 
   showRejectModal = false;
-  rejectionReason = '';
+  rejectionReason = "";
 
   reviews = computed(() => {
     const allReviews = this.report()?.reviews || [];
@@ -310,19 +411,40 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.form = this.fb.group({
-      incidentDescription: ['', [Validators.required, Validators.minLength(10)]],
-      appliedPenalty: ['', Validators.required],
-      officialNotes: [''],
-      isSelfReport: [false]
+      incidentDescription: [
+        "",
+        [Validators.required, Validators.minLength(10)],
+      ],
+      appliedPenalty: ["", Validators.required],
+      atFaultDriverId: [""],
+      officialNotes: [""],
+      isSelfReport: [false],
     });
   }
 
   ngOnInit(): void {
     this.loadReport();
+    this.loadDrivers();
+  }
+
+  private loadDrivers(): void {
+    const driversQuery = this.convex.createReactiveQuery(
+      this.convex.api.drivers.list,
+      {},
+    );
+    this.unsubscribes.push(driversQuery.unsubscribe);
+
+    const checkDrivers = setInterval(() => {
+      const data = driversQuery.data();
+      if (data !== undefined) {
+        this.drivers.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkDrivers));
   }
 
   ngOnDestroy(): void {
-    this.unsubscribes.forEach(unsub => unsub());
+    this.unsubscribes.forEach((unsub) => unsub());
   }
 
   private loadReport(): void {
@@ -333,7 +455,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
     const reportQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getById,
-      { reportId: this.reportId as any }
+      { reportId: this.reportId as any },
     );
     this.unsubscribes.push(reportQuery.unsubscribe);
 
@@ -351,8 +473,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             return currentDate > latestDate ? current : latest;
           });
 
-          const incidentControl = this.form.get('incidentDescription');
-          const selfReportControl = this.form.get('isSelfReport');
+          const incidentControl = this.form.get("incidentDescription");
+          const selfReportControl = this.form.get("isSelfReport");
+          const atFaultDriverControl = this.form.get("atFaultDriverId");
 
           if (latestReview?.incidentDescription && incidentControl) {
             const currentValue = incidentControl.value;
@@ -372,14 +495,29 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             }
           }
 
+          // Pre-select atFaultDriverId from latest review or reportedDriver
+          if (atFaultDriverControl && atFaultDriverControl.pristine) {
+            const defaultDriver = latestReview?.atFaultDriverId || data?.reportedDriverId;
+            if (defaultDriver) {
+              atFaultDriverControl.setValue(defaultDriver);
+            }
+          }
+
           // Pre-select applied penalty from latest review's recommended penalty
-          if (latestReview?.recommendedPenaltyObj && this.availablePenalties().length > 0) {
-            const appliedPenaltyControl = this.form.get('appliedPenalty');
+          if (
+            latestReview?.recommendedPenaltyObj &&
+            this.availablePenalties().length > 0
+          ) {
+            const appliedPenaltyControl = this.form.get("appliedPenalty");
             if (appliedPenaltyControl) {
-              const recommendedPenaltyId = latestReview.recommendedPenaltyObj._id;
+              const recommendedPenaltyId =
+                latestReview.recommendedPenaltyObj._id;
               const currentValue = appliedPenaltyControl.value;
 
-              if (appliedPenaltyControl.pristine && currentValue !== recommendedPenaltyId) {
+              if (
+                appliedPenaltyControl.pristine &&
+                currentValue !== recommendedPenaltyId
+              ) {
                 appliedPenaltyControl.setValue(recommendedPenaltyId);
               }
             }
@@ -398,7 +536,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   private loadPenalties(seriesId: string): void {
     const penaltiesQuery = this.convex.createReactiveQuery(
       this.convex.api.penalties.getBySeries,
-      { seriesId: seriesId as any }
+      { seriesId: seriesId as any },
     );
     this.unsubscribes.push(penaltiesQuery.unsubscribe);
 
@@ -410,19 +548,25 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         // Pre-select applied penalty from latest review when penalties are loaded
         const report = this.report();
         if (report?.reviews && report.reviews.length > 0) {
-          const latestReview = report.reviews.reduce((latest: any, current: any) => {
-            const latestDate = latest.reviewDate || latest.createdAt || 0;
-            const currentDate = current.reviewDate || current.createdAt || 0;
-            return currentDate > latestDate ? current : latest;
-          });
+          const latestReview = report.reviews.reduce(
+            (latest: any, current: any) => {
+              const latestDate = latest.reviewDate || latest.createdAt || 0;
+              const currentDate = current.reviewDate || current.createdAt || 0;
+              return currentDate > latestDate ? current : latest;
+            },
+          );
 
           if (latestReview?.recommendedPenaltyObj && data.length > 0) {
-            const appliedPenaltyControl = this.form.get('appliedPenalty');
+            const appliedPenaltyControl = this.form.get("appliedPenalty");
             if (appliedPenaltyControl) {
-              const recommendedPenaltyId = latestReview.recommendedPenaltyObj._id;
+              const recommendedPenaltyId =
+                latestReview.recommendedPenaltyObj._id;
               const currentValue = appliedPenaltyControl.value;
 
-              if (appliedPenaltyControl.pristine && currentValue !== recommendedPenaltyId) {
+              if (
+                appliedPenaltyControl.pristine &&
+                currentValue !== recommendedPenaltyId
+              ) {
                 appliedPenaltyControl.setValue(recommendedPenaltyId);
               }
             }
@@ -433,7 +577,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     this.unsubscribes.push(() => clearInterval(checkPenalties));
   }
 
-  penaltyRecommendations(): { penaltyId: string; penaltyName: string; count: number }[] {
+  penaltyRecommendations(): {
+    penaltyId: string;
+    penaltyName: string;
+    count: number;
+  }[] {
     const reviews = this.report()?.reviews || [];
     const counts: Record<string, { name: string; count: number }> = {};
 
@@ -445,7 +593,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         } else {
           counts[penaltyId] = {
             name: r.recommendedPenaltyObj.name,
-            count: 1
+            count: 1,
           };
         }
       }
@@ -455,7 +603,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       .map(([penaltyId, data]) => ({
         penaltyId,
         penaltyName: data.name,
-        count: data.count
+        count: data.count,
       }))
       .sort((a, b) => b.count - a.count);
   }
@@ -471,7 +619,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     try {
       const userId = this.authService.getUserId();
       if (!userId) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       const formValue = this.form.value;
@@ -483,9 +631,10 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           userId,
           finalDecision: formValue.incidentDescription,
           appliedPenalty: formValue.appliedPenalty,
-          officialNotes: formValue.officialNotes || '',
-          isSelfReport: formValue.isSelfReport || false
-        }
+          atFaultDriverId: formValue.atFaultDriverId || undefined,
+          officialNotes: formValue.officialNotes || "",
+          isSelfReport: formValue.isSelfReport || false,
+        },
       );
 
       if (!result.success) {
@@ -494,10 +643,10 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.toast.success('Report finalized successfully');
-      this.router.navigate(['/reports', this.reportId]);
+      this.toast.success("Report finalized successfully");
+      this.router.navigate(["/reports", this.reportId]);
     } catch (error: any) {
-      this.toast.error(error.message || 'Failed to finalize report');
+      this.toast.error(error.message || "Failed to finalize report");
     } finally {
       this.submitting.set(false);
     }
@@ -510,7 +659,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     if (!errorMessage) return "";
 
     // Try to extract UserFacingError message
-    const userFacingMatch = errorMessage.match(/Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s);
+    const userFacingMatch = errorMessage.match(
+      /Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s,
+    );
     if (userFacingMatch) {
       return userFacingMatch[1].trim();
     }
@@ -535,8 +686,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         this.convex.api.reports.reject,
         {
           reportId: this.reportId as any,
-          officialNotes: this.rejectionReason
-        }
+          officialNotes: this.rejectionReason,
+        },
       );
 
       if (!result.success) {
@@ -545,18 +696,18 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.toast.success('Report rejected');
+      this.toast.success("Report rejected");
       this.showRejectModal = false;
-      this.router.navigate(['/finalize']);
+      this.router.navigate(["/finalize"]);
     } catch (error: any) {
-      this.toast.error(error.message || 'Failed to reject report');
+      this.toast.error(error.message || "Failed to reject report");
     } finally {
       this.submitting.set(false);
     }
   }
 
   cancel(): void {
-    this.router.navigate(['/finalize']);
+    this.router.navigate(["/finalize"]);
   }
 }
 

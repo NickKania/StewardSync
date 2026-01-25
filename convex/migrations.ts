@@ -102,7 +102,7 @@ export const assignPenaltiesForSeries = internalMutation({
         }
 
         const points = penalty?.licensePoints ?? 0;
-        const driverId = report.reportedDriverId.toString();
+        const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
 
         if (penaltyAccumulator[driverId]) {
           penaltyAccumulator[driverId] += points;
@@ -195,6 +195,48 @@ export const assignPenaltiesForSeries = internalMutation({
       assignedPenalties,
       existingPenalties,
       skippedThresholds,
+    };
+  },
+});
+
+export const backfillAtFaultDriverId = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const reports = await ctx.db.query("reports").collect();
+
+    let reportsUpdated = 0;
+    let reviewsUpdated = 0;
+
+    for (const report of reports) {
+      if (report.atFaultDriverId) continue;
+
+      if (report.status === "finalized") {
+        await ctx.db.patch(report._id, {
+          atFaultDriverId: report.reportedDriverId,
+          updatedAt: Date.now(),
+        });
+        reportsUpdated++;
+      } else if (report.status === "reviewed") {
+        const reviews = await ctx.db
+          .query("reviews")
+          .withIndex("by_report", (q) => q.eq("reportId", report._id))
+          .collect();
+
+        for (const review of reviews) {
+          if (review.atFaultDriverId) continue;
+
+          await ctx.db.patch(review._id, {
+            atFaultDriverId: report.reportedDriverId,
+            updatedAt: Date.now(),
+          });
+          reviewsUpdated++;
+        }
+      }
+    }
+
+    return {
+      reportsUpdated,
+      reviewsUpdated,
     };
   },
 });

@@ -129,9 +129,12 @@ export const create = mutation({
     incidentDescription: v.string(),
     reviewNotes: v.string(),
     recommendedPenalty: v.string(),
+    atFaultDriverId: v.optional(v.id("drivers")),
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
     isSelfReport: v.optional(v.boolean()),
+    isAdjusted: v.optional(v.boolean()),
+    adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Validate report exists and is not finalized
@@ -148,7 +151,7 @@ export const create = mutation({
     const primaryConflict = await checkUserDriverConflict(ctx, args.userId, report);
     if (primaryConflict.hasConflict) {
       return failure(
-        `You cannot review this report because you are involved as the ${primaryConflict.conflictType === "reporting_driver" ? "reporting driver" : "reported driver"} (${primaryConflict.driverName}).`
+        `You cannot review this report because you are involved as the ${primaryConflict.conflictType === "reporting_user" ? "reporting user" : "reported driver"}${primaryConflict.driverName ? ` (${primaryConflict.driverName})` : ""}.`
       );
     }
 
@@ -158,7 +161,7 @@ export const create = mutation({
       if (secondConflict.hasConflict) {
         const secondSteward = await ctx.db.get(args.secondStewardId);
         return failure(
-          `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${secondConflict.conflictType === "reporting_driver" ? "reporting driver" : "reported driver"} (${secondConflict.driverName}).`
+          `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${secondConflict.conflictType === "reporting_user" ? "reporting user" : "reported driver"}${secondConflict.driverName ? ` (${secondConflict.driverName})` : ""}.`
         );
       }
     }
@@ -189,33 +192,30 @@ export const create = mutation({
 
     const now = Date.now();
 
+    const reviewData = {
+      userId: args.userId,
+      reportId: args.reportId,
+      incidentDescription: args.incidentDescription,
+      reviewNotes: args.reviewNotes,
+      recommendedPenalty: args.recommendedPenalty,
+      atFaultDriverId: args.atFaultDriverId,
+      videoTimestamp: args.videoTimestamp,
+      isSelfReport: args.isSelfReport,
+      isAdjusted: args.isAdjusted,
+      adjustedReason: args.adjustedReason,
+      reviewDate: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+
     // If second steward is provided, create two linked reviews
     if (args.secondStewardId) {
-      const primaryReviewId = await ctx.db.insert("reviews", {
-        userId: args.userId,
-        reportId: args.reportId,
-        incidentDescription: args.incidentDescription,
-        reviewNotes: args.reviewNotes,
-        recommendedPenalty: args.recommendedPenalty,
-        videoTimestamp: args.videoTimestamp,
-        isSelfReport: args.isSelfReport,
-        reviewDate: now,
-        createdAt: now,
-        updatedAt: now,
-      });
+      const primaryReviewId = await ctx.db.insert("reviews", reviewData);
 
       const secondReviewId = await ctx.db.insert("reviews", {
+        ...reviewData,
         userId: args.secondStewardId,
-        reportId: args.reportId,
-        incidentDescription: args.incidentDescription,
-        reviewNotes: args.reviewNotes,
-        recommendedPenalty: args.recommendedPenalty,
-        videoTimestamp: args.videoTimestamp,
-        isSelfReport: args.isSelfReport,
         linkedReviewId: primaryReviewId,
-        reviewDate: now,
-        createdAt: now,
-        updatedAt: now,
       });
 
       await ctx.db.patch(primaryReviewId, { linkedReviewId: secondReviewId });
@@ -224,18 +224,7 @@ export const create = mutation({
     }
 
     // Single review
-    const reviewId = await ctx.db.insert("reviews", {
-      userId: args.userId,
-      reportId: args.reportId,
-      incidentDescription: args.incidentDescription,
-      reviewNotes: args.reviewNotes,
-      recommendedPenalty: args.recommendedPenalty,
-      videoTimestamp: args.videoTimestamp,
-      isSelfReport: args.isSelfReport,
-      reviewDate: now,
-      createdAt: now,
-      updatedAt: now,
-    });
+    const reviewId = await ctx.db.insert("reviews", reviewData);
 
     return success(reviewId);
   },
@@ -248,6 +237,8 @@ export const update = mutation({
     reviewNotes: v.optional(v.string()),
     recommendedPenalty: v.optional(v.string()),
     videoTimestamp: v.optional(v.string()),
+    isAdjusted: v.optional(v.boolean()),
+    adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { reviewId, ...updates } = args;

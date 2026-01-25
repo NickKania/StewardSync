@@ -58,7 +58,8 @@ export const getEventRundown = query({
               }
             }
 
-            const reportedDriver = await ctx.db.get(report.reportedDriverId);
+            const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
+            const reportedDriver = await ctx.db.get(atFaultDriverId);
             let appliedPenalty: any = null;
             let recommendedPenaltyObj: any = null;
 
@@ -98,18 +99,26 @@ export const getEventRundown = query({
               licensePoints = recommendedPenaltyObj?.licensePoints ?? null;
             }
 
+            let incidentDescription: string;
+            if (report.status === "finalized") {
+              incidentDescription = report.finalDecision ?? "";
+            } else {
+              incidentDescription = review?.incidentDescription ?? "";
+            }
+
+            if (review?.isAdjusted && review.adjustedReason) {
+              incidentDescription += `\n[Adjusted: ${review.adjustedReason}]`;
+            }
+
             return {
               reportId: report._id,
-              driverId: report.reportedDriverId,
+              driverId: atFaultDriverId,
               carNumber: reportedDriver?.driverNumber ?? null,
               driverName: reportedDriver?.driverName ?? null,
               driverClass: reportedDriver?.driverClass ?? null,
               lap: report.lap ?? null,
               turn: report.turn ?? null,
-              incidentDescription:
-                report.status === "finalized"
-                  ? (report.finalDecision ?? "")
-                  : (review?.incidentDescription ?? ""),
+              incidentDescription,
               penaltyName,
               timePenaltySeconds,
               licensePoints,
@@ -166,7 +175,7 @@ export const getSeriesLicensePoints = query({
         }
 
         const points = penalty?.licensePoints ?? 0;
-        const driverId = report.reportedDriverId.toString();
+        const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
 
         if (penaltyAccumulator[driverId]) {
           penaltyAccumulator[driverId] += points;
@@ -221,7 +230,7 @@ export const getSeriesLicensePointsWithPenalties = query({
         }
 
         const points = penalty?.licensePoints ?? 0;
-        const driverId = report.reportedDriverId.toString();
+        const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
 
         if (penaltyAccumulator[driverId]) {
           penaltyAccumulator[driverId] += points;

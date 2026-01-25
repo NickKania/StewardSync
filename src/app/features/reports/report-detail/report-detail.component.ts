@@ -90,18 +90,13 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                   <dd class="font-medium text-gray-900">{{ report()?.reportedDriver?.driverName }}</dd>
                   <dd class="text-sm text-gray-500">#{{ report()?.reportedDriver?.driverNumber }} - {{ report()?.reportedDriver?.driverClass }}</dd>
                 </div>
-                 <div>
-                   <dt class="text-sm text-gray-500">Reporting Driver</dt>
-                   @if (report()?.reportingUser) {
-                     <div class="flex items-center gap-2">
-                       <dd class="font-medium text-gray-900">{{ report()?.reportingUser?.name }}</dd>
-                       <app-badge variant="info" size="sm">Steward</app-badge>
-                     </div>
-                   } @else {
-                     <dd class="font-medium text-gray-900">{{ report()?.reportingDriver?.driverName }}</dd>
-                     <dd class="text-sm text-gray-500">#{{ report()?.reportingDriver?.driverNumber }}</dd>
-                   }
-                 </div>
+                  <div>
+                    <dt class="text-sm text-gray-500">Reported By</dt>
+                    <dd class="font-medium text-gray-900">{{ report()?.reportingUser?.name || 'Unknown User' }}</dd>
+                    @if (report()?.isStewardReported) {
+                      <app-badge variant="info" size="sm">Steward</app-badge>
+                    }
+                  </div>
               </dl>
 
               <div class="mt-6 pt-6 border-t border-gray-200">

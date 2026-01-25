@@ -1,7 +1,7 @@
 import { Doc, Id } from "../_generated/dataModel";
 
 /**
- * Checks if a user is involved as a driver in a report
+ * Checks if a user is involved in a report
  * @param ctx - Convex context
  * @param userId - The user ID to check
  * @param report - The report document to check against
@@ -13,10 +13,18 @@ export async function checkUserDriverConflict(
   report: Doc<"reports">
 ): Promise<{
   hasConflict: boolean;
-  conflictType: "reporting_driver" | "reported_driver" | null;
+  conflictType: "reporting_user" | "reported_driver" | null;
   driverName?: string;
 }> {
-  // Get all drivers linked to this user (uses existing by_user_id index)
+  // Check if user is the reporting user
+  if (report.reportingUserId && String(report.reportingUserId) === String(userId)) {
+    return {
+      hasConflict: true,
+      conflictType: "reporting_user",
+    };
+  }
+
+  // Check if user is the reported driver
   const driversLinkedToUser = await ctx.db
     .query("drivers")
     .withIndex("by_user_id", (q: any) => q.eq("userId", userId))
@@ -24,17 +32,6 @@ export async function checkUserDriverConflict(
 
   const driverIds = driversLinkedToUser.map((d: any) => d._id);
 
-  // Check if user is the reporting driver
-  if (report.reportingDriverId && driverIds.some((id: any) => id === report.reportingDriverId)) {
-    const driver = driversLinkedToUser.find((d: any) => d._id === report.reportingDriverId);
-    return {
-      hasConflict: true,
-      conflictType: "reporting_driver",
-      driverName: driver?.driverName
-    };
-  }
-
-  // Check if user is the reported driver
   if (driverIds.some((id: any) => id === report.reportedDriverId)) {
     const driver = driversLinkedToUser.find((d: any) => d._id === report.reportedDriverId);
     return {

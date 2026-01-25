@@ -63,23 +63,6 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
         <form [formGroup]="form" (ngSubmit)="onSubmit()">
           <app-card title="Incident Details">
             <div class="space-y-4">
-              <!-- Reporting Driver -->
-              <div>
-                <app-search-select
-                  formControlName="reportingDriverId"
-                  label="Reporting Driver"
-                  [options]="driverOptions()"
-                  [error]="
-                    form.get('reportingDriverId')?.invalid &&
-                    form.get('reportingDriverId')?.touched
-                      ? 'Reporting driver is required'
-                      : ''
-                  "
-                  placeholder="Search drivers by name or number..."
-                  [required]="true"
-                />
-              </div>
-
               <!-- Reported Driver -->
               <div>
                 <app-search-select
@@ -269,7 +252,6 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.form = this.fb.group({
-      reportingDriverId: ["", Validators.required],
       reportedDriverId: ["", Validators.required],
       eventId: ["", Validators.required],
       raceId: ["", Validators.required],
@@ -329,7 +311,6 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
         if (report) {
           this.form.patchValue({
-            reportingDriverId: report.reportingDriverId,
             reportedDriverId: report.reportedDriverId,
             eventId: report.eventId,
             raceId: report.raceId,
@@ -399,7 +380,6 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         }
         await this.convex.mutation(this.convex.api.reports.create, {
           reportingUserId: reportingUserId,
-          reportingDriverId: formValue.reportingDriverId,
           reportedDriverId: formValue.reportedDriverId,
           eventId: formValue.eventId,
           raceId: formValue.raceId,

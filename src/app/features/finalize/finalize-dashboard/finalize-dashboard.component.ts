@@ -1,15 +1,15 @@
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { ConvexService } from '@core/services/convex.service';
-import { CardComponent } from '@shared/components/card/card.component';
-import { ButtonComponent } from '@shared/components/button/button.component';
-import { BadgeComponent } from '@shared/components/badge/badge.component';
-import { LoadingComponent } from '@shared/components/loading/loading.component';
-import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
+import { Component, inject, OnInit, OnDestroy, signal } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { RouterLink } from "@angular/router";
+import { ConvexService } from "@core/services/convex.service";
+import { CardComponent } from "@shared/components/card/card.component";
+import { ButtonComponent } from "@shared/components/button/button.component";
+import { BadgeComponent } from "@shared/components/badge/badge.component";
+import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 
 @Component({
-  selector: 'app-finalize-dashboard',
+  selector: "app-finalize-dashboard",
   standalone: true,
   imports: [
     CommonModule,
@@ -19,7 +19,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
     BadgeComponent,
     LoadingComponent,
     DateFormatPipe,
-    TimeAgoPipe
+    TimeAgoPipe,
   ],
   template: `
     <div class="space-y-6">
@@ -33,19 +33,25 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
       <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-blue-600">{{ reports().length }}</p>
+            <p class="text-3xl font-bold text-blue-600">
+              {{ reports().length }}
+            </p>
             <p class="text-sm text-gray-500 mt-1">Ready to Finalize</p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-green-600">{{ stats()?.finalized || 0 }}</p>
+            <p class="text-3xl font-bold text-green-600">
+              {{ stats()?.finalized || 0 }}
+            </p>
             <p class="text-sm text-gray-500 mt-1">Finalized</p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-red-600">{{ stats()?.rejected || 0 }}</p>
+            <p class="text-3xl font-bold text-red-600">
+              {{ stats()?.rejected || 0 }}
+            </p>
             <p class="text-sm text-gray-500 mt-1">Rejected</p>
           </div>
         </app-card>
@@ -62,7 +68,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             <table class="w-full">
               <thead class="bg-gray-50">
                 <tr class="text-left text-sm text-gray-500">
-                  <th class="px-6 py-3 font-medium">Reported Driver</th>
+                  <th class="px-6 py-3 font-medium">At Fault Driver</th>
                   <th class="px-6 py-3 font-medium">Event</th>
                   <th class="px-6 py-3 font-medium">Incident</th>
                   <th class="px-6 py-3 font-medium">Reviews</th>
@@ -74,12 +80,24 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                 @for (report of reports(); track report._id) {
                   <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900">{{ report.reportedDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500">#{{ report.reportedDriver?.driverNumber }}</p>
+                      <p class="font-medium text-gray-900">
+                        {{
+                          report.atFaultDriver?.driverName ||
+                            report.reportedDriver?.driverName
+                        }}
+                      </p>
+                      <p class="text-sm text-gray-500">
+                        #{{
+                          report.atFaultDriver?.driverNumber ||
+                            report.reportedDriver?.driverNumber
+                        }}
+                      </p>
                     </td>
                     <td class="px-6 py-4">
                       <p class="text-gray-900">{{ report.event?.trackName }}</p>
-                      <p class="text-sm text-gray-500">Race {{ report.race?.raceNumber }}</p>
+                      <p class="text-sm text-gray-500">
+                        Race {{ report.race?.raceNumber }}
+                      </p>
                     </td>
                     <td class="px-6 py-4">
                       <p class="text-gray-900">Turn {{ report.turn }}</p>
@@ -96,9 +114,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                       {{ report.reportDate | timeAgo }}
                     </td>
                     <td class="px-6 py-4">
-                      <a
-                        [routerLink]="['/finalize', report._id]"
-                      >
+                      <a [routerLink]="['/finalize', report._id]">
                         <app-button variant="success" size="sm">
                           Finalize
                         </app-button>
@@ -111,16 +127,28 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
           </div>
         } @else {
           <div class="text-center py-12">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            <svg
+              class="w-12 h-12 text-gray-300 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
             </svg>
             <p class="text-gray-500">No reports ready for finalization</p>
-            <p class="text-sm text-gray-400 mt-1">Reports need to be reviewed first</p>
+            <p class="text-sm text-gray-400 mt-1">
+              Reports need to be reviewed first
+            </p>
           </div>
         }
       </app-card>
     </div>
-  `
+  `,
 })
 export class FinalizeDashboardComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
@@ -136,14 +164,14 @@ export class FinalizeDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.unsubscribes.forEach(unsub => unsub());
+    this.unsubscribes.forEach((unsub) => unsub());
   }
 
   private loadData(): void {
     // Load reports ready for finalization
     const reportsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getReadyForFinalization,
-      {}
+      {},
     );
     this.unsubscribes.push(reportsQuery.unsubscribe);
 
@@ -159,7 +187,7 @@ export class FinalizeDashboardComponent implements OnInit, OnDestroy {
     // Load stats
     const statsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getStats,
-      {}
+      {},
     );
     this.unsubscribes.push(statsQuery.unsubscribe);
 

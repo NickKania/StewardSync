@@ -10,6 +10,7 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { HasRoleDirective } from '@shared/directives/has-role.directive';
 import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
 import { DriverDashboardComponent } from './driver-dashboard/driver-dashboard.component';
+import { PenaltyOverviewCardComponent } from './penalty-overview-card/penalty-overview-card.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -24,7 +25,8 @@ import { DriverDashboardComponent } from './driver-dashboard/driver-dashboard.co
     HasRoleDirective,
     DateFormatPipe,
     TimeAgoPipe,
-    DriverDashboardComponent
+    DriverDashboardComponent,
+    PenaltyOverviewCardComponent
   ],
   template: `
     @if (authService.userRole() === 'driver') {
@@ -93,6 +95,11 @@ import { DriverDashboardComponent } from './driver-dashboard/driver-dashboard.co
           }
         </div>
       }
+
+      <!-- Penalties overview for event managers -->
+      <div *appHasRole="['event_manager', 'head_steward']">
+        <app-penalty-overview-card />
+      </div>
 
       <!-- Quick actions for stewards -->
       <div *appHasRole="['steward', 'head_steward', 'event_manager']" class="grid md:grid-cols-2 gap-6">

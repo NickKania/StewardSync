@@ -46,11 +46,33 @@ export const list = query({
         const event = report.eventId ? await ctx.db.get(report.eventId) : null;
         const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
+        const reviews = await ctx.db
+          .query("reviews")
+          .withIndex("by_report", (q) => q.eq("reportId", report._id))
+          .collect();
+
+        let atFaultDriver = report.atFaultDriverId
+          ? await ctx.db.get(report.atFaultDriverId)
+          : null;
+
+        if (!atFaultDriver && reviews.length > 0) {
+          const latestReview = reviews.reduce((latest, current) => {
+            const latestDate = latest.reviewDate || latest.createdAt || 0;
+            const currentDate = current.reviewDate || current.createdAt || 0;
+            return currentDate > latestDate ? current : latest;
+          });
+
+          if (latestReview.atFaultDriverId) {
+            atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
+          }
+        }
+
         return {
           ...report,
           reportingDriver,
           reportingUser,
           reportedDriver,
+          atFaultDriver,
           event,
           race,
         };
@@ -76,6 +98,28 @@ export const getById = query({
     const reportedDriver = report.reportedDriverId
       ? await ctx.db.get(report.reportedDriverId)
       : null;
+
+    const reportReviews = await ctx.db
+      .query("reviews")
+      .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
+      .collect();
+
+    let atFaultDriver = report.atFaultDriverId
+      ? await ctx.db.get(report.atFaultDriverId)
+      : null;
+
+    if (!atFaultDriver && reportReviews.length > 0) {
+      const latestReview = reportReviews.reduce((latest, current) => {
+        const latestDate = latest.reviewDate || latest.createdAt || 0;
+        const currentDate = current.reviewDate || current.createdAt || 0;
+        return currentDate > latestDate ? current : latest;
+      });
+
+      if (latestReview.atFaultDriverId) {
+        atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
+      }
+    }
+
     const event = report.eventId ? await ctx.db.get(report.eventId) : null;
     const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
@@ -90,13 +134,8 @@ export const getById = query({
       appliedPenaltyObj = await ctx.db.get(report.appliedPenalty as any);
     }
 
-    const reviews = await ctx.db
-      .query("reviews")
-      .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
-      .collect();
-
     const reviewsWithUsers = await Promise.all(
-      reviews.map(async (review) => {
+      reportReviews.map(async (review) => {
         const [user, secondSteward, linkedReview] = await Promise.all([
           ctx.db.get(review.userId),
           (review as any).secondStewardId
@@ -136,6 +175,7 @@ export const getById = query({
       reportingDriver,
       reportingUser,
       reportedDriver,
+      atFaultDriver,
       event: eventWithSeries,
       race,
       appliedPenaltyObj,
@@ -174,11 +214,28 @@ export const getPendingForReview = query({
 
         const reviewCount = reviews.length;
 
+        let atFaultDriver = report.atFaultDriverId
+          ? await ctx.db.get(report.atFaultDriverId)
+          : null;
+
+        if (!atFaultDriver && reviews.length > 0) {
+          const latestReview = reviews.reduce((latest, current) => {
+            const latestDate = latest.reviewDate || latest.createdAt || 0;
+            const currentDate = current.reviewDate || current.createdAt || 0;
+            return currentDate > latestDate ? current : latest;
+          });
+
+          if (latestReview.atFaultDriverId) {
+            atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
+          }
+        }
+
         return {
           ...report,
           reportingDriver,
           reportingUser,
           reportedDriver,
+          atFaultDriver,
           event,
           race,
           reviewCount,
@@ -211,8 +268,6 @@ export const getReadyForFinalization = query({
         const reportedDriver = report.reportedDriverId
           ? await ctx.db.get(report.reportedDriverId)
           : null;
-        const event = report.eventId ? await ctx.db.get(report.eventId) : null;
-        const race = report.raceId ? await ctx.db.get(report.raceId) : null;
 
         const reviews = await ctx.db
           .query("reviews")
@@ -221,11 +276,32 @@ export const getReadyForFinalization = query({
 
         const reviewCount = reviews.length;
 
+        // Get atFaultDriverId from latest review if not set on report
+        let atFaultDriver = report.atFaultDriverId
+          ? await ctx.db.get(report.atFaultDriverId)
+          : null;
+
+        if (!atFaultDriver && reviews.length > 0) {
+          const latestReview = reviews.reduce((latest, current) => {
+            const latestDate = latest.reviewDate || latest.createdAt || 0;
+            const currentDate = current.reviewDate || current.createdAt || 0;
+            return currentDate > latestDate ? current : latest;
+          });
+
+          if (latestReview.atFaultDriverId) {
+            atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
+          }
+        }
+
+        const event = report.eventId ? await ctx.db.get(report.eventId) : null;
+        const race = report.raceId ? await ctx.db.get(report.raceId) : null;
+
         return {
           ...report,
           reportingDriver,
           reportingUser,
           reportedDriver,
+          atFaultDriver,
           event,
           race,
           reviewCount,
@@ -240,7 +316,7 @@ export const getReadyForFinalization = query({
 export const create = mutation({
   args: {
     reportingUserId: v.optional(v.id("users")),
-    reportingDriverId: v.id("drivers"),
+    reportingDriverId: v.optional(v.id("drivers")),
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
     raceId: v.id("races"),
@@ -249,20 +325,24 @@ export const create = mutation({
     description: v.string(),
   },
   handler: async (ctx, args) => {
-    // Validate that reporting and reported drivers are different
-    if (args.reportingDriverId === args.reportedDriverId) {
+    // Validate that reporting and reported drivers are different if reportingDriverId is provided
+    if (args.reportingDriverId && args.reportingDriverId === args.reportedDriverId) {
       throw new Error("Reporting and reported driver cannot be the same");
     }
 
+    // Validate reporting driver exists if provided
+    if (args.reportingDriverId) {
+      const reportingDriver = await ctx.db.get(args.reportingDriverId);
+      if (!reportingDriver) throw new Error("Reporting driver not found");
+    }
+
     // Validate all referenced entities exist
-    const [reportingDriver, reportedDriver, event, race] = await Promise.all([
-      ctx.db.get(args.reportingDriverId),
+    const [reportedDriver, event, race] = await Promise.all([
       ctx.db.get(args.reportedDriverId),
       ctx.db.get(args.eventId),
       ctx.db.get(args.raceId),
     ]);
 
-    if (!reportingDriver) throw new Error("Reporting driver not found");
     if (!reportedDriver) throw new Error("Reported driver not found");
     if (!event) throw new Error("Event not found");
     if (!race) throw new Error("Race not found");
@@ -360,6 +440,7 @@ export const finalize = mutation({
     userId: v.id("users"),
     finalDecision: v.string(),
     appliedPenalty: v.string(),
+    atFaultDriverId: v.optional(v.id("drivers")),
     officialNotes: v.string(),
     isSelfReport: v.optional(v.boolean()),
   },
@@ -377,7 +458,7 @@ export const finalize = mutation({
     const finalizerConflict = await checkUserDriverConflict(ctx, args.userId, report);
     if (finalizerConflict.hasConflict) {
       return failure(
-        `You cannot finalize this report because you are involved as the ${finalizerConflict.conflictType === "reporting_driver" ? "reporting driver" : "reported driver"} (${finalizerConflict.driverName}).`
+        `You cannot finalize this report because you are involved as the ${finalizerConflict.conflictType === "reporting_user" ? "reporting user" : "reported driver"}${finalizerConflict.driverName ? ` (${finalizerConflict.driverName})` : ""}.`
       );
     }
 
@@ -387,6 +468,7 @@ export const finalize = mutation({
       isFinalized: true,
       finalDecision: args.finalDecision,
       appliedPenalty: args.appliedPenalty,
+      atFaultDriverId: args.atFaultDriverId,
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
       finalizedBy: args.userId,
@@ -427,7 +509,7 @@ export const finalize = mutation({
           }
 
           const points = penalty?.licensePoints ?? 0;
-          const driverId = finalizedReport.reportedDriverId.toString();
+          const driverId = finalizedReport.atFaultDriverId?.toString() || finalizedReport.reportedDriverId.toString();
 
           if (penaltyAccumulator[driverId]) {
             penaltyAccumulator[driverId] += points;
@@ -506,9 +588,12 @@ export const createBySteward = mutation({
     incidentDescription: v.string(),
     reviewNotes: v.optional(v.string()),
     recommendedPenalty: v.string(),
+    atFaultDriverId: v.optional(v.id("drivers")),
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
     isSelfReport: v.optional(v.boolean()),
+    isAdjusted: v.optional(v.boolean()),
+    adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -564,32 +649,29 @@ export const createBySteward = mutation({
       updatedAt: now,
     });
 
-    const primaryReviewId = await ctx.db.insert("reviews", {
+    const reviewData = {
       userId: args.reportingUserId,
       reportId: reportId,
       incidentDescription: args.incidentDescription,
       reviewNotes: args.reviewNotes || "",
       recommendedPenalty: args.recommendedPenalty,
+      atFaultDriverId: args.atFaultDriverId,
       videoTimestamp: args.videoTimestamp,
       isSelfReport: args.isSelfReport,
+      isAdjusted: args.isAdjusted,
+      adjustedReason: args.adjustedReason,
       reviewDate: now,
       createdAt: now,
       updatedAt: now,
-    });
+    };
+
+    const primaryReviewId = await ctx.db.insert("reviews", reviewData);
 
     if (args.secondStewardId) {
       const secondReviewId = await ctx.db.insert("reviews", {
+        ...reviewData,
         userId: args.secondStewardId,
-        reportId: reportId,
-        incidentDescription: args.incidentDescription,
-        reviewNotes: args.reviewNotes || "",
-        recommendedPenalty: args.recommendedPenalty,
-        videoTimestamp: args.videoTimestamp,
-        isSelfReport: args.isSelfReport,
         linkedReviewId: primaryReviewId,
-        reviewDate: now,
-        createdAt: now,
-        updatedAt: now,
       });
 
       await ctx.db.patch(primaryReviewId, { linkedReviewId: secondReviewId });

@@ -7,7 +7,8 @@ export type ReportStatus = 'pending' | 'reviewed' | 'finalized' | 'rejected';
 export interface Report {
   _id: Id<'reports'>;
   reportDate: number;
-  reportingDriverId: Id<'drivers'>;
+  reportingUserId?: Id<'users'>;
+  reportingDriverId?: Id<'drivers'>;
   reportedDriverId: Id<'drivers'>;
   eventId: Id<'events'>;
   raceId: Id<'races'>;
@@ -16,10 +17,12 @@ export interface Report {
   status: ReportStatus;
   isFinalized: boolean;
   isSelfReport?: boolean;
+  isStewardReported?: boolean;
   createdAt: number;
   updatedAt: number;
 
   // Populated relations
+  reportingUser?: any;
   reportingDriver?: Driver;
   reportedDriver?: Driver;
   event?: Event;
@@ -27,7 +30,7 @@ export interface Report {
 }
 
 export interface CreateReportDto {
-  reportingDriverId: Id<'drivers'>;
+  reportingUserId: Id<'users'>;
   reportedDriverId: Id<'drivers'>;
   eventId: Id<'events'>;
   raceId: Id<'races'>;

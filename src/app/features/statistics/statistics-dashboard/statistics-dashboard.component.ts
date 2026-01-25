@@ -39,6 +39,7 @@ interface EventRundownRow {
   lap: number | null;
   turn: number | null;
   incidentDescription: string;
+  adjustedReason?: string;
   penaltyName: string | null;
   timePenaltySeconds: number;
   licensePoints: number | null;

@@ -90,7 +90,7 @@ import { Penalty } from "@core/models/series.model";
 
                   <!-- Review notes -->
                   <div>
-                    <label class="label">Review Notes *</label>
+                    <label class="label">Review Notes</label>
                     <textarea
                       formControlName="reviewNotes"
                       class="input min-h-[120px]"
@@ -147,6 +147,28 @@ import { Penalty } from "@core/models/series.model";
                     }
                   </div>
 
+                  <!-- At fault driver -->
+                  <div>
+                    <label class="label">At Fault Driver</label>
+                    <select
+                      formControlName="atFaultDriverId"
+                      class="input"
+                    >
+                      <option value="">Select driver</option>
+                      @for (
+                        driver of drivers();
+                        track driver._id
+                      ) {
+                        <option [value]="driver._id">
+                          {{ driver.driverName }} ({{ driver.driverNumber }})
+                        </option>
+                      }
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">
+                      Pre-selected to reported driver, change if different
+                    </p>
+                  </div>
+
                   <!-- Self report toggle -->
                   <div>
                     <app-toggle
@@ -155,6 +177,31 @@ import { Penalty } from "@core/models/series.model";
                       hint="Driver self reported?"
                     />
                   </div>
+
+                  <!-- Adjusted toggle -->
+                  <div>
+                    <app-toggle
+                      formControlName="isAdjusted"
+                      label="Adjusted"
+                      hint="Incident description was adjusted?"
+                    />
+                  </div>
+
+                  <!-- Adjusted reason (conditionally shown) -->
+                  @if (form.get("isAdjusted")?.value) {
+                    <div>
+                      <label class="label">Adjusted Reason</label>
+                      <textarea
+                        formControlName="adjustedReason"
+                        class="input min-h-[80px]"
+                        placeholder="Explain why the incident was adjusted..."
+                        rows="3"
+                      ></textarea>
+                      <p class="text-xs text-gray-500 mt-1">
+                        This will be added as a note to the incident description
+                      </p>
+                    </div>
+                  }
 
                   <!-- Video timestamp -->
                   <div>
@@ -179,7 +226,8 @@ import { Penalty } from "@core/models/series.model";
                       placeholder="Search stewards by name..."
                     />
                     <p class="text-xs text-gray-500 mt-1">
-                      Stewards involved as drivers in this incident are excluded from the list
+                      Stewards involved as drivers in this incident are excluded
+                      from the list
                     </p>
                   </div>
                 </div>
@@ -282,6 +330,11 @@ import { Penalty } from "@core/models/series.model";
                       </div>
                       <p class="text-gray-700 text-sm whitespace-pre-wrap">
                         {{ review.reviewNotes }}
+                        @if (review.isAdjusted && review.adjustedReason) {
+                          <br /><span class="text-amber-700"
+                            >[Adjusted: {{ review.adjustedReason }}]</span
+                          >
+                        }
                       </p>
                     </div>
                   }
@@ -304,13 +357,15 @@ import { Penalty } from "@core/models/series.model";
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Reporting Driver</dt>
+                  <dt class="text-sm text-gray-500">Reported By</dt>
                   <dd class="font-medium text-gray-900">
-                    {{ report()?.reportingDriver?.driverName }}
+                    {{ report()?.reportingUser?.name || "Unknown User" }}
                   </dd>
-                  <dd class="text-sm text-gray-500">
-                    #{{ report()?.reportingDriver?.driverNumber }}
-                  </dd>
+                  @if (report()?.isStewardReported) {
+                    <dd class="text-sm text-gray-500">
+                      <app-badge variant="info" size="sm">Steward</app-badge>
+                    </dd>
+                  }
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Location</dt>
@@ -361,6 +416,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   availablePenalties = signal<Penalty[]>([]);
   existingReviews = signal<any[]>([]);
   stewards = signal<any[]>([]);
+  drivers = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
 
@@ -388,15 +444,19 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           // Exclude current user
           if (String(steward._id) === String(currentUserId)) return false;
 
-          // Exclude stewards who are involved as drivers
-          const reportingDriverUserId = report.reportingDriver?.userId;
-          const reportedDriverUserId = report.reportedDriver?.userId;
-
-          if (reportingDriverUserId && String(steward._id) === String(reportingDriverUserId)) {
+          // Exclude stewards who are involved as the reporting user or driver
+          if (
+            report.reportingUserId &&
+            String(steward._id) === String(report.reportingUserId)
+          ) {
             return false;
           }
 
-          if (reportedDriverUserId && String(steward._id) === String(reportedDriverUserId)) {
+          const reportedDriverUserId = report.reportedDriver?.userId;
+          if (
+            reportedDriverUserId &&
+            String(steward._id) === String(reportedDriverUserId)
+          ) {
             return false;
           }
 
@@ -424,22 +484,42 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   constructor() {
     this.form = this.fb.group({
       incidentDescription: ["", Validators.required],
-      reviewNotes: ["", [Validators.required, Validators.minLength(10)]],
+      reviewNotes: [""],
       recommendedPenalty: ["", Validators.required],
+      atFaultDriverId: [""],
       videoTimestamp: [""],
       secondStewardId: [""],
       isSelfReport: [false],
+      isAdjusted: [false],
+      adjustedReason: [""],
     });
   }
 
   ngOnInit(): void {
     this.loadReport();
     this.loadStewards();
+    this.loadDrivers();
     this.loadSavedSteward();
 
     this.form.get("secondStewardId")?.valueChanges.subscribe((value) => {
       this.saveStewardSelection(value);
     });
+  }
+
+  private loadDrivers(): void {
+    const driversQuery = this.convex.createReactiveQuery(
+      this.convex.api.drivers.list,
+      {},
+    );
+    this.unsubscribes.push(driversQuery.unsubscribe);
+
+    const checkDrivers = setInterval(() => {
+      const data = driversQuery.data();
+      if (data !== undefined) {
+        this.drivers.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkDrivers));
   }
 
   ngOnDestroy(): void {
@@ -474,6 +554,14 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
             incidentControl.value !== newValue
           ) {
             incidentControl.setValue(newValue);
+          }
+
+          // Pre-select atFaultDriverId to reportedDriver
+          if (data.reportedDriverId) {
+            const atFaultDriverControl = this.form.get("atFaultDriverId");
+            if (atFaultDriverControl && atFaultDriverControl.pristine) {
+              atFaultDriverControl.setValue(data.reportedDriverId);
+            }
           }
 
           // Filter out current user's review if exists
@@ -559,16 +647,25 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       const formValue = this.form.value;
 
       // Create review
-      const result = await this.convex.mutation(this.convex.api.reviews.create, {
-        userId,
-        reportId: this.reportId as any,
-        incidentDescription: formValue.incidentDescription,
-        reviewNotes: formValue.reviewNotes,
-        recommendedPenalty: formValue.recommendedPenalty || undefined,
-        videoTimestamp: formValue.videoTimestamp || undefined,
-        secondStewardId: formValue.secondStewardId || undefined,
-        isSelfReport: formValue.isSelfReport || false,
-      });
+      const result = await this.convex.mutation(
+        this.convex.api.reviews.create,
+        {
+          userId,
+          reportId: this.reportId as any,
+          incidentDescription: formValue.incidentDescription,
+          reviewNotes: formValue.reviewNotes,
+          recommendedPenalty: formValue.recommendedPenalty || undefined,
+          atFaultDriverId: formValue.atFaultDriverId || undefined,
+          videoTimestamp: formValue.videoTimestamp || undefined,
+          secondStewardId: formValue.secondStewardId || undefined,
+          isSelfReport: formValue.isSelfReport || false,
+          isAdjusted: formValue.isAdjusted || false,
+          adjustedReason:
+            formValue.isAdjusted && formValue.adjustedReason
+              ? formValue.adjustedReason
+              : undefined,
+        },
+      );
 
       if (!result.success) {
         this.toast.error(result.error);
