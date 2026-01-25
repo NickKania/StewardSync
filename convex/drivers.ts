@@ -144,10 +144,15 @@ export const getDriverStats = query({
       .withIndex("by_reported_driver", (q) => q.eq("reportedDriverId", args.driverId))
       .collect();
 
-    const reportsFiled = await ctx.db
-      .query("reports")
-      .withIndex("by_reporting_driver", (q) => q.eq("reportingDriverId", args.driverId))
-      .collect();
+    // Get the user linked to this driver
+    const driver = await ctx.db.get(args.driverId);
+    let reportsFiled = [];
+    if (driver?.userId) {
+      reportsFiled = await ctx.db
+        .query("reports")
+        .withIndex("by_reporting_user", (q) => q.eq("reportingUserId", driver.userId))
+        .collect();
+    }
 
     return {
       reportsFiledCount: reportsFiled.length,
