@@ -282,9 +282,14 @@ interface DriverPointsRow {
                                     {{ row.turn ?? "-" }}
                                   </td>
                                   <td
-                                    class="px-4 py-3 text-gray-700 max-w-md truncate align-middle leading-tight"
+                                    class="px-4 py-3 text-gray-700 max-w-md align-middle leading-tight"
                                   >
-                                    {{ row.incidentDescription }}
+                                    <div class="whitespace-pre-wrap">{{ row.incidentDescription }}</div>
+                                    @if (row.adjustedReason) {
+                                      <div class="text-amber-700 text-sm mt-1 whitespace-pre-wrap">
+                                        [Adjusted: {{ row.adjustedReason }}]
+                                      </div>
+                                    }
                                   </td>
                                   <td class="px-4 py-3 align-middle leading-tight">
                                     @if (row.penaltyName) {
@@ -647,6 +652,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
           const lap = row.lap?.toString() ?? "";
           const turn = row.turn?.toString() ?? "";
           const incident = row.incidentDescription?.toLowerCase() ?? "";
+          const adjustedReason = row.adjustedReason?.toLowerCase() ?? "";
           const penalty = row.penaltyName?.toLowerCase() ?? "";
           const timePenalty = row.timePenaltySeconds?.toString() ?? "";
           const licensePoints = row.licensePoints?.toString() ?? "";
@@ -658,6 +664,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
             lap.includes(filter) ||
             turn.includes(filter) ||
             incident.includes(filter) ||
+            adjustedReason.includes(filter) ||
             penalty.includes(filter) ||
             timePenalty.includes(filter) ||
             licensePoints.includes(filter)

@@ -1,12 +1,4 @@
-import {
-  Component,
-  inject,
-  OnInit,
-  OnDestroy,
-  signal,
-  computed,
-  Input,
-} from "@angular/core";
+import { Component, inject, OnInit, OnDestroy, signal, computed, Input } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Router, RouterLink } from "@angular/router";
 import {
@@ -26,6 +18,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
 import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
+import { SelectOption } from "@shared/components/select/select.component";
 
 @Component({
   selector: "app-review-form",
@@ -333,8 +326,8 @@ import { Penalty } from "@core/models/series.model";
                         @if (review.isAdjusted && review.adjustedReason) {
                           <br /><span class="text-amber-700"
                             >[Adjusted: {{ review.adjustedReason }}]</span
-                          >
-                        }
+                            >
+                          }
                       </p>
                     </div>
                   }
@@ -419,6 +412,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   drivers = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
+  secondStewardUnsubscribe: (() => void) | null = null;
 
   availableStewards = computed(() => {
     const currentUserId = this.authService.getUserId();
@@ -500,10 +494,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     this.loadStewards();
     this.loadDrivers();
     this.loadSavedSteward();
-
-    this.form.get("secondStewardId")?.valueChanges.subscribe((value) => {
-      this.saveStewardSelection(value);
-    });
   }
 
   private loadDrivers(): void {
@@ -538,9 +528,12 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     );
     this.unsubscribes.push(reportQuery.unsubscribe);
 
+    let checkCount = 0;
     const checkReport = setInterval(() => {
+      checkCount++;
       const data = reportQuery.data();
       if (data !== undefined) {
+        clearInterval(checkReport);
         this.report.set(data);
 
         // Pre-fill incident description (only if control is pristine and value has changed)
@@ -617,17 +610,83 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
   private loadSavedSteward(): void {
     const savedStewardId = localStorage.getItem("selectedSecondSteward");
-    if (savedStewardId) {
-      this.form.patchValue({ secondStewardId: savedStewardId });
+    const currentUserId = this.authService.getUserId();
+    const report = this.report();
+
+    // Don't load saved steward if:
+    // 1. No saved steward exists
+    // 2. Current user is not authenticated
+    // 3. No report data available yet
+    if (!savedStewardId || !currentUserId || !report) {
+      localStorage.removeItem("selectedSecondSteward");
+      return;
     }
+
+    // If saved steward matches reporting user, it would cause a conflict
+    if (report.reportingUserId && String(savedStewardId) === String(report.reportingUserId)) {
+      localStorage.removeItem("selectedSecondSteward");
+      this.form.patchValue({ secondStewardId: "" });
+      return;
+    }
+
+    // If saved steward is current user (user shouldn't review their own review)
+    if (String(savedStewardId) === String(currentUserId)) {
+      localStorage.removeItem("selectedSecondSteward");
+      this.form.patchValue({ secondStewardId: "" });
+      return;
+    }
+
+    // Also check if saved steward is linked to reported driver
+    const reportedDriverUserId = report.reportedDriver?.userId;
+    if (reportedDriverUserId && String(savedStewardId) === String(reportedDriverUserId)) {
+      localStorage.removeItem("selectedSecondSteward");
+      this.form.patchValue({ secondStewardId: "" });
+      return;
+    }
+
+    // Also check if saved steward is linked to reporting driver
+    const reportingDriverUserId = report.reportingDriver?.userId;
+    if (reportingDriverUserId && String(savedStewardId) === String(reportingDriverUserId)) {
+      localStorage.removeItem("selectedSecondSteward");
+      this.form.patchValue({ secondStewardId: "" });
+      return;
+    }
+
+    // Disconnects valueChanges subscription before patching to prevent re-saving
+    const secondStewardControl = this.form.get('secondStewardId');
+    if (secondStewardControl) {
+      const subscription = secondStewardControl.valueChanges.subscribe((value) => {
+        this.saveStewardSelection(value);
+      });
+      this.unsubscribes.push(() => subscription.unsubscribe());
+    }
+
+    this.form.patchValue({ secondStewardId: savedStewardId });
   }
 
   private saveStewardSelection(stewardId: string): void {
-    if (stewardId) {
-      localStorage.setItem("selectedSecondSteward", stewardId);
-    } else {
+    const report = this.report();
+    const currentUserId = this.authService.getUserId();
+
+    if (!stewardId) {
       localStorage.removeItem("selectedSecondSteward");
+      return;
     }
+
+    if (!currentUserId) {
+      localStorage.setItem("selectedSecondSteward", stewardId);
+      return;
+    }
+
+    const reportedDriver = report.reportedDriver ? this.drivers().find(d => d._id === report.reportedDriver) : null;
+    const reportedDriverUserId = reportedDriver?.userId;
+
+    if (String(stewardId) === String(reportedDriverUserId)) {
+      localStorage.setItem("selectedSecondSteward", stewardId);
+      return;
+    }
+
+    localStorage.setItem("selectedSecondSteward", stewardId);
   }
 
   async onSubmit(markAsReviewed = false): Promise<void> {
@@ -646,7 +705,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
       const formValue = this.form.value;
 
-      // Create review
       const result = await this.convex.mutation(
         this.convex.api.reviews.create,
         {
@@ -673,7 +731,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Optionally mark report as reviewed
       if (markAsReviewed) {
         await this.convex.mutation(this.convex.api.reports.markAsReviewed, {
           reportId: this.reportId as any,

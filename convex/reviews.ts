@@ -150,8 +150,13 @@ export const create = mutation({
     // Check if primary steward has driver conflict
     const primaryConflict = await checkUserDriverConflict(ctx, args.userId, report);
     if (primaryConflict.hasConflict) {
+      const getConflictTypeText = (type: string) => {
+        if (type === "reporting_user") return "reporting user";
+        if (type === "reporting_driver") return "reporting driver";
+        return "reported driver";
+      };
       return failure(
-        `You cannot review this report because you are involved as the ${primaryConflict.conflictType === "reporting_user" ? "reporting user" : "reported driver"}${primaryConflict.driverName ? ` (${primaryConflict.driverName})` : ""}.`
+        `You cannot review this report because you are involved as the ${getConflictTypeText(primaryConflict.conflictType!)}${primaryConflict.driverName ? ` (${primaryConflict.driverName})` : ""}.`
       );
     }
 
@@ -160,8 +165,13 @@ export const create = mutation({
       const secondConflict = await checkUserDriverConflict(ctx, args.secondStewardId, report);
       if (secondConflict.hasConflict) {
         const secondSteward = await ctx.db.get(args.secondStewardId);
+        const getConflictTypeText = (type: string) => {
+          if (type === "reporting_user") return "reporting user";
+          if (type === "reporting_driver") return "reporting driver";
+          return "reported driver";
+        };
         return failure(
-          `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${secondConflict.conflictType === "reporting_user" ? "reporting user" : "reported driver"}${secondConflict.driverName ? ` (${secondConflict.driverName})` : ""}.`
+          `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${getConflictTypeText(secondConflict.conflictType!)}${secondConflict.driverName ? ` (${secondConflict.driverName})` : ""}.`
         );
       }
     }

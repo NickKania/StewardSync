@@ -163,6 +163,21 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                       <dd class="text-gray-900 whitespace-pre-wrap">{{ report()?.officialNotes }}</dd>
                     </div>
                   }
+                  @if (adjustedReviews().length > 0) {
+                    <div class="pt-4 border-t border-gray-200">
+                      <dt class="text-sm text-gray-500 mb-2">Review Adjustments</dt>
+                      <div class="space-y-2">
+                        @for (adjustedReview of adjustedReviews(); track adjustedReview._id) {
+                          <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <div class="flex items-center justify-between mb-1">
+                              <span class="font-medium text-gray-900">{{ adjustedReview.reviewer?.name }}</span>
+                            </div>
+                            <p class="text-sm text-amber-800">{{ adjustedReview.adjustedReason }}</p>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
                   <div class="text-sm text-gray-500">
                     Finalized {{ report()?.finalizedAt | dateFormat:'PPp' }}
                   </div>
@@ -339,6 +354,24 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
     }
 
     return result;
+  });
+
+  adjustedReviews = computed(() => {
+    const allReviews = this.report()?.reviews || [];
+
+    if (allReviews.length === 0) return [];
+
+    const latestReview = allReviews.reduce((latest: any, current: any) => {
+      const latestDate = latest.reviewDate || latest.createdAt || 0;
+      const currentDate = current.reviewDate || current.createdAt || 0;
+      return currentDate > latestDate ? current : latest;
+    });
+
+    if (latestReview.isAdjusted && latestReview.adjustedReason) {
+      return [latestReview];
+    }
+
+    return [];
   });
 
   ngOnInit(): void {

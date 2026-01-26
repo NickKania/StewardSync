@@ -230,6 +230,7 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
       if (data !== undefined) {
         this.drivers.set(data);
         this.initializeForm();
+        clearInterval(checkDrivers);
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkDrivers));
@@ -252,6 +253,7 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
       if (data !== undefined) {
         this.availablePenalties.set(data);
         this.initializeForm();
+        clearInterval(checkPenalties);
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkPenalties));
@@ -259,7 +261,6 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
 
   private initializeForm(): void {
     if (this.report) {
-      console.log(this.report);
       this.form.patchValue({
         finalDecision: this.report.finalDecision || "",
         appliedPenalty: this.report.appliedPenalty || "",

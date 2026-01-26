@@ -10,6 +10,7 @@ interface EventRundownRow {
   lap: number | null;
   turn: number | null;
   incidentDescription: string;
+  adjustedReason?: string;
   penaltyName: string | null;
   timePenaltySeconds: number;
   licensePoints: number | null;
@@ -50,7 +51,11 @@ export const getEventRundown = query({
                 .collect();
 
               if (reviews.length > 0) {
-                review = reviews[0];
+                review = reviews.reduce((latest, current) => {
+                  const latestDate = latest.reviewDate || latest.createdAt || 0;
+                  const currentDate = current.reviewDate || current.createdAt || 0;
+                  return currentDate > latestDate ? current : latest;
+                });
               }
 
               if (!review?.recommendedPenalty) {
@@ -106,10 +111,6 @@ export const getEventRundown = query({
               incidentDescription = review?.incidentDescription ?? "";
             }
 
-            if (review?.isAdjusted && review.adjustedReason) {
-              incidentDescription += `\n[Adjusted: ${review.adjustedReason}]`;
-            }
-
             return {
               reportId: report._id,
               driverId: atFaultDriverId,
@@ -119,6 +120,7 @@ export const getEventRundown = query({
               lap: report.lap ?? null,
               turn: report.turn ?? null,
               incidentDescription,
+              adjustedReason: review?.isAdjusted ? review.adjustedReason : undefined,
               penaltyName,
               timePenaltySeconds,
               licensePoints,

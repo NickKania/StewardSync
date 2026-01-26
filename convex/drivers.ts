@@ -201,3 +201,29 @@ export const importOrUpdateDriver = mutation({
     }
   },
 });
+
+// Debug queries
+export const getUserDriverLinks = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    console.log(`[DEBUG] Getting driver links for user: ${args.userId}`);
+    const drivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    console.log(`[DEBUG] Found ${drivers.length} drivers linked to user:`, drivers);
+
+    return drivers.map((driver) => ({
+      driverId: driver._id,
+      driverNumber: driver.driverNumber,
+      driverName: driver.driverName,
+      driverClass: driver.driverClass,
+      username: driver.username,
+      externalId: driver.externalId,
+      steamId: driver.steamId,
+      championshipId: driver.championshipId,
+      userId: driver.userId,
+    }));
+  },
+});

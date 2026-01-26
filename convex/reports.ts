@@ -458,8 +458,13 @@ export const finalize = mutation({
     // Check if finalizing user has driver conflict
     const finalizerConflict = await checkUserDriverConflict(ctx, args.userId, report);
     if (finalizerConflict.hasConflict) {
+      const getConflictTypeText = (type: string) => {
+        if (type === "reporting_user") return "reporting user";
+        if (type === "reporting_driver") return "reporting driver";
+        return "reported driver";
+      };
       return failure(
-        `You cannot finalize this report because you are involved as the ${finalizerConflict.conflictType === "reporting_user" ? "reporting user" : "reported driver"}${finalizerConflict.driverName ? ` (${finalizerConflict.driverName})` : ""}.`
+        `You cannot finalize this report because you are involved as the ${getConflictTypeText(finalizerConflict.conflictType!)}${finalizerConflict.driverName ? ` (${finalizerConflict.driverName})` : ""}.`
       );
     }
 
@@ -872,5 +877,83 @@ export const getDriverIndividualPenalties = query({
 
       return b.finalizedAt - a.finalizedAt;
     });
+  },
+});
+
+// Debug queries
+export const debugReportState = query({
+  args: { reportId: v.id("reports") },
+  handler: async (ctx, args) => {
+    console.log(`[DEBUG] Getting debug state for report: ${args.reportId}`);
+
+    const report = await ctx.db.get(args.reportId);
+    if (!report) {
+      console.log(`[DEBUG] Report not found: ${args.reportId}`);
+      return null;
+    }
+
+    console.log(`[DEBUG] Report fields:`, {
+      reportingUserId: report.reportingUserId,
+      reportingDriverId: report.reportingDriverId,
+      reportedDriverId: report.reportedDriverId,
+      status: report.status,
+      isFinalized: report.isFinalized,
+    });
+
+    const [reportingDriver, reportedDriver, reportingUser, event, race] = await Promise.all([
+      report.reportingDriverId ? ctx.db.get(report.reportingDriverId) : null,
+      ctx.db.get(report.reportedDriverId),
+      report.reportingUserId ? ctx.db.get(report.reportingUserId) : null,
+      ctx.db.get(report.eventId),
+      ctx.db.get(report.raceId),
+    ]);
+
+    const reviews = await ctx.db
+      .query("reviews")
+      .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
+      .collect();
+
+    const reviewsWithUsers = await Promise.all(
+      reviews.map(async (review) => {
+        const user = await ctx.db.get(review.userId);
+        return {
+          ...review,
+          user,
+        };
+      }),
+    );
+
+    return {
+      report,
+      reportingDriver: reportingDriver ? {
+        driverId: reportingDriver._id,
+        driverNumber: reportingDriver.driverNumber,
+        driverName: reportingDriver.driverName,
+        driverClass: reportingDriver.driverClass,
+        username: reportingDriver.username,
+        externalId: reportingDriver.externalId,
+        userId: reportingDriver.userId,
+      } : null,
+      reportedDriver: reportedDriver ? {
+        driverId: reportedDriver._id,
+        driverNumber: reportedDriver.driverNumber,
+        driverName: reportedDriver.driverName,
+        driverClass: reportedDriver.driverClass,
+        username: reportedDriver.username,
+        externalId: reportedDriver.externalId,
+        userId: reportedDriver.userId,
+      } : null,
+      reportingUser: reportingUser ? {
+        userId: reportingUser._id,
+        name: reportingUser.name,
+        email: reportingUser.email,
+        roleId: reportingUser.roleId,
+        discordId: reportingUser.discordId,
+        discordUsername: reportingUser.discordUsername,
+      } : null,
+      event,
+      race,
+      reviews: reviewsWithUsers,
+    };
   },
 });

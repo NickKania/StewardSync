@@ -645,11 +645,45 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   }
 
   private saveStewardSelection(stewardId: string): void {
-    if (stewardId) {
-      localStorage.setItem("selectedSecondSteward", stewardId);
-    } else {
+    const reportedDriverId = this.form.get('reportedDriverId')?.value;
+    const currentUserId = this.authService.getUserId();
+
+    console.log('[DEBUG STEWARD FORM] saveStewardSelection called with stewardId:', stewardId);
+    console.log('[DEBUG STEWARD FORM] Current userId:', currentUserId);
+
+    if (!stewardId) {
+      console.log('[DEBUG STEWARD FORM] No stewardId provided, clearing saved value');
       localStorage.removeItem("selectedSecondSteward");
+      return;
     }
+
+    if (!currentUserId) {
+      console.log('[DEBUG STEWARD FORM] No current user available, cannot validate conflict');
+      localStorage.setItem("selectedSecondSteward", stewardId);
+      return;
+    }
+
+    const reportedDriver = reportedDriverId ? this.drivers().find(d => d._id === reportedDriverId) : null;
+    const reportedDriverUserId = reportedDriver?.userId;
+
+    console.log('[DEBUG STEWARD FORM] Reported driver:', reportedDriver);
+    console.log('[DEBUG STEWARD FORM] Reported driver user ID:', reportedDriverUserId);
+
+    if (String(stewardId) === String(reportedDriverUserId)) {
+      console.log('[DEBUG STEWARD FORM] BLOCKING save - steward is reported driver');
+      localStorage.setItem("selectedSecondSteward", stewardId);
+      return;
+    }
+
+    // Check if steward is current user (user shouldn't review their own review)
+    if (String(stewardId) === String(currentUserId)) {
+      console.log('[DEBUG STEWARD FORM] BLOCKING save - steward is current user, user cannot review their own review');
+      localStorage.removeItem("selectedSecondSteward");
+      return;
+    }
+
+    console.log('[DEBUG STEWARD FORM] Saving steward selection:', stewardId);
+    localStorage.setItem("selectedSecondSteward", stewardId);
   }
 
   async onEventChange(): Promise<void> {
