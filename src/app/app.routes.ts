@@ -78,7 +78,8 @@ export const routes: Routes = [
   },
   {
     path: 'drivers',
-    canActivate: [authGuard],
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['head_steward', 'event_manager', 'league_manager'] },
     children: [
       {
         path: '',

@@ -1,7 +1,9 @@
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
+import { Series } from '@core/models/series.model';
 import { CardComponent } from '@shared/components/card/card.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
@@ -14,6 +16,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
   imports: [
     CommonModule,
     RouterLink,
+    FormsModule,
     CardComponent,
     ButtonComponent,
     BadgeComponent,
@@ -28,12 +31,26 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
         <p class="text-gray-500 mt-1 dark:text-gray-400">View all racing events</p>
       </div>
 
+      <!-- Series filter -->
+      <app-card>
+        <div class="flex gap-4">
+          <div class="w-48">
+            <select class="input" [(ngModel)]="selectedSeries">
+              <option value="">All series</option>
+              @for (s of series(); track s._id) {
+                <option [value]="s._id">{{ s.name }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </app-card>
+
       <!-- Events list -->
       @if (loading()) {
         <app-loading text="Loading events..." />
-      } @else if (events().length > 0) {
+      } @else if (filteredEvents().length > 0) {
         <div class="space-y-4">
-          @for (event of events(); track event._id) {
+          @for (event of filteredEvents(); track event._id) {
             <a [routerLink]="['/events', event._id]">
               <app-card [hover]="true">
                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -60,7 +77,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                 </div>
               </app-card>
             </a>
-          }
+           }
         </div>
        } @else {
         <app-card>
@@ -68,7 +85,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
             <svg class="w-12 h-12 text-gray-300 mx-auto mb-4 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
             </svg>
-            <p class="text-gray-500 dark:text-gray-400">No events found</p>
+             <p class="text-gray-500 dark:text-gray-400">No events found{{ selectedSeries() ? ' for selected series' : '' }}</p>
           </div>
         </app-card>
       }
@@ -79,7 +96,18 @@ export class EventListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
 
   events = signal<any[]>([]);
+  series = signal<Series[]>([]);
   loading = signal(true);
+
+  selectedSeries = signal('');
+
+  filteredEvents = computed(() => {
+    const seriesId = this.selectedSeries();
+    if (!seriesId) {
+      return this.events();
+    }
+    return this.events().filter(e => e.seriesId === seriesId);
+  });
 
   private unsubscribes: (() => void)[] = [];
 
@@ -98,14 +126,23 @@ export class EventListComponent implements OnInit, OnDestroy {
     );
     this.unsubscribes.push(eventsQuery.unsubscribe);
 
-    const checkEvents = setInterval(() => {
-      const data = eventsQuery.data();
-      if (data !== undefined) {
-        this.events.set(data);
+    const seriesQuery = this.convex.createReactiveQuery(
+      this.convex.api.series.list,
+      {}
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
+
+    const checkData = setInterval(() => {
+      const eventsData = eventsQuery.data();
+      const seriesData = seriesQuery.data();
+
+      if (eventsData !== undefined && seriesData !== undefined) {
+        this.events.set(eventsData);
+        this.series.set(seriesData);
         this.loading.set(false);
       }
     }, 100);
-    this.unsubscribes.push(() => clearInterval(checkEvents));
+    this.unsubscribes.push(() => clearInterval(checkData));
   }
 
   getEventStatus(eventDate: number): 'success' | 'warning' | 'info' {

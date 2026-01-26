@@ -1,8 +1,10 @@
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
+import { AuthService } from '@core/services/auth.service';
+import { Series } from '@core/models/series.model';
 import { CardComponent } from '@shared/components/card/card.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
@@ -44,10 +46,18 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
               (ngModelChange)="filterDrivers()"
             />
           </div>
+          <div class="w-48">
+            <select class="input" [(ngModel)]="selectedSeries" (ngModelChange)="onSeriesChange()">
+              <option value="">All series</option>
+              @for (s of series(); track s._id) {
+                <option [value]="s._id">{{ s.name }}</option>
+              }
+            </select>
+          </div>
           <div class="w-40">
             <select class="input" [(ngModel)]="selectedClass" (ngModelChange)="filterDrivers()">
               <option value="">All classes</option>
-              @for (cls of driverClasses(); track cls) {
+              @for (cls of filteredDriverClasses(); track cls) {
                 <option [value]="cls">{{ cls }}</option>
               }
             </select>
@@ -99,14 +109,28 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
 })
 export class DriverListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
+  private authService = inject(AuthService);
 
   drivers = signal<any[]>([]);
   filteredDrivers = signal<any[]>([]);
   driverClasses = signal<string[]>([]);
+  series = signal<Series[]>([]);
   loading = signal(true);
 
-  searchTerm = '';
-  selectedClass = '';
+  searchTerm = signal('');
+  selectedClass = signal('');
+  selectedSeries = signal('');
+
+  filteredDriverClasses = computed(() => {
+    const seriesId = this.selectedSeries();
+    if (!seriesId) {
+      return this.driverClasses();
+    }
+
+    const driversInSeries = this.drivers().filter(d => d.championshipId === seriesId);
+    const classes = [...new Set(driversInSeries.map(d => d.driverClass))];
+    return classes.sort();
+  });
 
   private unsubscribes: (() => void)[] = [];
 
@@ -125,40 +149,61 @@ export class DriverListComponent implements OnInit, OnDestroy {
     );
     this.unsubscribes.push(driversQuery.unsubscribe);
 
-    const checkDrivers = setInterval(() => {
-      const data = driversQuery.data();
-      if (data !== undefined) {
-        this.drivers.set(data);
+    const seriesQuery = this.convex.createReactiveQuery(
+      this.convex.api.series.list,
+      {}
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
+
+    const checkData = setInterval(() => {
+      const driversData = driversQuery.data();
+      const seriesData = seriesQuery.data();
+
+      if (driversData !== undefined && seriesData !== undefined) {
+        this.drivers.set(driversData);
+        this.series.set(seriesData);
 
         // Extract unique classes
-        const classes = [...new Set(data.map((d: any) => d.driverClass))];
+        const classes = [...new Set(driversData.map((d: any) => d.driverClass))];
         this.driverClasses.set(classes);
 
         this.filterDrivers();
         this.loading.set(false);
       }
     }, 100);
-    this.unsubscribes.push(() => clearInterval(checkDrivers));
+    this.unsubscribes.push(() => clearInterval(checkData));
   }
 
   filterDrivers(): void {
     let filtered = [...this.drivers()];
 
-    if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
+    const term = this.searchTerm();
+    if (term) {
+      const lowerTerm = term.toLowerCase();
       filtered = filtered.filter(d =>
-        d.driverName.toLowerCase().includes(term) ||
-        d.driverNumber.toString().includes(term)
+        d.driverName.toLowerCase().includes(lowerTerm) ||
+        d.driverNumber.toString().includes(lowerTerm)
       );
     }
 
-    if (this.selectedClass) {
-      filtered = filtered.filter(d => d.driverClass === this.selectedClass);
+    const seriesId = this.selectedSeries();
+    if (seriesId) {
+      filtered = filtered.filter(d => d.championshipId === seriesId);
+    }
+
+    const cls = this.selectedClass();
+    if (cls) {
+      filtered = filtered.filter(d => d.driverClass === cls);
     }
 
     // Sort by driver number
     filtered.sort((a, b) => a.driverNumber - b.driverNumber);
 
     this.filteredDrivers.set(filtered);
+  }
+
+  onSeriesChange(): void {
+    this.selectedClass.set('');
+    this.filterDrivers();
   }
 }
