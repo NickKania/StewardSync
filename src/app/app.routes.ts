@@ -1,135 +1,200 @@
-import { Routes } from '@angular/router';
-import { authGuard } from '@core/guards/auth.guard';
-import { roleGuard } from '@core/guards/role.guard';
+import { Routes } from "@angular/router";
+import { authGuard } from "@core/guards/auth.guard";
+import { roleGuard } from "@core/guards/role.guard";
 
 export const routes: Routes = [
   {
-    path: '',
-    loadComponent: () => import('@features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-    canActivate: [authGuard]
+    path: "",
+    loadComponent: () =>
+      import("@features/dashboard/dashboard.component").then(
+        (m) => m.DashboardComponent,
+      ),
+    canActivate: [authGuard],
   },
   {
-    path: 'login',
-    loadComponent: () => import('@features/auth/login/login.component').then(m => m.LoginComponent)
+    path: "login",
+    loadComponent: () =>
+      import("@features/auth/login/login.component").then(
+        (m) => m.LoginComponent,
+      ),
   },
   {
-    path: 'dev-login',
-    loadComponent: () => import('@features/auth/dev-login/dev-login.component').then(m => m.DevLoginComponent)
+    path: "dev-login",
+    loadComponent: () =>
+      import("@features/auth/dev-login/dev-login.component").then(
+        (m) => m.DevLoginComponent,
+      ),
   },
   {
-    path: 'auth/callback',
-    loadComponent: () => import('@features/auth/callback/callback.component').then(m => m.CallbackComponent)
+    path: "auth/callback",
+    loadComponent: () =>
+      import("@features/auth/callback/callback.component").then(
+        (m) => m.CallbackComponent,
+      ),
   },
   {
-    path: 'reports',
+    path: "reports",
     canActivate: [authGuard],
     children: [
       {
-        path: '',
-        loadComponent: () => import('@features/reports/report-list/report-list.component').then(m => m.ReportListComponent)
+        path: "",
+        loadComponent: () =>
+          import("@features/reports/report-list/report-list.component").then(
+            (m) => m.ReportListComponent,
+          ),
       },
       {
-        path: 'new',
-        loadComponent: () => import('@features/reports/report-form/report-form.component').then(m => m.ReportFormComponent)
+        path: "new",
+        loadComponent: () =>
+          import("@features/reports/report-form/report-form.component").then(
+            (m) => m.ReportFormComponent,
+          ),
       },
       {
-        path: ':id',
-        loadComponent: () => import('@features/reports/report-detail/report-detail.component').then(m => m.ReportDetailComponent)
+        path: ":id",
+        loadComponent: () =>
+          import("@features/reports/report-detail/report-detail.component").then(
+            (m) => m.ReportDetailComponent,
+          ),
       },
       {
-        path: ':id/edit',
-        loadComponent: () => import('@features/reports/report-form/report-form.component').then(m => m.ReportFormComponent)
-      }
-    ]
+        path: ":id/edit",
+        loadComponent: () =>
+          import("@features/reports/report-form/report-form.component").then(
+            (m) => m.ReportFormComponent,
+          ),
+      },
+    ],
   },
   {
-    path: 'reviews',
+    path: "reviews",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['steward', 'head_steward', 'event_manager', 'league_manager'] },
+    data: {
+      roles: ["steward", "head_steward", "event_manager", "league_manager"],
+    },
     children: [
       {
-        path: '',
-        loadComponent: () => import('@features/reviews/review-dashboard/review-dashboard.component').then(m => m.ReviewDashboardComponent)
+        path: "",
+        loadComponent: () =>
+          import("@features/reviews/review-dashboard/review-dashboard.component").then(
+            (m) => m.ReviewDashboardComponent,
+          ),
       },
       {
-        path: 'steward-incident',
-        loadComponent: () => import('@features/reviews/steward-incident-form/steward-incident-form.component').then(m => m.StewardIncidentFormComponent)
+        path: "steward-incident",
+        loadComponent: () =>
+          import("@features/reviews/steward-incident-form/steward-incident-form.component").then(
+            (m) => m.StewardIncidentFormComponent,
+          ),
       },
       {
-        path: ':reportId',
-        loadComponent: () => import('@features/reviews/review-form/review-form.component').then(m => m.ReviewFormComponent)
-      }
-    ]
+        path: ":reportId",
+        loadComponent: () =>
+          import("@features/reviews/review-form/review-form.component").then(
+            (m) => m.ReviewFormComponent,
+          ),
+      },
+    ],
   },
   {
-    path: 'finalize',
+    path: "finalize",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['head_steward', 'event_manager', 'league_manager'] },
+    data: { roles: ["head_steward", "event_manager", "league_manager"] },
     children: [
       {
-        path: '',
-        loadComponent: () => import('@features/finalize/finalize-dashboard/finalize-dashboard.component').then(m => m.FinalizeDashboardComponent)
+        path: "",
+        loadComponent: () =>
+          import("@features/finalize/finalize-dashboard/finalize-dashboard.component").then(
+            (m) => m.FinalizeDashboardComponent,
+          ),
       },
       {
-        path: ':reportId',
-        loadComponent: () => import('@features/finalize/finalize-form/finalize-form.component').then(m => m.FinalizeFormComponent)
-      }
-    ]
+        path: ":reportId",
+        loadComponent: () =>
+          import("@features/finalize/finalize-form/finalize-form.component").then(
+            (m) => m.FinalizeFormComponent,
+          ),
+      },
+    ],
   },
   {
-    path: 'drivers',
+    path: "drivers",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['head_steward', 'event_manager', 'league_manager'] },
+    data: { roles: ["head_steward", "event_manager", "league_manager"] },
     children: [
       {
-        path: '',
-        loadComponent: () => import('@features/drivers/driver-list/driver-list.component').then(m => m.DriverListComponent)
+        path: "",
+        loadComponent: () =>
+          import("@features/drivers/driver-list/driver-list.component").then(
+            (m) => m.DriverListComponent,
+          ),
       },
       {
-        path: ':id',
-        loadComponent: () => import('@features/drivers/driver-detail/driver-detail.component').then(m => m.DriverDetailComponent)
-      }
-    ]
+        path: ":id",
+        loadComponent: () =>
+          import("@features/drivers/driver-detail/driver-detail.component").then(
+            (m) => m.DriverDetailComponent,
+          ),
+      },
+    ],
   },
   {
-    path: 'events',
+    path: "events",
     canActivate: [authGuard],
+    data: { roles: ["event_manager", "league_manager"] },
     children: [
       {
-        path: '',
-        loadComponent: () => import('@features/events/event-list/event-list.component').then(m => m.EventListComponent)
+        path: "",
+        loadComponent: () =>
+          import("@features/events/event-list/event-list.component").then(
+            (m) => m.EventListComponent,
+          ),
       },
       {
-        path: ':id',
-        loadComponent: () => import('@features/events/event-detail/event-detail.component').then(m => m.EventDetailComponent)
-      }
-    ]
+        path: ":id",
+        loadComponent: () =>
+          import("@features/events/event-detail/event-detail.component").then(
+            (m) => m.EventDetailComponent,
+          ),
+      },
+    ],
   },
   {
-    path: 'statistics',
+    path: "statistics",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['steward', 'head_steward', 'event_manager', 'league_manager'] },
-    loadComponent: () => import('@features/statistics/statistics-dashboard/statistics-dashboard.component').then(m => m.StatisticsDashboardComponent)
+    data: {
+      roles: ["steward", "head_steward", "event_manager", "league_manager"],
+    },
+    loadComponent: () =>
+      import("@features/statistics/statistics-dashboard/statistics-dashboard.component").then(
+        (m) => m.StatisticsDashboardComponent,
+      ),
   },
   {
-    path: 'admin',
+    path: "admin",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['event_manager', 'league_manager'] },
+    data: { roles: ["event_manager", "league_manager"] },
     children: [
       {
-        path: 'users',
+        path: "users",
         canActivate: [roleGuard],
-        data: { roles: ['league_manager'] },
-        loadComponent: () => import('@features/admin/user-management/user-management.component').then(m => m.UserManagementComponent)
+        data: { roles: ["league_manager"] },
+        loadComponent: () =>
+          import("@features/admin/user-management/user-management.component").then(
+            (m) => m.UserManagementComponent,
+          ),
       },
       {
-        path: 'series',
-        loadComponent: () => import('@features/admin/series-management/series-management.component').then(m => m.SeriesManagementComponent)
-      }
-    ]
+        path: "series",
+        loadComponent: () =>
+          import("@features/admin/series-management/series-management.component").then(
+            (m) => m.SeriesManagementComponent,
+          ),
+      },
+    ],
   },
   {
-    path: '**',
-    redirectTo: ''
-  }
+    path: "**",
+    redirectTo: "",
+  },
 ];
