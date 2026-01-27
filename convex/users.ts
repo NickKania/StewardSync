@@ -70,7 +70,7 @@ export const listStewards = query({
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
     const roles = await ctx.db.query("roles").collect();
-    const stewardRoleIds = roles.filter(r => 
+    const stewardRoleIds = roles.filter(r =>
       r.name === 'steward' || r.name === 'head_steward' || r.name === 'event_manager'
     ).map(r => r._id);
 
@@ -84,5 +84,27 @@ export const listStewards = query({
     );
 
     return usersWithRoles;
+  },
+});
+
+export const updateOfficialName = mutation({
+  args: {
+    userId: v.id("users"),
+    officialName: v.string(),
+    currentUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const { userId, officialName, currentUserId } = args;
+
+    // Verify current user is event_manager or higher
+    await requireRole(ctx, currentUserId, ["event_manager", "league_manager"]);
+
+    // Trim whitespace, store undefined for empty string
+    const trimmed = officialName.trim();
+    await ctx.db.patch(userId, {
+      officialName: trimmed || undefined,
+    });
+
+    return userId;
   },
 });

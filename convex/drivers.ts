@@ -16,6 +16,32 @@ export const getById = query({
   },
 });
 
+export const getByIdWithUser = query({
+  args: { driverId: v.id("drivers") },
+  handler: async (ctx, args) => {
+    const driver = await ctx.db.get(args.driverId);
+    if (!driver) return null;
+
+    let linkedUser = null;
+    if (driver.userId) {
+      const user = await ctx.db.get(driver.userId);
+      if (user) {
+        linkedUser = {
+          _id: user._id,
+          name: user.name,
+          officialName: user.officialName,
+        };
+      }
+    }
+
+    return {
+      ...driver,
+      linkedUser,
+      displayName: linkedUser?.officialName ?? driver.driverName,
+    };
+  },
+});
+
 export const getByNumber = query({
   args: { driverNumber: v.number() },
   handler: async (ctx, args) => {

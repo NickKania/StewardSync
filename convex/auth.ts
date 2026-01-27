@@ -100,6 +100,9 @@ const linkDriversByDiscordUsername = async (
       .collect();
   }
 
+  // Get the user to check if they have an officialName
+  const user = await ctx.db.get(userId);
+
   await Promise.all(
     matchedDrivers.map(async (driver) => {
       if (driver.userId && driver.userId !== userId) {
@@ -108,6 +111,11 @@ const linkDriversByDiscordUsername = async (
 
       if (!driver.userId) {
         await ctx.db.patch(driver._id, { userId });
+
+        // Auto-populate officialName on first driver link if user doesn't have one
+        if (user && !user.officialName) {
+          await ctx.db.patch(userId, { officialName: driver.driverName });
+        }
       }
     }),
   );

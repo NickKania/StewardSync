@@ -59,6 +59,9 @@ interface SeriesPenaltyGroup {
             </div>
             <div>
               <h1 class="text-2xl font-bold text-gray-900">{{ driver()?.driverName }}</h1>
+              @if (linkedUser()?.officialName && linkedUser()?.officialName !== driver()?.driverName) {
+                <p class="text-sm text-gray-600">Official: {{ linkedUser()?.officialName }}</p>
+              }
               <div class="flex items-center gap-2 mt-1">
                 <app-badge variant="primary">{{ driver()?.driverClass }}</app-badge>
                 @if (driver()?.externalId) {
@@ -122,6 +125,52 @@ interface SeriesPenaltyGroup {
               <dt class="text-sm text-gray-500">Class</dt>
               <dd class="font-medium text-gray-900">{{ driver()?.driverClass }}</dd>
             </div>
+            @if (linkedUser()) {
+              <div>
+                <dt class="text-sm text-gray-500">Official Name</dt>
+                <dd class="font-medium text-gray-900">
+                  @if (isEditingOfficialName()) {
+                    <div class="flex items-center gap-2">
+                      <input
+                        type="text"
+                        class="input flex-1"
+                        [ngModel]="officialNameInput()"
+                        (ngModelChange)="officialNameInput.set($event)"
+                        [disabled]="officialNameSaving()"
+                      />
+                      <app-button
+                        variant="primary"
+                        size="sm"
+                        (onClick)="saveOfficialName()"
+                        [disabled]="officialNameSaving()"
+                      >
+                        {{ officialNameSaving() ? 'Saving...' : 'Save' }}
+                      </app-button>
+                      <app-button
+                        variant="secondary"
+                        size="sm"
+                        (onClick)="cancelEditingOfficialName()"
+                        [disabled]="officialNameSaving()"
+                      >
+                        Cancel
+                      </app-button>
+                    </div>
+                  } @else {
+                    <div class="flex items-center gap-2">
+                      <span>{{ linkedUser()?.officialName ?? driver()?.driverName }}</span>
+                      @if (canEditOfficialName()) {
+                        <button
+                          class="text-primary-600 hover:text-primary-800 text-sm"
+                          (click)="startEditingOfficialName()"
+                        >
+                          Edit
+                        </button>
+                      }
+                    </div>
+                  }
+                </dd>
+              </div>
+            }
             @if (driver()?.externalId) {
               <div>
                 <dt class="text-sm text-gray-500">External ID</dt>
@@ -312,6 +361,12 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
   stats = signal<any>(null);
   loading = signal(true);
 
+  // Official name editing
+  linkedUser = signal<any>(null);
+  officialNameInput = signal('');
+  isEditingOfficialName = signal(false);
+  officialNameSaving = signal(false);
+
   penalties = signal<DriverSeriesPenaltyDetails[]>([]);
   penaltiesLoading = signal(false);
   selectedSeriesId = '';
@@ -417,13 +472,16 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
 
     try {
       const driver = await this.convex.query(
-        this.convex.api.drivers.getById,
+        this.convex.api.drivers.getByIdWithUser,
         { driverId: this.id as any }
       );
 
       this.driver.set(driver);
 
       if (driver) {
+        // Set linked user info
+        this.linkedUser.set(driver.linkedUser);
+
         const stats = await this.convex.query(
           this.convex.api.drivers.getDriverStats,
           { driverId: this.id as any }
@@ -499,6 +557,48 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
 
   canMarkAsServed(): boolean {
     return this.authService.hasMinimumRole('head_steward');
+  }
+
+  canEditOfficialName(): boolean {
+    return this.authService.hasMinimumRole('event_manager');
+  }
+
+  startEditingOfficialName(): void {
+    const currentName = this.linkedUser()?.officialName ?? this.driver()?.driverName ?? '';
+    this.officialNameInput.set(currentName);
+    this.isEditingOfficialName.set(true);
+  }
+
+  cancelEditingOfficialName(): void {
+    this.isEditingOfficialName.set(false);
+  }
+
+  async saveOfficialName(): Promise<void> {
+    const userId = this.linkedUser()?._id;
+    if (!userId) return;
+
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId) return;
+
+    this.officialNameSaving.set(true);
+    try {
+      await this.convex.mutation(
+        this.convex.api.users.updateOfficialName,
+        {
+          userId: userId,
+          officialName: this.officialNameInput(),
+          currentUserId: currentUserId
+        }
+      );
+
+      // Reload driver data to reflect changes
+      await this.loadDriver();
+      this.isEditingOfficialName.set(false);
+    } catch (error) {
+      console.error('Failed to save official name:', error);
+    } finally {
+      this.officialNameSaving.set(false);
+    }
   }
 
   formatDate(timestamp: number): string {

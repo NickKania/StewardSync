@@ -65,6 +65,14 @@ export const getEventRundown = query({
 
             const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
             const reportedDriver = await ctx.db.get(atFaultDriverId);
+
+            // Get display name (officialName if user is linked, else driverName)
+            let displayName = reportedDriver?.driverName ?? null;
+            if (reportedDriver?.userId) {
+              const user = await ctx.db.get(reportedDriver.userId);
+              if (user?.officialName) displayName = user.officialName;
+            }
+
             let appliedPenalty: any = null;
             let recommendedPenaltyObj: any = null;
 
@@ -115,7 +123,7 @@ export const getEventRundown = query({
               reportId: report._id,
               driverId: atFaultDriverId,
               carNumber: reportedDriver?.driverNumber ?? null,
-              driverName: reportedDriver?.driverName ?? null,
+              driverName: displayName,
               driverClass: reportedDriver?.driverClass ?? null,
               lap: report.lap ?? null,
               turn: report.turn ?? null,
@@ -187,12 +195,23 @@ export const getSeriesLicensePoints = query({
       }
     }
 
-    const driverPoints = drivers.map((driver) => ({
-      driverId: driver._id,
-      driverNumber: driver.driverNumber,
-      driverName: driver.driverName,
-      totalLicensePoints: penaltyAccumulator[driver._id.toString()] ?? 0,
-    }));
+    const driverPoints = await Promise.all(
+      drivers.map(async (driver) => {
+        // Get display name (officialName if user is linked, else driverName)
+        let displayName = driver.driverName;
+        if (driver.userId) {
+          const user = await ctx.db.get(driver.userId);
+          if (user?.officialName) displayName = user.officialName;
+        }
+
+        return {
+          driverId: driver._id,
+          driverNumber: driver.driverNumber,
+          driverName: displayName,
+          totalLicensePoints: penaltyAccumulator[driver._id.toString()] ?? 0,
+        };
+      })
+    );
 
     driverPoints.sort((a, b) => b.totalLicensePoints - a.totalLicensePoints);
 
@@ -268,6 +287,13 @@ export const getSeriesLicensePointsWithPenalties = query({
         const driverId = driver._id.toString();
         const totalPoints = penaltyAccumulator[driverId] ?? 0;
 
+        // Get display name (officialName if user is linked, else driverName)
+        let displayName = driver.driverName;
+        if (driver.userId) {
+          const user = await ctx.db.get(driver.userId);
+          if (user?.officialName) displayName = user.officialName;
+        }
+
         const allDriverSeriesPenalties = await ctx.db
           .query("driverSeriesPenalties")
           .withIndex("by_driver_and_series", (q) =>
@@ -327,7 +353,7 @@ export const getSeriesLicensePointsWithPenalties = query({
         return {
           driverId: driver._id,
           driverNumber: driver.driverNumber,
-          driverName: driver.driverName,
+          driverName: displayName,
           driverClass: driver.driverClass,
           totalLicensePoints: totalPoints,
           seriesPenalties: driverSeriesPenaltiesWithDetails,
