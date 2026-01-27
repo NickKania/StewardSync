@@ -41,53 +41,94 @@ import { SelectOption } from "@shared/components/select/select.component";
   ],
   template: `
     <div class="space-y-6">
-       @if (loading()) {
-         <app-loading text="Loading..." />
-       } @else if (!isReportingOpen() && reportingStatusMessage()) {
-         <div>
-           <h1 class="text-2xl font-bold text-gray-900">
-             Create Steward Incident
-           </h1>
-           <p class="text-gray-500 mt-1">
-             File an incident report and submit review with penalty
-             recommendation
-           </p>
-         </div>
-         <app-card title="Reporting Unavailable">
-           <div class="text-center py-8">
-             <svg class="w-16 h-16 mx-auto text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-             </svg>
-             <p class="text-lg font-semibold text-gray-900">{{ reportingStatusMessage() }}</p>
-           </div>
-         </app-card>
-       } @else {
-         <div>
-           <h1 class="text-2xl font-bold text-gray-900">
-             Create Steward Incident
-           </h1>
-           <p class="text-gray-500 mt-1">
-             File an incident report and submit review with penalty
-             recommendation
-           </p>
-         </div>
+      @if (loading()) {
+        <app-loading text="Loading..." />
+      } @else if (!isReportingOpen() && reportingStatusMessage()) {
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">
+            Create Steward Incident
+          </h1>
+          <p class="text-gray-500 mt-1">
+            File an incident report and submit review with penalty
+            recommendation
+          </p>
+        </div>
+        <app-card title="Reporting Unavailable">
+          <div class="text-center py-8">
+            <svg
+              class="w-16 h-16 mx-auto text-yellow-500 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            <p class="text-lg font-semibold text-gray-900">
+              {{ reportingStatusMessage() }}
+            </p>
+          </div>
+        </app-card>
+      } @else {
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">
+            Create Steward Incident
+          </h1>
+          <p class="text-gray-500 mt-1">
+            File an incident report and submit review with penalty
+            recommendation
+          </p>
+        </div>
 
-         @if (reportingStatusMessage()) {
-           <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-             <p class="text-sm text-blue-800 flex items-center gap-2">
-               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-               </svg>
-               {{ reportingStatusMessage() }}
-             </p>
-           </div>
-         }
+        @if (reportingStatusMessage()) {
+          <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+            <p class="text-sm text-blue-800 flex items-center gap-2">
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              {{ reportingStatusMessage() }}
+            </p>
+          </div>
+        }
 
-         <div class="grid lg:grid-cols-3 gap-6">
+        <div class="grid lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2">
             <form [formGroup]="form" (ngSubmit)="onSubmit()">
               <app-card title="Incident Details">
                 <div class="space-y-4">
+                  <div>
+                    <label class="label">Series</label>
+                    <select
+                      formControlName="seriesId"
+                      class="input"
+                      [class.input-error]="
+                        form.get('seriesId')?.invalid &&
+                        form.get('seriesId')?.touched
+                      "
+                      (change)="onSeriesChange()"
+                    >
+                      <option value="">Select series</option>
+                      @for (s of series(); track s._id) {
+                        <option [value]="s._id">
+                          {{ s.name }}
+                        </option>
+                      }
+                    </select>
+                  </div>
                   <div>
                     <app-search-select
                       formControlName="reportedDriverId"
@@ -116,10 +157,9 @@ import { SelectOption } from "@shared/components/select/select.component";
                       (change)="onEventChange()"
                     >
                       <option value="">Select event</option>
-                      @for (event of events(); track event._id) {
+                      @for (event of filteredEvents(); track event._id) {
                         <option [value]="event._id">
-                          {{ event.trackName }} - {{ event.series.name }} Round
-                          {{ event.eventNumber }}
+                          {{ event.trackName }} - Round {{ event.eventNumber }}
                         </option>
                       }
                     </select>
@@ -169,9 +209,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                       min="1"
                     />
                     @if (form.get("lap")?.invalid && form.get("lap")?.touched) {
-                      <p class="mt-1 text-sm text-red-600">
-                        Lap is required
-                      </p>
+                      <p class="mt-1 text-sm text-red-600">Lap is required</p>
                     }
                   </div>
 
@@ -190,9 +228,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                     @if (
                       form.get("turn")?.invalid && form.get("turn")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
-                        Turn is required
-                      </p>
+                      <p class="mt-1 text-sm text-red-600">Turn is required</p>
                     }
                   </div>
 
@@ -260,64 +296,58 @@ import { SelectOption } from "@shared/components/select/select.component";
                       <p class="text-xs text-yellow-600 mt-1">
                         No penalties configured for this series
                       </p>
-                     }
-                   </div>
+                    }
+                  </div>
 
-                   <div>
-                     <label class="label">At Fault Driver</label>
-                     <select
-                       formControlName="atFaultDriverId"
-                       class="input"
-                     >
-                       <option value="">Select driver</option>
-                       @for (
-                         driver of drivers();
-                         track driver._id
-                       ) {
-                         <option [value]="driver._id">
-                           {{ driver.driverName }} ({{ driver.driverNumber }})
-                         </option>
-                       }
-                     </select>
-                     <p class="text-xs text-gray-500 mt-1">
-                       Pre-selected to reported driver, change if different
-                     </p>
-                   </div>
+                  <div>
+                    <label class="label">At Fault Driver</label>
+                    <select formControlName="atFaultDriverId" class="input">
+                      <option value="">Select driver</option>
+                      @for (driver of drivers(); track driver._id) {
+                        <option [value]="driver._id">
+                          {{ driver.driverName }} ({{ driver.driverNumber }})
+                        </option>
+                      }
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">
+                      Pre-selected to reported driver, change if different
+                    </p>
+                  </div>
 
+                  <div>
+                    <app-toggle
+                      formControlName="isSelfReport"
+                      label="Self Report"
+                      hint="Driver self reported?"
+                    />
+                  </div>
+
+                  <div>
+                    <app-toggle
+                      formControlName="isAdjusted"
+                      label="Adjusted"
+                      hint="Incident description was adjusted?"
+                    />
+                  </div>
+
+                  <!-- Adjusted reason (conditionally shown) -->
+                  @if (form.get("isAdjusted")?.value) {
                     <div>
-                      <app-toggle
-                        formControlName="isSelfReport"
-                        label="Self Report"
-                        hint="Driver self reported?"
-                      />
+                      <label class="label">Adjusted Reason</label>
+                      <textarea
+                        formControlName="adjustedReason"
+                        class="input min-h-[80px]"
+                        placeholder="Explain why the incident was adjusted..."
+                        rows="3"
+                      ></textarea>
+                      <p class="text-xs text-gray-500 mt-1">
+                        This will be added as a note to the incident description
+                      </p>
                     </div>
+                  }
 
-                   <div>
-                     <app-toggle
-                       formControlName="isAdjusted"
-                       label="Adjusted"
-                       hint="Incident description was adjusted?"
-                     />
-                   </div>
-
-                   <!-- Adjusted reason (conditionally shown) -->
-                   @if (form.get('isAdjusted')?.value) {
-                     <div>
-                       <label class="label">Adjusted Reason</label>
-                       <textarea
-                         formControlName="adjustedReason"
-                         class="input min-h-[80px]"
-                         placeholder="Explain why the incident was adjusted..."
-                         rows="3"
-                       ></textarea>
-                       <p class="text-xs text-gray-500 mt-1">
-                         This will be added as a note to the incident description
-                       </p>
-                     </div>
-                   }
-
-                   <div>
-                     <label class="label">Video Timestamp</label>
+                  <div>
+                    <label class="label">Video Timestamp</label>
                     <input
                       type="text"
                       formControlName="videoTimestamp"
@@ -334,7 +364,8 @@ import { SelectOption } from "@shared/components/select/select.component";
                       placeholder="Search stewards by name..."
                     />
                     <p class="text-xs text-gray-500 mt-1">
-                      Stewards involved as drivers in this incident are excluded from the list
+                      Stewards involved as drivers in this incident are excluded
+                      from the list
                     </p>
                   </div>
                 </div>
@@ -444,6 +475,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   events = signal<any[]>([]);
   races = signal<any[]>([]);
   stewards = signal<any[]>([]);
+  series = signal<any[]>([]);
   availablePenalties = signal<Penalty[]>([]);
   loading = signal(true);
   submitting = signal(false);
@@ -451,12 +483,25 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   eventId = signal<string>("");
   raceId = signal<string>("");
   eventWithSeries = signal<any>(null);
+  selectedSeriesId = signal<string>("");
 
   driverOptions = computed(() => {
     return this.drivers().map((driver) => ({
       value: driver._id,
       label: `#${driver.driverNumber} - ${driver.driverName}`,
     }));
+  });
+
+  filteredEvents = computed(() => {
+    const selectedSeriesId = this.selectedSeriesId();
+    if (!selectedSeriesId) {
+      return [];
+    }
+    const filtered = this.events().filter((event) => {
+      const match = String(event.seriesId) === String(selectedSeriesId);
+      return match;
+    });
+    return filtered;
   });
 
   currentUser = computed(() => this.authService.user());
@@ -476,11 +521,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
   stewardOptions = computed(() => {
     const currentUserId = this.authService.getUserId();
-    const reportedDriverId = this.form.get('reportedDriverId')?.value;
+    const reportedDriverId = this.form.get("reportedDriverId")?.value;
 
     // Get the reported driver to check their userId
     const reportedDriver = reportedDriverId
-      ? this.drivers().find(d => d._id === reportedDriverId)
+      ? this.drivers().find((d) => d._id === reportedDriverId)
       : null;
 
     return [
@@ -491,7 +536,10 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           if (String(steward._id) === String(currentUserId)) return false;
 
           // Exclude if steward is the reported driver
-          if (reportedDriver?.userId && String(steward._id) === String(reportedDriver.userId)) {
+          if (
+            reportedDriver?.userId &&
+            String(steward._id) === String(reportedDriver.userId)
+          ) {
             return false;
           }
 
@@ -520,12 +568,14 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     }
 
     const eventDate = new Date(event.eventDate);
-    const [hours, minutes] = series.reportingOpenTime.split(':').map(Number);
-    
+    const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
+
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
-    const closeTime = new Date(openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000);
+    const closeTime = new Date(
+      openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000,
+    );
     const now = new Date();
 
     return now >= openTime && now <= closeTime;
@@ -534,21 +584,23 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   reportingStatusMessage = computed(() => {
     const event = this.eventWithSeries();
     if (!event || !event.series) {
-      return '';
+      return "";
     }
 
     const series = event.series;
     if (!series.reportingOpenTime || !series.reportingCloseDuration) {
-      return '';
+      return "";
     }
 
     const eventDate = new Date(event.eventDate);
-    const [hours, minutes] = series.reportingOpenTime.split(':').map(Number);
-    
+    const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
+
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
-    const closeTime = new Date(openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000);
+    const closeTime = new Date(
+      openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000,
+    );
     const now = new Date();
 
     if (now < openTime) {
@@ -564,6 +616,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.form = this.fb.group({
+      seriesId: [""],
       reportedDriverId: ["", Validators.required],
       eventId: ["", Validators.required],
       raceId: ["", Validators.required],
@@ -590,6 +643,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     this.loadSavedSteward();
     this.loadSavedCreateAnother();
 
+    this.form.get("seriesId")?.valueChanges.subscribe((value) => {
+      this.onSeriesChange();
+      this.saveSeriesSelection(value);
+    });
+
     this.form.get("secondStewardId")?.valueChanges.subscribe((value) => {
       this.secondStewardId.set(value);
       this.saveStewardSelection(value);
@@ -608,7 +666,8 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     this.form.get("createAnother")?.valueChanges.subscribe((value) => {
       localStorage.setItem("createAnother", value.toString());
       if (!value) {
-        // Clear saved event and race when createAnother is unchecked
+        // Clear saved series, event and race when createAnother is unchecked
+        localStorage.removeItem("stewardFormSeriesId");
         localStorage.removeItem("selectedEventId");
         localStorage.removeItem("selectedRaceId");
       }
@@ -628,6 +687,20 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   }
 
   private async loadData(): Promise<void> {
+    const seriesQuery = this.convex.createReactiveQuery(
+      this.convex.api.series.list,
+      {},
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
+
+    const checkSeries = setInterval(() => {
+      const data = seriesQuery.data();
+      if (data) {
+        this.series.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkSeries));
+
     const driversQuery = this.convex.createReactiveQuery(
       this.convex.api.drivers.list,
       {},
@@ -657,6 +730,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     this.unsubscribes.push(() => clearInterval(checkEvents));
 
     this.loadStewards();
+    this.loadSavedSeries();
     this.loading.set(false);
   }
 
@@ -710,6 +784,15 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     }
   }
 
+  private loadSavedSeries(): void {
+    const savedSeriesId = localStorage.getItem("stewardFormSeriesId");
+    if (savedSeriesId) {
+      this.form.patchValue({ seriesId: savedSeriesId });
+      this.selectedSeriesId.set(savedSeriesId);
+      this.loadDriversBySeries(savedSeriesId);
+    }
+  }
+
   private saveEventSelection(eventId: string): void {
     if (eventId && this.form.get("createAnother")?.value) {
       localStorage.setItem("selectedEventId", eventId);
@@ -727,45 +810,102 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   }
 
   private saveStewardSelection(stewardId: string): void {
-    const reportedDriverId = this.form.get('reportedDriverId')?.value;
+    const reportedDriverId = this.form.get("reportedDriverId")?.value;
     const currentUserId = this.authService.getUserId();
 
-    console.log('[DEBUG STEWARD FORM] saveStewardSelection called with stewardId:', stewardId);
-    console.log('[DEBUG STEWARD FORM] Current userId:', currentUserId);
+    console.log(
+      "[DEBUG STEWARD FORM] saveStewardSelection called with stewardId:",
+      stewardId,
+    );
+    console.log("[DEBUG STEWARD FORM] Current userId:", currentUserId);
 
     if (!stewardId) {
-      console.log('[DEBUG STEWARD FORM] No stewardId provided, clearing saved value');
+      console.log(
+        "[DEBUG STEWARD FORM] No stewardId provided, clearing saved value",
+      );
       localStorage.removeItem("selectedSecondSteward");
       return;
     }
 
     if (!currentUserId) {
-      console.log('[DEBUG STEWARD FORM] No current user available, cannot validate conflict');
+      console.log(
+        "[DEBUG STEWARD FORM] No current user available, cannot validate conflict",
+      );
       localStorage.setItem("selectedSecondSteward", stewardId);
       return;
     }
 
-    const reportedDriver = reportedDriverId ? this.drivers().find(d => d._id === reportedDriverId) : null;
+    const reportedDriver = reportedDriverId
+      ? this.drivers().find((d) => d._id === reportedDriverId)
+      : null;
     const reportedDriverUserId = reportedDriver?.userId;
 
-    console.log('[DEBUG STEWARD FORM] Reported driver:', reportedDriver);
-    console.log('[DEBUG STEWARD FORM] Reported driver user ID:', reportedDriverUserId);
+    console.log("[DEBUG STEWARD FORM] Reported driver:", reportedDriver);
+    console.log(
+      "[DEBUG STEWARD FORM] Reported driver user ID:",
+      reportedDriverUserId,
+    );
 
     if (String(stewardId) === String(reportedDriverUserId)) {
-      console.log('[DEBUG STEWARD FORM] BLOCKING save - steward is reported driver');
+      console.log(
+        "[DEBUG STEWARD FORM] BLOCKING save - steward is reported driver",
+      );
       localStorage.setItem("selectedSecondSteward", stewardId);
       return;
     }
 
     // Check if steward is current user (user shouldn't review their own review)
     if (String(stewardId) === String(currentUserId)) {
-      console.log('[DEBUG STEWARD FORM] BLOCKING save - steward is current user, user cannot review their own review');
+      console.log(
+        "[DEBUG STEWARD FORM] BLOCKING save - steward is current user, user cannot review their own review",
+      );
       localStorage.removeItem("selectedSecondSteward");
       return;
     }
 
-    console.log('[DEBUG STEWARD FORM] Saving steward selection:', stewardId);
+    console.log("[DEBUG STEWARD FORM] Saving steward selection:", stewardId);
     localStorage.setItem("selectedSecondSteward", stewardId);
+  }
+
+  async onSeriesChange(): Promise<void> {
+    const seriesId = this.form.get("seriesId")?.value;
+    this.selectedSeriesId.set(seriesId);
+    this.form.get("reportedDriverId")?.setValue("");
+    this.form.get("eventId")?.setValue("");
+    this.form.get("raceId")?.setValue("");
+    this.form.get("recommendedPenalty")?.setValue("");
+
+    if (seriesId) {
+      await this.loadDriversBySeries(seriesId);
+    } else {
+      this.drivers.set([]);
+      this.races.set([]);
+      this.availablePenalties.set([]);
+      this.eventWithSeries.set(null);
+    }
+  }
+
+  private async loadDriversBySeries(seriesId: string): Promise<void> {
+    try {
+      const drivers = await this.convex.query(
+        this.convex.api.drivers.getByChampionship,
+        {
+          championshipId: seriesId as any,
+        },
+      );
+      this.drivers.set(drivers || []);
+    } catch (error) {
+      console.error("Failed to load drivers by series:", error);
+      this.drivers.set([]);
+    }
+  }
+
+  private saveSeriesSelection(seriesId: string): void {
+    if (seriesId && this.form.get("createAnother")?.value) {
+      localStorage.setItem("stewardFormSeriesId", seriesId);
+    } else if (!this.form.get("createAnother")?.value) {
+      localStorage.removeItem("stewardFormSeriesId");
+    }
   }
 
   async onEventChange(): Promise<void> {
@@ -774,6 +914,10 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     this.form.get("recommendedPenalty")?.setValue("");
 
     if (eventId) {
+      const event = this.events().find((e) => e._id === eventId);
+      if (event?.seriesId) {
+        this.selectedSeriesId.set(event.seriesId);
+      }
       await this.loadRaces(eventId);
       await this.loadPenalties(eventId);
       await this.loadEventDetails(eventId);
@@ -862,8 +1006,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           secondStewardId: formValue.secondStewardId || undefined,
           isSelfReport: formValue.isSelfReport || false,
           isAdjusted: formValue.isAdjusted || false,
-          adjustedReason: formValue.isAdjusted && formValue.adjustedReason ? formValue.adjustedReason : undefined
-        }
+          adjustedReason:
+            formValue.isAdjusted && formValue.adjustedReason
+              ? formValue.adjustedReason
+              : undefined,
+        },
       );
 
       if (!result.success) {

@@ -81,10 +81,35 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
              </div>
            }
 
-           <app-card title="Incident Details">
-            <div class="space-y-4">
-              <!-- Reported Driver -->
-              <div>
+            <app-card title="Incident Details">
+             <div class="space-y-4">
+               <!-- Series -->
+               <div>
+                 <label class="label">Series *</label>
+                 <select
+                   formControlName="seriesId"
+                   class="input"
+                   [class.input-error]="
+                     form.get('seriesId')?.invalid && form.get('seriesId')?.touched
+                   "
+                   (change)="onSeriesChange(form.get('seriesId')?.value)"
+                 >
+                   <option value="">Select series</option>
+                   @for (s of series(); track s._id) {
+                     <option [value]="s._id">
+                       {{ s.name }}
+                     </option>
+                   }
+                 </select>
+                 @if (
+                   form.get("seriesId")?.invalid && form.get("seriesId")?.touched
+                 ) {
+                   <p class="mt-1 text-sm text-red-600">Series is required</p>
+                 }
+               </div>
+
+               <!-- Reported Driver -->
+               <div>
                 <app-search-select
                   formControlName="reportedDriverId"
                   label="Reported Driver"
@@ -100,31 +125,31 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 />
               </div>
 
-              <!-- Event -->
-              <div>
-                <label class="label">Event *</label>
-                <select
-                  formControlName="eventId"
-                  class="input"
-                  [class.input-error]="
-                    form.get('eventId')?.invalid && form.get('eventId')?.touched
-                  "
-                  (change)="onEventChange()"
-                >
-                  <option value="">Select the event</option>
-                  @for (event of events(); track event._id) {
-                    <option [value]="event._id">
-                      {{ event.trackName }} - {{ event.series?.name }} Round
-                      {{ event.eventNumber }}
-                    </option>
-                  }
-                </select>
-                @if (
-                  form.get("eventId")?.invalid && form.get("eventId")?.touched
-                ) {
-                  <p class="mt-1 text-sm text-red-600">Event is required</p>
-                }
-              </div>
+               <!-- Event -->
+               <div>
+                 <label class="label">Event *</label>
+                 <select
+                   formControlName="eventId"
+                   class="input"
+                   [class.input-error]="
+                     form.get('eventId')?.invalid && form.get('eventId')?.touched
+                   "
+                   (change)="onEventChange()"
+                 >
+                   <option value="">Select the event</option>
+                   @for (event of filteredEvents(); track event._id) {
+                     <option [value]="event._id">
+                       {{ event.trackName }} - {{ event.series?.name }} Round
+                       {{ event.eventNumber }}
+                     </option>
+                   }
+                 </select>
+                 @if (
+                   form.get("eventId")?.invalid && form.get("eventId")?.touched
+                 ) {
+                   <p class="mt-1 text-sm text-red-600">Event is required</p>
+                 }
+               </div>
 
               <!-- Race -->
               <div>
@@ -215,27 +240,50 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
               </div>
             </div>
 
-            <!-- Footer -->
-            <div
-              card-footer
-              class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3"
-            >
-              <app-button
-                type="button"
-                variant="secondary"
-                (onClick)="cancel()"
-              >
-                Cancel
-              </app-button>
-              <app-button
-                type="submit"
-                variant="primary"
-                [loading]="submitting()"
-                [disabled]="form.invalid"
-              >
-                {{ isEdit ? "Update Report" : "Submit Report" }}
-              </app-button>
-            </div>
+             <!-- Footer -->
+             <div
+               card-footer
+               class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3"
+             >
+               <app-button
+                 type="button"
+                 variant="secondary"
+                 (onClick)="cancel()"
+               >
+                 Cancel
+               </app-button>
+               @if (!isEdit) {
+                 <div class="flex gap-3 items-center">
+                   <label
+                     class="flex items-center gap-2 text-sm text-gray-700"
+                   >
+                     <input
+                       type="checkbox"
+                       formControlName="createAnother"
+                       class="rounded border-gray-300"
+                     />
+                     Create another
+                   </label>
+                   <app-button
+                     type="submit"
+                     variant="primary"
+                     [loading]="submitting()"
+                     [disabled]="form.invalid"
+                   >
+                     Submit Report
+                   </app-button>
+                 </div>
+               } @else {
+                 <app-button
+                   type="submit"
+                   variant="primary"
+                   [loading]="submitting()"
+                   [disabled]="form.invalid"
+                 >
+                   Update Report
+                 </app-button>
+               }
+             </div>
           </app-card>
         </form>
       }
@@ -255,10 +303,12 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   form: FormGroup;
   isEdit = false;
 
+  series = signal<any[]>([]);
   drivers = signal<any[]>([]);
   events = signal<any[]>([]);
   races = signal<any[]>([]);
   selectedEvent = signal<any>(null);
+  selectedSeriesId = signal<string>("");
   loading = signal(true);
   submitting = signal(false);
 
@@ -267,6 +317,18 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       value: driver._id,
       label: `#${driver.driverNumber} - ${driver.driverName}`,
     }));
+  });
+
+  filteredEvents = computed(() => {
+    const selectedSeriesId = this.selectedSeriesId();
+    if (!selectedSeriesId) {
+      return [];
+    }
+    const filtered = this.events().filter((event) => {
+      const match = String(event.seriesId) === String(selectedSeriesId);
+      return match;
+    });
+    return filtered;
   });
 
   isReportingOpen = computed(() => {
@@ -325,18 +387,44 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.form = this.fb.group({
+      seriesId: ["", Validators.required],
       reportedDriverId: ["", Validators.required],
       eventId: ["", Validators.required],
       raceId: ["", Validators.required],
       lap: ["", [Validators.required]],
       turn: ["", [Validators.required]],
       description: ["", [Validators.required, Validators.minLength(20)]],
+      createAnother: [false],
     });
   }
 
   ngOnInit(): void {
     this.isEdit = !!this.id;
     this.loadData();
+
+    if (!this.isEdit) {
+      this.form.get("createAnother")?.valueChanges.subscribe((value) => {
+        localStorage.setItem("reportFormCreateAnother", value.toString());
+        if (!value) {
+          localStorage.removeItem("reportFormSeriesId");
+          localStorage.removeItem("reportFormSelectedEventId");
+          localStorage.removeItem("reportFormSelectedRaceId");
+        }
+      });
+
+      this.form.get("seriesId")?.valueChanges.subscribe((value) => {
+        this.onSeriesChange(value);
+        this.saveSeriesSelection(value);
+      });
+
+      this.form.get("eventId")?.valueChanges.subscribe((value) => {
+        this.saveEventSelection(value);
+      });
+
+      this.form.get("raceId")?.valueChanges.subscribe((value) => {
+        this.saveRaceSelection(value);
+      });
+    }
   }
 
   ngOnDestroy(): void {
@@ -344,22 +432,22 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   }
 
   private async loadData(): Promise<void> {
-    // Load drivers
-    const driversQuery = this.convex.createReactiveQuery(
-      this.convex.api.drivers.list,
+    // Load series
+    const seriesQuery = this.convex.createReactiveQuery(
+      this.convex.api.series.list,
       {},
     );
-    this.unsubscribes.push(driversQuery.unsubscribe);
+    this.unsubscribes.push(seriesQuery.unsubscribe);
 
-    const checkDrivers = setInterval(() => {
-      const data = driversQuery.data();
+    const checkSeries = setInterval(() => {
+      const data = seriesQuery.data();
       if (data) {
-        this.drivers.set(data);
+        this.series.set(data);
       }
     }, 100);
-    this.unsubscribes.push(() => clearInterval(checkDrivers));
+    this.unsubscribes.push(() => clearInterval(checkSeries));
 
-    // Load events
+    // Load all events (filtering done in computed)
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
       {},
@@ -383,7 +471,18 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         );
 
         if (report) {
+          // Load event details to get series
+          const event = await this.convex.query(this.convex.api.events.getById, {
+            eventId: report.eventId,
+          });
+
+          if (event && event.seriesId) {
+            this.selectedSeriesId.set(event.seriesId);
+            await this.loadDriversBySeries(event.seriesId);
+          }
+
           this.form.patchValue({
+            seriesId: event?.seriesId,
             reportedDriverId: report.reportedDriverId,
             eventId: report.eventId,
             raceId: report.raceId,
@@ -399,9 +498,24 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         this.toast.error("Failed to load report");
         this.router.navigate(["/reports"]);
       }
+    } else {
+      this.loadSavedCreateAnother();
     }
 
     this.loading.set(false);
+  }
+
+  async onSeriesChange(seriesId: string): Promise<void> {
+    this.selectedSeriesId.set(seriesId);
+    this.form.get("reportedDriverId")?.setValue("");
+    this.form.get("eventId")?.setValue("");
+    this.form.get("raceId")?.setValue("");
+
+    if (seriesId) {
+      await this.loadDriversBySeries(seriesId);
+    } else {
+      this.drivers.set([]);
+    }
   }
 
   async onEventChange(): Promise<void> {
@@ -428,6 +542,18 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async loadDriversBySeries(seriesId: string): Promise<void> {
+    try {
+      const drivers = await this.convex.query(this.convex.api.drivers.getByChampionship, {
+        championshipId: seriesId as any,
+      });
+      this.drivers.set(drivers || []);
+    } catch (error) {
+      console.error("Failed to load drivers by series:", error);
+      this.drivers.set([]);
+    }
+  }
+
   private async loadEventDetails(eventId: string): Promise<void> {
     try {
       const event = await this.convex.query(this.convex.api.events.getById, {
@@ -443,6 +569,56 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error("Failed to load event details:", error);
+    }
+  }
+
+  private saveSeriesSelection(seriesId: string): void {
+    if (seriesId && this.form.get("createAnother")?.value) {
+      localStorage.setItem("reportFormSeriesId", seriesId);
+    } else if (!this.form.get("createAnother")?.value) {
+      localStorage.removeItem("reportFormSeriesId");
+    }
+  }
+
+  private saveEventSelection(eventId: string): void {
+    if (eventId && this.form.get("createAnother")?.value) {
+      localStorage.setItem("reportFormSelectedEventId", eventId);
+    } else if (!this.form.get("createAnother")?.value) {
+      localStorage.removeItem("reportFormSelectedEventId");
+    }
+  }
+
+  private saveRaceSelection(raceId: string): void {
+    if (raceId && this.form.get("createAnother")?.value) {
+      localStorage.setItem("reportFormSelectedRaceId", raceId);
+    } else if (!this.form.get("createAnother")?.value) {
+      localStorage.removeItem("reportFormSelectedRaceId");
+    }
+  }
+
+  private loadSavedCreateAnother(): void {
+    const savedCreateAnother = localStorage.getItem("reportFormCreateAnother");
+    if (savedCreateAnother === "true") {
+      this.form.patchValue({ createAnother: true });
+
+      const savedSeriesId = localStorage.getItem("reportFormSeriesId");
+      const savedEventId = localStorage.getItem("reportFormSelectedEventId");
+      const savedRaceId = localStorage.getItem("reportFormSelectedRaceId");
+
+      if (savedSeriesId) {
+        this.form.patchValue({ seriesId: savedSeriesId });
+        this.selectedSeriesId.set(savedSeriesId);
+        this.loadDriversBySeries(savedSeriesId);
+      }
+
+      if (savedEventId) {
+        this.form.patchValue({ eventId: savedEventId });
+        this.loadRaces(savedEventId);
+      }
+
+      if (savedRaceId) {
+        this.form.patchValue({ raceId: savedRaceId });
+      }
     }
   }
 
