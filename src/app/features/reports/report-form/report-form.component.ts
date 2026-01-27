@@ -338,6 +338,11 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     }
 
     const series = event.series;
+    
+    if (series.isReportingLocked === true) {
+      return false;
+    }
+
     if (!series.reportingOpenTime || !series.reportingCloseDuration) {
       return true;
     }
@@ -361,6 +366,11 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     }
 
     const series = event.series;
+    
+    if (series.isReportingLocked === true) {
+      return 'Reports have been locked for this series';
+    }
+
     if (!series.reportingOpenTime || !series.reportingCloseDuration) {
       return '';
     }

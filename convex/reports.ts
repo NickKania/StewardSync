@@ -356,6 +356,12 @@ export const create = mutation({
       throw new Error("Race does not belong to the selected event");
     }
 
+    // Check if series is locked
+    const series = await ctx.db.get(event.seriesId);
+    if (series && series.isReportingLocked === true) {
+      throw new UserFacingError("Reports have been locked for this series");
+    }
+
     const now = Date.now();
     const reportId = await ctx.db.insert("reports", {
       reportingUserId: args.reportingUserId,
@@ -653,6 +659,16 @@ export const createBySteward = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+
+    // Check if series is locked
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+    const series = await ctx.db.get(event.seriesId);
+    if (series && series.isReportingLocked === true) {
+      throw new UserFacingError("Reports have been locked for this series");
+    }
 
     // Get all drivers linked to reporting user
     const reportingUserDrivers = await ctx.db

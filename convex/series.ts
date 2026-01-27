@@ -22,6 +22,7 @@ export const create = mutation({
     simgridLink: v.optional(v.string()),
     reportingOpenTime: v.optional(v.string()),
     reportingCloseDuration: v.optional(v.number()),
+    isReportingLocked: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     if (args.reportingOpenTime && !isValidTimeFormat(args.reportingOpenTime)) {
@@ -32,14 +33,20 @@ export const create = mutation({
       throw new UserFacingError("reportingCloseDuration must be a positive number");
     }
 
-    const seriesId = await ctx.db.insert("series", {
+    const insertData: any = {
       name: args.name,
       description: args.description,
       simgridLink: args.simgridLink,
       reportingOpenTime: args.reportingOpenTime,
       reportingCloseDuration: args.reportingCloseDuration,
       createdAt: Date.now(),
-    });
+    };
+
+    if (args.isReportingLocked !== undefined) {
+      insertData.isReportingLocked = args.isReportingLocked;
+    }
+
+    const seriesId = await ctx.db.insert("series", insertData);
     return seriesId;
   },
 });
@@ -52,6 +59,7 @@ export const update = mutation({
     simgridLink: v.optional(v.string()),
     reportingOpenTime: v.optional(v.string()),
     reportingCloseDuration: v.optional(v.number()),
+    isReportingLocked: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -64,7 +72,16 @@ export const update = mutation({
       throw new UserFacingError("reportingCloseDuration must be a positive number");
     }
 
-    await ctx.db.patch(id, updates);
+    const cleanUpdates: any = {};
+    
+    if (updates.name !== undefined) cleanUpdates.name = updates.name;
+    if (updates.description !== undefined) cleanUpdates.description = updates.description;
+    if (updates.simgridLink !== undefined) cleanUpdates.simgridLink = updates.simgridLink;
+    if (updates.reportingOpenTime !== undefined) cleanUpdates.reportingOpenTime = updates.reportingOpenTime;
+    if (updates.reportingCloseDuration !== undefined) cleanUpdates.reportingCloseDuration = updates.reportingCloseDuration;
+    if (updates.isReportingLocked !== undefined) cleanUpdates.isReportingLocked = updates.isReportingLocked;
+
+    await ctx.db.patch(id, cleanUpdates);
     return id;
   },
 });

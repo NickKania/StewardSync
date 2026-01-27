@@ -563,13 +563,18 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     }
 
     const series = event.series;
+    
+    if (series.isReportingLocked === true) {
+      return false;
+    }
+
     if (!series.reportingOpenTime || !series.reportingCloseDuration) {
       return true;
     }
 
     const eventDate = new Date(event.eventDate);
     const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-
+    
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
@@ -588,13 +593,18 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     }
 
     const series = event.series;
+    
+    if (series.isReportingLocked === true) {
+      return 'Reports have been locked for this series';
+    }
+
     if (!series.reportingOpenTime || !series.reportingCloseDuration) {
       return "";
     }
 
     const eventDate = new Date(event.eventDate);
     const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-
+    
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 

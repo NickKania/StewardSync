@@ -7,6 +7,7 @@ export interface Series {
   simgridLink?: string;
   reportingOpenTime?: string;
   reportingCloseDuration?: number;
+  isReportingLocked?: boolean;
   createdAt: number;
 }
 
