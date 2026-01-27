@@ -258,16 +258,37 @@ import { Id } from '@convex/_generated/dataModel';
                   placeholder="Series description..."
                 ></textarea>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">SimGrid Link (optional)</label>
-                <input
-                  type="text"
-                  class="input w-full"
-                  [(ngModel)]="seriesForm.simgridLink"
-                  placeholder="https://..."
-                />
-              </div>
-              <div class="flex gap-2 justify-end">
+               <div>
+                 <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">SimGrid Link (optional)</label>
+                 <input
+                   type="text"
+                   class="input w-full"
+                   [(ngModel)]="seriesForm.simgridLink"
+                   placeholder="https://..."
+                 />
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Reporting Opens At (optional)</label>
+                 <input
+                   type="time"
+                   class="input w-full"
+                   [(ngModel)]="seriesForm.reportingOpenTime"
+                   placeholder="e.g., 18:00"
+                 />
+                 <p class="text-xs text-gray-500 mt-1">Time in 24-hour UTC format (HH:MM). Reporting opens at this UTC time on the event date.</p>
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Reporting Window Duration (hours) (optional)</label>
+                 <input
+                   type="number"
+                   class="input w-full"
+                   [(ngModel)]="seriesForm.reportingCloseDuration"
+                   placeholder="e.g., 24"
+                   min="1"
+                 />
+                 <p class="text-xs text-gray-500 mt-1">Number of hours reporting remains open. Leave empty for unrestricted access.</p>
+               </div>
+               <div class="flex gap-2 justify-end">
                 <app-button variant="secondary" (click)="closeSeriesModal()">Cancel</app-button>
                 <app-button (click)="saveSeries()" [disabled]="!seriesForm.name">
                   {{ editingSeriesId ? 'Update' : 'Create' }}
@@ -454,7 +475,9 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   seriesForm = {
     name: '',
     description: '',
-    simgridLink: ''
+    simgridLink: '',
+    reportingOpenTime: '',
+    reportingCloseDuration: 0
   };
 
   penaltyForm = {
@@ -576,7 +599,9 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     this.seriesForm = {
       name: series.name,
       description: series.description || '',
-      simgridLink: series.simgridLink || ''
+      simgridLink: series.simgridLink || '',
+      reportingOpenTime: series.reportingOpenTime || '',
+      reportingCloseDuration: series.reportingCloseDuration || 0
     };
     this.showSeriesModal = true;
   }
@@ -587,13 +612,17 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         id: this.editingSeriesId,
         name: this.seriesForm.name,
         description: this.seriesForm.description || undefined,
-        simgridLink: this.seriesForm.simgridLink || undefined
+        simgridLink: this.seriesForm.simgridLink || undefined,
+        reportingOpenTime: this.seriesForm.reportingOpenTime || undefined,
+        reportingCloseDuration: this.seriesForm.reportingCloseDuration || undefined
       });
     } else {
       await this.convex.mutation(this.convex.api.series.create, {
         name: this.seriesForm.name,
         description: this.seriesForm.description || undefined,
-        simgridLink: this.seriesForm.simgridLink || undefined
+        simgridLink: this.seriesForm.simgridLink || undefined,
+        reportingOpenTime: this.seriesForm.reportingOpenTime || undefined,
+        reportingCloseDuration: this.seriesForm.reportingCloseDuration || undefined
       });
     }
     this.closeSeriesModal();
@@ -612,7 +641,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   closeSeriesModal(): void {
     this.showSeriesModal = false;
     this.editingSeriesId = null;
-    this.seriesForm = { name: '', description: '', simgridLink: '' };
+    this.seriesForm = { name: '', description: '', simgridLink: '', reportingOpenTime: '', reportingCloseDuration: 0 };
   }
 
   addPenalty(seriesId: Id<'series'>): void {

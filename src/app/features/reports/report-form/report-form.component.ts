@@ -55,13 +55,33 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
               : "Submit an incident report for steward review"
           }}
         </p>
-      </div>
+       </div>
 
-      @if (loading()) {
-        <app-loading text="Loading..." />
-      } @else {
-        <form [formGroup]="form" (ngSubmit)="onSubmit()">
-          <app-card title="Incident Details">
+       @if (loading()) {
+         <app-loading text="Loading..." />
+       } @else if (!isReportingOpen() && reportingStatusMessage()) {
+         <app-card title="Reporting Unavailable">
+           <div class="text-center py-8">
+             <svg class="w-16 h-16 mx-auto text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+             </svg>
+             <p class="text-lg font-semibold text-gray-900">{{ reportingStatusMessage() }}</p>
+           </div>
+         </app-card>
+       } @else {
+         <form [formGroup]="form" (ngSubmit)="onSubmit()">
+           @if (reportingStatusMessage()) {
+             <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+               <p class="text-sm text-blue-800 flex items-center gap-2">
+                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                 </svg>
+                 {{ reportingStatusMessage() }}
+               </p>
+             </div>
+           }
+
+           <app-card title="Incident Details">
             <div class="space-y-4">
               <!-- Reported Driver -->
               <div>
@@ -238,6 +258,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   drivers = signal<any[]>([]);
   events = signal<any[]>([]);
   races = signal<any[]>([]);
+  selectedEvent = signal<any>(null);
   loading = signal(true);
   submitting = signal(false);
 
@@ -246,6 +267,58 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       value: driver._id,
       label: `#${driver.driverNumber} - ${driver.driverName}`,
     }));
+  });
+
+  isReportingOpen = computed(() => {
+    const event = this.selectedEvent();
+    if (!event || !event.series) {
+      return true;
+    }
+
+    const series = event.series;
+    if (!series.reportingOpenTime || !series.reportingCloseDuration) {
+      return true;
+    }
+
+    const eventDate = new Date(event.eventDate);
+    const [hours, minutes] = series.reportingOpenTime.split(':').map(Number);
+    
+    const openTime = new Date(eventDate);
+    openTime.setUTCHours(hours, minutes, 0, 0);
+
+    const closeTime = new Date(openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000);
+    const now = new Date();
+
+    return now >= openTime && now <= closeTime;
+  });
+
+  reportingStatusMessage = computed(() => {
+    const event = this.selectedEvent();
+    if (!event || !event.series) {
+      return '';
+    }
+
+    const series = event.series;
+    if (!series.reportingOpenTime || !series.reportingCloseDuration) {
+      return '';
+    }
+
+    const eventDate = new Date(event.eventDate);
+    const [hours, minutes] = series.reportingOpenTime.split(':').map(Number);
+    
+    const openTime = new Date(eventDate);
+    openTime.setUTCHours(hours, minutes, 0, 0);
+
+    const closeTime = new Date(openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000);
+    const now = new Date();
+
+    if (now < openTime) {
+      return `Reporting opens at ${openTime.toLocaleString()}`;
+    } else if (now > closeTime) {
+      return `Reporting is closed (closed at ${closeTime.toLocaleString()})`;
+    } else {
+      return `Reporting open until ${closeTime.toLocaleString()}`;
+    }
   });
 
   private unsubscribes: (() => void)[] = [];
@@ -337,8 +410,10 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
     if (eventId) {
       await this.loadRaces(eventId);
+      await this.loadEventDetails(eventId);
     } else {
       this.races.set([]);
+      this.selectedEvent.set(null);
     }
   }
 
@@ -350,6 +425,24 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       this.races.set(races || []);
     } catch (error) {
       console.error("Failed to load races:", error);
+    }
+  }
+
+  private async loadEventDetails(eventId: string): Promise<void> {
+    try {
+      const event = await this.convex.query(this.convex.api.events.getById, {
+        eventId: eventId as any,
+      });
+      if (event && event.seriesId) {
+        const series = await this.convex.query(this.convex.api.series.getById, {
+          id: event.seriesId,
+        });
+        this.selectedEvent.set({ ...event, series });
+      } else {
+        this.selectedEvent.set(event);
+      }
+    } catch (error) {
+      console.error("Failed to load event details:", error);
     }
   }
 

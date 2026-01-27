@@ -5,6 +5,8 @@ export interface Series {
   name: string;
   description?: string;
   simgridLink?: string;
+  reportingOpenTime?: string;
+  reportingCloseDuration?: number;
   createdAt: number;
 }
 

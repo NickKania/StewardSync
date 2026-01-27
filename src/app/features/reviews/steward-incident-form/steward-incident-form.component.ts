@@ -41,20 +41,49 @@ import { SelectOption } from "@shared/components/select/select.component";
   ],
   template: `
     <div class="space-y-6">
-      @if (loading()) {
-        <app-loading text="Loading..." />
-      } @else {
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">
-            Create Steward Incident
-          </h1>
-          <p class="text-gray-500 mt-1">
-            File an incident report and submit review with penalty
-            recommendation
-          </p>
-        </div>
+       @if (loading()) {
+         <app-loading text="Loading..." />
+       } @else if (!isReportingOpen() && reportingStatusMessage()) {
+         <div>
+           <h1 class="text-2xl font-bold text-gray-900">
+             Create Steward Incident
+           </h1>
+           <p class="text-gray-500 mt-1">
+             File an incident report and submit review with penalty
+             recommendation
+           </p>
+         </div>
+         <app-card title="Reporting Unavailable">
+           <div class="text-center py-8">
+             <svg class="w-16 h-16 mx-auto text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+             </svg>
+             <p class="text-lg font-semibold text-gray-900">{{ reportingStatusMessage() }}</p>
+           </div>
+         </app-card>
+       } @else {
+         <div>
+           <h1 class="text-2xl font-bold text-gray-900">
+             Create Steward Incident
+           </h1>
+           <p class="text-gray-500 mt-1">
+             File an incident report and submit review with penalty
+             recommendation
+           </p>
+         </div>
 
-        <div class="grid lg:grid-cols-3 gap-6">
+         @if (reportingStatusMessage()) {
+           <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+             <p class="text-sm text-blue-800 flex items-center gap-2">
+               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+               </svg>
+               {{ reportingStatusMessage() }}
+             </p>
+           </div>
+         }
+
+         <div class="grid lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2">
             <form [formGroup]="form" (ngSubmit)="onSubmit()">
               <app-card title="Incident Details">
@@ -421,6 +450,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   secondStewardId = signal<string>("");
   eventId = signal<string>("");
   raceId = signal<string>("");
+  eventWithSeries = signal<any>(null);
 
   driverOptions = computed(() => {
     return this.drivers().map((driver) => ({
@@ -476,6 +506,58 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
   canMarkAsReviewed = computed(() => {
     return !!this.secondStewardId();
+  });
+
+  isReportingOpen = computed(() => {
+    const event = this.eventWithSeries();
+    if (!event || !event.series) {
+      return true;
+    }
+
+    const series = event.series;
+    if (!series.reportingOpenTime || !series.reportingCloseDuration) {
+      return true;
+    }
+
+    const eventDate = new Date(event.eventDate);
+    const [hours, minutes] = series.reportingOpenTime.split(':').map(Number);
+    
+    const openTime = new Date(eventDate);
+    openTime.setUTCHours(hours, minutes, 0, 0);
+
+    const closeTime = new Date(openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000);
+    const now = new Date();
+
+    return now >= openTime && now <= closeTime;
+  });
+
+  reportingStatusMessage = computed(() => {
+    const event = this.eventWithSeries();
+    if (!event || !event.series) {
+      return '';
+    }
+
+    const series = event.series;
+    if (!series.reportingOpenTime || !series.reportingCloseDuration) {
+      return '';
+    }
+
+    const eventDate = new Date(event.eventDate);
+    const [hours, minutes] = series.reportingOpenTime.split(':').map(Number);
+    
+    const openTime = new Date(eventDate);
+    openTime.setUTCHours(hours, minutes, 0, 0);
+
+    const closeTime = new Date(openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000);
+    const now = new Date();
+
+    if (now < openTime) {
+      return `Reporting opens at ${openTime.toLocaleString()}`;
+    } else if (now > closeTime) {
+      return `Reporting is closed (closed at ${closeTime.toLocaleString()})`;
+    } else {
+      return `Reporting open until ${closeTime.toLocaleString()}`;
+    }
   });
 
   private unsubscribes: (() => void)[] = [];
@@ -694,9 +776,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     if (eventId) {
       await this.loadRaces(eventId);
       await this.loadPenalties(eventId);
+      await this.loadEventDetails(eventId);
     } else {
       this.races.set([]);
       this.availablePenalties.set([]);
+      this.eventWithSeries.set(null);
     }
   }
 
@@ -723,6 +807,24 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error("Failed to load penalties:", error);
+    }
+  }
+
+  private async loadEventDetails(eventId: string): Promise<void> {
+    try {
+      const event = await this.convex.query(this.convex.api.events.getById, {
+        eventId: eventId as any,
+      });
+      if (event && event.seriesId) {
+        const series = await this.convex.query(this.convex.api.series.getById, {
+          id: event.seriesId,
+        });
+        this.eventWithSeries.set({ ...event, series });
+      } else {
+        this.eventWithSeries.set(event);
+      }
+    } catch (error) {
+      console.error("Failed to load event details:", error);
     }
   }
 

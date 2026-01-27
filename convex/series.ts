@@ -20,12 +20,24 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     simgridLink: v.optional(v.string()),
+    reportingOpenTime: v.optional(v.string()),
+    reportingCloseDuration: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    if (args.reportingOpenTime && !isValidTimeFormat(args.reportingOpenTime)) {
+      throw new UserFacingError("Invalid reportingOpenTime format. Use HH:MM (24-hour format)");
+    }
+
+    if (args.reportingCloseDuration !== undefined && args.reportingCloseDuration <= 0) {
+      throw new UserFacingError("reportingCloseDuration must be a positive number");
+    }
+
     const seriesId = await ctx.db.insert("series", {
       name: args.name,
       description: args.description,
       simgridLink: args.simgridLink,
+      reportingOpenTime: args.reportingOpenTime,
+      reportingCloseDuration: args.reportingCloseDuration,
       createdAt: Date.now(),
     });
     return seriesId;
@@ -38,9 +50,20 @@ export const update = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     simgridLink: v.optional(v.string()),
+    reportingOpenTime: v.optional(v.string()),
+    reportingCloseDuration: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
+
+    if (updates.reportingOpenTime && !isValidTimeFormat(updates.reportingOpenTime)) {
+      throw new UserFacingError("Invalid reportingOpenTime format. Use HH:MM (24-hour format)");
+    }
+
+    if (updates.reportingCloseDuration !== undefined && updates.reportingCloseDuration <= 0) {
+      throw new UserFacingError("reportingCloseDuration must be a positive number");
+    }
+
     await ctx.db.patch(id, updates);
     return id;
   },
@@ -62,3 +85,8 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+function isValidTimeFormat(time: string): boolean {
+  const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  return timeRegex.test(time);
+}

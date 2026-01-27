@@ -43,6 +43,8 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     simgridLink: v.optional(v.string()),
+    reportingOpenTime: v.optional(v.string()),
+    reportingCloseDuration: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_name", ["name"]),
 
