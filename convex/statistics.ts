@@ -7,8 +7,8 @@ interface EventRundownRow {
   carNumber: number | null;
   driverName: string | null;
   driverClass: string | null;
-  lap: number | null;
-  turn: number | null;
+  lap: string | null;
+  turn: string | null;
   incidentDescription: string;
   adjustedReason?: string;
   penaltyName: string | null;
@@ -90,9 +90,14 @@ export const getEventRundown = query({
             let timePenaltySeconds = 0;
             let licensePoints: number | null = null;
 
+            const lapNumber = parseInt(report.lap || "0", 10);
+            const isLap1 = !isNaN(lapNumber) && lapNumber === 1;
+
             if (report.status === "finalized") {
               penaltyName = appliedPenalty?.name ?? null;
-              const baseTimePenalty = appliedPenalty?.timePenalty ?? 0;
+              const baseTimePenalty = isLap1
+                ? (appliedPenalty?.timePenaltyLap1 ?? appliedPenalty?.timePenalty ?? 0)
+                : (appliedPenalty?.timePenalty ?? 0);
               const selfReportReduction =
                 appliedPenalty?.selfReportReduction ?? 0;
               timePenaltySeconds =
@@ -102,7 +107,9 @@ export const getEventRundown = query({
               licensePoints = appliedPenalty?.licensePoints ?? null;
             } else {
               penaltyName = recommendedPenaltyObj?.name ?? null;
-              const baseTimePenalty = recommendedPenaltyObj?.timePenalty ?? 0;
+              const baseTimePenalty = isLap1
+                ? (recommendedPenaltyObj?.timePenaltyLap1 ?? recommendedPenaltyObj?.timePenalty ?? 0)
+                : (recommendedPenaltyObj?.timePenalty ?? 0);
               const selfReportReduction =
                 recommendedPenaltyObj?.selfReportReduction ?? 0;
               timePenaltySeconds =

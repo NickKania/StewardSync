@@ -321,13 +321,16 @@ export const create = mutation({
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
     raceId: v.id("races"),
-    lap: v.number(),
-    turn: v.number(),
+    lap: v.string(),
+    turn: v.string(),
     description: v.string(),
   },
   handler: async (ctx, args) => {
     // Validate that reporting and reported drivers are different if reportingDriverId is provided
-    if (args.reportingDriverId && args.reportingDriverId === args.reportedDriverId) {
+    if (
+      args.reportingDriverId &&
+      args.reportingDriverId === args.reportedDriverId
+    ) {
       throw new Error("Reporting and reported driver cannot be the same");
     }
 
@@ -377,8 +380,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     reportId: v.id("reports"),
-    lap: v.optional(v.number()),
-    turn: v.optional(v.number()),
+    lap: v.optional(v.string()),
+    turn: v.optional(v.string()),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -456,7 +459,11 @@ export const finalize = mutation({
     }
 
     // Check if finalizing user has driver conflict
-    const finalizerConflict = await checkUserDriverConflict(ctx, args.userId, report);
+    const finalizerConflict = await checkUserDriverConflict(
+      ctx,
+      args.userId,
+      report,
+    );
     if (finalizerConflict.hasConflict) {
       const getConflictTypeText = (type: string) => {
         if (type === "reporting_user") return "reporting user";
@@ -464,7 +471,7 @@ export const finalize = mutation({
         return "reported driver";
       };
       return failure(
-        `You cannot finalize this report because you are involved as the ${getConflictTypeText(finalizerConflict.conflictType!)}${finalizerConflict.driverName ? ` (${finalizerConflict.driverName})` : ""}.`
+        `You cannot finalize this report because you are involved as the ${getConflictTypeText(finalizerConflict.conflictType!)}${finalizerConflict.driverName ? ` (${finalizerConflict.driverName})` : ""}.`,
       );
     }
 
@@ -515,7 +522,9 @@ export const finalize = mutation({
           }
 
           const points = penalty?.licensePoints ?? 0;
-          const driverId = finalizedReport.atFaultDriverId?.toString() || finalizedReport.reportedDriverId.toString();
+          const driverId =
+            finalizedReport.atFaultDriverId?.toString() ||
+            finalizedReport.reportedDriverId.toString();
 
           if (penaltyAccumulator[driverId]) {
             penaltyAccumulator[driverId] += points;
@@ -599,7 +608,9 @@ export const updateFinalizedDecision = mutation({
     }
 
     if (!report.isFinalized) {
-      throw new UserFacingError("Cannot edit a report that has not been finalized");
+      throw new UserFacingError(
+        "Cannot edit a report that has not been finalized",
+      );
     }
 
     await requireRole(ctx, args.userId, ["event_manager"]);
@@ -627,8 +638,8 @@ export const createBySteward = mutation({
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
     raceId: v.id("races"),
-    lap: v.number(),
-    turn: v.number(),
+    lap: v.string(),
+    turn: v.string(),
     description: v.string(),
     incidentDescription: v.string(),
     reviewNotes: v.optional(v.string()),
@@ -652,10 +663,14 @@ export const createBySteward = mutation({
     const reportingUserDriverIds = reportingUserDrivers.map((d: any) => d._id);
 
     // Check if reporting steward is the reported driver
-    if (reportingUserDriverIds.some((id: any) => id === args.reportedDriverId)) {
-      const conflictDriver = reportingUserDrivers.find((d: any) => d._id === args.reportedDriverId);
+    if (
+      reportingUserDriverIds.some((id: any) => id === args.reportedDriverId)
+    ) {
+      const conflictDriver = reportingUserDrivers.find(
+        (d: any) => d._id === args.reportedDriverId,
+      );
       return failure(
-        `You cannot create a steward incident for yourself. You are the reported driver (${conflictDriver?.driverName}).`
+        `You cannot create a steward incident for yourself. You are the reported driver (${conflictDriver?.driverName}).`,
       );
     }
 
@@ -663,16 +678,24 @@ export const createBySteward = mutation({
     if (args.secondStewardId) {
       const secondStewardDrivers = await ctx.db
         .query("drivers")
-        .withIndex("by_user_id", (q: any) => q.eq("userId", args.secondStewardId))
+        .withIndex("by_user_id", (q: any) =>
+          q.eq("userId", args.secondStewardId),
+        )
         .collect();
 
-      const secondStewardDriverIds = secondStewardDrivers.map((d: any) => d._id);
+      const secondStewardDriverIds = secondStewardDrivers.map(
+        (d: any) => d._id,
+      );
 
-      if (secondStewardDriverIds.some((id: any) => id === args.reportedDriverId)) {
-        const conflictDriver = secondStewardDrivers.find((d: any) => d._id === args.reportedDriverId);
+      if (
+        secondStewardDriverIds.some((id: any) => id === args.reportedDriverId)
+      ) {
+        const conflictDriver = secondStewardDrivers.find(
+          (d: any) => d._id === args.reportedDriverId,
+        );
         const secondSteward = await ctx.db.get(args.secondStewardId);
         return failure(
-          `${secondSteward?.name || "The second steward"} cannot review this report because they are the reported driver (${conflictDriver?.driverName}).`
+          `${secondSteward?.name || "The second steward"} cannot review this report because they are the reported driver (${conflictDriver?.driverName}).`,
         );
       }
     }
@@ -900,13 +923,14 @@ export const debugReportState = query({
       isFinalized: report.isFinalized,
     });
 
-    const [reportingDriver, reportedDriver, reportingUser, event, race] = await Promise.all([
-      report.reportingDriverId ? ctx.db.get(report.reportingDriverId) : null,
-      ctx.db.get(report.reportedDriverId),
-      report.reportingUserId ? ctx.db.get(report.reportingUserId) : null,
-      ctx.db.get(report.eventId),
-      ctx.db.get(report.raceId),
-    ]);
+    const [reportingDriver, reportedDriver, reportingUser, event, race] =
+      await Promise.all([
+        report.reportingDriverId ? ctx.db.get(report.reportingDriverId) : null,
+        ctx.db.get(report.reportedDriverId),
+        report.reportingUserId ? ctx.db.get(report.reportingUserId) : null,
+        ctx.db.get(report.eventId),
+        ctx.db.get(report.raceId),
+      ]);
 
     const reviews = await ctx.db
       .query("reviews")
@@ -925,32 +949,38 @@ export const debugReportState = query({
 
     return {
       report,
-      reportingDriver: reportingDriver ? {
-        driverId: reportingDriver._id,
-        driverNumber: reportingDriver.driverNumber,
-        driverName: reportingDriver.driverName,
-        driverClass: reportingDriver.driverClass,
-        username: reportingDriver.username,
-        externalId: reportingDriver.externalId,
-        userId: reportingDriver.userId,
-      } : null,
-      reportedDriver: reportedDriver ? {
-        driverId: reportedDriver._id,
-        driverNumber: reportedDriver.driverNumber,
-        driverName: reportedDriver.driverName,
-        driverClass: reportedDriver.driverClass,
-        username: reportedDriver.username,
-        externalId: reportedDriver.externalId,
-        userId: reportedDriver.userId,
-      } : null,
-      reportingUser: reportingUser ? {
-        userId: reportingUser._id,
-        name: reportingUser.name,
-        email: reportingUser.email,
-        roleId: reportingUser.roleId,
-        discordId: reportingUser.discordId,
-        discordUsername: reportingUser.discordUsername,
-      } : null,
+      reportingDriver: reportingDriver
+        ? {
+            driverId: reportingDriver._id,
+            driverNumber: reportingDriver.driverNumber,
+            driverName: reportingDriver.driverName,
+            driverClass: reportingDriver.driverClass,
+            username: reportingDriver.username,
+            externalId: reportingDriver.externalId,
+            userId: reportingDriver.userId,
+          }
+        : null,
+      reportedDriver: reportedDriver
+        ? {
+            driverId: reportedDriver._id,
+            driverNumber: reportedDriver.driverNumber,
+            driverName: reportedDriver.driverName,
+            driverClass: reportedDriver.driverClass,
+            username: reportedDriver.username,
+            externalId: reportedDriver.externalId,
+            userId: reportedDriver.userId,
+          }
+        : null,
+      reportingUser: reportingUser
+        ? {
+            userId: reportingUser._id,
+            name: reportingUser.name,
+            email: reportingUser.email,
+            roleId: reportingUser.roleId,
+            discordId: reportingUser.discordId,
+            discordUsername: reportingUser.discordUsername,
+          }
+        : null,
       event,
       race,
       reviews: reviewsWithUsers,

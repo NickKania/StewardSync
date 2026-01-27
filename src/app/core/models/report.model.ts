@@ -12,8 +12,8 @@ export interface Report {
   reportedDriverId: Id<'drivers'>;
   eventId: Id<'events'>;
   raceId: Id<'races'>;
-  lap?: number;
-  turn: number;
+  lap?: string;
+  turn: string;
   description: string;
   status: ReportStatus;
   isFinalized: boolean;
@@ -45,12 +45,12 @@ export interface CreateReportDto {
   reportedDriverId: Id<'drivers'>;
   eventId: Id<'events'>;
   raceId: Id<'races'>;
-  turn: number;
+  turn: string;
   description: string;
 }
 
 export interface UpdateReportDto {
   reportId: Id<'reports'>;
-  turn?: number;
+  turn?: string;
   description?: string;
 }

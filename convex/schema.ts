@@ -108,8 +108,8 @@ export default defineSchema({
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
     raceId: v.id("races"),
-    lap: v.number(),
-    turn: v.number(),
+    lap: v.string(),
+    turn: v.string(),
     description: v.string(),
     status: v.union(
       v.literal("pending"),

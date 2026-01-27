@@ -141,12 +141,12 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   [class.input-error]="
                     form.get('turn')?.invalid && form.get('turn')?.touched
                   "
-                  placeholder="Enter the turn number"
+                  placeholder="Enter the turn"
                   min="1"
                 />
                 @if (form.get("turn")?.invalid && form.get("turn")?.touched) {
                   <p class="mt-1 text-sm text-red-600">
-                    Turn number is required and must be positive
+                    Turn is required
                   </p>
                 }
               </div>
@@ -161,12 +161,12 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   [class.input-error]="
                     form.get('lap')?.invalid && form.get('lap')?.touched
                   "
-                  placeholder="Enter the lap number"
+                  placeholder="Enter the lap"
                   min="1"
                 />
                 @if (form.get("lap")?.invalid && form.get("lap")?.touched) {
                   <p class="mt-1 text-sm text-red-600">
-                    Lap number is required and must be positive
+                    Lap is required
                   </p>
                 }
               </div>
@@ -255,8 +255,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       reportedDriverId: ["", Validators.required],
       eventId: ["", Validators.required],
       raceId: ["", Validators.required],
-      lap: ["", [Validators.required, Validators.min(1)]],
-      turn: ["", [Validators.required, Validators.min(1)]],
+      lap: ["", [Validators.required]],
+      turn: ["", [Validators.required]],
       description: ["", [Validators.required, Validators.minLength(20)]],
     });
   }
@@ -367,8 +367,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       if (this.isEdit && this.id) {
         await this.convex.mutation(this.convex.api.reports.update, {
           reportId: this.id as any,
-          lap: parseInt(formValue.lap, 10),
-          turn: parseInt(formValue.turn, 10),
+          lap: formValue.lap,
+          turn: formValue.turn,
           description: formValue.description,
         });
         this.toast.success("Report updated successfully");
@@ -383,8 +383,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
           reportedDriverId: formValue.reportedDriverId,
           eventId: formValue.eventId,
           raceId: formValue.raceId,
-          lap: parseInt(formValue.lap, 10),
-          turn: parseInt(formValue.turn, 10),
+          lap: formValue.lap,
+          turn: formValue.turn,
           description: formValue.description,
         });
         this.toast.success("Report submitted successfully");

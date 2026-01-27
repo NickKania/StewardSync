@@ -36,7 +36,7 @@ export const migrateReportsAddLap = mutation({
         // Randomly assign lap 1 or lap 2
         const randomLap = Math.random() < 0.5 ? 1 : 2;
         await ctx.db.patch(report._id, {
-          lap: randomLap,
+          lap: String(randomLap),
         });
         migrated++;
       }
@@ -238,5 +238,27 @@ export const backfillAtFaultDriverId = internalMutation({
       reportsUpdated,
       reviewsUpdated,
     };
+  },
+});
+
+export const migrateLapAndTurnToString = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const reports = await ctx.db.query("reports").collect();
+
+    let migrated = 0;
+    for (const report of reports) {
+      const reportDoc = report as any;
+
+      if (typeof reportDoc.lap === 'number' || typeof reportDoc.turn === 'number') {
+        await ctx.db.patch(report._id, {
+          lap: typeof reportDoc.lap === 'number' ? String(reportDoc.lap) : reportDoc.lap,
+          turn: typeof reportDoc.turn === 'number' ? String(reportDoc.turn) : reportDoc.turn,
+        });
+        migrated++;
+      }
+    }
+
+    return { success: true, migrated };
   },
 });

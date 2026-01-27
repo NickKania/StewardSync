@@ -136,12 +136,12 @@ import { SelectOption } from "@shared/components/select/select.component";
                       [class.input-error]="
                         form.get('lap')?.invalid && form.get('lap')?.touched
                       "
-                      placeholder="Enter lap number"
+                      placeholder="Enter the lap"
                       min="1"
                     />
                     @if (form.get("lap")?.invalid && form.get("lap")?.touched) {
                       <p class="mt-1 text-sm text-red-600">
-                        Lap number is required and must be positive
+                        Lap is required
                       </p>
                     }
                   </div>
@@ -155,14 +155,14 @@ import { SelectOption } from "@shared/components/select/select.component";
                       [class.input-error]="
                         form.get('turn')?.invalid && form.get('turn')?.touched
                       "
-                      placeholder="Enter turn number"
+                      placeholder="Enter the turn"
                       min="1"
                     />
                     @if (
                       form.get("turn")?.invalid && form.get("turn")?.touched
                     ) {
                       <p class="mt-1 text-sm text-red-600">
-                        Turn number is required and must be positive
+                        Turn is required
                       </p>
                     }
                   </div>
@@ -485,8 +485,8 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       reportedDriverId: ["", Validators.required],
       eventId: ["", Validators.required],
       raceId: ["", Validators.required],
-      lap: ["", [Validators.required, Validators.min(1)]],
-      turn: ["", [Validators.required, Validators.min(1)]],
+      lap: ["", [Validators.required]],
+      turn: ["", [Validators.required]],
       incidentDescription: [
         "",
         [Validators.required, Validators.minLength(10)],
@@ -749,8 +749,8 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           reportedDriverId: formValue.reportedDriverId as any,
           eventId: formValue.eventId,
           raceId: formValue.raceId,
-          lap: parseInt(formValue.lap, 10),
-          turn: parseInt(formValue.turn, 10),
+          lap: formValue.lap,
+          turn: formValue.turn,
           description: formValue.description,
           incidentDescription: formValue.incidentDescription,
           reviewNotes: formValue.reviewNotes || "",

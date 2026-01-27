@@ -36,8 +36,8 @@ interface EventRundownRow {
   carNumber: number | null;
   driverName: string | null;
   driverClass: string | null;
-  lap: number | null;
-  turn: number | null;
+  lap: string | null;
+  turn: string | null;
   incidentDescription: string;
   adjustedReason?: string;
   penaltyName: string | null;
