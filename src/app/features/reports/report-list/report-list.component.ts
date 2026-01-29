@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal } from "@angular/core";
+import { Component, inject, OnInit, OnDestroy, signal, computed } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { FormsModule } from "@angular/forms";
@@ -195,6 +195,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
   reports = signal<any[]>([]);
   filteredReports = signal<any[]>([]);
   events = signal<any[]>([]);
+  activeSeries = signal<any[]>([]);
   loading = signal(true);
 
   selectedStatus = "";
@@ -208,7 +209,23 @@ export class ReportListComponent implements OnInit, OnDestroy {
     { value: "rejected", label: "Rejected" },
   ];
 
-  eventOptions = signal<SelectOption[]>([{ value: "", label: "All events" }]);
+  activeSeriesIds = computed(() =>
+    this.activeSeries().map((s) => s._id.toString()),
+  );
+
+  eventOptions = computed<SelectOption[]>(() => {
+    const activeIds = this.activeSeriesIds();
+    const filteredEvents = this.events().filter((e) =>
+      activeIds.includes(e.seriesId.toString()),
+    );
+    return [
+      { value: "", label: "All events" },
+      ...filteredEvents.map((e: any) => ({
+        value: e._id,
+        label: `${e.trackName} (${e.series.name})`,
+      })),
+    ];
+  });
 
   private unsubscribes: (() => void)[] = [];
 
@@ -249,16 +266,24 @@ export class ReportListComponent implements OnInit, OnDestroy {
       const data = eventsQuery.data();
       if (data) {
         this.events.set(data);
-        this.eventOptions.set([
-          { value: "", label: "All events" },
-          ...data.map((e: any) => ({
-            value: e._id,
-            label: `${e.trackName} (${e.series.name})`,
-          })),
-        ]);
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkEvents));
+
+    // Load active series for filtering events
+    const activeSeriesQuery = this.convex.createReactiveQuery(
+      this.convex.api.series.listActive,
+      {},
+    );
+    this.unsubscribes.push(activeSeriesQuery.unsubscribe);
+
+    const checkActiveSeries = setInterval(() => {
+      const data = activeSeriesQuery.data();
+      if (data) {
+        this.activeSeries.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkActiveSeries));
   }
 
   filterReports(): void {

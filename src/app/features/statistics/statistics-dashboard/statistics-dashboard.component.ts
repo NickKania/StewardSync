@@ -617,10 +617,18 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   seriesSortColumn = signal<keyof DriverPointsRow | "">("");
   seriesSortDirection = signal<"asc" | "desc">("asc");
 
+  activeSeriesIds = computed(() =>
+    this.series().map((s) => s._id.toString()),
+  );
+
   eventOptions = computed(() => {
+    const activeIds = this.activeSeriesIds();
+    const filteredEvents = this.events().filter((e) =>
+      activeIds.includes(e.seriesId.toString()),
+    );
     return [
       { value: "", label: "Choose an event" },
-      ...this.events().map((e: any) => ({
+      ...filteredEvents.map((e: any) => ({
         value: e._id,
         label: `${e.trackName} (${e.series.name})`,
       })),
