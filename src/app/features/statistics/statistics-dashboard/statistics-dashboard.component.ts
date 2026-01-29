@@ -10,6 +10,7 @@ import {
   ViewChildren,
   QueryList,
   untracked,
+  HostBinding,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
@@ -24,6 +25,7 @@ import {
   SelectOption,
 } from "@shared/components/select/select.component";
 import { TabsComponent, Tab } from "@shared/components/tabs/tabs.component";
+import { LegendComponent, LegendItem } from "@shared/components/legend/legend.component";
 import { RouterModule } from "@angular/router";
 import { ActivatedRoute, Router } from "@angular/router";
 import { effect, DestroyRef } from "@angular/core";
@@ -77,6 +79,7 @@ interface DriverPointsRow {
     ButtonComponent,
     SelectComponent,
     TabsComponent,
+    LegendComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -87,458 +90,634 @@ interface DriverPointsRow {
           <app-loading text="Loading..." />
         </div>
       } @else {
-        <app-tabs
-          [tabs]="visibleTabs()"
-          [activeTab]="activeTab()"
-          (activeTabChange)="selectTab($event)"
-        />
+        <!-- Normal Mode: Show Tabs -->
+        @if (!isExportMode()) {
+          <app-tabs
+            [tabs]="visibleTabs()"
+            [activeTab]="activeTab()"
+            (activeTabChange)="selectTab($event)"
+          />
+        }
 
-        @if (activeTab() === "event_rundown") {
-          <div class="space-y-6">
-            <app-card title="Event Rundown">
-              <div class="space-y-4">
-                <div>
-                  <label class="label">Select Event</label>
-                  <app-select
-                    [options]="eventOptions()"
-                    [(ngModel)]="selectedEventId"
-                    (ngModelChange)="loadEventRundown()"
-                    placeholder="Choose an event"
-                  />
-                </div>
-
-                @if (eventRundown().length > 0) {
-                  <div class="flex items-center justify-between mb-4 gap-4">
-                    <div class="flex-1 max-w-md">
-                      <input
-                        type="text"
-                        class="input w-full"
-                        placeholder="Filter by any field..."
-                        [(ngModel)]="eventFilterText"
-                      />
-                    </div>
-                  </div>
-                  @for (race of filteredAndSortedRaces(); track race.raceId) {
-                    <div class="space-y-4">
-                      <div class="flex items-center gap-2 pt-4">
-                        <h3 class="text-lg font-semibold text-gray-900">
-                          {{ race.raceName }}
-                        </h3>
-                      </div>
-                      @if (getRaceReports(race.raceId).length > 0) {
-                        <div #eventRundownTable class="overflow-x-auto">
-                          <table class="w-full text-sm">
-                            <thead class="bg-gray-50">
-                              <tr class="text-left">
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 align-middle leading-tight"
-                                >
-                                  Ticket #
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'carNumber')"
-                                >
-                                  Car #
-                                  {{
-                                    getSortIcon(
-                                      "carNumber",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'driverName')"
-                                >
-                                  Driver
-                                  {{
-                                    getSortIcon(
-                                      "driverName",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'driverClass')"
-                                >
-                                  Class
-                                  {{
-                                    getSortIcon(
-                                      "driverClass",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'lap')"
-                                >
-                                  Lap
-                                  {{
-                                    getSortIcon(
-                                      "lap",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'turn')"
-                                >
-                                  Turn
-                                  {{
-                                    getSortIcon(
-                                      "turn",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'incidentDescription')"
-                                >
-                                  Incident Description
-                                  {{
-                                    getSortIcon(
-                                      "incidentDescription",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'penaltyName')"
-                                >
-                                  Penalty
-                                  {{
-                                    getSortIcon(
-                                      "penaltyName",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'timePenaltySeconds')"
-                                >
-                                  Time Penalty
-                                  {{
-                                    getSortIcon(
-                                      "timePenaltySeconds",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                                <th
-                                  class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                                  (click)="sortEventRundown(race.raceNumber, 'licensePoints')"
-                                >
-                                  License Points
-                                  {{
-                                    getSortIcon(
-                                      "licensePoints",
-                                      getRaceSortColumn(race.raceNumber),
-                                      getRaceSortDirection(race.raceNumber)
-                                    )
-                                  }}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                              @for (
-                                row of getRaceReports(race.raceId);
-                                track row.reportId
-                              ) {
-                                <tr class="hover:bg-gray-50">
-                                  <td class="px-4 py-3 align-middle leading-tight">
-                                    {{ row.reportId || '-' }}
-                                  </td>
-                                  <td class="px-4 py-3 align-middle leading-tight">
-                                    {{ row.carNumber ?? "-" }}
-                                  </td>
-                                  <td class="px-4 py-3 font-medium align-middle leading-tight">
-                                    @if (row.driverId) {
-                                      <a
-                                        [routerLink]="['/drivers', row.driverId]"
-                                        class="text-blue-600 hover:text-blue-800 hover:underline"
-                                      >
-                                        {{ row.driverName ?? "-" }}
-                                      </a>
-                                    } @else {
-                                      <span class="text-gray-900">
-                                        {{ row.driverName ?? "-" }}
-                                      </span>
-                                    }
-                                  </td>
-                                  <td class="px-4 py-3 text-gray-600 align-middle leading-tight">
-                                    {{ row.driverClass ?? "-" }}
-                                  </td>
-                                  <td class="px-4 py-3 align-middle leading-tight">
-                                    {{ row.lap ?? "-" }}
-                                  </td>
-                                  <td class="px-4 py-3 align-middle leading-tight">
-                                    {{ row.turn ?? "-" }}
-                                  </td>
-                                  <td
-                                    class="px-4 py-3 text-gray-700 max-w-md align-middle leading-tight"
-                                  >
-                                    <div class="whitespace-pre-wrap">{{ row.incidentDescription }}</div>
-                                    @if (row.adjustedReason) {
-                                      <div class="text-amber-700 text-sm mt-1 whitespace-pre-wrap">
-                                        [Adjusted: {{ row.adjustedReason }}]
-                                      </div>
-                                    }
-                                  </td>
-                                  <td class="px-4 py-3 align-middle leading-tight">
-                                    @if (row.penaltyName) {
-                                      <span class="text-gray-700">
-                                        {{ row.penaltyName }}{{ !row.isFinalized ? '*' : '' }}
-                                      </span>
-                                    } @else {
-                                      <span class="text-gray-400">-</span>
-                                    }
-                                  </td>
-                                  <td class="px-4 py-3 align-middle leading-tight">
-                                    @if (row.timePenaltySeconds > 0) {
-                                      <app-badge
-                                        [variant]="
-                                          row.isSelfReport ? 'success' : 'default'
-                                        "
-                                      >
-                                        {{ row.timePenaltySeconds }}s
-                                        @if (row.isSelfReport) {
-                                          (SR)
-                                        }
-                                      </app-badge>
-                                    } @else {
-                                      <span class="text-gray-400">-</span>
-                                    }
-                                  </td>
-                                  <td class="px-4 py-3 align-middle leading-tight">
-                                    @if (row.licensePoints && row.licensePoints > 0) {
-                                      <app-badge variant="danger">
-                                        {{ row.licensePoints }}
-                                      </app-badge>
-                                    } @else {
-                                      <span class="text-gray-400">-</span>
-                                    }
-                                  </td>
-                                </tr>
-                              }
-                            </tbody>
-                          </table>
-                        </div>
-                      } @else {
-                        <p class="text-gray-500 text-center py-4">
-                          No reviewed reports
-                        </p>
-                      }
-                    </div>
-                  }
-                  @if (filteredAndSortedRaces().length > 0) {
-                    <div class="mt-6 pt-4 border-t border-gray-200">
-                      <p class="text-sm text-gray-600">
-                        <span class="font-semibold">*</span> Indicates an
-                        incident that has been reviewed but not yet finalized.
-                      </p>
-                    </div>
-                  }
-                } @else if (selectedEventId) {
-                  <p class="text-gray-500 text-center py-4">
-                    No finalized reports for this event
-                  </p>
-                } @else {
-                  <p class="text-gray-500 text-center py-4">
-                    Select an event to view reports
-                  </p>
-                }
-              </div>
-            </app-card>
+        <!-- Export Mode: Show Header -->
+        @if (isExportMode()) {
+          <div class="export-header">
+            <app-legend [items]="legendItems()" [title]="legendItems().length > 0 ? 'Legend' : ''" />
           </div>
         }
 
-        @if (activeTab() === "series_overview" && canViewSeriesStats()) {
-          <div class="space-y-6">
-            <app-card title="Series Overview - License Points">
-              <div class="space-y-4">
-                <div>
-                  <label class="label">Select Series</label>
-                  <app-select
-                    [options]="seriesOptions()"
-                    [(ngModel)]="selectedSeriesId"
-                    (ngModelChange)="loadSeriesPoints()"
-                    placeholder="Choose a series"
-                  />
+        <!-- Content Area -->
+        <div [class]="isExportMode() ? 'export-body' : 'space-y-6'">
+          @if (activeTab() === "event_rundown") {
+            <div class="space-y-6">
+              <app-card>
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-gray-900">
+                    Event Rundown
+                  </h3>
+                  <button (click)="toggleExportMode()" class="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded hover:bg-gray-100">
+                    <svg class="h-5 w-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                      <polyline points="16 6 12 2 8 6" />
+                      <line x1="12" y1="2" x2="12" y2="15" />
+                    </svg>
+                  </button>
                 </div>
-
-                @if (seriesPoints().length > 0) {
-                  <div class="flex items-center justify-between mb-4 gap-4">
-                    <div class="flex-1 max-w-md">
-                      <input
-                        type="text"
-                        class="input w-full"
-                        placeholder="Filter by any field..."
-                        [(ngModel)]="seriesFilterText"
+                <div class="px-6 py-4 space-y-4">
+                  @if (!isExportMode()) {
+                    <div>
+                      <label class="label">Select Event</label>
+                      <app-select
+                        [options]="eventOptions()"
+                        [(ngModel)]="selectedEventId"
+                        (ngModelChange)="loadEventRundown()"
+                        placeholder="Choose an event"
                       />
                     </div>
-                  </div>
-                  @if (filteredAndSortedSeriesPoints().length > 0) {
-                    <div #seriesPointsTable class="overflow-x-auto">
-                      <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
-                          <tr class="text-left">
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortSeriesPoints('driverNumber')"
-                            >
-                              Car #
-                              {{
-                                getSortIcon(
-                                  "driverNumber",
-                                  seriesSortColumn(),
-                                  seriesSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortSeriesPoints('driverName')"
-                            >
-                              Driver
-                              {{
-                                getSortIcon(
-                                  "driverName",
-                                  seriesSortColumn(),
-                                  seriesSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortSeriesPoints('driverClass')"
-                            >
-                              Class
-                              {{
-                                getSortIcon(
-                                  "driverClass",
-                                  seriesSortColumn(),
-                                  seriesSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th
-                              class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
-                              (click)="sortSeriesPoints('totalLicensePoints')"
-                            >
-                              Total Points
-                              {{
-                                getSortIcon(
-                                  "totalLicensePoints",
-                                  seriesSortColumn(),
-                                  seriesSortDirection()
-                                )
-                              }}
-                            </th>
-                            <th class="px-4 py-3 font-medium text-gray-500 align-middle leading-tight">
-                              Series Penalties
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                          @for (
-                            row of filteredAndSortedSeriesPoints();
-                            track row.driverId
-                          ) {
-                            <tr class="hover:bg-gray-50">
-                              <td class="px-4 py-3 align-middle leading-tight">{{ row.driverNumber }}</td>
-                              <td class="px-4 py-3 font-medium align-middle leading-tight">
-                                <a
-                                  [routerLink]="['/drivers', row.driverId]"
-                                  class="text-blue-600 hover:text-blue-800 hover:underline"
-                                >
-                                  {{ row.driverName }}
-                                </a>
-                              </td>
-                              <td class="px-4 py-3 text-gray-600 align-middle leading-tight">
-                                {{ row.driverClass }}
-                              </td>
-                              <td class="px-4 py-3 align-middle leading-tight">
-                                @if (row.totalLicensePoints > 0) {
-                                  <app-badge>
-                                    {{ row.totalLicensePoints }}
-                                  </app-badge>
-                                } @else {
-                                  <span class="text-gray-400">0</span>
-                                }
-                              </td>
-                              <td class="px-4 py-3 align-middle leading-tight">
-                                @if (
-                                  row.seriesPenalties &&
-                                  row.seriesPenalties.length > 0
+                  }
+
+                  @if (eventRundown().length > 0) {
+                    @if (!isExportMode()) {
+                      <div class="flex items-center justify-between mb-4 gap-4">
+                        <div class="flex-1 max-w-md">
+                          <input
+                            type="text"
+                            class="input w-full"
+                            placeholder="Filter by any field..."
+                            [(ngModel)]="eventFilterText"
+                          />
+                        </div>
+                      </div>
+                    }
+
+                    @for (race of filteredAndSortedRaces(); track race.raceId) {
+                      <div class="space-y-4">
+                        <div class="flex items-center gap-2 pt-4">
+                          <h3 class="text-lg font-semibold text-gray-900">
+                            {{ race.raceName }}
+                          </h3>
+                        </div>
+                        @if (getRaceReports(race.raceId).length > 0) {
+                          <div #eventRundownTable class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                              <thead class="bg-gray-50">
+                                <tr class="text-left">
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 align-middle leading-tight"
+                                  >
+                                    Ticket #
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(
+                                        race.raceNumber,
+                                        'carNumber'
+                                      )
+                                    "
+                                  >
+                                    Car #
+                                    {{
+                                      getSortIcon(
+                                        "carNumber",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(
+                                        race.raceNumber,
+                                        'driverName'
+                                      )
+                                    "
+                                  >
+                                    Driver
+                                    {{
+                                      getSortIcon(
+                                        "driverName",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(
+                                        race.raceNumber,
+                                        'driverClass'
+                                      )
+                                    "
+                                  >
+                                    Class
+                                    {{
+                                      getSortIcon(
+                                        "driverClass",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(race.raceNumber, 'lap')
+                                    "
+                                  >
+                                    Lap
+                                    {{
+                                      getSortIcon(
+                                        "lap",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(race.raceNumber, 'turn')
+                                    "
+                                  >
+                                    Turn
+                                    {{
+                                      getSortIcon(
+                                        "turn",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(
+                                        race.raceNumber,
+                                        'incidentDescription'
+                                      )
+                                    "
+                                  >
+                                    Incident Description
+                                    {{
+                                      getSortIcon(
+                                        "incidentDescription",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(
+                                        race.raceNumber,
+                                        'penaltyName'
+                                      )
+                                    "
+                                  >
+                                    Penalty
+                                    {{
+                                      getSortIcon(
+                                        "penaltyName",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(
+                                        race.raceNumber,
+                                        'timePenaltySeconds'
+                                      )
+                                    "
+                                  >
+                                    Time Penalty
+                                    {{
+                                      getSortIcon(
+                                        "timePenaltySeconds",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                  <th
+                                    class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                    (click)="
+                                      sortEventRundown(
+                                        race.raceNumber,
+                                        'licensePoints'
+                                      )
+                                    "
+                                  >
+                                    License Points
+                                    {{
+                                      getSortIcon(
+                                        "licensePoints",
+                                        getRaceSortColumn(race.raceNumber),
+                                        getRaceSortDirection(race.raceNumber)
+                                      )
+                                    }}
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody class="divide-y divide-gray-100">
+                                @for (
+                                  row of getRaceReports(race.raceId);
+                                  track row.reportId
                                 ) {
-                                  <div class="flex flex-wrap gap-1">
-                                    @for (
-                                      penalty of row.seriesPenalties;
-                                      track penalty._id
-                                    ) {
-                                      <app-badge
-                                        [variant]="
-                                          penalty.isServed
-                                            ? 'success'
-                                            : 'danger'
-                                        "
-                                        size="sm"
-                                      >
-                                        {{ penalty.seriesPenalty?.penaltyName }}
-                                        ({{
-                                          penalty.seriesPenaltyThreshold
-                                            ?.threshold
-                                        }}pts)
-                                      </app-badge>
-                                    }
-                                  </div>
-                                } @else {
-                                  <span class="text-gray-400">-</span>
+                                  <tr class="hover:bg-gray-50">
+                                    <td
+                                      class="px-4 py-3 align-middle leading-tight"
+                                    >
+                                      {{ row.reportId || "-" }}
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 align-middle leading-tight"
+                                    >
+                                      {{ row.carNumber ?? "-" }}
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 font-medium align-middle leading-tight"
+                                    >
+                                      @if (row.driverId) {
+                                        <a
+                                          [routerLink]="[
+                                            '/drivers',
+                                            row.driverId,
+                                          ]"
+                                          class="text-blue-600 hover:text-blue-800 hover:underline"
+                                        >
+                                          {{ row.driverName ?? "-" }}
+                                        </a>
+                                      } @else {
+                                        <span class="text-gray-900">
+                                          {{ row.driverName ?? "-" }}
+                                        </span>
+                                      }
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 text-gray-600 align-middle leading-tight"
+                                    >
+                                      {{ row.driverClass ?? "-" }}
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 align-middle leading-tight"
+                                    >
+                                      {{ row.lap ?? "-" }}
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 align-middle leading-tight"
+                                    >
+                                      {{ row.turn ?? "-" }}
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 text-gray-700 max-w-md align-middle leading-tight"
+                                    >
+                                      <div class="whitespace-pre-wrap">
+                                        {{ row.incidentDescription }}
+                                      </div>
+                                      @if (row.adjustedReason) {
+                                        <div
+                                          class="text-amber-700 text-sm mt-1 whitespace-pre-wrap"
+                                        >
+                                          [Adjusted: {{ row.adjustedReason }}]
+                                        </div>
+                                      }
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 align-middle leading-tight"
+                                    >
+                                      @if (row.penaltyName) {
+                                        <span class="text-gray-700">
+                                          {{ row.penaltyName
+                                          }}{{ !row.isFinalized ? "*" : "" }}
+                                        </span>
+                                      } @else {
+                                        <span class="text-gray-400">-</span>
+                                      }
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 align-middle leading-tight"
+                                    >
+                                      @if (row.timePenaltySeconds > 0) {
+                                        <app-badge
+                                          [variant]="
+                                            row.isSelfReport
+                                              ? 'success'
+                                              : 'default'
+                                          "
+                                        >
+                                          {{ row.timePenaltySeconds }}s
+                                          @if (row.isSelfReport) {
+                                            (SR)
+                                          }
+                                        </app-badge>
+                                      } @else {
+                                        <span class="text-gray-400">-</span>
+                                      }
+                                    </td>
+                                    <td
+                                      class="px-4 py-3 align-middle leading-tight"
+                                    >
+                                      @if (
+                                        row.licensePoints &&
+                                        row.licensePoints > 0
+                                      ) {
+                                        <app-badge variant="danger">
+                                          {{ row.licensePoints }}
+                                        </app-badge>
+                                      } @else {
+                                        <span class="text-gray-400">-</span>
+                                      }
+                                    </td>
+                                  </tr>
                                 }
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
+                              </tbody>
+                            </table>
+                          </div>
+                        } @else {
+                          <p class="text-gray-500 text-center py-4">
+                            No reviewed reports
+                          </p>
+                        }
+                      </div>
+                    }
+                    @if (filteredAndSortedRaces().length > 0) {
+                      <div class="mt-6 pt-4 border-t border-gray-200">
+                        <p class="text-sm text-gray-600">
+                          <span class="font-semibold">*</span> Indicates an
+                          incident that has been reviewed but not yet finalized.
+                        </p>
+                      </div>
+                    }
+                  } @else if (selectedEventId) {
+                    <p class="text-gray-500 text-center py-4">
+                      No finalized reports for this event
+                    </p>
                   } @else {
                     <p class="text-gray-500 text-center py-4">
-                      No results match your filter
+                      Select an event to view reports
                     </p>
                   }
-                } @else if (selectedSeriesId) {
-                  <p class="text-gray-500 text-center py-4">
-                    No drivers found for this series
-                  </p>
-                } @else {
-                  <p class="text-gray-500 text-center py-4">
-                    Select a series to view license points
-                  </p>
-                }
-              </div>
-            </app-card>
-          </div>
-        }
+                </div>
+              </app-card>
+            </div>
+          }
+
+          @if (activeTab() === "series_overview" && canViewSeriesStats()) {
+            <div class="space-y-6">
+              <app-card>
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-gray-900">
+                    Series Overview - License Points
+                  </h3>
+                  <button (click)="toggleExportMode()" class="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded hover:bg-gray-100">
+                    <svg class="h-5 w-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                      <polyline points="16 6 12 2 8 6" />
+                      <line x1="12" y1="2" x2="12" y2="15" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="px-6 py-4 space-y-4">
+                  @if (!isExportMode()) {
+                    <div>
+                      <label class="label">Select Series</label>
+                      <app-select
+                        [options]="seriesOptions()"
+                        [(ngModel)]="selectedSeriesId"
+                        (ngModelChange)="loadSeriesPoints()"
+                        placeholder="Choose a series"
+                      />
+                    </div>
+                  }
+
+                  @if (seriesPoints().length > 0) {
+                    @if (!isExportMode()) {
+                      <div class="flex items-center justify-between mb-4 gap-4">
+                        <div class="flex-1 max-w-md">
+                          <input
+                            type="text"
+                            class="input w-full"
+                            placeholder="Filter by any field..."
+                            [(ngModel)]="seriesFilterText"
+                          />
+                        </div>
+                      </div>
+                    }
+
+                    @if (filteredAndSortedSeriesPoints().length > 0) {
+                      <div #seriesPointsTable class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                          <thead class="bg-gray-50">
+                            <tr class="text-left">
+                              <th
+                                class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                (click)="sortSeriesPoints('driverNumber')"
+                              >
+                                Car #
+                                {{
+                                  getSortIcon(
+                                    "driverNumber",
+                                    seriesSortColumn(),
+                                    seriesSortDirection()
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                (click)="sortSeriesPoints('driverName')"
+                              >
+                                Driver
+                                {{
+                                  getSortIcon(
+                                    "driverName",
+                                    seriesSortColumn(),
+                                    seriesSortDirection()
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                (click)="sortSeriesPoints('driverClass')"
+                              >
+                                Class
+                                {{
+                                  getSortIcon(
+                                    "driverClass",
+                                    seriesSortColumn(),
+                                    seriesSortDirection()
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                                (click)="sortSeriesPoints('totalLicensePoints')"
+                              >
+                                Total Points
+                                {{
+                                  getSortIcon(
+                                    "totalLicensePoints",
+                                    seriesSortColumn(),
+                                    seriesSortDirection()
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-3 font-medium text-gray-500 align-middle leading-tight"
+                              >
+                                Series Penalties
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-gray-100">
+                            @for (
+                              row of filteredAndSortedSeriesPoints();
+                              track row.driverId
+                            ) {
+                              <tr class="hover:bg-gray-50">
+                                <td
+                                  class="px-4 py-3 align-middle leading-tight"
+                                >
+                                  {{ row.driverNumber }}
+                                </td>
+                                <td
+                                  class="px-4 py-3 font-medium align-middle leading-tight"
+                                >
+                                  <a
+                                    [routerLink]="['/drivers', row.driverId]"
+                                    class="text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    {{ row.driverName }}
+                                  </a>
+                                </td>
+                                <td
+                                  class="px-4 py-3 text-gray-600 align-middle leading-tight"
+                                >
+                                  {{ row.driverClass }}
+                                </td>
+                                <td
+                                  class="px-4 py-3 align-middle leading-tight"
+                                >
+                                  @if (row.totalLicensePoints > 0) {
+                                    <app-badge>
+                                      {{ row.totalLicensePoints }}
+                                    </app-badge>
+                                  } @else {
+                                    <span class="text-gray-400">0</span>
+                                  }
+                                </td>
+                                <td
+                                  class="px-4 py-3 align-middle leading-tight"
+                                >
+                                  @if (
+                                    row.seriesPenalties &&
+                                    row.seriesPenalties.length > 0
+                                  ) {
+                                    <div class="flex flex-wrap gap-1">
+                                      @for (
+                                        penalty of row.seriesPenalties;
+                                        track penalty._id
+                                      ) {
+                                        <app-badge
+                                          [variant]="
+                                            penalty.isServed
+                                              ? 'success'
+                                              : 'danger'
+                                          "
+                                          size="sm"
+                                        >
+                                          {{
+                                            penalty.seriesPenalty?.penaltyName
+                                          }}
+                                          ({{
+                                            penalty.seriesPenaltyThreshold
+                                              ?.threshold
+                                          }}pts)
+                                        </app-badge>
+                                      }
+                                    </div>
+                                  } @else {
+                                    <span class="text-gray-400">-</span>
+                                  }
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    } @else {
+                      <p class="text-gray-500 text-center py-4">
+                        No results match your filter
+                      </p>
+                    }
+                  } @else if (selectedSeriesId) {
+                    <p class="text-gray-500 text-center py-4">
+                      No drivers found for this series
+                    </p>
+                  } @else {
+                    <p class="text-gray-500 text-center py-4">
+                      Select a series to view license points
+                    </p>
+                  }
+                </div>
+              </app-card>
+            </div>
+          }
+        </div>
       }
     </div>
   `,
+  styles: `
+    :host.export-mode .export-content {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 9999;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      overflow: auto;
+    }
+
+    :host.export-mode .export-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+      background: #f9fafb;
+      flex-shrink: 0;
+    }
+
+    :host.export-mode .export-body {
+      flex: 1;
+      overflow: auto;
+      padding: 1.5rem;
+    }
+
+    @media print {
+      :host.export-mode .export-header {
+        background: white !important;
+      }
+      :host.export-mode .export-header app-button {
+        display: none;
+      }
+    }
+  `,
 })
 export class StatisticsDashboardComponent implements OnInit, OnDestroy {
+  @HostBinding('class.export-mode') get exportModeClass() {
+    return this.isExportMode();
+  }
+
   private convex = inject(ConvexService);
   authService = inject(AuthService);
   private route = inject(ActivatedRoute);
@@ -550,6 +729,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   seriesPoints = signal<DriverPointsRow[]>([]);
   loading = signal(true);
   activeTab = signal<"event_rundown" | "series_overview">("event_rundown");
+  isExportMode = signal<boolean>(false);
 
   selectedEventId = "";
   selectedSeriesId = "";
@@ -625,9 +805,41 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   seriesSortColumn = signal<keyof DriverPointsRow | "">("");
   seriesSortDirection = signal<"asc" | "desc">("asc");
 
-  activeSeriesIds = computed(() =>
-    this.series().map((s) => s._id.toString()),
-  );
+  activeSeriesIds = computed(() => this.series().map((s) => s._id.toString()));
+
+  legendItems = computed<LegendItem[]>(() => {
+    if (this.activeTab() === "event_rundown") {
+      return [
+        {
+          label: "🟢 (SR)",
+          description: "Self-reported incident (reduced time penalty)",
+        },
+        {
+          label: "*",
+          description: "Incident reviewed but not yet finalized",
+        },
+        {
+          label: "🔴 X",
+          description: "License points assigned to driver",
+        },
+      ];
+    } else {
+      return [
+        {
+          label: "🟢 Name (Xpts)",
+          description: "Series penalty served",
+        },
+        {
+          label: "🔴 Name (Xpts)",
+          description: "Series penalty not yet served",
+        },
+        {
+          label: "(Xpts)",
+          description: "License points threshold for this penalty",
+        },
+      ];
+    }
+  });
 
   eventOptions = computed(() => {
     const activeIds = this.activeSeriesIds();
@@ -1058,5 +1270,13 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       console.error("Failed to load series points:", error);
       this.seriesPoints.set([]);
     }
+  }
+
+  toggleExportMode(): void {
+    this.isExportMode.update((mode) => !mode);
+  }
+
+  exitExportMode(): void {
+    this.isExportMode.set(false);
   }
 }

@@ -46,32 +46,6 @@ export const migrateReportsAddLap = mutation({
   },
 });
 
-export const migrateExistingSeriesPenalties = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const seriesList = await ctx.db.query("series").collect();
-
-    const results: any[] = [];
-
-    for (const series of seriesList) {
-      const seriesResult = await ctx.runMutation(
-        internal.migrations.assignPenaltiesForSeries,
-        { seriesId: series._id }
-      );
-      results.push({
-        seriesId: series._id,
-        seriesName: series.name,
-        ...seriesResult
-      });
-    }
-
-    return {
-      totalSeries: seriesList.length,
-      results
-    };
-  },
-});
-
 export const assignPenaltiesForSeries = internalMutation({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
@@ -82,7 +56,9 @@ export const assignPenaltiesForSeries = internalMutation({
 
     const drivers = await ctx.db
       .query("drivers")
-      .withIndex("by_championship", (q) => q.eq("championshipId", args.seriesId))
+      .withIndex("by_championship", (q) =>
+        q.eq("championshipId", args.seriesId),
+      )
       .collect();
 
     const penaltyAccumulator: Record<string, number> = {};
@@ -102,7 +78,9 @@ export const assignPenaltiesForSeries = internalMutation({
         }
 
         const points = penalty?.licensePoints ?? 0;
-        const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
+        const driverId =
+          report.atFaultDriverId?.toString() ||
+          report.reportedDriverId.toString();
 
         if (penaltyAccumulator[driverId]) {
           penaltyAccumulator[driverId] += points;
@@ -129,7 +107,7 @@ export const assignPenaltiesForSeries = internalMutation({
       const existingDriverSeriesPenalties = await ctx.db
         .query("driverSeriesPenalties")
         .withIndex("by_driver_and_series", (q) =>
-          q.eq("driverId", driver._id).eq("seriesId", args.seriesId)
+          q.eq("driverId", driver._id).eq("seriesId", args.seriesId),
         )
         .collect();
 
@@ -140,7 +118,9 @@ export const assignPenaltiesForSeries = internalMutation({
       for (const seriesPenalty of seriesPenalties) {
         const thresholds = await ctx.db
           .query("seriesPenaltyThresholds")
-          .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", seriesPenalty._id))
+          .withIndex("by_series_penalty", (q) =>
+            q.eq("seriesPenaltyId", seriesPenalty._id),
+          )
           .collect();
 
         for (const threshold of thresholds) {
@@ -156,15 +136,18 @@ export const assignPenaltiesForSeries = internalMutation({
                 pointsAtAssignment: totalPoints,
               });
             } else {
-              const driverSeriesPenaltyId = await ctx.db.insert("driverSeriesPenalties", {
-                driverId: driver._id,
-                seriesId: args.seriesId,
-                seriesPenaltyId: seriesPenalty._id,
-                seriesPenaltyThresholdId: threshold._id,
-                isServed: false,
-                pointsAtAssignment: totalPoints,
-                assignedAt: Date.now(),
-              });
+              const driverSeriesPenaltyId = await ctx.db.insert(
+                "driverSeriesPenalties",
+                {
+                  driverId: driver._id,
+                  seriesId: args.seriesId,
+                  seriesPenaltyId: seriesPenalty._id,
+                  seriesPenaltyThresholdId: threshold._id,
+                  isServed: false,
+                  pointsAtAssignment: totalPoints,
+                  assignedAt: Date.now(),
+                },
+              );
 
               assignedPenalties.push({
                 driverSeriesPenaltyId,
@@ -250,10 +233,19 @@ export const migrateLapAndTurnToString = mutation({
     for (const report of reports) {
       const reportDoc = report as any;
 
-      if (typeof reportDoc.lap === 'number' || typeof reportDoc.turn === 'number') {
+      if (
+        typeof reportDoc.lap === "number" ||
+        typeof reportDoc.turn === "number"
+      ) {
         await ctx.db.patch(report._id, {
-          lap: typeof reportDoc.lap === 'number' ? String(reportDoc.lap) : reportDoc.lap,
-          turn: typeof reportDoc.turn === 'number' ? String(reportDoc.turn) : reportDoc.turn,
+          lap:
+            typeof reportDoc.lap === "number"
+              ? String(reportDoc.lap)
+              : reportDoc.lap,
+          turn:
+            typeof reportDoc.turn === "number"
+              ? String(reportDoc.turn)
+              : reportDoc.turn,
         });
         migrated++;
       }

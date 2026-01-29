@@ -467,7 +467,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
         // Auto-fill incident description and isSelfReport from latest review
         if (data?.reviews && data.reviews.length > 0) {
-          const latestReview = data.reviews.reduce((latest, current) => {
+          const latestReview = data.reviews.reduce((latest: any, current: any) => {
             const latestDate = latest.reviewDate || latest.createdAt || 0;
             const currentDate = current.reviewDate || current.createdAt || 0;
             return currentDate > latestDate ? current : latest;

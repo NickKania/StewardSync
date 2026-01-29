@@ -164,7 +164,7 @@ export class DriverListComponent implements OnInit, OnDestroy {
         this.series.set(seriesData);
 
         // Extract unique classes
-        const classes = [...new Set(driversData.map((d: any) => d.driverClass))];
+        const classes = [...new Set(driversData.map((d: any) => d.driverClass))] as string[];
         this.driverClasses.set(classes);
 
         this.filterDrivers();

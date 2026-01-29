@@ -84,6 +84,27 @@ function parseCSV(csvText: string): SimGridDriver[] {
   return drivers;
 }
 
+interface ImportOrUpdateDriverResult {
+  action: "created" | "updated";
+  driverId: string;
+}
+
+// Helper function to avoid circular type inference in Convex
+async function runImportOrUpdateDriver(
+  ctx: any,
+  args: {
+    championshipId: string;
+    driverNumber: number;
+    driverName: string;
+    username?: string;
+    driverClass: string;
+    steamId?: string;
+  },
+): Promise<ImportOrUpdateDriverResult> {
+  // @ts-expect-error - Circular type inference in Convex API
+  return ctx.runMutation(api.drivers.importOrUpdateDriver, args);
+}
+
 export const importDriversFromSimGrid = action({
   args: {
     championshipId: v.id("series"),
@@ -110,16 +131,16 @@ export const importDriversFromSimGrid = action({
       
       const csvText = await response.text();
       const simgridDrivers = parseCSV(csvText);
-      
+
       const results: Array<{ action: string; driverId: string; name: string }> = [];
-      
+
       for (const simgridDriver of simgridDrivers) {
         const carNumber = parseInt(simgridDriver.carNumber, 10);
         if (isNaN(carNumber)) {
           continue;
         }
-        
-        const result = await ctx.runMutation(api.drivers.importOrUpdateDriver, {
+
+        const result = await runImportOrUpdateDriver(ctx, {
           championshipId: args.championshipId,
           driverNumber: carNumber,
           driverName: simgridDriver.realName,

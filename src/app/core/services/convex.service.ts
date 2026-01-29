@@ -1,9 +1,11 @@
 import { Injectable, signal, computed, OnDestroy } from '@angular/core';
 import { ConvexClient } from 'convex/browser';
-import { api } from '@convex/_generated/api';
-import { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
 import { environment } from '../../../environments/environment';
 import { ConvexCustomLogger } from './convex-logger';
+import { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
+
+// Import API to avoid circular inference issues
+import * as ConvexApi from '@convex/_generated/api';
 
 @Injectable({
   providedIn: 'root'
@@ -19,7 +21,8 @@ export class ConvexService implements OnDestroy {
   }
 
   get api() {
-    return api;
+    // Type assertion to avoid circular type inference
+    return (ConvexApi as any).api;
   }
 
   async query<T extends FunctionReference<'query'>>(
