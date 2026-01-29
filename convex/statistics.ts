@@ -2,7 +2,7 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 
 interface EventRundownRow {
-  reportId: string;
+  reportId: number | null;
   driverId: string;
   carNumber: number | null;
   driverName: string | null;
@@ -127,7 +127,7 @@ export const getEventRundown = query({
             }
 
             return {
-              reportId: report._id,
+              reportId: report.reportId || null,
               driverId: atFaultDriverId,
               carNumber: reportedDriver?.driverNumber ?? null,
               driverName: displayName,

@@ -31,7 +31,7 @@ import { debounceTime, Subject } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
 interface EventRundownRow {
-  reportId: string;
+  reportId: string | number | null;
   driverId: string;
   carNumber: number | null;
   driverName: string | null;
@@ -130,6 +130,11 @@ interface DriverPointsRow {
                           <table class="w-full text-sm">
                             <thead class="bg-gray-50">
                               <tr class="text-left">
+                                <th
+                                  class="px-4 py-3 font-medium text-gray-500 align-middle leading-tight"
+                                >
+                                  Ticket #
+                                </th>
                                 <th
                                   class="px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
                                   (click)="sortEventRundown(race.raceNumber, 'carNumber')"
@@ -255,6 +260,9 @@ interface DriverPointsRow {
                                 track row.reportId
                               ) {
                                 <tr class="hover:bg-gray-50">
+                                  <td class="px-4 py-3 align-middle leading-tight">
+                                    {{ row.reportId || '-' }}
+                                  </td>
                                   <td class="px-4 py-3 align-middle leading-tight">
                                     {{ row.carNumber ?? "-" }}
                                   </td>

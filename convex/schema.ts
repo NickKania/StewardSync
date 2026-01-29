@@ -131,6 +131,7 @@ export default defineSchema({
     isSelfReport: v.optional(v.boolean()),
     isStewardReported: v.optional(v.boolean()),
     isEdited: v.optional(v.boolean()),
+    reportId: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -139,7 +140,8 @@ export default defineSchema({
     .index("by_reporting_driver", ["reportingDriverId"])
     .index("by_reporting_user", ["reportingUserId"])
     .index("by_reported_driver", ["reportedDriverId"])
-    .index("by_date", ["reportDate"]),
+    .index("by_date", ["reportDate"])
+    .index("by_reportId", ["reportId"]),
 
   reviews: defineTable({
     reviewDate: v.number(),

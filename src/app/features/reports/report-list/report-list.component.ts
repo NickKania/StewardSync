@@ -97,6 +97,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
+                  <th class="px-6 py-3 font-medium">Ticket #</th>
                   <th class="px-6 py-3 font-medium">At Fault Driver</th>
                   <th class="px-6 py-3 font-medium">Reporting Driver</th>
                   <th class="px-6 py-3 font-medium">Event</th>
@@ -109,6 +110,9 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 @for (report of filteredReports(); track report._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium">
+                      {{ report.reportId || '-' }}
+                    </td>
                     <td class="px-6 py-4">
                       <p class="font-medium text-gray-900 dark:text-gray-100">
                         {{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}

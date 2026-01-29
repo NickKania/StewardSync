@@ -19,8 +19,10 @@ import type * as lib_errors from "../lib/errors.js";
 import type * as lib_reports from "../lib/reports.js";
 import type * as lib_result from "../lib/result.js";
 import type * as migrations from "../migrations.js";
+import type * as migrations_backfillReportIds from "../migrations/backfillReportIds.js";
 import type * as penalties from "../penalties.js";
 import type * as races from "../races.js";
+import type * as reportCounter from "../reportCounter.js";
 import type * as reports from "../reports.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
@@ -48,8 +50,10 @@ declare const fullApi: ApiFromModules<{
   "lib/reports": typeof lib_reports;
   "lib/result": typeof lib_result;
   migrations: typeof migrations;
+  "migrations/backfillReportIds": typeof migrations_backfillReportIds;
   penalties: typeof penalties;
   races: typeof races;
+  reportCounter: typeof reportCounter;
   reports: typeof reports;
   reviews: typeof reviews;
   seed: typeof seed;
@@ -86,4 +90,29 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  shardedCounter: {
+    public: {
+      add: FunctionReference<
+        "mutation",
+        "internal",
+        { count: number; name: string; shard?: number; shards?: number },
+        number
+      >;
+      count: FunctionReference<"query", "internal", { name: string }, number>;
+      estimateCount: FunctionReference<
+        "query",
+        "internal",
+        { name: string; readFromShards?: number; shards?: number },
+        any
+      >;
+      rebalance: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; shards?: number },
+        any
+      >;
+      reset: FunctionReference<"mutation", "internal", { name: string }, any>;
+    };
+  };
+};

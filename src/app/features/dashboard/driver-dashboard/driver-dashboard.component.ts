@@ -181,6 +181,7 @@ import { Id } from "@convex/_generated/dataModel";
                         <tr
                           class="text-left text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
                         >
+                          <th class="pb-3 font-medium">Ticket #</th>
                           <th class="pb-3 font-medium">Event</th>
                           <th class="pb-3 font-medium">Race</th>
                           <th class="pb-3 font-medium">Lap</th>
@@ -200,6 +201,11 @@ import { Id } from "@convex/_generated/dataModel";
                           track penalty.reportId
                         ) {
                           <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <td
+                              class="py-3 font-medium text-gray-900 dark:text-gray-100"
+                            >
+                              {{ penalty.reportId || '-' }}
+                            </td>
                             <td
                               class="py-3 font-medium text-gray-900 dark:text-gray-100"
                             >

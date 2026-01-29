@@ -4,6 +4,7 @@ import { checkUserDriverConflict } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { requireRole } from "./lib/auth";
+import { reportCounter } from "./reportCounter";
 
 export const list = query({
   args: {
@@ -362,6 +363,10 @@ export const create = mutation({
       throw new UserFacingError("Reports have been locked for this series");
     }
 
+    // Generate next reportId using sharded counter
+    await reportCounter.inc(ctx, "reportId");
+    const nextReportId = await reportCounter.count(ctx, "reportId");
+
     const now = Date.now();
     const reportId = await ctx.db.insert("reports", {
       reportingUserId: args.reportingUserId,
@@ -375,6 +380,7 @@ export const create = mutation({
       reportDate: now,
       status: "pending",
       isFinalized: false,
+      reportId: nextReportId,
       createdAt: now,
       updatedAt: now,
     });
@@ -716,6 +722,10 @@ export const createBySteward = mutation({
       }
     }
 
+    // Generate next reportId using sharded counter
+    await reportCounter.inc(ctx, "reportId");
+    const nextReportId = await reportCounter.count(ctx, "reportId");
+
     const reportId = await ctx.db.insert("reports", {
       reportingUserId: args.reportingUserId,
       reportedDriverId: args.reportedDriverId,
@@ -727,6 +737,7 @@ export const createBySteward = mutation({
       reportDate: now,
       status: "pending",
       isFinalized: false,
+      reportId: nextReportId,
       isSelfReport: args.isSelfReport,
       isStewardReported: true,
       createdAt: now,
@@ -889,7 +900,7 @@ export const getDriverIndividualPenalties = query({
         ]);
 
         return {
-          reportId: report._id,
+          reportId: report.reportId || null,
           reportDate: report.reportDate,
           finalizedAt: report.finalizedAt ?? report.reportDate,
           event,
