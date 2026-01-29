@@ -8,6 +8,7 @@ export interface Series {
   reportingOpenTime?: string;
   reportingCloseDuration?: number;
   isReportingLocked?: boolean;
+  isActive?: boolean;
   createdAt: number;
 }
 

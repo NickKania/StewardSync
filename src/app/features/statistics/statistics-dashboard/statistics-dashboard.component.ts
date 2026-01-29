@@ -978,7 +978,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     this.unsubscribes.push(() => clearInterval(checkEvents));
 
     const seriesQuery = this.convex.createReactiveQuery(
-      this.convex.api.series.list,
+      this.convex.api.series.listActive,
       {},
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);

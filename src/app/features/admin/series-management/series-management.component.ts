@@ -46,9 +46,14 @@ import { Id } from '@convex/_generated/dataModel';
           @for (s of series(); track s._id) {
             <app-card>
               <div class="space-y-4">
-                <div class="flex items-center justify-between">
+                  <div class="flex items-center justify-between">
                   <div class="flex-1">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ s.name }}</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                      {{ s.name }}
+                      @if (s.isActive === false) {
+                        <app-badge variant="default" class="ml-2">Inactive</app-badge>
+                      }
+                    </h3>
                     @if (s.description) {
                       <p class="text-sm text-gray-500 mt-1">{{ s.description }}</p>
                     }
@@ -299,6 +304,17 @@ import { Id } from '@convex/_generated/dataModel';
                   </label>
                   <p class="text-xs text-gray-500 mt-1">Prevent all users from creating reports for this series. Stewards will also be blocked.</p>
                 </div>
+                <div>
+                  <label class="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="seriesForm.isActive"
+                      class="rounded border-gray-300"
+                    />
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
+                  </label>
+                  <p class="text-xs text-gray-500 mt-1">When unchecked, this series will not appear in any series dropdowns throughout the application.</p>
+                </div>
                 <div class="flex gap-2 justify-end">
                 <app-button variant="secondary" (click)="closeSeriesModal()">Cancel</app-button>
                 <app-button (click)="saveSeries()" [disabled]="!seriesForm.name">
@@ -489,7 +505,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     simgridLink: '',
     reportingOpenTime: '',
     reportingCloseDuration: 0,
-    isReportingLocked: false
+    isReportingLocked: false,
+    isActive: true
   };
 
   penaltyForm = {
@@ -614,7 +631,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       simgridLink: series.simgridLink || '',
       reportingOpenTime: series.reportingOpenTime || '',
       reportingCloseDuration: series.reportingCloseDuration || 0,
-      isReportingLocked: series.isReportingLocked || false
+      isReportingLocked: series.isReportingLocked || false,
+      isActive: series.isActive !== false
     };
     this.showSeriesModal = true;
   }
@@ -628,7 +646,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         simgridLink: this.seriesForm.simgridLink || undefined,
         reportingOpenTime: this.seriesForm.reportingOpenTime || undefined,
         reportingCloseDuration: this.seriesForm.reportingCloseDuration || undefined,
-        isReportingLocked: this.seriesForm.isReportingLocked
+        isReportingLocked: this.seriesForm.isReportingLocked,
+        isActive: this.seriesForm.isActive
       });
     } else {
       await this.convex.mutation(this.convex.api.series.create, {
@@ -637,7 +656,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         simgridLink: this.seriesForm.simgridLink || undefined,
         reportingOpenTime: this.seriesForm.reportingOpenTime || undefined,
         reportingCloseDuration: this.seriesForm.reportingCloseDuration || undefined,
-        isReportingLocked: this.seriesForm.isReportingLocked
+        isReportingLocked: this.seriesForm.isReportingLocked,
+        isActive: this.seriesForm.isActive
       });
     }
     this.closeSeriesModal();
@@ -656,7 +676,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   closeSeriesModal(): void {
     this.showSeriesModal = false;
     this.editingSeriesId = null;
-    this.seriesForm = { name: '', description: '', simgridLink: '', reportingOpenTime: '', reportingCloseDuration: 0, isReportingLocked: false };
+    this.seriesForm = { name: '', description: '', simgridLink: '', reportingOpenTime: '', reportingCloseDuration: 0, isReportingLocked: false, isActive: true };
   }
 
   addPenalty(seriesId: Id<'series'>): void {

@@ -127,7 +127,7 @@ export class EventListComponent implements OnInit, OnDestroy {
     this.unsubscribes.push(eventsQuery.unsubscribe);
 
     const seriesQuery = this.convex.createReactiveQuery(
-      this.convex.api.series.list,
+      this.convex.api.series.listActive,
       {}
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);

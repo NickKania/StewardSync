@@ -150,7 +150,7 @@ export class DriverListComponent implements OnInit, OnDestroy {
     this.unsubscribes.push(driversQuery.unsubscribe);
 
     const seriesQuery = this.convex.createReactiveQuery(
-      this.convex.api.series.list,
+      this.convex.api.series.listActive,
       {}
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);
@@ -185,6 +185,10 @@ export class DriverListComponent implements OnInit, OnDestroy {
         d.driverNumber.toString().includes(lowerTerm)
       );
     }
+
+    // Filter out drivers from inactive series
+    const activeSeriesIds = this.series().map(s => s._id);
+    filtered = filtered.filter(d => !d.championshipId || activeSeriesIds.includes(d.championshipId));
 
     const seriesId = this.selectedSeries();
     if (seriesId) {

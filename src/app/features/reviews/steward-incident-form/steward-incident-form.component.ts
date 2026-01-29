@@ -698,7 +698,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
   private async loadData(): Promise<void> {
     const seriesQuery = this.convex.createReactiveQuery(
-      this.convex.api.series.list,
+      this.convex.api.series.listActive,
       {},
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);

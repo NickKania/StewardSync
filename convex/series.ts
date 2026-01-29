@@ -8,6 +8,13 @@ export const list = query({
   },
 });
 
+export const listActive = query({
+  handler: async (ctx) => {
+    const series = await ctx.db.query("series").order("desc").collect();
+    return series.filter(s => s.isActive !== false);
+  },
+});
+
 export const getById = query({
   args: { id: v.id("series") },
   handler: async (ctx, args) => {
@@ -23,6 +30,7 @@ export const create = mutation({
     reportingOpenTime: v.optional(v.string()),
     reportingCloseDuration: v.optional(v.number()),
     isReportingLocked: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     if (args.reportingOpenTime && !isValidTimeFormat(args.reportingOpenTime)) {
@@ -46,6 +54,10 @@ export const create = mutation({
       insertData.isReportingLocked = args.isReportingLocked;
     }
 
+    if (args.isActive !== undefined) {
+      insertData.isActive = args.isActive;
+    }
+
     const seriesId = await ctx.db.insert("series", insertData);
     return seriesId;
   },
@@ -60,6 +72,7 @@ export const update = mutation({
     reportingOpenTime: v.optional(v.string()),
     reportingCloseDuration: v.optional(v.number()),
     isReportingLocked: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -80,6 +93,7 @@ export const update = mutation({
     if (updates.reportingOpenTime !== undefined) cleanUpdates.reportingOpenTime = updates.reportingOpenTime;
     if (updates.reportingCloseDuration !== undefined) cleanUpdates.reportingCloseDuration = updates.reportingCloseDuration;
     if (updates.isReportingLocked !== undefined) cleanUpdates.isReportingLocked = updates.isReportingLocked;
+    if (updates.isActive !== undefined) cleanUpdates.isActive = updates.isActive;
 
     await ctx.db.patch(id, cleanUpdates);
     return id;

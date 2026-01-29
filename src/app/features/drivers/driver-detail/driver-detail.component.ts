@@ -500,7 +500,7 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
 
   private async loadSeries(): Promise<void> {
     const seriesQuery = this.convex.createReactiveQuery(
-      this.convex.api.series.list,
+      this.convex.api.series.listActive,
       {}
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);
