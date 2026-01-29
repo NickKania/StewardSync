@@ -82,10 +82,18 @@ export const assignPenaltiesForSeries = internalMutation({
           report.atFaultDriverId?.toString() ||
           report.reportedDriverId.toString();
 
-        if (penaltyAccumulator[driverId]) {
-          penaltyAccumulator[driverId] += points;
-        } else {
-          penaltyAccumulator[driverId] = points;
+        // Verify the driver belongs to this series before accumulating points
+        const driver = await ctx.db.get(
+          report.atFaultDriverId || report.reportedDriverId,
+        );
+
+        // Only accumulate points if the driver's championship matches the current series
+        if (driver && driver.championshipId === args.seriesId) {
+          if (penaltyAccumulator[driverId]) {
+            penaltyAccumulator[driverId] += points;
+          } else {
+            penaltyAccumulator[driverId] = points;
+          }
         }
       }
     }
@@ -252,5 +260,116 @@ export const migrateLapAndTurnToString = mutation({
     }
 
     return { success: true, migrated };
+  },
+});
+
+/**
+ * Cleanup script to remove incorrectly assigned driverSeriesPenalties.
+ *
+ * This script identifies and removes driverSeriesPenalty entries where:
+ * 1. The driver's championshipId doesn't match the seriesId in the penalty entry
+ *
+ * This situation occurs when the assignPenaltiesForSeries migration was run
+ * before driver series validation was added, causing penalties to be assigned
+ * to drivers from other series who happened to have reports with penalties.
+ *
+ * Returns details about what was removed and what would be removed (dry run).
+ */
+export const cleanupIncorrectDriverSeriesPenalties = internalMutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun ?? false;
+
+    const allDriverSeriesPenalties = await ctx.db
+      .query("driverSeriesPenalties")
+      .collect();
+
+    const toRemove: any[] = [];
+    const kept: any[] = [];
+    const errors: any[] = [];
+
+    for (const dsp of allDriverSeriesPenalties) {
+      try {
+        const driver = await ctx.db.get(dsp.driverId);
+
+        if (!driver) {
+          // Driver doesn't exist - mark for removal
+          toRemove.push({
+            driverSeriesPenaltyId: dsp._id,
+            driverId: dsp.driverId,
+            seriesId: dsp.seriesId,
+            reason: "Driver not found",
+          });
+          continue;
+        }
+
+        // Check if driver belongs to the series
+        if (!driver.championshipId || driver.championshipId !== dsp.seriesId) {
+          // Driver belongs to a different series or has no championship - mark for removal
+          const actualSeries = driver.championshipId
+            ? await ctx.db.get(driver.championshipId)
+            : null;
+          const penaltySeries = await ctx.db.get(dsp.seriesId);
+
+          toRemove.push({
+            driverSeriesPenaltyId: dsp._id,
+            driverId: dsp.driverId,
+            driverName: driver.driverName,
+            driverClass: driver.driverClass,
+            seriesId: dsp.seriesId,
+            penaltySeries: penaltySeries
+              ? (penaltySeries as any).name || "Unknown"
+              : "Unknown",
+            driverChampionshipId: driver.championshipId || "None",
+            driverSeries: actualSeries
+              ? (actualSeries as any).name || "Unknown"
+              : "None",
+            reason: driver.championshipId
+              ? "Driver belongs to a different series"
+              : "Driver has no championship assigned",
+          });
+        } else {
+          // Driver belongs to the correct series - keep
+          kept.push({
+            driverSeriesPenaltyId: dsp._id,
+            driverId: dsp.driverId,
+            driverName: driver.driverName,
+            seriesId: dsp.seriesId,
+          });
+        }
+      } catch (error) {
+        errors.push({
+          driverSeriesPenaltyId: dsp._id,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    // Remove the incorrect entries
+    let removedCount = 0;
+    if (!dryRun && toRemove.length > 0) {
+      for (const entry of toRemove) {
+        try {
+          await ctx.db.delete(entry.driverSeriesPenaltyId);
+          removedCount++;
+        } catch (error) {
+          errors.push({
+            driverSeriesPenaltyId: entry.driverSeriesPenaltyId,
+            error: error instanceof Error ? error.message : "Failed to delete",
+          });
+        }
+      }
+    }
+
+    return {
+      dryRun,
+      toRemoveCount: toRemove.length,
+      removedCount,
+      keptCount: kept.length,
+      errorCount: errors.length,
+      toRemove,
+      kept,
+      errors,
+    };
   },
 });

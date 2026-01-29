@@ -199,32 +199,57 @@ export const importOrUpdateDriver = mutation({
     steamId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // First, try to find driver by driverNumber AND championshipId
+    // This ensures we only update drivers that are already in this specific series
     const existing = await ctx.db
       .query("drivers")
       .withIndex("by_number", (q) => q.eq("driverNumber", args.driverNumber))
-      .first();
+      .collect();
 
-    if (existing) {
-      await ctx.db.patch(existing._id, {
+    // Find the driver that belongs to this specific championship
+    const driverInThisChampionship = existing.find(
+      (driver) => driver.championshipId === args.championshipId
+    );
+
+    if (driverInThisChampionship) {
+      // Driver exists in this series - update their data but NOT championshipId
+      await ctx.db.patch(driverInThisChampionship._id, {
         driverName: args.driverName,
         username: args.username,
         driverClass: args.driverClass,
         steamId: args.steamId,
-        championshipId: args.championshipId,
       });
-      return { action: 'updated', driverId: existing._id };
-    } else {
-      const driverId = await ctx.db.insert("drivers", {
-        driverNumber: args.driverNumber,
-        driverName: args.driverName,
-        username: args.username,
-        driverClass: args.driverClass,
-        steamId: args.steamId,
-        championshipId: args.championshipId,
-        createdAt: Date.now(),
-      });
-      return { action: 'created', driverId };
+      return { action: 'updated', driverId: driverInThisChampionship._id };
     }
+
+    // Check if there's an unassigned driver with this number
+    const unassignedDriver = existing.find(
+      (driver) => driver.championshipId === undefined
+    );
+
+    if (unassignedDriver) {
+      // Unassigned driver found - assign to this series and update data
+      await ctx.db.patch(unassignedDriver._id, {
+        driverName: args.driverName,
+        username: args.username,
+        driverClass: args.driverClass,
+        steamId: args.steamId,
+        championshipId: args.championshipId,
+      });
+      return { action: 'updated', driverId: unassignedDriver._id };
+    }
+
+    // No existing driver found - create new driver for this series
+    const driverId = await ctx.db.insert("drivers", {
+      driverNumber: args.driverNumber,
+      driverName: args.driverName,
+      username: args.username,
+      driverClass: args.driverClass,
+      steamId: args.steamId,
+      championshipId: args.championshipId,
+      createdAt: Date.now(),
+    });
+    return { action: 'created', driverId };
   },
 });
 

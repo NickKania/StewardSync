@@ -21,6 +21,11 @@ interface EventRundownRow {
 export const getEventRundown = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      return [];
+    }
+
     const races = await ctx.db
       .query("races")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
@@ -65,6 +70,19 @@ export const getEventRundown = query({
 
             const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
             const reportedDriver = await ctx.db.get(atFaultDriverId);
+
+            // Skip reports where the driver doesn't belong to this event's series
+            // This includes cases where:
+            // 1. Driver doesn't exist
+            // 2. Driver has no championship assigned
+            // 3. Driver belongs to a different series than the event
+            if (
+              reportedDriver &&
+              (!reportedDriver.championshipId ||
+                reportedDriver.championshipId !== event.seriesId)
+            ) {
+              return null;
+            }
 
             // Get display name (officialName if user is linked, else driverName)
             let displayName = reportedDriver?.driverName ?? null;
@@ -160,6 +178,101 @@ export const getEventRundown = query({
   },
 });
 
+/**
+ * Debug function to identify driver mismatches in Event Rundown.
+ *
+ * Use this to investigate cases where a driver appears to be
+ * pulling in data from the wrong event/series.
+ */
+export const debugEventRundownDriverMismatches = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      return { error: "Event not found" };
+    }
+
+    const races = await ctx.db
+      .query("races")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    const eventSeriesId = event.seriesId;
+    const driversInSeries = await ctx.db
+      .query("drivers")
+      .withIndex("by_championship", (q) => q.eq("championshipId", eventSeriesId))
+      .collect();
+
+    const mismatches: any[] = [];
+    const correct: any[] = [];
+
+    for (const race of races) {
+      const reports = await ctx.db
+        .query("reports")
+        .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+        .collect();
+
+      const raceReports = reports.filter((r) => r.raceId === race._id);
+
+      for (const report of raceReports) {
+        if (report.status !== "finalized" && report.status !== "reviewed") {
+          continue;
+        }
+
+        const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
+        const driver = await ctx.db.get(atFaultDriverId);
+
+        if (!driver) {
+          continue;
+        }
+
+        const isMismatch = driver.championshipId !== eventSeriesId;
+
+        const entry = {
+          reportId: report._id.toString(),
+          reportStatus: report.status,
+          driverId: driver._id.toString(),
+          driverName: driver.driverName,
+          driverClass: driver.driverClass,
+          driverChampionshipId: driver.championshipId?.toString() || "None",
+          eventSeriesId: eventSeriesId.toString(),
+          eventId: args.eventId.toString(),
+          eventSeriesName: (await ctx.db.get(eventSeriesId))
+            ? (await ctx.db.get(eventSeriesId))?.name
+            : "Unknown",
+          raceNumber: race.raceNumber,
+          reason: isMismatch
+            ? "Driver belongs to different series than event"
+            : "Correct",
+        };
+
+        if (isMismatch) {
+          mismatches.push(entry);
+        } else {
+          correct.push(entry);
+        }
+      }
+    }
+
+    return {
+      eventId: args.eventId.toString(),
+      eventName: event.trackName,
+      eventSeriesId: eventSeriesId.toString(),
+      driversInSeries: driversInSeries.map((d) => ({
+        driverId: d._id.toString(),
+        driverName: d.driverName,
+        driverClass: d.driverClass,
+        championshipId: d.championshipId?.toString() || "None",
+      })),
+      mismatches,
+      correct,
+      totalReportsInEvent: correct.length + mismatches.length,
+      mismatchCount: mismatches.length,
+      correctCount: correct.length,
+    };
+  },
+});
+
 export const getSeriesLicensePoints = query({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
@@ -194,10 +307,18 @@ export const getSeriesLicensePoints = query({
         const points = penalty?.licensePoints ?? 0;
         const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
 
-        if (penaltyAccumulator[driverId]) {
-          penaltyAccumulator[driverId] += points;
-        } else {
-          penaltyAccumulator[driverId] = points;
+        // Verify the driver belongs to this series before accumulating points
+        const driver = await ctx.db.get(
+          report.atFaultDriverId || report.reportedDriverId,
+        );
+
+        // Only accumulate points if the driver's championship matches the current series
+        if (driver && driver.championshipId === args.seriesId) {
+          if (penaltyAccumulator[driverId]) {
+            penaltyAccumulator[driverId] += points;
+          } else {
+            penaltyAccumulator[driverId] = points;
+          }
         }
       }
     }
@@ -260,10 +381,18 @@ export const getSeriesLicensePointsWithPenalties = query({
         const points = penalty?.licensePoints ?? 0;
         const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
 
-        if (penaltyAccumulator[driverId]) {
-          penaltyAccumulator[driverId] += points;
-        } else {
-          penaltyAccumulator[driverId] = points;
+        // Verify the driver belongs to this series before accumulating points
+        const driver = await ctx.db.get(
+          report.atFaultDriverId || report.reportedDriverId,
+        );
+
+        // Only accumulate points if the driver's championship matches the current series
+        if (driver && driver.championshipId === args.seriesId) {
+          if (penaltyAccumulator[driverId]) {
+            penaltyAccumulator[driverId] += points;
+          } else {
+            penaltyAccumulator[driverId] = points;
+          }
         }
       }
     }
@@ -307,6 +436,31 @@ export const getSeriesLicensePointsWithPenalties = query({
             q.eq("driverId", driver._id).eq("seriesId", args.seriesId),
           )
           .collect();
+
+        // DEBUG: Log mismatch if found
+        if (allDriverSeriesPenalties.length > 0) {
+          const mismatchedPenalties = allDriverSeriesPenalties.filter(
+            (dsp) => {
+              const driverInDb = drivers.find((d) => d._id === dsp.driverId);
+              return !driverInDb || driverInDb.championshipId !== args.seriesId;
+            },
+          );
+
+          if (mismatchedPenalties.length > 0) {
+            console.error("Mismatched driverSeriesPenalties found:", {
+              querySeriesId: args.seriesId.toString(),
+              driverId: driver._id.toString(),
+              driverName: driver.driverName,
+              driverClass: driver.driverClass,
+              driverChampionshipId: driver.championshipId?.toString() || "none",
+              mismatchedPenalties: mismatchedPenalties.map((dsp) => ({
+                driverSeriesPenaltyId: dsp._id.toString(),
+                seriesId: dsp.seriesId.toString(),
+                isServed: dsp.isServed,
+              })),
+            });
+          }
+        }
 
         const driverSeriesPenaltiesWithDetails = await Promise.all(
           allDriverSeriesPenalties.map(async (dsp) => {
@@ -374,5 +528,75 @@ export const getSeriesLicensePointsWithPenalties = query({
     );
 
     return driverPointsWithPenalties;
+  },
+});
+
+/**
+ * Debug function to identify driver series mismatches in statistics.
+ *
+ * Use this to investigate cases where a driver appears to be
+ * pulling in data from the wrong series.
+ */
+export const debugSeriesDriverMismatches = query({
+  args: { seriesId: v.id("series") },
+  handler: async (ctx, args) => {
+    const drivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_championship", (q) =>
+        q.eq("championshipId", args.seriesId),
+      )
+      .collect();
+
+    const allDriverSeriesPenalties = await ctx.db
+      .query("driverSeriesPenalties")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
+      .collect();
+
+    const mismatches: any[] = [];
+    const correct: any[] = [];
+
+    for (const dsp of allDriverSeriesPenalties) {
+      const driver = await ctx.db.get(dsp.driverId);
+      const seriesPenalty = await ctx.db.get(dsp.seriesPenaltyId);
+
+      const isMismatch = !driver || driver.championshipId !== args.seriesId;
+
+      const entry = {
+        driverSeriesPenaltyId: dsp._id.toString(),
+        driverId: dsp.driverId.toString(),
+        driverName: driver?.driverName || "Driver not found",
+        driverClass: driver?.driverClass || "N/A",
+        driverChampionshipId: driver?.championshipId?.toString() || "None",
+        seriesId: dsp.seriesId.toString(),
+        penaltyName: seriesPenalty?.penaltyName || "Unknown",
+        isServed: dsp.isServed,
+        reason: isMismatch
+          ? !driver
+            ? "Driver not found"
+            : "Driver championship does not match series"
+          : "Correct",
+      };
+
+      if (isMismatch) {
+        mismatches.push(entry);
+      } else {
+        correct.push(entry);
+      }
+    }
+
+    return {
+      querySeriesId: args.seriesId.toString(),
+      driversInSeries: drivers.map((d) => ({
+        driverId: d._id.toString(),
+        driverName: d.driverName,
+        driverClass: d.driverClass,
+        championshipId: d.championshipId?.toString() || "None",
+      })),
+      mismatches,
+      correct,
+      totalDriverSeriesPenalties: allDriverSeriesPenalties.length,
+      mismatchCount: mismatches.length,
+      correctCount: correct.length,
+    };
   },
 });
