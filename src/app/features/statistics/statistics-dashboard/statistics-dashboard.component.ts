@@ -16,6 +16,7 @@ import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { SidebarStateService } from "@core/services/sidebar-state.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
@@ -720,6 +721,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   private convex = inject(ConvexService);
   authService = inject(AuthService);
+  readonly sidebarStateService = inject(SidebarStateService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -1185,6 +1187,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.unsubscribes.forEach((unsub) => unsub());
+    this.sidebarStateService.setExportMode(false);
   }
 
   private loadData(): void {
@@ -1273,10 +1276,15 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   }
 
   toggleExportMode(): void {
-    this.isExportMode.update((mode) => !mode);
+    this.isExportMode.update((mode) => {
+      const newMode = !mode;
+      this.sidebarStateService.setExportMode(newMode);
+      return newMode;
+    });
   }
 
   exitExportMode(): void {
     this.isExportMode.set(false);
+    this.sidebarStateService.setExportMode(false);
   }
 }

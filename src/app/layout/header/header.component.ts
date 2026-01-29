@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { ThemeService } from '@core/services/theme.service';
+import { SidebarStateService } from '@core/services/sidebar-state.service';
 
 @Component({
   selector: 'app-header',
@@ -14,8 +15,9 @@ import { ThemeService } from '@core/services/theme.service';
         <!-- Logo and brand -->
         <div class="flex items-center gap-4">
           <button
-            class="lg:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
-            (click)="toggleMobileMenu()"
+            class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
+            (click)="toggleMenu()"
+            [attr.aria-label]="sidebarStateService.isCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
@@ -99,18 +101,23 @@ import { ThemeService } from '@core/services/theme.service';
 export class HeaderComponent {
   authService = inject(AuthService);
   themeService = inject(ThemeService);
+  readonly sidebarStateService = inject(SidebarStateService);
 
   showUserMenu = false;
-  showMobileMenu = false;
 
   toggleUserMenu(): void {
     this.showUserMenu = !this.showUserMenu;
   }
 
-  toggleMobileMenu(): void {
-    this.showMobileMenu = !this.showMobileMenu;
-    // Emit event for sidebar to listen to
-    window.dispatchEvent(new CustomEvent('toggle-mobile-menu'));
+  toggleMenu(): void {
+    // Check screen size
+    const isMobile = window.innerWidth < 1024; // lg breakpoint
+
+    if (isMobile) {
+      this.sidebarStateService.toggleMobile();
+    } else {
+      this.sidebarStateService.toggleDesktop();
+    }
   }
 
   logout(): void {

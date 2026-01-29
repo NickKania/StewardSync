@@ -1,8 +1,9 @@
-import { Component, inject, HostListener } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { HasRoleDirective } from '@shared/directives/has-role.directive';
+import { SidebarStateService } from '@core/services/sidebar-state.service';
 
 interface NavItem {
   label: string;
@@ -17,19 +18,24 @@ interface NavItem {
   imports: [CommonModule, RouterLink, RouterLinkActive, HasRoleDirective],
   template: `
     <!-- Mobile overlay -->
-    @if (isMobileOpen) {
+    @if (sidebarStateService.isMobileOpen()) {
       <div
         class="fixed inset-0 bg-black/50 z-30 lg:hidden dark:bg-black/70"
-        (click)="closeMobile()"
+        (click)="sidebarStateService.closeMobile()"
       ></div>
     }
 
     <!-- Sidebar -->
     <aside
-      class="fixed top-16 left-0 bottom-0 w-64 bg-white border-r border-gray-200 z-30 transform transition-transform duration-200 ease-in-out dark:bg-gray-900 dark:border-gray-700"
-      [class.translate-x-0]="isMobileOpen"
-      [class.-translate-x-full]="!isMobileOpen"
-      [class.lg:translate-x-0]="true"
+      class="fixed top-16 left-0 bottom-0 bg-white border-r border-gray-200 z-20 transition-all duration-200 ease-in-out dark:bg-gray-900 dark:border-gray-700 overflow-hidden"
+      [class.w-0]="!sidebarStateService.isMobileOpen()"
+      [class.w-64]="sidebarStateService.isMobileOpen()"
+      [class.lg:w-0]="sidebarStateService.isEffectivelyCollapsed()"
+      [class.lg:w-64]="!sidebarStateService.isEffectivelyCollapsed()"
+      [class.-translate-x-full]="!sidebarStateService.isMobileOpen()"
+      [class.translate-x-0]="sidebarStateService.isMobileOpen()"
+      [class.lg:-translate-x-full]="sidebarStateService.isEffectivelyCollapsed()"
+      [class.lg:translate-x-0]="!sidebarStateService.isEffectivelyCollapsed()"
     >
       <nav class="p-4 space-y-1">
         @for (item of navItems; track item.path) {
@@ -39,29 +45,33 @@ interface NavItem {
               routerLinkActive="bg-primary-50 text-primary-700 border-primary-500 dark:bg-primary-900/30 dark:text-primary-200 dark:border-primary-400"
               [routerLinkActiveOptions]="{ exact: item.path === '/' }"
               class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border-l-2 border-transparent dark:text-gray-200 dark:hover:bg-gray-800"
-              (click)="closeMobile()"
+              [class.justify-center]="sidebarStateService.isEffectivelyCollapsed()"
+              (click)="sidebarStateService.closeMobile()"
             >
-              <span [innerHTML]="item.icon"></span>
-              <span class="font-medium">{{ item.label }}</span>
+              <span [innerHTML]="item.icon" class="flex-shrink-0"></span>
+              @if (!sidebarStateService.isEffectivelyCollapsed()) {
+                <span class="font-medium">{{ item.label }}</span>
+              }
             </a>
           }
         }
       </nav>
 
       <!-- Bottom section -->
-      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
-        <div class="text-xs text-gray-500 dark:text-gray-400">
-          <p>StewardSync v0.1.0</p>
-          <p class="mt-1">Racing Incident Review System</p>
+      @if (!sidebarStateService.isEffectivelyCollapsed()) {
+        <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            <p>StewardSync v0.1.0</p>
+            <p class="mt-1">Racing Incident Review System</p>
+          </div>
         </div>
-      </div>
+      }
     </aside>
   `
 })
 export class SidebarComponent {
   private authService = inject(AuthService);
-
-  isMobileOpen = false;
+  readonly sidebarStateService = inject(SidebarStateService);
 
   navItems: NavItem[] = [
     {
@@ -116,15 +126,6 @@ export class SidebarComponent {
       roles: ['league_manager']
     }
   ];
-
-  @HostListener('window:toggle-mobile-menu')
-  onToggleMobileMenu(): void {
-    this.isMobileOpen = !this.isMobileOpen;
-  }
-
-  closeMobile(): void {
-    this.isMobileOpen = false;
-  }
 
   hasAnyRole(roles: string[]): boolean {
     return this.authService.hasRole(...(roles as any[]));

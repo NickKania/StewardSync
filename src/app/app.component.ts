@@ -5,6 +5,7 @@ import { HeaderComponent } from '@app/layout/header/header.component';
 import { SidebarComponent } from '@app/layout/sidebar/sidebar.component';
 import { AuthService } from '@core/services/auth.service';
 import { ThemeService } from '@core/services/theme.service';
+import { SidebarStateService } from '@core/services/sidebar-state.service';
 import { ToastComponent } from '@shared/components/toast/toast.component';
 
 @Component({
@@ -23,7 +24,7 @@ import { ToastComponent } from '@shared/components/toast/toast.component';
         <app-header />
         <div class="flex mt-16">
           <app-sidebar />
-          <main class="flex-1 p-6 lg:ml-64">
+          <main class="flex-1 p-6 transition-all duration-200 ease-in-out" [class.lg:ml-0]="sidebarStateService.isEffectivelyCollapsed()" [class.lg:ml-64]="!sidebarStateService.isEffectivelyCollapsed()">
             <router-outlet />
           </main>
         </div>
@@ -37,6 +38,7 @@ import { ToastComponent } from '@shared/components/toast/toast.component';
 export class AppComponent implements OnInit {
   authService = inject(AuthService);
   themeService = inject(ThemeService);
+  readonly sidebarStateService = inject(SidebarStateService);
 
   ngOnInit(): void {
     this.themeService.initialize();
