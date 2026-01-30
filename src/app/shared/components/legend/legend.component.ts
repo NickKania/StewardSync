@@ -19,7 +19,7 @@ export interface LegendItem {
       <div class="space-y-2">
         @for (item of items(); track item.label) {
           <div class="flex items-start gap-3">
-            <span class="text-sm font-medium text-gray-700">{{ item.label }}</span>
+            <span class="text-sm font-medium text-gray-700 whitespace-nowrap">{{ item.label }}</span>
             <span class="text-sm text-gray-600">{{ item.description }}</span>
             @if (item.example) {
               <span class="text-sm text-gray-500 font-mono">{{ item.example }}</span>
