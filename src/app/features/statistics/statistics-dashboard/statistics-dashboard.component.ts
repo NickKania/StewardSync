@@ -186,7 +186,7 @@ interface DriverPointsRow {
                         </div>
                         @if (getRaceReports(race.raceId).length > 0) {
                           <div #eventRundownTable class="overflow-x-auto">
-                            <table class="w-full text-sm">
+                             <table class="w-full text-sm border border-gray-300">
                               <thead
                                 class="bg-gray-50 border-b border-gray-300"
                               >
@@ -361,11 +361,8 @@ interface DriverPointsRow {
                                   let i = $index
                                 ) {
                                   <tr
-                                    [class]="
-                                      i % 2 === 1
-                                        ? 'bg-gray-100 hover:bg-gray-200'
-                                        : 'hover:bg-gray-50'
-                                    "
+                                    [style.background-color]="i % 2 === 1 ? '#f3f4f6' : '#ffffff'"
+                                    [class]="isExportMode() ? '' : (i % 2 === 1 ? 'hover:bg-gray-200' : 'hover:bg-gray-50')"
                                   >
                                     <td
                                       class="w-[5%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs"
@@ -573,7 +570,7 @@ interface DriverPointsRow {
                     @if (filteredAndSortedSeriesPoints().length > 0) {
                       <div #seriesOverviewExportContainer class="export-container">
                       <div #seriesPointsTable class="overflow-x-auto">
-                        <table class="w-full text-sm">
+                         <table class="w-full text-sm border border-gray-300">
                           <thead class="bg-gray-50 border-b border-gray-300">
                             <tr>
                               <th
@@ -642,11 +639,8 @@ interface DriverPointsRow {
                               let i = $index
                             ) {
                               <tr
-                                [class]="
-                                  i % 2 === 1
-                                    ? 'bg-gray-100 hover:bg-gray-200'
-                                    : 'hover:bg-gray-50'
-                                "
+                                [style.background-color]="i % 2 === 1 ? '#f3f4f6' : '#ffffff'"
+                                [class]="isExportMode() ? '' : (i % 2 === 1 ? 'hover:bg-gray-200' : 'hover:bg-gray-50')"
                               >
                                 <td
                                   class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs"

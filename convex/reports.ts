@@ -556,6 +556,8 @@ export const finalize = mutation({
         const totalPoints = penaltyAccumulator[driverId] ?? 0;
         const driverClass = driver.driverClass || "";
 
+        console.log(`[FINALIZE] Checking driver ${driver.driverNumber} (${driverId}): totalPoints=${totalPoints}, driverClass=${driverClass}`);
+
         const existingDriverSeriesPenalties = await ctx.db
           .query("driverSeriesPenalties")
           .withIndex("by_driver_and_series", (q) =>
@@ -565,7 +567,9 @@ export const finalize = mutation({
 
         const assignedThresholds = existingDriverSeriesPenalties
           .filter((dsp: any) => !dsp.isServed)
-          .map((dsp: any) => dsp.seriesPenaltyThresholdId);
+          .map((dsp: any) => dsp.seriesPenaltyThresholdId.toString());
+
+        console.log(`[FINALIZE] Driver ${driver.driverNumber} has ${existingDriverSeriesPenalties.length} existing penalties, ${assignedThresholds.length} unserved`);
 
         for (const seriesPenalty of seriesPenalties) {
           const thresholds = await ctx.db
@@ -576,15 +580,15 @@ export const finalize = mutation({
             .collect();
 
           for (const threshold of thresholds) {
-            const appliesToDriver =
-              threshold.driverClasses.includes(driverClass);
+            const appliesToDriver = threshold.driverClasses.includes(driverClass);
+            const thresholdMet = totalPoints >= threshold.threshold;
+            const alreadyAssigned = assignedThresholds.includes(threshold._id.toString());
 
-            if (
-              appliesToDriver &&
-              totalPoints >= threshold.threshold &&
-              !assignedThresholds.includes(threshold._id)
-            ) {
-              await ctx.db.insert("driverSeriesPenalties", {
+            console.log(`[FINALIZE] Checking threshold for ${seriesPenalty.penaltyName}: applies=${appliesToDriver}, threshold=${threshold.threshold}, met=${thresholdMet}, alreadyAssigned=${alreadyAssigned}`);
+
+            if (appliesToDriver && thresholdMet && !alreadyAssigned) {
+              console.log(`[FINALIZE] >>> ASSIGNING penalty ${seriesPenalty.penaltyName} to driver ${driver.driverNumber}`);
+              const insertedId = await ctx.db.insert("driverSeriesPenalties", {
                 driverId: driver._id,
                 seriesId: event.seriesId,
                 seriesPenaltyId: seriesPenalty._id,
@@ -593,6 +597,7 @@ export const finalize = mutation({
                 pointsAtAssignment: totalPoints,
                 assignedAt: Date.now(),
               });
+              console.log(`[FINALIZE] >>> ASSIGNED with ID: ${insertedId}`);
             }
           }
         }

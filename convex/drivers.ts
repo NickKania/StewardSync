@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
+import { formatDriverName, getDriverDisplayName } from "./lib/formatting";
 
 export const list = query({
   args: {},
@@ -12,7 +13,26 @@ export const list = query({
 export const getById = query({
   args: { driverId: v.id("drivers") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.driverId);
+    const driver = await ctx.db.get(args.driverId);
+    if (!driver) return null;
+
+    // Check if driver is linked to a user
+    let linkedUser = null;
+    if (driver.userId) {
+      const user = await ctx.db.get(driver.userId);
+      if (user) {
+        linkedUser = {
+          _id: user._id,
+          name: user.name,
+          officialName: user.officialName,
+        };
+      }
+    }
+
+    return {
+      ...driver,
+      displayName: getDriverDisplayName(driver, linkedUser ? { officialName: linkedUser.officialName } : undefined),
+    };
   },
 });
 
@@ -37,7 +57,7 @@ export const getByIdWithUser = query({
     return {
       ...driver,
       linkedUser,
-      displayName: linkedUser?.officialName ?? driver.driverName,
+      displayName: getDriverDisplayName(driver, linkedUser ? { officialName: linkedUser.officialName } : undefined),
     };
   },
 });
@@ -75,10 +95,29 @@ export const getByUsername = query({
 export const getByChampionship = query({
   args: { championshipId: v.id("series") },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const drivers = await ctx.db
       .query("drivers")
       .withIndex("by_championship", (q) => q.eq("championshipId", args.championshipId))
       .collect();
+
+    // Enrich with display names
+    const enrichedDrivers = await Promise.all(
+      drivers.map(async (driver) => {
+        let userOfficialName: string | undefined;
+        if (driver.userId) {
+          const user = await ctx.db.get(driver.userId);
+          if (user) {
+            userOfficialName = user.officialName;
+          }
+        }
+        return {
+          ...driver,
+          displayName: getDriverDisplayName(driver, userOfficialName ? { officialName: userOfficialName } : undefined),
+        };
+      })
+    );
+
+    return enrichedDrivers;
   },
 });
 
@@ -103,8 +142,12 @@ export const create = mutation({
       throw new UserFacingError(`Driver with number ${args.driverNumber} already exists`);
     }
 
+    // Auto-generate officialName using "F. Name" format
+    const officialName = formatDriverName(args.driverName);
+
     const driverId = await ctx.db.insert("drivers", {
       ...args,
+      officialName,
       createdAt: Date.now(),
     });
 
@@ -117,6 +160,7 @@ export const update = mutation({
     driverId: v.id("drivers"),
     driverNumber: v.optional(v.number()),
     driverName: v.optional(v.string()),
+    officialName: v.optional(v.string()),
     username: v.optional(v.string()),
     externalId: v.optional(v.string()),
     driverClass: v.optional(v.string()),
@@ -138,6 +182,11 @@ export const update = mutation({
       }
     }
 
+    // If updating driverName, also regenerate officialName
+    if (updates.driverName !== undefined) {
+      updates.officialName = formatDriverName(updates.driverName);
+    }
+
     // Remove undefined values
     const cleanUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, v]) => v !== undefined)
@@ -145,6 +194,46 @@ export const update = mutation({
 
     await ctx.db.patch(driverId, cleanUpdates);
     return driverId;
+  },
+});
+
+export const updateOfficialName = mutation({
+  args: {
+    driverId: v.id("drivers"),
+    officialName: v.string(),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get the current user to check their role
+    const currentUser = await ctx.db.get(args.userId);
+
+    if (!currentUser) {
+      throw new UserFacingError("User not found");
+    }
+
+    // Get the user's role
+    const userRole = await ctx.db.get(currentUser.roleId);
+    if (!userRole) {
+      throw new UserFacingError("User role not found");
+    }
+
+    // Only event_manager and league_manager can update official names
+    if (userRole.name !== "event_manager" && userRole.name !== "league_manager") {
+      throw new UserFacingError("Only event managers can update official names");
+    }
+
+    // Check if driver exists
+    const driver = await ctx.db.get(args.driverId);
+    if (!driver) {
+      throw new UserFacingError("Driver not found");
+    }
+
+    // Update the official name
+    await ctx.db.patch(args.driverId, {
+      officialName: args.officialName,
+    });
+
+    return args.driverId;
   },
 });
 
@@ -211,10 +300,14 @@ export const importOrUpdateDriver = mutation({
       (driver) => driver.championshipId === args.championshipId
     );
 
+    // Auto-generate officialName for this driver name
+    const officialName = formatDriverName(args.driverName);
+
     if (driverInThisChampionship) {
       // Driver exists in this series - update their data but NOT championshipId
       await ctx.db.patch(driverInThisChampionship._id, {
         driverName: args.driverName,
+        officialName,
         username: args.username,
         driverClass: args.driverClass,
         steamId: args.steamId,
@@ -231,6 +324,7 @@ export const importOrUpdateDriver = mutation({
       // Unassigned driver found - assign to this series and update data
       await ctx.db.patch(unassignedDriver._id, {
         driverName: args.driverName,
+        officialName,
         username: args.username,
         driverClass: args.driverClass,
         steamId: args.steamId,
@@ -243,6 +337,7 @@ export const importOrUpdateDriver = mutation({
     const driverId = await ctx.db.insert("drivers", {
       driverNumber: args.driverNumber,
       driverName: args.driverName,
+      officialName,
       username: args.username,
       driverClass: args.driverClass,
       steamId: args.steamId,

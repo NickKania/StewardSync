@@ -115,7 +115,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                     </td>
                     <td class="px-6 py-4">
                       <p class="font-medium text-gray-900 dark:text-gray-100">
-                        {{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
+                        {{ report.atFaultDriver?.displayName || report.atFaultDriver?.officialName || report.atFaultDriver?.driverName || report.reportedDriver?.displayName || report.reportedDriver?.officialName || report.reportedDriver?.driverName }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
                         #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}

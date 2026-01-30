@@ -24,6 +24,7 @@ export default defineSchema({
   drivers: defineTable({
     driverNumber: v.number(),
     driverName: v.string(),
+    officialName: v.optional(v.string()),
     username: v.optional(v.string()),
     externalId: v.optional(v.string()),
     driverClass: v.string(),

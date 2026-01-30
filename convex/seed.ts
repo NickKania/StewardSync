@@ -1,4 +1,5 @@
 import { mutation } from "./_generated/server";
+import { formatDriverName } from "./lib/formatting";
 
 export const seedRoles = mutation({
   args: {},
@@ -195,5 +196,39 @@ export const seedSampleData = mutation({
     }
 
     return "Sample data seeded successfully";
+  },
+});
+
+export const migrateDriverOfficialNames = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Get all drivers that don't have an officialName
+    const drivers = await ctx.db.query("drivers").collect();
+    const driversWithoutOfficialName = drivers.filter((d) => !d.officialName);
+
+    if (driversWithoutOfficialName.length === 0) {
+      return "No drivers need migration - all drivers already have officialName";
+    }
+
+    let migratedCount = 0;
+    let errorCount = 0;
+
+    for (const driver of driversWithoutOfficialName) {
+      try {
+        // Generate officialName using the formatting function
+        const officialName = formatDriverName(driver.driverName);
+        
+        await ctx.db.patch(driver._id, {
+          officialName,
+        });
+        
+        migratedCount++;
+      } catch (error) {
+        console.error(`Failed to migrate driver ${driver._id}:`, error);
+        errorCount++;
+      }
+    }
+
+    return `Migration complete: ${migratedCount} drivers updated, ${errorCount} errors`;
   },
 });

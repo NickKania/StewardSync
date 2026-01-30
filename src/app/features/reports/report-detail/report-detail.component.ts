@@ -91,7 +91,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500">Reported Driver</dt>
-                  <dd class="font-medium text-gray-900">{{ report()?.reportedDriver?.driverName }}</dd>
+                  <dd class="font-medium text-gray-900">{{ report()?.reportedDriver?.displayName || report()?.reportedDriver?.officialName || report()?.reportedDriver?.driverName }}</dd>
                   <dd class="text-sm text-gray-500">#{{ report()?.reportedDriver?.driverNumber }} - {{ report()?.reportedDriver?.driverClass }}</dd>
                 </div>
                 <div>
@@ -140,7 +140,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                   <div>
                     <dt class="text-sm text-gray-500">At Fault Driver</dt>
                     @if (report()?.atFaultDriver) {
-                      <dd class="font-medium text-gray-900">{{ report()?.atFaultDriver?.driverName }}</dd>
+                      <dd class="font-medium text-gray-900">{{ report()?.atFaultDriver?.displayName || report()?.atFaultDriver?.officialName || report()?.atFaultDriver?.driverName }}</dd>
                       <dd class="text-sm text-gray-500">#{{ report()?.atFaultDriver?.driverNumber }} - {{ report()?.atFaultDriver?.driverClass }}</dd>
                     } @else {
                       <dd class="text-sm text-gray-500 italic">Not assigned</dd>

@@ -16,6 +16,7 @@ import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_errors from "../lib/errors.js";
+import type * as lib_formatting from "../lib/formatting.js";
 import type * as lib_reports from "../lib/reports.js";
 import type * as lib_result from "../lib/result.js";
 import type * as migrations from "../migrations.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   "lib/auth": typeof lib_auth;
   "lib/errors": typeof lib_errors;
+  "lib/formatting": typeof lib_formatting;
   "lib/reports": typeof lib_reports;
   "lib/result": typeof lib_result;
   migrations: typeof migrations;

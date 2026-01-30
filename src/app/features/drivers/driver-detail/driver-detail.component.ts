@@ -58,9 +58,9 @@ interface SeriesPenaltyGroup {
               <span class="text-3xl font-bold text-primary-700">{{ driver()?.driverNumber }}</span>
             </div>
             <div>
-              <h1 class="text-2xl font-bold text-gray-900">{{ driver()?.driverName }}</h1>
-              @if (linkedUser()?.officialName && linkedUser()?.officialName !== driver()?.driverName) {
-                <p class="text-sm text-gray-600">Official: {{ linkedUser()?.officialName }}</p>
+              <h1 class="text-2xl font-bold text-gray-900">{{ driver()?.displayName ?? driver()?.driverName }}</h1>
+              @if (driver()?.displayName && driver()?.displayName !== driver()?.driverName) {
+                <p class="text-sm text-gray-600">{{ driver()?.driverName }}</p>
               }
               <div class="flex items-center gap-2 mt-1">
                 <app-badge variant="primary">{{ driver()?.driverClass }}</app-badge>
@@ -125,51 +125,61 @@ interface SeriesPenaltyGroup {
               <dt class="text-sm text-gray-500">Class</dt>
               <dd class="font-medium text-gray-900">{{ driver()?.driverClass }}</dd>
             </div>
+            <div>
+              <dt class="text-sm text-gray-500">Official Name</dt>
+              <dd class="font-medium text-gray-900">
+                @if (isEditingOfficialName()) {
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="text"
+                      class="input flex-1"
+                      [ngModel]="officialNameInput()"
+                      (ngModelChange)="officialNameInput.set($event)"
+                      [disabled]="officialNameSaving()"
+                    />
+                    <app-button
+                      variant="primary"
+                      size="sm"
+                      (onClick)="saveOfficialName()"
+                      [disabled]="officialNameSaving()"
+                    >
+                      {{ officialNameSaving() ? 'Saving...' : 'Save' }}
+                    </app-button>
+                    <app-button
+                      variant="secondary"
+                      size="sm"
+                      (onClick)="cancelEditingOfficialName()"
+                      [disabled]="officialNameSaving()"
+                    >
+                      Cancel
+                    </app-button>
+                  </div>
+                } @else {
+                  <div class="flex items-center gap-2">
+                    <span>{{ driver()?.officialName ?? driver()?.driverName }}</span>
+                    @if (canEditOfficialName()) {
+                      <button
+                        class="text-primary-600 hover:text-primary-800 text-sm"
+                        (click)="startEditingOfficialName()"
+                      >
+                        Edit
+                      </button>
+                    }
+                  </div>
+                }
+              </dd>
+            </div>
             @if (linkedUser()) {
               <div>
-                <dt class="text-sm text-gray-500">Official Name</dt>
-                <dd class="font-medium text-gray-900">
-                  @if (isEditingOfficialName()) {
-                    <div class="flex items-center gap-2">
-                      <input
-                        type="text"
-                        class="input flex-1"
-                        [ngModel]="officialNameInput()"
-                        (ngModelChange)="officialNameInput.set($event)"
-                        [disabled]="officialNameSaving()"
-                      />
-                      <app-button
-                        variant="primary"
-                        size="sm"
-                        (onClick)="saveOfficialName()"
-                        [disabled]="officialNameSaving()"
-                      >
-                        {{ officialNameSaving() ? 'Saving...' : 'Save' }}
-                      </app-button>
-                      <app-button
-                        variant="secondary"
-                        size="sm"
-                        (onClick)="cancelEditingOfficialName()"
-                        [disabled]="officialNameSaving()"
-                      >
-                        Cancel
-                      </app-button>
-                    </div>
-                  } @else {
-                    <div class="flex items-center gap-2">
-                      <span>{{ linkedUser()?.officialName ?? driver()?.driverName }}</span>
-                      @if (canEditOfficialName()) {
-                        <button
-                          class="text-primary-600 hover:text-primary-800 text-sm"
-                          (click)="startEditingOfficialName()"
-                        >
-                          Edit
-                        </button>
-                      }
-                    </div>
-                  }
-                </dd>
+                <dt class="text-sm text-gray-500">Linked User</dt>
+                <dd class="font-medium text-gray-900">{{ linkedUser()?.name }}</dd>
               </div>
+              @if (linkedUser()?.officialName) {
+                <div>
+                  <dt class="text-sm text-gray-500">User Official Name</dt>
+                  <dd class="font-medium text-gray-900">{{ linkedUser()?.officialName }}</dd>
+                </div>
+              }
             }
             @if (driver()?.externalId) {
               <div>
@@ -564,7 +574,7 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
   }
 
   startEditingOfficialName(): void {
-    const currentName = this.linkedUser()?.officialName ?? this.driver()?.driverName ?? '';
+    const currentName = this.driver()?.officialName ?? this.driver()?.driverName ?? '';
     this.officialNameInput.set(currentName);
     this.isEditingOfficialName.set(true);
   }
@@ -574,20 +584,18 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
   }
 
   async saveOfficialName(): Promise<void> {
-    const userId = this.linkedUser()?._id;
-    if (!userId) return;
-
-    const currentUserId = this.authService.getUserId();
-    if (!currentUserId) return;
+    const driverId = this.driver()?._id;
+    const userId = this.authService.getUserId();
+    if (!driverId || !userId) return;
 
     this.officialNameSaving.set(true);
     try {
       await this.convex.mutation(
-        this.convex.api.users.updateOfficialName,
+        this.convex.api.drivers.updateOfficialName,
         {
-          userId: userId,
+          driverId: driverId,
           officialName: this.officialNameInput(),
-          currentUserId: currentUserId
+          userId: userId
         }
       );
 

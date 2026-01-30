@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { getDriverDisplayName } from "./lib/formatting";
 
 interface EventRundownRow {
   reportId: number | null;
@@ -84,12 +85,18 @@ export const getEventRundown = query({
               return null;
             }
 
-            // Get display name (officialName if user is linked, else driverName)
-            let displayName = reportedDriver?.driverName ?? null;
+            // Get display name with priority: user.officialName > driver.officialName > driver.driverName
+            let userOfficialName: string | undefined;
             if (reportedDriver?.userId) {
               const user = await ctx.db.get(reportedDriver.userId);
-              if (user?.officialName) displayName = user.officialName;
+              userOfficialName = user?.officialName;
             }
+            const displayName = reportedDriver
+              ? getDriverDisplayName(
+                  { driverName: reportedDriver.driverName, officialName: reportedDriver.officialName },
+                  userOfficialName ? { officialName: userOfficialName } : undefined
+                )
+              : null;
 
             let appliedPenalty: any = null;
             let recommendedPenaltyObj: any = null;
@@ -325,12 +332,16 @@ export const getSeriesLicensePoints = query({
 
     const driverPoints = await Promise.all(
       drivers.map(async (driver) => {
-        // Get display name (officialName if user is linked, else driverName)
-        let displayName = driver.driverName;
+        // Get display name with priority: user.officialName > driver.officialName > driver.driverName
+        let userOfficialName: string | undefined;
         if (driver.userId) {
           const user = await ctx.db.get(driver.userId);
-          if (user?.officialName) displayName = user.officialName;
+          userOfficialName = user?.officialName;
         }
+        const displayName = getDriverDisplayName(
+          { driverName: driver.driverName, officialName: driver.officialName },
+          userOfficialName ? { officialName: userOfficialName } : undefined
+        );
 
         return {
           driverId: driver._id,
@@ -423,12 +434,16 @@ export const getSeriesLicensePointsWithPenalties = query({
         const driverId = driver._id.toString();
         const totalPoints = penaltyAccumulator[driverId] ?? 0;
 
-        // Get display name (officialName if user is linked, else driverName)
-        let displayName = driver.driverName;
+        // Get display name with priority: user.officialName > driver.officialName > driver.driverName
+        let userOfficialName: string | undefined;
         if (driver.userId) {
           const user = await ctx.db.get(driver.userId);
-          if (user?.officialName) displayName = user.officialName;
+          userOfficialName = user?.officialName;
         }
+        const displayName = getDriverDisplayName(
+          { driverName: driver.driverName, officialName: driver.officialName },
+          userOfficialName ? { officialName: userOfficialName } : undefined
+        );
 
         const allDriverSeriesPenalties = await ctx.db
           .query("driverSeriesPenalties")

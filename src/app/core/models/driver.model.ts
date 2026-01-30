@@ -4,6 +4,7 @@ export interface Driver {
   _id: Id<'drivers'>;
   driverNumber: number;
   driverName: string;
+  officialName?: string;
   username?: string;
   externalId?: string;
   driverClass: string;
