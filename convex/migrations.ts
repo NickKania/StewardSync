@@ -112,7 +112,7 @@ export const assignPenaltiesForSeries = internalMutation({
     for (const driver of drivers) {
       const driverId = driver._id.toString();
       const totalPoints = penaltyAccumulator[driverId] ?? 0;
-      const driverClass = driver.driverClass || "";
+      const driverClassId = driver.driverClassId || null;
 
       const existingDriverSeriesPenalties = await ctx.db
         .query("driverSeriesPenalties")
@@ -134,7 +134,7 @@ export const assignPenaltiesForSeries = internalMutation({
           .collect();
 
         for (const threshold of thresholds) {
-          const appliesToDriver = threshold.driverClassIds.some(id => id.toString() === driverClass);
+          const appliesToDriver = driverClassId && threshold.driverClassIds && threshold.driverClassIds.includes(driverClassId as any);
 
           if (appliesToDriver && totalPoints >= threshold.threshold) {
             if (assignedThresholds.includes(threshold._id)) {
@@ -159,11 +159,12 @@ export const assignPenaltiesForSeries = internalMutation({
                 },
               );
 
+              const driverClass = driverClassId ? await ctx.db.get(driverClassId) : null;
               assignedPenalties.push({
                 driverSeriesPenaltyId,
                 driverId: driver._id,
                 driverName: driver.driverName,
-                driverClass: driver.driverClass,
+                driverClass: driverClass?.displayName || "",
                 penaltyName: seriesPenalty.penaltyName,
                 threshold: threshold.threshold,
                 pointsAtAssignment: totalPoints,
@@ -468,12 +469,21 @@ export const migrateDriverClasses = mutation({
 
       // Step 4: Update seriesPenaltyThresholds to use driverClassIds
       const allThresholds = await ctx.db.query("seriesPenaltyThresholds").collect();
-      
+
       for (const threshold of allThresholds) {
         try {
-          // Get the old driverClasses array (strings)
+          // Check if threshold already has driverClassIds and is valid
+          if (threshold.driverClassIds && Array.isArray(threshold.driverClassIds) && threshold.driverClassIds.length > 0) {
+            // Threshold already migrated, skip it
+            continue;
+          }
+
+          // Get the old driverClasses array (strings) - legacy field
           const oldDriverClasses = (threshold as any).driverClasses;
-          if (!oldDriverClasses || !Array.isArray(oldDriverClasses)) continue;
+          if (!oldDriverClasses || !Array.isArray(oldDriverClasses)) {
+            results.errors.push(`Threshold ${threshold._id} has neither driverClassIds nor driverClasses`);
+            continue;
+          }
 
           // Get the seriesId from the parent seriesPenalty
           const seriesPenalty = await ctx.db.get(threshold.seriesPenaltyId);
@@ -529,10 +539,13 @@ export const getMigrationStatus = mutation({
     status.totalDrivers = allDrivers.length;
 
     const classSet = new Set<string>();
-    
+
     for (const driver of allDrivers) {
       const oldClass = (driver as any).driverClass;
-      if (oldClass && driver.championshipId) {
+      const hasDriverClassId = driver.driverClassId;
+
+      // Driver needs migration if it has old driverClass but no driverClassId
+      if (oldClass && !hasDriverClassId && driver.championshipId) {
         status.driversNeedingMigration++;
         classSet.add(`${driver.championshipId}:${oldClass}`);
       }
@@ -544,8 +557,14 @@ export const getMigrationStatus = mutation({
     status.totalThresholds = allThresholds.length;
 
     for (const threshold of allThresholds) {
+      // Check if threshold has the old driverClasses field and needs migration
       const oldDriverClasses = (threshold as any).driverClasses;
-      if (oldDriverClasses && Array.isArray(oldDriverClasses) && oldDriverClasses.length > 0) {
+      // Also check if it has driverClassIds but it's empty
+      const hasValidDriverClassIds = threshold.driverClassIds &&
+                                      Array.isArray(threshold.driverClassIds) &&
+                                      threshold.driverClassIds.length > 0;
+
+      if (oldDriverClasses && Array.isArray(oldDriverClasses) && oldDriverClasses.length > 0 && !hasValidDriverClassIds) {
         status.thresholdsNeedingMigration++;
       }
     }

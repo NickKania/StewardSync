@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const assignPenalty = mutation({
@@ -363,5 +363,44 @@ export const getUnservedPenaltiesBySeries = query({
     result.sort((a, b) => (a.seriesName ?? "").localeCompare(b.seriesName ?? ""));
 
     return result;
+  },
+});
+
+export const cleanupOrphanedPenalties = internalMutation({
+  args: {},
+  handler: async (ctx: any) => {
+    const driverSeriesPenalties = await ctx.db
+      .query("driverSeriesPenalties")
+      .collect();
+
+    const toRemove: any[] = [];
+
+    for (const dsp of driverSeriesPenalties) {
+      const threshold = await ctx.db.get(dsp.seriesPenaltyThresholdId);
+
+      if (!threshold) {
+        toRemove.push({
+          _id: dsp._id,
+          seriesPenaltyThresholdId: dsp.seriesPenaltyThresholdId,
+          seriesPenaltyId: dsp.seriesPenaltyId,
+          driverId: dsp.driverId,
+        });
+      }
+    }
+
+    for (const dsp of toRemove) {
+      try {
+        await ctx.db.delete(dsp._id);
+      } catch (error) {
+        console.error(`Failed to delete orphaned penalty ${dsp._id}:`, error);
+      }
+    }
+
+    return {
+      totalPenalties: driverSeriesPenalties.length,
+      orphanedCount: toRemove.length,
+      removedCount: toRemove.length,
+      removed: toRemove,
+    };
   },
 });

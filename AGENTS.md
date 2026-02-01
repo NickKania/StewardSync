@@ -469,6 +469,123 @@ bun run convex:local:push
 - Verify port 4200 is not in use
 - Check that Docker is running for local Convex
 
+#### Convex-Specific Debugging
+
+**Working with Local Convex (Docker Setup)**
+
+When working with the local Convex instance:
+
+1. **Generate Admin Key** (if not already configured):
+   ```bash
+   docker compose -f docker-compose.local.yml exec backend ./generate_admin_key.sh
+   # Copy the generated admin key
+   ```
+
+2. **Deploy Functions to Local Convex**:
+   ```bash
+   # Set environment variables
+   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210
+   CONVEX_SELF_HOSTED_ADMIN_KEY='your-generated-key'
+
+   # Deploy (without running dev server)
+   bun x convex deploy
+
+   # Or with specific environment
+   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
+     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
+     bun x convex deploy
+   ```
+
+3. **Run Queries/Mutations via CLI**:
+   ```bash
+   # Query function
+   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
+     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
+     bun x convex run tableName:functionName
+
+   # Mutation with arguments (JSON)
+   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
+     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
+     bun x convex run migrations:getMigrationStatus
+
+   # Function with JSON args
+   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
+     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
+     bun x convex run seriesPenaltyThresholds:getById '{"id":"kh7djwzs4hz1tfgfbbgabtrxqh7zc8x0"}'
+   ```
+
+4. **Check Convex Data**:
+   ```bash
+   # View all records in a table
+   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
+     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
+     bun x convex data tableName
+
+   # Example: check driver series penalties
+   bun x convex data driverSeriesPenalties
+
+   # Example: check thresholds
+   bun x convex data seriesPenaltyThresholds
+   ```
+
+5. **List Available Functions**:
+   ```bash
+   bun x convex run migrations:getMigrationStatus 2>&1 | grep "•"
+   # Shows all available functions if an invalid function name is used
+   ```
+
+**Debugging Data Integrity Issues**
+
+When investigating Convex data issues:
+
+1. **Check Schema vs Data**:
+   - Verify schema in `convex/schema.ts` matches data structure
+   - Use `bun x convex data tableName` to inspect actual data
+   - Look for missing fields or incorrect types
+
+2. **Identify Orphaned Records**:
+   - Query for records and check if referenced IDs exist
+   - Example: If penalties reference thresholds that don't exist
+   - Create cleanup mutation to remove orphaned records
+
+3. **Test Functions Step by Step**:
+   - Run queries via CLI to verify data retrieval
+   - Run mutations via CLI to test data creation
+   - Check function returns match expected TypeScript types
+
+4. **Migration Debugging**:
+   - Run `migrations:getMigrationStatus` to see what needs migration
+   - Run migrations incrementally, checking results after each step
+   - Verify migration completed successfully before proceeding
+
+5. **Common Convex CLI Commands**:
+   ```bash
+   # Deploy code only (no dev server)
+   bun x convex deploy
+
+   # List data from table
+   bun x convex data tableName
+
+   # Run query/mutation
+   bun x convex run fileName:functionName [args]
+
+   # Check available functions (by running invalid function)
+   bun x convex run invalidName
+
+   # View logs
+   bun run convex:local:logs
+   ```
+
+**Error Handling Pattern**:
+
+When Convex functions fail:
+
+1. Read the error message carefully - it often points to the exact issue
+2. Check if function exists and path is correct (use `fileName:functionName` format)
+3. Verify arguments are valid JSON format for mutations
+4. Check data types match schema expectations
+5. Use `bun x convex data tableName` to inspect current data state
+
 ---
 
 ## Additional Resources

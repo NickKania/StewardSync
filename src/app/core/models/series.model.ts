@@ -1,4 +1,5 @@
 import { Id } from '@convex/_generated/dataModel';
+import { DriverClass } from './driver.model';
 
 export interface Series {
   _id: Id<'series'>;
@@ -27,7 +28,7 @@ export interface SeriesPenaltyThreshold {
   seriesPenaltyId: Id<'seriesPenalties'>;
   threshold: number;
   driverClassIds: Id<'driverClasses'>[];
-  driverClasses?: string[]; // Display names populated when joined
+  driverClassObjects?: DriverClass[]; // Populated by backend queries
   createdAt: number;
 }
 

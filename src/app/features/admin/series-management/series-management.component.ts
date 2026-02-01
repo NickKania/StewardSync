@@ -23,6 +23,7 @@ import {
   SeriesPenalty,
   SeriesPenaltyThreshold,
 } from "@core/models/series.model";
+import { DriverClass } from "@core/models/driver.model";
 import { Id } from "@convex/_generated/dataModel";
 
 @Component({
@@ -417,11 +418,15 @@ import { Id } from "@convex/_generated/dataModel";
                                       >for:</span
                                     >
                                     @for (
-                                      driverClass of threshold.driverClasses;
-                                      track driverClass
+                                      driverClass of threshold.driverClassObjects;
+                                      track driverClass._id
                                     ) {
                                       <app-badge variant="default" size="sm">
-                                        {{ driverClass }}
+                                        {{
+                                          driverClass.displayName ||
+                                            driverClass.className ||
+                                            "Unknown"
+                                        }}
                                       </app-badge>
                                     }
                                   </div>
@@ -784,6 +789,7 @@ import { Id } from "@convex/_generated/dataModel";
                     variant="secondary"
                     size="sm"
                     (click)="addThreshold()"
+                    [disabled]="loadingDriverClasses"
                   >
                     <svg
                       class="w-4 h-4 mr-1"
@@ -801,62 +807,68 @@ import { Id } from "@convex/_generated/dataModel";
                     Add Threshold
                   </app-button>
                 </div>
-                @if (thresholds.length === 0) {
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    No thresholds added. Add at least one threshold.
-                  </p>
-                }
-                @for (threshold of thresholds; track threshold.id) {
-                  <div
-                    class="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 dark:border-gray-700 mb-3"
-                  >
-                    <div class="flex justify-between items-start mb-3">
-                      <div class="flex-1 mr-4">
-                        <label class="label">Threshold (points)</label>
-                        <input
-                          type="number"
-                          class="input w-full"
-                          [(ngModel)]="threshold.threshold"
-                          placeholder="e.g., 10"
-                          min="1"
+                @if (loadingDriverClasses) {
+                  <app-loading text="Loading driver classes..." />
+                } @else {
+                  @if (thresholds.length === 0) {
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      No thresholds added. Add at least one threshold.
+                    </p>
+                  }
+                  @for (threshold of thresholds; track threshold.id) {
+                    <div
+                      class="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 dark:border-gray-700 mb-3"
+                    >
+                      <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1 mr-4">
+                          <label class="label">Threshold (points)</label>
+                          <input
+                            type="number"
+                            class="input w-full"
+                            [(ngModel)]="threshold.threshold"
+                            placeholder="e.g., 10"
+                            min="1"
+                          />
+                        </div>
+                        <button
+                          (click)="removeThreshold(threshold.id || '')"
+                          class="text-gray-400 hover:text-red-600 p-1"
+                          type="button"
+                        >
+                          <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"
+                            ></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div>
+                        <label class="label">Driver Classes</label>
+                        <app-multi-select
+                          [label]="''"
+                          [placeholder]="
+                            'Select driver classes for this threshold'
+                          "
+                          [options]="
+                            getDriverClassOptions(
+                              threshold.selectedDriverClasses
+                            )
+                          "
+                          (selectionChange)="
+                            onThresholdClassesChange(threshold.id || '', $event)
+                          "
                         />
                       </div>
-                      <button
-                        (click)="removeThreshold(threshold.id || '')"
-                        class="text-gray-400 hover:text-red-600 p-1"
-                        type="button"
-                      >
-                        <svg
-                          class="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                          ></path>
-                        </svg>
-                      </button>
                     </div>
-                    <div>
-                      <label class="label">Driver Classes</label>
-                      <app-multi-select
-                        [label]="''"
-                        [placeholder]="
-                          'Select driver classes for this threshold'
-                        "
-                        [options]="
-                          getDriverClassOptions(threshold.selectedDriverClasses)
-                        "
-                        (selectionChange)="
-                          onThresholdClassesChange(threshold.id || '', $event)
-                        "
-                      />
-                    </div>
-                  </div>
+                  }
                 }
               </div>
             </div>
@@ -1036,7 +1048,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   series = signal<Series[]>([]);
   penalties = signal<Penalty[]>([]);
   seriesPenalties = signal<SeriesPenalty[]>([]);
-  driverClasses = signal<string[]>([]);
+  availableDriverClasses = signal<DriverClass[]>([]);
   seriesPenaltyThresholds = signal<Map<string, any[]>>(new Map());
   loading = signal(true);
 
@@ -1331,7 +1343,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     return this.seriesPenalties().filter((sp) => sp.seriesId === seriesId);
   }
 
-  async addSeriesPenalty(seriesId: Id<"series">): Promise<void> {
+  addSeriesPenalty(seriesId: Id<"series">): void {
     this.loadingDriverClasses = true;
     this.editingSeriesPenaltyId = null;
     this.seriesPenaltyForm.seriesId = seriesId;
@@ -1339,23 +1351,26 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     this.seriesPenaltyForm.penaltyDescription = "";
     this.thresholds = [];
 
-    try {
-      const classes = await this.convex.query(
-        this.convex.api.drivers.getDriverClassesBySeries,
-        { seriesId },
-      );
-
-      this.driverClasses.set(classes);
-    } catch (error) {
-      console.error("Failed to load driver classes:", error);
-    } finally {
-      this.loadingDriverClasses = false;
-    }
-
+    // Show modal immediately, then fetch data
     this.showSeriesPenaltyModal = true;
+
+    // Fetch driver classes for this series asynchronously
+    this.convex
+      .query(this.convex.api.driverClasses.getDriverClassesWithUsage, {
+        seriesId,
+      })
+      .then((classes) => {
+        this.availableDriverClasses.set(classes);
+        this.loadingDriverClasses = false;
+      })
+      .catch((error) => {
+        console.error("Failed to load driver classes:", error);
+        this.loadingDriverClasses = false;
+      });
   }
 
   editSeriesPenalty(seriesPenalty: SeriesPenalty): void {
+    this.loadingDriverClasses = true;
     this.editingSeriesPenaltyId = seriesPenalty._id;
     this.seriesPenaltyForm.seriesId = seriesPenalty.seriesId;
     this.seriesPenaltyForm.penaltyName = seriesPenalty.penaltyName;
@@ -1370,7 +1385,22 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           t.driverClassIds?.map((id) => id.toString()) || [],
       })) || [];
 
+    // Show modal immediately, then fetch data
     this.showSeriesPenaltyModal = true;
+
+    // Fetch driver classes for this series asynchronously
+    this.convex
+      .query(this.convex.api.driverClasses.getDriverClassesWithUsage, {
+        seriesId: seriesPenalty.seriesId,
+      })
+      .then((classes) => {
+        this.availableDriverClasses.set(classes);
+        this.loadingDriverClasses = false;
+      })
+      .catch((error) => {
+        console.error("Failed to load driver classes:", error);
+        this.loadingDriverClasses = false;
+      });
   }
 
   addThreshold(): void {
@@ -1386,10 +1416,12 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   }
 
   getDriverClassOptions(selectedClasses: string[]): MultiSelectOption[] {
-    return this.driverClasses().map((c) => ({
-      value: c,
-      label: c,
-      selected: selectedClasses.includes(c),
+    return this.availableDriverClasses().map((dc: any) => ({
+      value: typeof dc._id === "string" ? dc._id : String(dc._id),
+      label: String(dc.className || "Unknown"),
+      selected: selectedClasses.includes(
+        typeof dc._id === "string" ? dc._id : String(dc._id),
+      ),
     }));
   }
 
@@ -1444,7 +1476,9 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
             {
               seriesPenaltyId: this.editingSeriesPenaltyId,
               threshold: threshold.threshold,
-              driverClasses: threshold.selectedDriverClasses,
+              driverClassIds: threshold.selectedDriverClasses.map(
+                (id) => id as Id<"driverClasses">,
+              ),
             },
           );
         }
@@ -1465,7 +1499,9 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
             {
               seriesPenaltyId,
               threshold: threshold.threshold,
-              driverClasses: threshold.selectedDriverClasses,
+              driverClassIds: threshold.selectedDriverClasses.map(
+                (id) => id as Id<"driverClasses">,
+              ),
             },
           );
         }
@@ -1513,6 +1549,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       penaltyDescription: "",
     };
     this.thresholds = [];
+    this.availableDriverClasses.set([]);
   }
 
   async importEvents(seriesId: Id<"series">): Promise<void> {

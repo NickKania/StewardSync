@@ -42,7 +42,9 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
       } @else {
         <div class="space-y-6">
           @for (group of penaltyGroups(); track group.seriesId) {
-            <div class="border border-gray-200 rounded-lg overflow-hidden dark:border-gray-700">
+            <div
+              class="border border-gray-200 rounded-lg overflow-hidden dark:border-gray-700"
+            >
               <button
                 (click)="toggleSeries(group.seriesId)"
                 class="w-full px-4 py-3 bg-gray-50 flex items-center justify-between hover:bg-gray-100 transition-colors dark:bg-gray-800 dark:hover:bg-gray-700"
@@ -52,7 +54,8 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
                     {{ group.seriesName || "Unknown Series" }}
                   </h3>
                   <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ group.penalties.length }} driver(s) with unserved penalties
+                    {{ group.penalties.length }} driver(s) with unserved
+                    penalties
                   </p>
                 </div>
                 <svg
@@ -95,10 +98,14 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
                         @for (penalty of group.penalties; track penalty._id) {
                           <tr>
                             <td class="py-3">
-                              <p class="font-medium text-gray-900 dark:text-gray-100">
+                              <p
+                                class="font-medium text-gray-900 dark:text-gray-100"
+                              >
                                 {{ penalty.driver?.driverName || "Unknown" }}
                               </p>
-                              <p class="text-sm text-gray-500 dark:text-gray-400">
+                              <p
+                                class="text-sm text-gray-500 dark:text-gray-400"
+                              >
                                 #{{ penalty.driver?.driverNumber || "-" }}
                               </p>
                             </td>
@@ -106,20 +113,30 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
                               {{ penalty.driver?.driverClass || "-" }}
                             </td>
                             <td class="py-3">
-                              <p class="font-medium text-gray-900 dark:text-gray-100">
+                              <p
+                                class="font-medium text-gray-900 dark:text-gray-100"
+                              >
                                 {{ penalty.seriesPenalty?.penaltyName || "-" }}
                               </p>
-                              @if (
-                                penalty.seriesPenalty?.penaltyDescription
-                              ) {
-                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                              @if (penalty.seriesPenalty?.penaltyDescription) {
+                                <p
+                                  class="text-sm text-gray-500 dark:text-gray-400"
+                                >
                                   {{ penalty.seriesPenalty.penaltyDescription }}
                                 </p>
                               }
                             </td>
                             <td class="py-3 text-gray-700 dark:text-gray-300">
-                              {{ penalty.seriesPenaltyThreshold?.threshold || "-" }}
-                              points
+                              @if (penalty.seriesPenaltyThreshold?.threshold) {
+                                {{ penalty.seriesPenaltyThreshold.threshold }} points
+                              } @else {
+                                <span
+                                  class="text-gray-400 italic"
+                                  title="Threshold data not available - data may need to be migrated"
+                                >
+                                  Not available
+                                </span>
+                              }
                             </td>
                             <td class="py-3 text-gray-700 dark:text-gray-300">
                               {{ penalty.pointsAtAssignment }} points
@@ -181,6 +198,29 @@ export class PenaltyOverviewCardComponent implements OnInit {
         {},
       );
       this.penaltyGroups.set(data || []);
+
+      let totalPenalties = 0;
+      let penaltiesWithoutThreshold = 0;
+
+      data?.forEach((group: any) => {
+        group.penalties?.forEach((penalty: any) => {
+          totalPenalties++;
+          if (!penalty.seriesPenaltyThreshold?.threshold) {
+            penaltiesWithoutThreshold++;
+            console.warn(`[PenaltyOverview] Missing threshold data for penalty:`, {
+              penaltyId: penalty._id,
+              driverId: penalty.driverId,
+              seriesPenaltyThresholdId: penalty.seriesPenaltyThresholdId,
+            });
+          }
+        });
+      });
+
+      if (penaltiesWithoutThreshold > 0) {
+        console.warn(
+          `[PenaltyOverview] ${penaltiesWithoutThreshold}/${totalPenalties} penalties are missing threshold data. Data migration may be needed.`
+        );
+      }
 
       const seriesIds = new Set<string>();
       this.penaltyGroups().forEach((group) => {

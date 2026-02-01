@@ -554,9 +554,9 @@ export const finalize = mutation({
       for (const driver of drivers) {
         const driverId = driver._id.toString();
         const totalPoints = penaltyAccumulator[driverId] ?? 0;
-        const driverClass = driver.driverClass || "";
+        const driverClassId = driver.driverClassId || null;
 
-        console.log(`[FINALIZE] Checking driver ${driver.driverNumber} (${driverId}): totalPoints=${totalPoints}, driverClass=${driverClass}`);
+        console.log(`[FINALIZE] Checking driver ${driver.driverNumber} (${driverId}): totalPoints=${totalPoints}, driverClassId=${driverClassId}`);
 
         const existingDriverSeriesPenalties = await ctx.db
           .query("driverSeriesPenalties")
@@ -580,7 +580,7 @@ export const finalize = mutation({
             .collect();
 
           for (const threshold of thresholds) {
-            const appliesToDriver = threshold.driverClassIds.some(id => id.toString() === driverClass);
+            const appliesToDriver = driverClassId && threshold.driverClassIds && threshold.driverClassIds.includes(driverClassId as any);
             const thresholdMet = totalPoints >= threshold.threshold;
             const alreadyAssigned = assignedThresholds.includes(threshold._id.toString());
 

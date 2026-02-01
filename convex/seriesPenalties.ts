@@ -5,7 +5,7 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     const seriesPenalties = await ctx.db.query("seriesPenalties").collect();
-    
+
     const seriesPenaltiesWithDetails = await Promise.all(
       seriesPenalties.map(async (sp) => {
         const series = await ctx.db.get(sp.seriesId);
@@ -13,15 +13,29 @@ export const list = query({
           .query("seriesPenaltyThresholds")
           .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", sp._id))
           .collect();
-        
+
+        // Populate driverClassObjects for each threshold
+        const thresholdsWithDriverClasses = await Promise.all(
+          thresholds.map(async (t) => {
+            const driverClassObjects = await Promise.all(
+              t.driverClassIds.map(async (id) => await ctx.db.get(id)),
+            ).then((classes) => classes.filter(Boolean));
+
+            return {
+              ...t,
+              driverClassObjects,
+            };
+          }),
+        );
+
         return {
           ...sp,
           series,
-          thresholds,
+          thresholds: thresholdsWithDriverClasses,
         };
-      })
+      }),
     );
-    
+
     return seriesPenaltiesWithDetails;
   },
 });
@@ -33,7 +47,7 @@ export const listBySeries = query({
       .query("seriesPenalties")
       .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
       .collect();
-    
+
     const seriesPenaltiesWithDetails = await Promise.all(
       seriesPenalties.map(async (sp) => {
         const series = await ctx.db.get(sp.seriesId);
@@ -41,15 +55,29 @@ export const listBySeries = query({
           .query("seriesPenaltyThresholds")
           .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", sp._id))
           .collect();
-        
+
+        // Populate driverClassObjects for each threshold
+        const thresholdsWithDriverClasses = await Promise.all(
+          thresholds.map(async (t) => {
+            const driverClassObjects = await Promise.all(
+              t.driverClassIds.map(async (id) => await ctx.db.get(id)),
+            ).then((classes) => classes.filter(Boolean));
+
+            return {
+              ...t,
+              driverClassObjects,
+            };
+          }),
+        );
+
         return {
           ...sp,
           series,
-          thresholds,
+          thresholds: thresholdsWithDriverClasses,
         };
-      })
+      }),
     );
-    
+
     return seriesPenaltiesWithDetails;
   },
 });
@@ -61,17 +89,31 @@ export const getById = query({
     if (!seriesPenalty) {
       return null;
     }
-    
+
     const series = await ctx.db.get(seriesPenalty.seriesId);
     const thresholds = await ctx.db
       .query("seriesPenaltyThresholds")
       .withIndex("by_series_penalty", (q) => q.eq("seriesPenaltyId", args.id))
       .collect();
-    
+
+    // Populate driverClassObjects for each threshold
+    const thresholdsWithDriverClasses = await Promise.all(
+      thresholds.map(async (t) => {
+        const driverClassObjects = await Promise.all(
+          t.driverClassIds.map(async (id) => await ctx.db.get(id)),
+        ).then((classes) => classes.filter(Boolean));
+
+        return {
+          ...t,
+          driverClassObjects,
+        };
+      }),
+    );
+
     return {
       ...seriesPenalty,
       series,
-      thresholds,
+      thresholds: thresholdsWithDriverClasses,
     };
   },
 });
