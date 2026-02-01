@@ -150,7 +150,7 @@ export const debugPenaltyAssignment = query({
         .collect();
 
       for (const threshold of thresholds) {
-        const appliesToDriver = threshold.driverClasses.includes(driver.driverClass || "");
+        const appliesToDriver = threshold.driverClassIds.some(id => id.toString() === (driver.driverClass || ""));
         const thresholdMet = totalPoints >= threshold.threshold;
         const alreadyAssigned = assignedThresholds.includes(threshold._id.toString());
 
@@ -160,7 +160,7 @@ export const debugPenaltyAssignment = query({
           thresholdId: threshold._id,
           thresholdValue: threshold.threshold,
           driverClass: driver.driverClass,
-          thresholdDriverClasses: threshold.driverClasses,
+          thresholdDriverClasses: threshold.driverClassIds,
           appliesToDriver,
           totalPoints,
           thresholdMet,
@@ -312,7 +312,7 @@ export const manuallyAssignPenaltiesForReport = mutation({
           .collect();
 
         for (const threshold of thresholds) {
-          const appliesToDriver = threshold.driverClasses.includes(driverClass);
+          const appliesToDriver = threshold.driverClassIds.some(id => id.toString() === driverClass);
           const thresholdMet = totalPoints >= threshold.threshold;
           const alreadyAssigned = assignedThresholds.includes(threshold._id.toString());
 

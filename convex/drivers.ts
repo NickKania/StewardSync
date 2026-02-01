@@ -100,7 +100,7 @@ export const getByChampionship = query({
       .withIndex("by_championship", (q) => q.eq("championshipId", args.championshipId))
       .collect();
 
-    // Enrich with display names
+    // Enrich with display names and driver class data
     const enrichedDrivers = await Promise.all(
       drivers.map(async (driver) => {
         let userOfficialName: string | undefined;
@@ -110,9 +110,21 @@ export const getByChampionship = query({
             userOfficialName = user.officialName;
           }
         }
+        
+        // Get driver class information
+        let driverClassData = null;
+        if (driver.driverClassId) {
+          driverClassData = await ctx.db.get(driver.driverClassId);
+        }
+        
         return {
           ...driver,
           displayName: getDriverDisplayName(driver, userOfficialName ? { officialName: userOfficialName } : undefined),
+          driverClass: driverClassData ? {
+            _id: driverClassData._id,
+            className: driverClassData.className,
+            displayName: driverClassData.displayName,
+          } : null,
         };
       })
     );
@@ -127,7 +139,7 @@ export const create = mutation({
     driverName: v.string(),
     username: v.optional(v.string()),
     externalId: v.optional(v.string()),
-    driverClass: v.string(),
+    driverClassId: v.id("driverClasses"),
     steamId: v.optional(v.string()),
     championshipId: v.optional(v.id("series")),
   },
@@ -163,7 +175,7 @@ export const update = mutation({
     officialName: v.optional(v.string()),
     username: v.optional(v.string()),
     externalId: v.optional(v.string()),
-    driverClass: v.optional(v.string()),
+    driverClassId: v.optional(v.id("driverClasses")),
     steamId: v.optional(v.string()),
     championshipId: v.optional(v.id("series")),
   },
@@ -240,14 +252,12 @@ export const updateOfficialName = mutation({
 export const getDriverClassesBySeries = query({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
-    const drivers = await ctx.db
-      .query("drivers")
-      .withIndex("by_championship", (q) => q.eq("championshipId", args.seriesId))
+    const driverClasses = await ctx.db
+      .query("driverClasses")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
       .collect();
     
-    const driverClasses = [...new Set(drivers.map((d) => d.driverClass))];
-    
-    return driverClasses.sort();
+    return driverClasses.sort((a, b) => a.className.localeCompare(b.className));
   },
 });
 
@@ -284,7 +294,7 @@ export const importOrUpdateDriver = mutation({
     driverNumber: v.number(),
     driverName: v.string(),
     username: v.optional(v.string()),
-    driverClass: v.string(),
+    driverClassId: v.id("driverClasses"),
     steamId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -309,7 +319,7 @@ export const importOrUpdateDriver = mutation({
         driverName: args.driverName,
         officialName,
         username: args.username,
-        driverClass: args.driverClass,
+        driverClassId: args.driverClassId,
         steamId: args.steamId,
       });
       return { action: 'updated', driverId: driverInThisChampionship._id };
@@ -326,7 +336,7 @@ export const importOrUpdateDriver = mutation({
         driverName: args.driverName,
         officialName,
         username: args.username,
-        driverClass: args.driverClass,
+        driverClassId: args.driverClassId,
         steamId: args.steamId,
         championshipId: args.championshipId,
       });
@@ -339,7 +349,7 @@ export const importOrUpdateDriver = mutation({
       driverName: args.driverName,
       officialName,
       username: args.username,
-      driverClass: args.driverClass,
+      driverClassId: args.driverClassId,
       steamId: args.steamId,
       championshipId: args.championshipId,
       createdAt: Date.now(),
@@ -364,7 +374,7 @@ export const getUserDriverLinks = query({
       driverId: driver._id,
       driverNumber: driver.driverNumber,
       driverName: driver.driverName,
-      driverClass: driver.driverClass,
+      driverClassId: driver.driverClassId,
       username: driver.username,
       externalId: driver.externalId,
       steamId: driver.steamId,

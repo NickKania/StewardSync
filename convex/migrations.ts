@@ -1,6 +1,8 @@
 import { mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { UserFacingError } from "./lib/errors";
+import type { Id } from "./_generated/dataModel";
 
 export const migratePenaltiesAddLap1Time = mutation({
   args: {},
@@ -132,7 +134,7 @@ export const assignPenaltiesForSeries = internalMutation({
           .collect();
 
         for (const threshold of thresholds) {
-          const appliesToDriver = threshold.driverClasses.includes(driverClass);
+          const appliesToDriver = threshold.driverClassIds.some(id => id.toString() === driverClass);
 
           if (appliesToDriver && totalPoints >= threshold.threshold) {
             if (assignedThresholds.includes(threshold._id)) {
@@ -371,5 +373,183 @@ export const cleanupIncorrectDriverSeriesPenalties = internalMutation({
       kept,
       errors,
     };
+  },
+});
+/**
+ * Migration to convert driverClass strings to driverClassId references
+ * This should be run once after deploying the schema changes
+ */
+export const migrateDriverClasses = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const results = {
+      driverClassesCreated: 0,
+      driversUpdated: 0,
+      thresholdsUpdated: 0,
+      errors: [] as string[],
+    };
+
+    try {
+      // Step 1: Get all drivers with the old driverClass field
+      const allDrivers = await ctx.db.query("drivers").collect();
+      
+      // Group drivers by (seriesId, driverClass) to create unique driver classes
+      const classMap = new Map<string, { seriesId: string; className: string; drivers: any[] }>();
+      
+      for (const driver of allDrivers) {
+        // Skip drivers without championshipId (unassigned drivers)
+        if (!driver.championshipId) continue;
+        
+        // Access the old driverClass field (will be removed after migration)
+        const oldClass = (driver as any).driverClass;
+        if (!oldClass) continue;
+        
+        const key = `${driver.championshipId}:${oldClass}`;
+        if (!classMap.has(key)) {
+          classMap.set(key, {
+            seriesId: driver.championshipId,
+            className: oldClass,
+            drivers: [],
+          });
+        }
+        classMap.get(key)!.drivers.push(driver);
+      }
+
+      // Step 2: Create driverClasses for each unique (seriesId, className) combination
+      const classIdMap = new Map<string, Id<"driverClasses">>(); // Maps "seriesId:className" to driverClassId
+      
+      for (const [key, { seriesId, className }] of classMap) {
+        try {
+          // Check if driver class already exists
+          const existing = await ctx.db
+            .query("driverClasses")
+            .withIndex("by_series_class", (q) =>
+              q.eq("seriesId", seriesId as Id<"series">).eq("className", className)
+            )
+            .first();
+
+          if (existing) {
+            classIdMap.set(key, existing._id);
+          } else {
+            // Create new driver class
+            const driverClassId = await ctx.db.insert("driverClasses", {
+              seriesId: seriesId as Id<"series">,
+              className,
+              displayName: className,
+              createdAt: Date.now(),
+            });
+            classIdMap.set(key, driverClassId);
+            results.driverClassesCreated++;
+          }
+        } catch (error) {
+          results.errors.push(`Failed to create driver class ${key}: ${error}`);
+        }
+      }
+
+      // Step 3: Update all drivers to use driverClassId
+      for (const [key, { drivers }] of classMap) {
+        const driverClassId = classIdMap.get(key);
+        if (!driverClassId) {
+          results.errors.push(`Missing driverClassId for ${key}`);
+          continue;
+        }
+
+        for (const driver of drivers) {
+          try {
+            await ctx.db.patch(driver._id, {
+              driverClassId: driverClassId as Id<"driverClasses">,
+            });
+            results.driversUpdated++;
+          } catch (error) {
+            results.errors.push(`Failed to update driver ${driver._id}: ${error}`);
+          }
+        }
+      }
+
+      // Step 4: Update seriesPenaltyThresholds to use driverClassIds
+      const allThresholds = await ctx.db.query("seriesPenaltyThresholds").collect();
+      
+      for (const threshold of allThresholds) {
+        try {
+          // Get the old driverClasses array (strings)
+          const oldDriverClasses = (threshold as any).driverClasses;
+          if (!oldDriverClasses || !Array.isArray(oldDriverClasses)) continue;
+
+          // Get the seriesId from the parent seriesPenalty
+          const seriesPenalty = await ctx.db.get(threshold.seriesPenaltyId);
+          if (!seriesPenalty) {
+            results.errors.push(`Missing seriesPenalty for threshold ${threshold._id}`);
+            continue;
+          }
+
+          // Convert class names to driverClassIds
+          const newDriverClassIds: Id<"driverClasses">[] = [];
+          for (const className of oldDriverClasses) {
+            const key = `${seriesPenalty.seriesId}:${className}`;
+            const driverClassId = classIdMap.get(key);
+            if (driverClassId) {
+              newDriverClassIds.push(driverClassId as Id<"driverClasses">);
+            } else {
+              results.errors.push(`Missing driverClassId for threshold ${threshold._id}, class: ${className}`);
+            }
+          }
+
+          // Update the threshold
+          await ctx.db.patch(threshold._id, {
+            driverClassIds: newDriverClassIds,
+          });
+          results.thresholdsUpdated++;
+        } catch (error) {
+          results.errors.push(`Failed to update threshold ${threshold._id}: ${error}`);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      throw new UserFacingError(`Migration failed: ${error}`);
+    }
+  },
+});
+
+/**
+ * Get migration status - shows what would be migrated without making changes
+ */
+export const getMigrationStatus = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const status = {
+      totalDrivers: 0,
+      driversNeedingMigration: 0,
+      uniqueClassCombinations: 0,
+      totalThresholds: 0,
+      thresholdsNeedingMigration: 0,
+    };
+
+    const allDrivers = await ctx.db.query("drivers").collect();
+    status.totalDrivers = allDrivers.length;
+
+    const classSet = new Set<string>();
+    
+    for (const driver of allDrivers) {
+      const oldClass = (driver as any).driverClass;
+      if (oldClass && driver.championshipId) {
+        status.driversNeedingMigration++;
+        classSet.add(`${driver.championshipId}:${oldClass}`);
+      }
+    }
+
+    status.uniqueClassCombinations = classSet.size;
+
+    const allThresholds = await ctx.db.query("seriesPenaltyThresholds").collect();
+    status.totalThresholds = allThresholds.length;
+
+    for (const threshold of allThresholds) {
+      const oldDriverClasses = (threshold as any).driverClasses;
+      if (oldDriverClasses && Array.isArray(oldDriverClasses) && oldDriverClasses.length > 0) {
+        status.thresholdsNeedingMigration++;
+      }
+    }
+
+    return status;
   },
 });

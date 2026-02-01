@@ -21,13 +21,23 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_discord_id", ["discordId"]),
 
+  driverClasses: defineTable({
+    seriesId: v.id("series"),
+    className: v.string(),
+    displayName: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_series", ["seriesId"])
+    .index("by_series_class", ["seriesId", "className"]),
+
   drivers: defineTable({
     driverNumber: v.number(),
     driverName: v.string(),
     officialName: v.optional(v.string()),
     username: v.optional(v.string()),
     externalId: v.optional(v.string()),
-    driverClass: v.string(),
+    driverClassId: v.optional(v.id("driverClasses")),
+    driverClass: v.optional(v.string()),
     steamId: v.optional(v.string()),
     championshipId: v.optional(v.id("series")),
     userId: v.optional(v.id("users")),
@@ -38,7 +48,8 @@ export default defineSchema({
     .index("by_external_id", ["externalId"])
     .index("by_steam_id", ["steamId"])
     .index("by_championship", ["championshipId"])
-    .index("by_user_id", ["userId"]),
+    .index("by_user_id", ["userId"])
+    .index("by_driver_class", ["driverClassId"]),
 
   series: defineTable({
     name: v.string(),
@@ -88,7 +99,7 @@ export default defineSchema({
   seriesPenaltyThresholds: defineTable({
     seriesPenaltyId: v.id("seriesPenalties"),
     threshold: v.number(),
-    driverClasses: v.array(v.string()),
+    driverClassIds: v.array(v.id("driverClasses")),
     createdAt: v.number(),
   }).index("by_series_penalty", ["seriesPenaltyId"]),
 

@@ -89,6 +89,23 @@ interface ImportOrUpdateDriverResult {
   driverId: string;
 }
 
+interface GetOrCreateDriverClassResult {
+  action: "existing" | "created";
+  driverClassId: string;
+}
+
+// Helper function to get or create driver class
+async function runGetOrCreateDriverClass(
+  ctx: any,
+  args: {
+    seriesId: string;
+    className: string;
+  },
+): Promise<GetOrCreateDriverClassResult> {
+  // @ts-expect-error - Circular type inference in Convex API
+  return ctx.runMutation(api.driverClasses.getOrCreate, args);
+}
+
 // Helper function to avoid circular type inference in Convex
 async function runImportOrUpdateDriver(
   ctx: any,
@@ -97,11 +114,10 @@ async function runImportOrUpdateDriver(
     driverNumber: number;
     driverName: string;
     username?: string;
-    driverClass: string;
+    driverClassId: string;
     steamId?: string;
   },
 ): Promise<ImportOrUpdateDriverResult> {
-  // @ts-expect-error - Circular type inference in Convex API
   return ctx.runMutation(api.drivers.importOrUpdateDriver, args);
 }
 
@@ -133,6 +149,9 @@ export const importDriversFromSimGrid = action({
       const simgridDrivers = parseCSV(csvText);
 
       const results: Array<{ action: string; driverId: string; name: string }> = [];
+      
+      // Track driver classes to avoid duplicate getOrCreate calls
+      const driverClassCache = new Map<string, string>();
 
       for (const simgridDriver of simgridDrivers) {
         const carNumber = parseInt(simgridDriver.carNumber, 10);
@@ -140,12 +159,27 @@ export const importDriversFromSimGrid = action({
           continue;
         }
 
+        // Get or create driver class
+        const classCacheKey = `${args.championshipId}:${simgridDriver.carClass}`;
+        let driverClassId: string;
+        
+        if (driverClassCache.has(classCacheKey)) {
+          driverClassId = driverClassCache.get(classCacheKey)!;
+        } else {
+          const driverClassResult = await runGetOrCreateDriverClass(ctx, {
+            seriesId: args.championshipId,
+            className: simgridDriver.carClass,
+          });
+          driverClassId = driverClassResult.driverClassId;
+          driverClassCache.set(classCacheKey, driverClassId);
+        }
+
         const result = await runImportOrUpdateDriver(ctx, {
           championshipId: args.championshipId,
           driverNumber: carNumber,
           driverName: simgridDriver.realName,
           username: simgridDriver.username,
-          driverClass: simgridDriver.carClass,
+          driverClassId: driverClassId,
           steamId: simgridDriver.steam64Id || undefined,
         });
         
@@ -159,6 +193,7 @@ export const importDriversFromSimGrid = action({
       return {
         success: true,
         imported: results.length,
+        driverClassesCreated: [...driverClassCache.values()].length,
         results,
       };
     } catch (error) {

@@ -88,7 +88,10 @@ export const checkAndAssignThresholds = mutation({
     for (const driver of drivers) {
       const driverId = driver._id.toString();
       const totalPoints = penaltyAccumulator[driverId] ?? 0;
-      const driverClass = driver.driverClass || "";
+
+      // Get driver's class information
+      const driverClass = driver.driverClassId ? await ctx.db.get(driver.driverClassId) : null;
+      const driverClassId = driverClass?._id;
 
       const existingDriverSeriesPenalties = await ctx.db
         .query("driverSeriesPenalties")
@@ -108,7 +111,8 @@ export const checkAndAssignThresholds = mutation({
           .collect();
 
         for (const threshold of thresholds) {
-          const appliesToDriver = threshold.driverClasses.includes(driverClass);
+          // Check if driver's class is in the threshold's driverClassIds
+          const appliesToDriver = driverClassId ? threshold.driverClassIds.includes(driverClassId) : false;
 
           if (appliesToDriver &&
             totalPoints >= threshold.threshold &&
@@ -126,7 +130,7 @@ export const checkAndAssignThresholds = mutation({
             assignedPenalties.push({
               driverSeriesPenaltyId,
               driverName: driver.driverName,
-              driverClass: driver.driverClass,
+              driverClass: driverClass?.displayName || "",
               penaltyName: seriesPenalty.penaltyName,
               threshold: threshold.threshold,
               pointsAtAssignment: totalPoints,

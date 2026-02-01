@@ -151,12 +151,19 @@ export const getEventRundown = query({
               incidentDescription = review?.incidentDescription ?? "";
             }
 
+            // Get driver class display name
+            let driverClassDisplayName: string | null = null;
+            if (reportedDriver?.driverClassId) {
+              const driverClass = await ctx.db.get(reportedDriver.driverClassId);
+              driverClassDisplayName = driverClass?.displayName ?? null;
+            }
+
             return {
               reportId: report.reportId || null,
               driverId: atFaultDriverId,
               carNumber: reportedDriver?.driverNumber ?? null,
               driverName: displayName,
-              driverClass: reportedDriver?.driverClass ?? null,
+              driverClass: driverClassDisplayName,
               lap: report.lap ?? null,
               turn: report.turn ?? null,
               incidentDescription,
@@ -235,12 +242,19 @@ export const debugEventRundownDriverMismatches = query({
 
         const isMismatch = driver.championshipId !== eventSeriesId;
 
+        // Get driver class display name for debug
+        let driverClassDisplayName = "N/A";
+        if (driver.driverClassId) {
+          const driverClass = await ctx.db.get(driver.driverClassId);
+          driverClassDisplayName = driverClass?.displayName || "N/A";
+        }
+
         const entry = {
           reportId: report._id.toString(),
           reportStatus: report.status,
           driverId: driver._id.toString(),
           driverName: driver.driverName,
-          driverClass: driver.driverClass,
+          driverClass: driverClassDisplayName,
           driverChampionshipId: driver.championshipId?.toString() || "None",
           eventSeriesId: eventSeriesId.toString(),
           eventId: args.eventId.toString(),
@@ -261,16 +275,24 @@ export const debugEventRundownDriverMismatches = query({
       }
     }
 
+    // Build drivers in series with class display names
+    const driversInSeriesWithClass = await Promise.all(
+      driversInSeries.map(async (d) => {
+        const driverClass = d.driverClassId ? await ctx.db.get(d.driverClassId) : null;
+        return {
+          driverId: d._id.toString(),
+          driverName: d.driverName,
+          driverClass: driverClass?.displayName || "N/A",
+          championshipId: d.championshipId?.toString() || "None",
+        };
+      })
+    );
+
     return {
       eventId: args.eventId.toString(),
       eventName: event.trackName,
       eventSeriesId: eventSeriesId.toString(),
-      driversInSeries: driversInSeries.map((d) => ({
-        driverId: d._id.toString(),
-        driverName: d.driverName,
-        driverClass: d.driverClass,
-        championshipId: d.championshipId?.toString() || "None",
-      })),
+      driversInSeries: driversInSeriesWithClass,
       mismatches,
       correct,
       totalReportsInEvent: correct.length + mismatches.length,
@@ -462,11 +484,12 @@ export const getSeriesLicensePointsWithPenalties = query({
           );
 
           if (mismatchedPenalties.length > 0) {
+            const driverClassDebug = driver.driverClassId ? await ctx.db.get(driver.driverClassId) : null;
             console.error("Mismatched driverSeriesPenalties found:", {
               querySeriesId: args.seriesId.toString(),
               driverId: driver._id.toString(),
               driverName: driver.driverName,
-              driverClass: driver.driverClass,
+              driverClass: driverClassDebug?.displayName || "N/A",
               driverChampionshipId: driver.championshipId?.toString() || "none",
               mismatchedPenalties: mismatchedPenalties.map((dsp) => ({
                 driverSeriesPenaltyId: dsp._id.toString(),
@@ -500,9 +523,7 @@ export const getSeriesLicensePointsWithPenalties = query({
 
         for (const sp of seriesPenaltiesWithThresholds) {
           for (const threshold of sp.thresholds) {
-            const appliesToDriver = threshold.driverClasses.includes(
-              driver.driverClass,
-            );
+            const appliesToDriver = driver.driverClassId && threshold.driverClassIds.includes(driver.driverClassId);
 
             if (appliesToDriver && totalPoints >= threshold.threshold) {
               const alreadyAssigned = allDriverSeriesPenalties.some(
@@ -512,11 +533,18 @@ export const getSeriesLicensePointsWithPenalties = query({
               );
 
               if (!alreadyAssigned) {
+                // Look up driver class display names for the threshold
+                const driverClassDisplayNames = await Promise.all(
+                  threshold.driverClassIds.map(async (id) => {
+                    const dc = await ctx.db.get(id);
+                    return dc?.displayName || "Unknown";
+                  })
+                );
                 eligibleSeriesPenalties.push({
                   seriesPenaltyId: sp._id,
                   penaltyName: sp.penaltyName,
                   penaltyDescription: sp.penaltyDescription,
-                  driverClasses: threshold.driverClasses,
+                  driverClasses: driverClassDisplayNames,
                   threshold: threshold.threshold,
                   seriesPenaltyThresholdId: threshold._id,
                   isAssigned: false,
@@ -526,11 +554,14 @@ export const getSeriesLicensePointsWithPenalties = query({
           }
         }
 
+        // Get driver class display name for the result
+        const driverClassResult = driver.driverClassId ? await ctx.db.get(driver.driverClassId) : null;
+
         return {
           driverId: driver._id,
           driverNumber: driver.driverNumber,
           driverName: displayName,
-          driverClass: driver.driverClass,
+          driverClass: driverClassResult?.displayName || "",
           totalLicensePoints: totalPoints,
           seriesPenalties: driverSeriesPenaltiesWithDetails,
           eligibleSeriesPenalties,
@@ -576,11 +607,14 @@ export const debugSeriesDriverMismatches = query({
 
       const isMismatch = !driver || driver.championshipId !== args.seriesId;
 
+      // Get driver class display name
+      const driverClassDbg = driver?.driverClassId ? await ctx.db.get(driver.driverClassId) : null;
+
       const entry = {
         driverSeriesPenaltyId: dsp._id.toString(),
         driverId: dsp.driverId.toString(),
         driverName: driver?.driverName || "Driver not found",
-        driverClass: driver?.driverClass || "N/A",
+        driverClass: driverClassDbg?.displayName || "N/A",
         driverChampionshipId: driver?.championshipId?.toString() || "None",
         seriesId: dsp.seriesId.toString(),
         penaltyName: seriesPenalty?.penaltyName || "Unknown",
@@ -599,14 +633,22 @@ export const debugSeriesDriverMismatches = query({
       }
     }
 
+    // Build drivers in series with class display names
+    const driversInSeriesWithClass = await Promise.all(
+      drivers.map(async (d) => {
+        const driverClass = d.driverClassId ? await ctx.db.get(d.driverClassId) : null;
+        return {
+          driverId: d._id.toString(),
+          driverName: d.driverName,
+          driverClass: driverClass?.displayName || "N/A",
+          championshipId: d.championshipId?.toString() || "None",
+        };
+      })
+    );
+
     return {
       querySeriesId: args.seriesId.toString(),
-      driversInSeries: drivers.map((d) => ({
-        driverId: d._id.toString(),
-        driverName: d.driverName,
-        driverClass: d.driverClass,
-        championshipId: d.championshipId?.toString() || "None",
-      })),
+      driversInSeries: driversInSeriesWithClass,
       mismatches,
       correct,
       totalDriverSeriesPenalties: allDriverSeriesPenalties.length,

@@ -26,7 +26,8 @@ export interface SeriesPenaltyThreshold {
   _id: Id<'seriesPenaltyThresholds'>;
   seriesPenaltyId: Id<'seriesPenalties'>;
   threshold: number;
-  driverClasses: string[];
+  driverClassIds: Id<'driverClasses'>[];
+  driverClasses?: string[]; // Display names populated when joined
   createdAt: number;
 }
 

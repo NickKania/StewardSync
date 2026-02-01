@@ -580,7 +580,7 @@ export const finalize = mutation({
             .collect();
 
           for (const threshold of thresholds) {
-            const appliesToDriver = threshold.driverClasses.includes(driverClass);
+            const appliesToDriver = threshold.driverClassIds.some(id => id.toString() === driverClass);
             const thresholdMet = totalPoints >= threshold.threshold;
             const alreadyAssigned = assignedThresholds.includes(threshold._id.toString());
 
