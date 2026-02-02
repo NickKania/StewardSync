@@ -81,6 +81,15 @@ export const routes: Routes = [
           ),
       },
       {
+        path: "search",
+        canActivate: [roleGuard],
+        data: { roles: ["head_steward", "event_manager", "league_manager"] },
+        loadComponent: () =>
+          import("@features/reviews/review-search/review-search.component").then(
+            (m) => m.ReviewSearchComponent,
+          ),
+      },
+      {
         path: "steward-incident",
         loadComponent: () =>
           import("@features/reviews/steward-incident-form/steward-incident-form.component").then(

@@ -29,14 +29,26 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
           <h1 class="text-2xl font-bold text-gray-900">Review Queue</h1>
           <p class="text-gray-500 mt-1">Reports pending your review</p>
         </div>
-        <a routerLink="/reviews/steward-incident">
-          <app-button variant="primary">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Create Incident
-          </app-button>
-        </a>
+        <div class="flex gap-2">
+          @if (canSearchReviews()) {
+            <a routerLink="/reviews/search">
+              <app-button variant="secondary">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                Search Reviews
+              </app-button>
+            </a>
+          }
+          <a routerLink="/reviews/steward-incident">
+            <app-button variant="primary">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              Create Incident
+            </app-button>
+          </a>
+        </div>
       </div>
 
       <!-- Stats -->
@@ -254,5 +266,9 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
       }, 100);
       this.unsubscribes.push(() => clearInterval(checkStats));
     }
+  }
+
+  canSearchReviews(): boolean {
+    return this.authService.hasRole('head_steward', 'event_manager', 'league_manager');
   }
 }

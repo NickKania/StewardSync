@@ -365,3 +365,157 @@ export const migrateSecondStewardToLinkedReviews = mutation({
     return { success: true, migrated: reviews.length };
   },
 });
+
+export const search = query({
+  args: {
+    searchQuery: v.optional(v.string()),
+    seriesId: v.optional(v.id("series")),
+    userId: v.optional(v.id("users")),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    limit: v.number(),
+    offset: v.number(),
+  },
+  handler: async (ctx, args) => {
+    let reviews = await ctx.db.query("reviews").order("desc").collect();
+
+    const populatedReviews = await Promise.all(
+      reviews.map(async (review) => {
+        const [user, report, secondSteward, linkedReview] = await Promise.all([
+          ctx.db.get(review.userId),
+          ctx.db.get(review.reportId),
+          review.secondStewardId ? ctx.db.get(review.secondStewardId) : null,
+          review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
+        ]);
+
+        const linkedReviewWithReviewer = linkedReview ? {
+          ...linkedReview,
+          reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
+        } : null;
+
+        return {
+          ...review,
+          reviewer: user,
+          report,
+          secondSteward,
+          linkedReview: linkedReviewWithReviewer,
+        };
+      })
+    );
+
+    let filteredReviews = populatedReviews;
+
+    if (args.searchQuery) {
+      const query = args.searchQuery.toLowerCase();
+      filteredReviews = filteredReviews.filter(
+        (review) => {
+          const descriptionMatch = review.incidentDescription?.toLowerCase().includes(query) || false;
+          const notesMatch = review.reviewNotes?.toLowerCase().includes(query) || false;
+          return descriptionMatch || notesMatch;
+        }
+      );
+    }
+
+    if (args.seriesId) {
+      filteredReviews = await Promise.all(
+        filteredReviews.map(async (review) => {
+          const report = review.report;
+          if (!report) return false;
+          const event = await ctx.db.get(report.eventId);
+          return event?.seriesId === args.seriesId;
+        })
+      ).then((results) => filteredReviews.filter((_, i) => results[i]));
+    }
+
+    if (args.userId) {
+      filteredReviews = filteredReviews.filter(
+        (review) => review.userId === args.userId
+      );
+    }
+
+    if (args.startDate) {
+      filteredReviews = filteredReviews.filter(
+        (review) => review.createdAt >= args.startDate!
+      );
+    }
+
+    if (args.endDate) {
+      filteredReviews = filteredReviews.filter(
+        (review) => review.createdAt <= args.endDate!
+      );
+    }
+
+    const paginatedReviews = filteredReviews.slice(args.offset, args.offset + args.limit);
+
+    const reviewsWithFullDetails = await Promise.all(
+      paginatedReviews.map(async (review) => {
+        const event = review.report ? await ctx.db.get(review.report.eventId) : null;
+        const series = event ? await ctx.db.get(event.seriesId) : null;
+        const race = review.report ? await ctx.db.get(review.report.raceId) : null;
+        const atFaultDriver = review.report && review.report.atFaultDriverId 
+          ? await ctx.db.get(review.report.atFaultDriverId) 
+          : null;
+        const reportingDriver = review.report && review.report.reportingDriverId 
+          ? await ctx.db.get(review.report.reportingDriverId) 
+          : null;
+
+        return {
+          ...review,
+          event,
+          series,
+          race,
+          atFaultDriver,
+          reportingDriver,
+        };
+      })
+    );
+
+    return reviewsWithFullDetails;
+  },
+});
+
+export const searchCount = query({
+  args: {
+    searchQuery: v.optional(v.string()),
+    seriesId: v.optional(v.id("series")),
+    userId: v.optional(v.id("users")),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let reviews = await ctx.db.query("reviews").collect();
+
+    if (args.searchQuery) {
+      const query = args.searchQuery.toLowerCase();
+      reviews = reviews.filter(
+        (review) =>
+          review.incidentDescription.toLowerCase().includes(query) ||
+          review.reviewNotes.toLowerCase().includes(query)
+      );
+    }
+
+    if (args.seriesId) {
+      reviews = await Promise.all(
+        reviews.map(async (review) => {
+          const report = await ctx.db.get(review.reportId);
+          const event = report ? await ctx.db.get(report.eventId) : null;
+          return event?.seriesId === args.seriesId;
+        })
+      ).then((results) => reviews.filter((_, i) => results[i]));
+    }
+
+    if (args.userId) {
+      reviews = reviews.filter((review) => review.userId === args.userId);
+    }
+
+    if (args.startDate) {
+      reviews = reviews.filter((review) => review.createdAt >= args.startDate!);
+    }
+
+    if (args.endDate) {
+      reviews = reviews.filter((review) => review.createdAt <= args.endDate!);
+    }
+
+    return reviews.length;
+  },
+});
