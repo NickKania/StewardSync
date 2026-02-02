@@ -43,7 +43,7 @@ interface NavItem {
             <a
               [routerLink]="item.path"
               routerLinkActive="bg-primary-50 text-primary-700 border-primary-500 dark:bg-primary-900/30 dark:text-primary-200 dark:border-primary-400"
-              [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+              [routerLinkActiveOptions]="{ exact: true }"
               class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border-l-2 border-transparent dark:text-gray-200 dark:hover:bg-gray-800"
               [class.justify-center]="sidebarStateService.isEffectivelyCollapsed()"
               (click)="sidebarStateService.closeMobile()"
