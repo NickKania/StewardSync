@@ -785,7 +785,6 @@ interface DriverPointsRow {
 
     .export-container {
       background: white;
-      padding: 1rem;
     }
 
     :host.export-mode .export-container {
