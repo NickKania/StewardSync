@@ -102,7 +102,7 @@ async function runGetOrCreateDriverClass(
     className: string;
   },
 ): Promise<GetOrCreateDriverClassResult> {
-  // @ts-expect-error - Circular type inference in Convex API
+  // @ts-ignore - Circular type inference in Convex API
   return ctx.runMutation(api.driverClasses.getOrCreate, args);
 }
 

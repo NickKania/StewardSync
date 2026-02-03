@@ -22,6 +22,15 @@ export const getById = query({
   },
 });
 
+export const getByIdWithSimgridLink = query({
+  args: { id: v.id("series") },
+  handler: async (ctx, args) => {
+    const series = await ctx.db.get(args.id);
+    if (!series) return null;
+    return series;
+  },
+});
+
 export const create = mutation({
   args: {
     name: v.string(),

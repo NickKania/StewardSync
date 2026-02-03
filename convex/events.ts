@@ -1,7 +1,8 @@
 import { mutation, query, action } from "./_generated/server";
 import { api } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { Console } from "console";
+import { requireRole } from "./lib/auth";
 
 export const list = query({
   args: {},
@@ -12,13 +13,16 @@ export const list = query({
       .order("desc")
       .collect();
 
-    // Populate series information
-    return await Promise.all(
-      events.map(async (event) => {
-        const series = await ctx.db.get(event.seriesId);
-        return { ...event, series };
-      }),
-    );
+    // Filter out events from inactive series and populate series information
+    const filteredEvents: any[] = [];
+    for (const event of events) {
+      const series = await ctx.db.get(event.seriesId);
+      if (series && series.isActive !== false) {
+        filteredEvents.push({ ...event, series });
+      }
+    }
+
+    return filteredEvents;
   },
 });
 
@@ -76,13 +80,21 @@ export const create = mutation({
 export const update = mutation({
   args: {
     eventId: v.id("events"),
+    currentUserId: v.id("users"),
     seriesId: v.optional(v.id("series")),
     eventNumber: v.optional(v.number()),
     trackName: v.optional(v.string()),
     eventDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { eventId, ...updates } = args;
+    const { eventId, currentUserId, ...updates } = args;
+
+    await requireRole(ctx, currentUserId, ["event_manager", "league_manager"]);
+
+    const existingEvent = await ctx.db.get(eventId);
+    if (!existingEvent) {
+      throw new Error("Event not found");
+    }
 
     // Verify series exists if being updated
     if (updates.seriesId) {
@@ -96,7 +108,28 @@ export const update = mutation({
       Object.entries(updates).filter(([_, v]) => v !== undefined),
     );
 
+    const changedEntries = Object.entries(cleanUpdates).filter(
+      ([field, value]) => (existingEvent as any)[field] !== value,
+    );
+
+    if (changedEntries.length === 0) {
+      return eventId;
+    }
+
     await ctx.db.patch(eventId, cleanUpdates);
+
+    for (const [fieldName, toValue] of changedEntries) {
+      await recordChange(ctx, {
+        tableName: "events",
+        documentId: String(eventId),
+        fieldName,
+        fromValue: serializeValue((existingEvent as any)[fieldName]),
+        toValue: serializeValue(toValue),
+        changedByUserId: currentUserId,
+        source: "manual",
+      });
+    }
+
     return eventId;
   },
 });
@@ -125,10 +158,54 @@ export const importOrUpdateEvent = mutation({
 
     if (existing) {
       // Update existing event
-      await ctx.db.patch(existing._id, {
-        trackName: args.trackName,
-        eventDate: args.eventDate,
-      });
+      const updates: {
+        trackName?: string;
+        eventDate?: number;
+      } = {};
+
+      if (existing.trackName !== args.trackName) {
+        updates.trackName = args.trackName;
+      }
+
+      if (existing.eventDate !== args.eventDate) {
+        const hasManualEventDateEdit = await hasManualFieldEdit(
+          ctx,
+          "events",
+          String(existing._id),
+          "eventDate",
+        );
+
+        if (!hasManualEventDateEdit) {
+          updates.eventDate = args.eventDate;
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await ctx.db.patch(existing._id, updates);
+
+        if (updates.trackName !== undefined) {
+          await recordChange(ctx, {
+            tableName: "events",
+            documentId: String(existing._id),
+            fieldName: "trackName",
+            fromValue: serializeValue(existing.trackName),
+            toValue: serializeValue(updates.trackName),
+            source: "simgrid",
+          });
+        }
+
+        if (updates.eventDate !== undefined) {
+          await recordChange(ctx, {
+            tableName: "events",
+            documentId: String(existing._id),
+            fieldName: "eventDate",
+            fromValue: serializeValue(existing.eventDate),
+            toValue: serializeValue(updates.eventDate),
+            source: "simgrid",
+          });
+        }
+      }
+
       return { action: 'updated', eventId: existing._id };
     } else {
       // Create new event
@@ -144,6 +221,14 @@ export const importOrUpdateEvent = mutation({
   },
 });
 
+// Helper function to avoid circular type inference in Convex
+async function runGetSeriesByIdWithSimgridLink(
+  ctx: any,
+  args: { id: Id<"series"> }
+) {
+  return ctx.runQuery(api.series.getByIdWithSimgridLink, args);
+}
+
 export const importFromSimGrid = action({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
@@ -152,7 +237,7 @@ export const importFromSimGrid = action({
       throw new Error("SIMGRID_API_KEY environment variable not configured");
     }
 
-    const series = await ctx.runQuery(api.series.getById, {
+    const series = await runGetSeriesByIdWithSimgridLink(ctx, {
       id: args.seriesId,
     });
     if (!series || !series.simgridLink) {
@@ -219,4 +304,60 @@ function extractChampionshipId(url: string): string | null {
   }
 
   return null;
+}
+
+async function hasManualFieldEdit(
+  ctx: any,
+  tableName: string,
+  documentId: string,
+  fieldName: string,
+): Promise<boolean> {
+  const existingManualEdit = await ctx.db
+    .query("changeHistory")
+    .withIndex("by_entity_field_source", (q: any) =>
+      q
+        .eq("tableName", tableName)
+        .eq("documentId", documentId)
+        .eq("fieldName", fieldName)
+        .eq("source", "manual"),
+    )
+    .first();
+
+  return !!existingManualEdit;
+}
+
+function serializeValue(value: unknown): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+async function recordChange(
+  ctx: any,
+  args: {
+    tableName: string;
+    documentId: string;
+    fieldName: string;
+    fromValue?: string;
+    toValue?: string;
+    changedByUserId?: Id<"users">;
+    source: "manual" | "simgrid" | "system";
+  },
+) {
+  await ctx.db.insert("changeHistory", {
+    tableName: args.tableName,
+    documentId: args.documentId,
+    fieldName: args.fieldName,
+    fromValue: args.fromValue,
+    toValue: args.toValue,
+    changedByUserId: args.changedByUserId,
+    source: args.source,
+    changedAt: Date.now(),
+  });
 }

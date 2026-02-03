@@ -25,6 +25,8 @@ export interface Report {
   officialNotes?: string;
   finalizedBy?: Id<'users'>;
   finalizedAt?: number;
+  editedBy?: Id<'users'>;
+  editedAt?: number;
   isEdited?: boolean;
   createdAt: number;
   updatedAt: number;
@@ -36,6 +38,8 @@ export interface Report {
   event?: Event;
   race?: Race;
   atFaultDriver?: Driver;
+  finalizedByUser?: any;
+  editedByUser?: any;
   appliedPenaltyObj?: any;
   reviews?: any[];
 }

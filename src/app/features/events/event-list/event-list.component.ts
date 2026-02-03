@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
 import { Series } from '@core/models/series.model';
 import { CardComponent } from '@shared/components/card/card.component';
-import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
@@ -18,7 +17,6 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
     RouterLink,
     FormsModule,
     CardComponent,
-    ButtonComponent,
     BadgeComponent,
     LoadingComponent,
     DateFormatPipe
@@ -53,7 +51,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
           @for (event of filteredEvents(); track event._id) {
             <a [routerLink]="['/events', event._id]">
               <app-card [hover]="true">
-                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div class="flex items-center gap-4">
                     <div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center dark:bg-gray-800">
                       <span class="text-2xl font-bold text-gray-400 dark:text-gray-500">R{{ event.eventNumber }}</span>

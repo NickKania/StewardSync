@@ -177,6 +177,16 @@ interface DriverPointsRow {
                     }
 
                     <div #eventRundownExportContainer class="export-container">
+                    @if (isExportMode() && selectedEventDetails()) {
+                      <div class="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700">
+                        <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                          {{ selectedEventDetails()?.seriesName }}
+                        </p>
+                        <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                          {{ selectedEventDetails()?.eventName }}
+                        </p>
+                      </div>
+                    }
                     @for (race of filteredAndSortedRaces(); track race.raceId) {
                       <div class="space-y-4">
                         <div class="flex items-center gap-2 pt-4">
@@ -566,6 +576,13 @@ interface DriverPointsRow {
 
                     @if (filteredAndSortedSeriesPoints().length > 0) {
                       <div #seriesOverviewExportContainer class="export-container">
+                      @if (isExportMode() && selectedSeriesName()) {
+                        <div class="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700">
+                          <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                            {{ selectedSeriesName() }}
+                          </p>
+                        </div>
+                      }
                       <div #seriesPointsTable class="overflow-x-auto">
                          <table class="w-full text-sm border border-gray-300 dark:border-gray-700">
                           <thead class="bg-gray-50 border-b border-gray-300 dark:bg-gray-800 dark:border-gray-700">
@@ -930,6 +947,23 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
         label: s.name,
       })),
     ];
+  });
+
+  selectedEventDetails = computed(() => {
+    const selectedEvent = this.events().find((event: any) => event._id === this.selectedEventId);
+    if (!selectedEvent) {
+      return null;
+    }
+
+    return {
+      seriesName: selectedEvent.series?.name ?? "Unknown Series",
+      eventName: `Event ${selectedEvent.eventNumber} - ${selectedEvent.trackName}`,
+    };
+  });
+
+  selectedSeriesName = computed(() => {
+    const selectedSeries = this.series().find((series: any) => series._id === this.selectedSeriesId);
+    return selectedSeries?.name ?? "";
   });
 
   filteredAndSortedRaces = computed(() => {

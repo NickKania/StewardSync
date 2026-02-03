@@ -119,7 +119,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                       <app-badge variant="warning" size="sm">Edited</app-badge>
                     }
                   </div>
-                  @if (authService.hasMinimumRole('event_manager')) {
+                  @if (authService.hasRole('head_steward', 'league_manager')) {
                     <app-button
                       variant="secondary"
                       size="sm"
@@ -181,6 +181,14 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                   <div class="text-sm text-gray-500 dark:text-gray-400">
                     Finalized {{ report()?.finalizedAt | dateFormat:'PPp' }}
                   </div>
+                  @if (report()?.isEdited) {
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                      Edited by {{ report()?.editedByUser?.name || report()?.finalizedByUser?.name || 'Unknown User' }}
+                      @if (report()?.editedAt) {
+                        on {{ report()?.editedAt | dateFormat:'PPp' }}
+                      }
+                    </div>
+                  }
                 </div>
               </app-card>
             }

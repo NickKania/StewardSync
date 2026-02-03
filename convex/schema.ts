@@ -89,6 +89,20 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_event", ["eventId"]),
 
+  changeHistory: defineTable({
+    tableName: v.string(),
+    documentId: v.string(),
+    fieldName: v.string(),
+    fromValue: v.optional(v.string()),
+    toValue: v.optional(v.string()),
+    changedByUserId: v.optional(v.id("users")),
+    source: v.union(v.literal("manual"), v.literal("simgrid"), v.literal("system")),
+    changedAt: v.number(),
+  })
+    .index("by_entity", ["tableName", "documentId"])
+    .index("by_entity_field", ["tableName", "documentId", "fieldName"])
+    .index("by_entity_field_source", ["tableName", "documentId", "fieldName", "source"]),
+
   seriesPenalties: defineTable({
     seriesId: v.id("series"),
     penaltyName: v.string(),
@@ -140,6 +154,8 @@ export default defineSchema({
     officialNotes: v.optional(v.string()),
     finalizedBy: v.optional(v.id("users")),
     finalizedAt: v.optional(v.number()),
+    editedBy: v.optional(v.id("users")),
+    editedAt: v.optional(v.number()),
     isSelfReport: v.optional(v.boolean()),
     isStewardReported: v.optional(v.boolean()),
     isEdited: v.optional(v.boolean()),

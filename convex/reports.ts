@@ -97,6 +97,12 @@ export const getById = query({
     const reportingUser = report.reportingUserId
       ? await ctx.db.get(report.reportingUserId)
       : null;
+    const finalizedByUser = report.finalizedBy
+      ? await ctx.db.get(report.finalizedBy)
+      : null;
+    const editedByUser = report.editedBy
+      ? await ctx.db.get(report.editedBy)
+      : null;
     const reportedDriver = report.reportedDriverId
       ? await ctx.db.get(report.reportedDriverId)
       : null;
@@ -176,6 +182,8 @@ export const getById = query({
       ...report,
       reportingDriver,
       reportingUser,
+      finalizedByUser,
+      editedByUser,
       reportedDriver,
       atFaultDriver,
       event: eventWithSeries,
@@ -630,7 +638,7 @@ export const updateFinalizedDecision = mutation({
       );
     }
 
-    await requireRole(ctx, args.userId, ["event_manager"]);
+    await requireRole(ctx, args.userId, ["head_steward", "league_manager"]);
 
     const now = Date.now();
     await ctx.db.patch(args.reportId, {
@@ -640,8 +648,8 @@ export const updateFinalizedDecision = mutation({
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
       isEdited: true,
-      finalizedBy: args.userId,
-      finalizedAt: now,
+      editedBy: args.userId,
+      editedAt: now,
       updatedAt: now,
     });
 

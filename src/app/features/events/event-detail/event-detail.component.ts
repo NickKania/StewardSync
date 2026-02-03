@@ -10,6 +10,8 @@ import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { FormsModule } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
+import { AuthService } from "@core/services/auth.service";
+import { ToastService } from "@core/services/toast.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
@@ -104,6 +106,34 @@ import { Id } from "@convex/_generated/dataModel";
                   </dd>
                 </div>
               </dl>
+
+              <div
+                *appHasRole="['event_manager', 'league_manager']"
+                class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+              >
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                >
+                  Edit Event Date
+                </label>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div class="sm:w-56">
+                    <input
+                      type="date"
+                      class="input w-full"
+                      [ngModel]="dateDraft()"
+                      (ngModelChange)="dateDraft.set($event)"
+                    />
+                  </div>
+                  <app-button
+                    [disabled]="isSaveDateDisabled()"
+                    [loading]="isSavingDate()"
+                    (click)="saveEventDate()"
+                  >
+                    Save Date
+                  </app-button>
+                </div>
+              </div>
             </app-card>
 
             <!-- Races -->
@@ -268,9 +298,13 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   @Input() id!: string;
 
   private convex = inject(ConvexService);
+  private authService = inject(AuthService);
+  private toast = inject(ToastService);
 
   event = signal<any>(null);
   loading = signal(true);
+  dateDraft = signal("");
+  isSavingDate = signal(false);
   showAddRaceModal = false;
   raceForm = {
     raceNumber: 0,
@@ -299,10 +333,60 @@ export class EventDetailComponent implements OnInit, OnDestroy {
       );
 
       this.event.set(event);
+      if (event?.eventDate) {
+        this.dateDraft.set(this.toDateInputValue(event.eventDate));
+      }
     } catch (error) {
       console.error("Failed to load event:", error);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  isSaveDateDisabled(): boolean {
+    const currentEvent = this.event();
+    if (!currentEvent) return true;
+    if (this.isSavingDate()) return true;
+
+    const draftDate = this.dateDraft();
+    if (!draftDate) return true;
+
+    return draftDate === this.toDateInputValue(currentEvent.eventDate);
+  }
+
+  async saveEventDate(): Promise<void> {
+    const currentEvent = this.event();
+    if (!currentEvent) return;
+
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId) {
+      this.toast.error("You must be logged in to edit event dates");
+      return;
+    }
+
+    const parsedDate = this.fromDateInputValue(this.dateDraft());
+    if (parsedDate === null) {
+      this.toast.error("Please provide a valid event date");
+      return;
+    }
+
+    this.isSavingDate.set(true);
+    try {
+      await this.convex.mutation(this.convex.api.events.update, {
+        eventId: currentEvent._id,
+        currentUserId,
+        eventDate: parsedDate,
+      });
+
+      this.event.update((existing) =>
+        existing ? { ...existing, eventDate: parsedDate } : existing,
+      );
+      this.dateDraft.set(this.toDateInputValue(parsedDate));
+      this.toast.success("Event date updated successfully");
+    } catch (error: any) {
+      this.toast.error(error?.message || "Failed to update event date");
+    } finally {
+      this.isSavingDate.set(false);
     }
   }
 
@@ -395,5 +479,26 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
     // If no pattern matches, return original message
     return errorMessage;
+  }
+
+  private toDateInputValue(timestamp: number): string {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  private fromDateInputValue(value: string): number | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const parsedDate = new Date(year, month - 1, day);
+
+    if (Number.isNaN(parsedDate.getTime())) return null;
+    return parsedDate.getTime();
   }
 }
