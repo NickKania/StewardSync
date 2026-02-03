@@ -44,8 +44,8 @@ interface FilterState {
         </div>
       </div>
 
-      <div class="relative z-20">
-        <app-card>
+      <div class="relative z-0">
+        <app-card [overflowHidden]="false">
           <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
@@ -75,7 +75,7 @@ interface FilterState {
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
                 Series
@@ -138,8 +138,8 @@ interface FilterState {
               />
             </div>
 
-            <div class="flex items-end">
-              <label class="flex items-center gap-2 text-sm text-gray-700 pb-2 dark:text-gray-300">
+            <div class="flex items-end xl:col-auto lg:col-span-2">
+              <label class="flex flex-wrap items-center gap-2 text-sm text-gray-700 pb-2 dark:text-gray-300">
                 <input
                   type="checkbox"
                   [(ngModel)]="filters().candidateForStandardizationOnly"
@@ -171,47 +171,47 @@ interface FilterState {
             <app-loading text="Searching reviews..." />
           </div>
         } @else if (results().length > 0) {
-          <div class="overflow-x-auto">
-            <table class="w-full">
+          <div class="overflow-x-auto lg:overflow-x-visible">
+            <table class="w-full table-fixed">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
-                  <th class="px-6 py-3 font-medium">Reviewer</th>
-                  <th class="px-6 py-3 font-medium">Series</th>
-                  <th class="px-6 py-3 font-medium">Event</th>
-                  <th class="px-6 py-3 font-medium">Incident Description</th>
-                  <th class="px-6 py-3 font-medium">Review Notes</th>
-                  <th class="px-6 py-3 font-medium">Standardization</th>
-                  <th class="px-6 py-3 font-medium">Created</th>
-                  <th class="px-6 py-3 font-medium"></th>
+                  <th class="w-[11%] px-3 py-3 font-medium">Reviewer</th>
+                  <th class="w-[9%] px-3 py-3 font-medium">Series</th>
+                  <th class="w-[12%] px-3 py-3 font-medium">Event</th>
+                  <th class="w-[20%] px-3 py-3 font-medium">Incident Description</th>
+                  <th class="w-[20%] px-3 py-3 font-medium">Review Notes</th>
+                  <th class="w-[10%] px-3 py-3 font-medium">Standardization</th>
+                  <th class="w-[10%] px-3 py-3 font-medium">Created</th>
+                  <th class="w-[8%] px-3 py-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 @for (result of results(); track result._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ result.reviewer?.name || 'Unknown' }}</p>
+                    <td class="px-3 py-4">
+                      <p class="font-medium text-gray-900 truncate dark:text-gray-100">{{ result.reviewer?.name || 'Unknown' }}</p>
                     </td>
-                    <td class="px-6 py-4">
-                      <p class="text-gray-900 dark:text-gray-100">{{ result.series?.name || 'N/A' }}</p>
+                    <td class="px-3 py-4">
+                      <p class="text-gray-900 truncate dark:text-gray-100">{{ result.series?.name || 'N/A' }}</p>
                     </td>
-                    <td class="px-6 py-4">
-                      <p class="text-gray-900 dark:text-gray-100">{{ result.event?.trackName }}</p>
+                    <td class="px-3 py-4">
+                      <p class="text-gray-900 truncate dark:text-gray-100">{{ result.event?.trackName }}</p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ result.race?.raceNumber }}</p>
                     </td>
-                    <td class="px-6 py-4">
+                    <td class="px-3 py-4">
                       <p class="text-gray-900 max-w-xs truncate dark:text-gray-100">
                         {{ result.incidentDescription }}
                       </p>
                     </td>
-                    <td class="px-6 py-4">
+                    <td class="px-3 py-4">
                       <p class="text-gray-900 max-w-xs truncate dark:text-gray-100">
                         {{ result.reviewNotes }}
                       </p>
                     </td>
-                    <td class="px-6 py-4">
+                    <td class="px-3 py-4">
                       @if (result.candidateForStandardization) {
                         <span
-                          class="inline-block px-2.5 py-0.5 text-sm font-medium rounded-full bg-amber-100 text-amber-800"
+                          class="inline-block px-2.5 py-0.5 text-sm font-medium rounded-full bg-amber-100 text-amber-800 whitespace-nowrap"
                         >
                           Candidate
                         </span>
@@ -219,12 +219,12 @@ interface FilterState {
                         <span class="text-gray-400 dark:text-gray-500">-</span>
                       }
                     </td>
-                    <td class="px-6 py-4 text-gray-500 text-sm dark:text-gray-400">
+                    <td class="px-3 py-4 text-gray-500 text-sm dark:text-gray-400">
                       {{ result.createdAt | date: 'short' }}
                     </td>
-                    <td class="px-6 py-4">
+                    <td class="px-3 py-4 whitespace-nowrap">
                       <a
-                        [routerLink]="['/reviews', result.reportId]"
+                        [routerLink]="['/reports', result.reportId]"
                         class="text-primary-600 hover:text-primary-700 font-medium text-sm"
                       >
                         View Report

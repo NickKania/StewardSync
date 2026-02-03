@@ -55,61 +55,84 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
               : "Submit an incident report for steward review"
           }}
         </p>
-       </div>
+      </div>
 
-       @if (loading()) {
-         <app-loading text="Loading..." />
-       } @else if (!isReportingOpen() && reportingStatusMessage()) {
-         <app-card title="Reporting Unavailable">
-           <div class="text-center py-8">
-             <svg class="w-16 h-16 mx-auto text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-             </svg>
-             <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ reportingStatusMessage() }}</p>
-           </div>
-         </app-card>
-       } @else {
-         <form [formGroup]="form" (ngSubmit)="onSubmit()">
-           @if (reportingStatusMessage()) {
-             <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-               <p class="text-sm text-blue-800 flex items-center gap-2">
-                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                 </svg>
-                 {{ reportingStatusMessage() }}
-               </p>
-             </div>
-           }
+      @if (loading()) {
+        <app-loading text="Loading..." />
+      } @else if (!isReportingOpen() && reportingStatusMessage()) {
+        <app-card title="Reporting Unavailable">
+          <div class="text-center py-8">
+            <svg
+              class="w-16 h-16 mx-auto text-yellow-500 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {{ reportingStatusMessage() }}
+            </p>
+          </div>
+        </app-card>
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="onSubmit()">
+          @if (reportingStatusMessage()) {
+            <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+              <p class="text-sm text-blue-800 flex items-center gap-2">
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  ></path>
+                </svg>
+                {{ reportingStatusMessage() }}
+              </p>
+            </div>
+          }
 
-            <app-card title="Incident Details">
-             <div class="space-y-4">
-               <!-- Series -->
-               <div>
-                 <label class="label">Series *</label>
-                 <select
-                   formControlName="seriesId"
-                   class="input"
-                   [class.input-error]="
-                     form.get('seriesId')?.invalid && form.get('seriesId')?.touched
-                   "
-                   (change)="onSeriesChange(form.get('seriesId')?.value)"
-                 >
-                   <option value="">Select series</option>
-                   @for (s of series(); track s._id) {
-                     <option [value]="s._id">
-                       {{ s.name }}
-                     </option>
-                   }
-                 </select>
-                 @if (
-                   form.get("seriesId")?.invalid && form.get("seriesId")?.touched
-                 ) {
-                   <p class="mt-1 text-sm text-red-600">Series is required</p>
-                 }
-               </div>
+          <app-card title="Incident Details">
+            <div class="space-y-4">
+              <!-- Series -->
+              <div>
+                <label class="label">Series *</label>
+                <select
+                  formControlName="seriesId"
+                  class="input"
+                  [class.input-error]="
+                    form.get('seriesId')?.invalid &&
+                    form.get('seriesId')?.touched
+                  "
+                  (change)="onSeriesChange(form.get('seriesId')?.value)"
+                >
+                  <option value="">Select series</option>
+                  @for (s of series(); track s._id) {
+                    <option [value]="s._id">
+                      {{ s.name }}
+                    </option>
+                  }
+                </select>
+                @if (
+                  form.get("seriesId")?.invalid && form.get("seriesId")?.touched
+                ) {
+                  <p class="mt-1 text-sm text-red-600">Series is required</p>
+                }
+              </div>
 
-               <!-- Reported Driver -->
-               <div>
+              <!-- Reported Driver -->
+              <div>
                 <app-search-select
                   formControlName="reportedDriverId"
                   label="Reported Driver"
@@ -125,31 +148,31 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 />
               </div>
 
-               <!-- Event -->
-               <div>
-                 <label class="label">Event *</label>
-                 <select
-                   formControlName="eventId"
-                   class="input"
-                   [class.input-error]="
-                     form.get('eventId')?.invalid && form.get('eventId')?.touched
-                   "
-                   (change)="onEventChange()"
-                 >
-                   <option value="">Select the event</option>
-                   @for (event of filteredEvents(); track event._id) {
-                     <option [value]="event._id">
-                       {{ event.trackName }} - {{ event.series?.name }} Round
-                       {{ event.eventNumber }}
-                     </option>
-                   }
-                 </select>
-                 @if (
-                   form.get("eventId")?.invalid && form.get("eventId")?.touched
-                 ) {
-                   <p class="mt-1 text-sm text-red-600">Event is required</p>
-                 }
-               </div>
+              <!-- Event -->
+              <div>
+                <label class="label">Event *</label>
+                <select
+                  formControlName="eventId"
+                  class="input"
+                  [class.input-error]="
+                    form.get('eventId')?.invalid && form.get('eventId')?.touched
+                  "
+                  (change)="onEventChange()"
+                >
+                  <option value="">Select the event</option>
+                  @for (event of filteredEvents(); track event._id) {
+                    <option [value]="event._id">
+                      {{ event.trackName }} - {{ event.series?.name }} Round
+                      {{ event.eventNumber }}
+                    </option>
+                  }
+                </select>
+                @if (
+                  form.get("eventId")?.invalid && form.get("eventId")?.touched
+                ) {
+                  <p class="mt-1 text-sm text-red-600">Event is required</p>
+                }
+              </div>
 
               <!-- Race -->
               <div>
@@ -190,9 +213,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   min="1"
                 />
                 @if (form.get("turn")?.invalid && form.get("turn")?.touched) {
-                  <p class="mt-1 text-sm text-red-600">
-                    Turn is required
-                  </p>
+                  <p class="mt-1 text-sm text-red-600">Turn is required</p>
                 }
               </div>
 
@@ -210,9 +231,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   min="1"
                 />
                 @if (form.get("lap")?.invalid && form.get("lap")?.touched) {
-                  <p class="mt-1 text-sm text-red-600">
-                    Lap is required
-                  </p>
+                  <p class="mt-1 text-sm text-red-600">Lap is required</p>
                 }
               </div>
 
@@ -238,52 +257,66 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   </p>
                 }
               </div>
+
+              <!-- Video timestamp -->
+              <div>
+                <label class="label">Video/Replay Timestamp</label>
+                <input
+                  type="text"
+                  formControlName="videoTimestamp"
+                  class="input"
+                  placeholder="e.g., 1:23:45 or Lap 15, T3 Entry"
+                />
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                  Optional: Reference to video evidence
+                </p>
+              </div>
             </div>
 
-             <!-- Footer -->
-             <div
-               card-footer
-               class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
-             >
-               <app-button
-                 type="button"
-                 variant="secondary"
-                 (onClick)="cancel()"
-               >
-                 Cancel
-               </app-button>
-               @if (!isEdit) {
-                 <div class="flex gap-3 items-center">
-                   <label
-                     class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-                   >
-                     <input
-                       type="checkbox"
-                       formControlName="createAnother"
-                       class="rounded border-gray-300 dark:border-gray-700"
-                     />
-                     Create another
-                   </label>
-                   <app-button
-                     type="submit"
-                     variant="primary"
-                     [loading]="submitting()"
-                     [disabled]="form.invalid"
-                   >
-                     Submit Report
-                   </app-button>
-                 </div>
-               } @else {
-                 <app-button
-                   type="submit"
-                   variant="primary"
-                   [loading]="submitting()"
-                   [disabled]="form.invalid"
-                 >
-                   Update Report
-                 </app-button>
-               }
-             </div>
+            <!-- Footer -->
+            <div
+              card-footer
+              class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
+            >
+              <app-button
+                type="button"
+                variant="secondary"
+                (onClick)="cancel()"
+              >
+                Cancel
+              </app-button>
+              @if (!isEdit) {
+                <div class="flex gap-3 items-center">
+                  <label
+                    class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    <input
+                      type="checkbox"
+                      formControlName="createAnother"
+                      class="rounded border-gray-300 dark:border-gray-700"
+                    />
+                    Create another
+                  </label>
+                  <app-button
+                    type="submit"
+                    variant="primary"
+                    [loading]="submitting()"
+                    [disabled]="form.invalid"
+                  >
+                    Submit Report
+                  </app-button>
+                </div>
+              } @else {
+                <app-button
+                  type="submit"
+                  variant="primary"
+                  [loading]="submitting()"
+                  [disabled]="form.invalid"
+                >
+                  Update Report
+                </app-button>
+              }
+            </div>
           </app-card>
         </form>
       }
@@ -338,7 +371,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     }
 
     const series = event.series;
-    
+
     if (series.isReportingLocked === true) {
       return false;
     }
@@ -348,12 +381,14 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     }
 
     const eventDate = new Date(event.eventDate);
-    const [hours, minutes] = series.reportingOpenTime.split(':').map(Number);
-    
+    const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
+
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
-    const closeTime = new Date(openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000);
+    const closeTime = new Date(
+      openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000,
+    );
     const now = new Date();
 
     return now >= openTime && now <= closeTime;
@@ -362,26 +397,28 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   reportingStatusMessage = computed(() => {
     const event = this.selectedEvent();
     if (!event || !event.series) {
-      return '';
+      return "";
     }
 
     const series = event.series;
-    
+
     if (series.isReportingLocked === true) {
-      return 'Reports have been locked for this series';
+      return "Reports have been locked for this series";
     }
 
     if (!series.reportingOpenTime || !series.reportingCloseDuration) {
-      return '';
+      return "";
     }
 
     const eventDate = new Date(event.eventDate);
-    const [hours, minutes] = series.reportingOpenTime.split(':').map(Number);
-    
+    const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
+
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
-    const closeTime = new Date(openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000);
+    const closeTime = new Date(
+      openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000,
+    );
     const now = new Date();
 
     if (now < openTime) {
@@ -404,6 +441,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       lap: ["", [Validators.required]],
       turn: ["", [Validators.required]],
       description: ["", [Validators.required, Validators.minLength(20)]],
+      videoTimestamp: [""],
       createAnother: [false],
     });
   }
@@ -482,9 +520,12 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
         if (report) {
           // Load event details to get series
-          const event = await this.convex.query(this.convex.api.events.getById, {
-            eventId: report.eventId,
-          });
+          const event = await this.convex.query(
+            this.convex.api.events.getById,
+            {
+              eventId: report.eventId,
+            },
+          );
 
           if (event && event.seriesId) {
             this.selectedSeriesId.set(event.seriesId);
@@ -499,6 +540,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
             lap: report.lap,
             turn: report.turn,
             description: report.description,
+            videoTimestamp: report.videoTimestamp || "",
           });
 
           // Load races for the event
@@ -554,9 +596,12 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
   private async loadDriversBySeries(seriesId: string): Promise<void> {
     try {
-      const drivers = await this.convex.query(this.convex.api.drivers.getByChampionship, {
-        championshipId: seriesId as any,
-      });
+      const drivers = await this.convex.query(
+        this.convex.api.drivers.getByChampionship,
+        {
+          championshipId: seriesId as any,
+        },
+      );
       this.drivers.set(drivers || []);
     } catch (error) {
       console.error("Failed to load drivers by series:", error);
@@ -649,6 +694,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
           lap: formValue.lap,
           turn: formValue.turn,
           description: formValue.description,
+          videoTimestamp: formValue.videoTimestamp || undefined,
         });
         this.toast.success("Report updated successfully");
       } else {
@@ -665,6 +711,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
           lap: formValue.lap,
           turn: formValue.turn,
           description: formValue.description,
+          videoTimestamp: formValue.videoTimestamp || undefined,
         });
         this.toast.success("Report submitted successfully");
       }
@@ -685,7 +732,9 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     if (!errorMessage) return "";
 
     // Try to extract UserFacingError message
-    const userFacingMatch = errorMessage.match(/Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s);
+    const userFacingMatch = errorMessage.match(
+      /Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s,
+    );
     if (userFacingMatch) {
       return userFacingMatch[1].trim();
     }

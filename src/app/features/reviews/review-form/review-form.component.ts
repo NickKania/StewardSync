@@ -54,7 +54,9 @@ import { SelectOption } from "@shared/components/select/select.component";
           class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
         >
           <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Review Incident</h1>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Review Incident
+            </h1>
             <p class="text-gray-500 mt-1 dark:text-gray-400">
               {{ report()?.event?.trackName }} - Race
               {{ report()?.race?.raceNumber }}
@@ -218,7 +220,7 @@ import { SelectOption } from "@shared/components/select/select.component";
 
                   <!-- Video timestamp -->
                   <div>
-                    <label class="label">Video Timestamp</label>
+                    <label class="label">Video/Replay Timestamp</label>
                     <input
                       type="text"
                       formControlName="videoTimestamp"
@@ -317,7 +319,9 @@ import { SelectOption } from "@shared/components/select/select.component";
                     <div class="p-4 bg-gray-50 rounded-lg dark:bg-gray-800">
                       <div class="flex items-start justify-between mb-3">
                         <div>
-                          <p class="font-medium text-gray-900 dark:text-gray-100">
+                          <p
+                            class="font-medium text-gray-900 dark:text-gray-100"
+                          >
                             {{ review.reviewer?.name }}
                           </p>
                           @if (review.linkedReview) {
@@ -348,7 +352,9 @@ import { SelectOption } from "@shared/components/select/select.component";
                           >
                         </div>
                       }
-                      <p class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300">
+                      <p
+                        class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300"
+                      >
                         {{ review.reviewNotes }}
                         @if (review.isAdjusted && review.adjustedReason) {
                           <br /><span class="text-amber-700"
@@ -368,7 +374,9 @@ import { SelectOption } from "@shared/components/select/select.component";
             <app-card title="Incident Details">
               <dl class="space-y-4">
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported Driver</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Reported Driver
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reportedDriver?.driverName }}
                   </dd>
@@ -377,7 +385,9 @@ import { SelectOption } from "@shared/components/select/select.component";
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported By</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Reported By
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reportingUser?.name || "Unknown User" }}
                   </dd>
@@ -388,13 +398,17 @@ import { SelectOption } from "@shared/components/select/select.component";
                   }
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Location</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Location
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     Lap {{ report()?.lap }}, Turn {{ report()?.turn }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Filed</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Filed
+                  </dt>
                   <dd class="text-gray-900 dark:text-gray-100">
                     {{ report()?.reportDate | dateFormat: "PPp" }}
                   </dd>
@@ -403,7 +417,9 @@ import { SelectOption } from "@shared/components/select/select.component";
             </app-card>
 
             <app-card title="Original Description">
-              <p class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300">
+              <p
+                class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300"
+              >
                 {{ report()?.description }}
               </p>
             </app-card>
