@@ -80,7 +80,7 @@ import { Id } from "@convex/_generated/dataModel";
               <div class="space-y-4">
                 <div class="flex items-center justify-between">
                   <div class="flex-1">
-                    <h3 class="text-lg font-semibold text-gray-900">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {{ s.name }}
                       @if (s.isActive === false) {
                         <app-badge variant="default" class="ml-2"
@@ -89,7 +89,7 @@ import { Id } from "@convex/_generated/dataModel";
                       }
                     </h3>
                     @if (s.description) {
-                      <p class="text-sm text-gray-500 mt-1">
+                      <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
                         {{ s.description }}
                       </p>
                     }
@@ -226,7 +226,7 @@ import { Id } from "@convex/_generated/dataModel";
                             <div class="flex gap-1">
                               <button
                                 (click)="editPenalty(penalty)"
-                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 dark:text-gray-500"
                               >
                                 <svg
                                   class="w-4 h-4"
@@ -244,7 +244,7 @@ import { Id } from "@convex/_generated/dataModel";
                               </button>
                               <button
                                 (click)="deletePenalty(penalty._id)"
-                                class="text-gray-400 hover:text-red-600 p-1"
+                                class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
                               >
                                 <svg
                                   class="w-4 h-4"
@@ -358,7 +358,7 @@ import { Id } from "@convex/_generated/dataModel";
                             <div class="flex gap-1 ml-2">
                               <button
                                 (click)="editSeriesPenalty(sp)"
-                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 dark:text-gray-500"
                               >
                                 <svg
                                   class="w-4 h-4"
@@ -376,7 +376,7 @@ import { Id } from "@convex/_generated/dataModel";
                               </button>
                               <button
                                 (click)="deleteSeriesPenalty(sp._id)"
-                                class="text-gray-400 hover:text-red-600 p-1"
+                                class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
                               >
                                 <svg
                                   class="w-4 h-4"
@@ -414,7 +414,7 @@ import { Id } from "@convex/_generated/dataModel";
                                     <app-badge variant="danger">
                                       {{ threshold.threshold }} pts
                                     </app-badge>
-                                    <span class="text-xs text-gray-500"
+                                    <span class="text-xs text-gray-500 dark:text-gray-400"
                                       >for:</span
                                     >
                                     @for (
@@ -496,7 +496,7 @@ import { Id } from "@convex/_generated/dataModel";
                           <span class="text-gray-700 dark:text-gray-300">{{
                             driverClass.displayName
                           }}</span>
-                          <span class="text-xs text-gray-500"
+                          <span class="text-xs text-gray-500 dark:text-gray-400"
                             >({{ driverClass.driversCount }} drivers)</span
                           >
                         </div>
@@ -581,7 +581,7 @@ import { Id } from "@convex/_generated/dataModel";
                   [(ngModel)]="seriesForm.reportingOpenTime"
                   placeholder="e.g., 18:00"
                 />
-                <p class="text-xs text-gray-500 mt-1">
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                   Time in 24-hour UTC format (HH:MM). Reporting opens at this
                   UTC time on the event date.
                 </p>
@@ -598,7 +598,7 @@ import { Id } from "@convex/_generated/dataModel";
                   placeholder="e.g., 24"
                   min="1"
                 />
-                <p class="text-xs text-gray-500 mt-1">
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                   Number of hours reporting remains open. Leave empty for
                   unrestricted access.
                 </p>
@@ -608,14 +608,14 @@ import { Id } from "@convex/_generated/dataModel";
                   <input
                     type="checkbox"
                     [(ngModel)]="seriesForm.isReportingLocked"
-                    class="rounded border-gray-300"
+                    class="rounded border-gray-300 dark:border-gray-700"
                   />
                   <span
                     class="text-sm font-medium text-gray-700 dark:text-gray-300"
                     >Lock Reports</span
                   >
                 </label>
-                <p class="text-xs text-gray-500 mt-1">
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                   Prevent all users from creating reports for this series.
                   Stewards will also be blocked.
                 </p>
@@ -625,14 +625,14 @@ import { Id } from "@convex/_generated/dataModel";
                   <input
                     type="checkbox"
                     [(ngModel)]="seriesForm.isActive"
-                    class="rounded border-gray-300"
+                    class="rounded border-gray-300 dark:border-gray-700"
                   />
                   <span
                     class="text-sm font-medium text-gray-700 dark:text-gray-300"
                     >Active</span
                   >
                 </label>
-                <p class="text-xs text-gray-500 mt-1">
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                   When unchecked, this series will not appear in any series
                   dropdowns throughout the application.
                 </p>
@@ -699,7 +699,7 @@ import { Id } from "@convex/_generated/dataModel";
                   placeholder="e.g., 5"
                   min="0"
                 />
-                <p class="text-xs text-gray-500 mt-1">
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                   Seconds subtracted from time penalties if driver self-reported
                 </p>
               </div>
@@ -714,7 +714,7 @@ import { Id } from "@convex/_generated/dataModel";
                   [(ngModel)]="penaltyForm.timePenaltyLap1"
                   placeholder="e.g., 5"
                 />
-                <p class="text-xs text-gray-500 mt-1">
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                   Defaults to primary time penalty if not specified
                 </p>
               </div>
@@ -832,7 +832,7 @@ import { Id } from "@convex/_generated/dataModel";
                         </div>
                         <button
                           (click)="removeThreshold(threshold.id || '')"
-                          class="text-gray-400 hover:text-red-600 p-1"
+                          class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
                           type="button"
                         >
                           <svg
@@ -911,7 +911,7 @@ import { Id } from "@convex/_generated/dataModel";
               </h3>
               <button
                 (click)="closeDriverClassModal()"
-                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 dark:text-gray-500"
               >
                 <svg
                   class="w-6 h-6"
@@ -933,7 +933,7 @@ import { Id } from "@convex/_generated/dataModel";
               @if (loadingDriverClasses) {
                 <app-loading text="Loading driver classes..." />
               } @else if (driverClassesForManagement().length === 0) {
-                <p class="text-gray-500 text-center py-4">
+                <p class="text-gray-500 text-center py-4 dark:text-gray-400">
                   No driver classes found for this series.
                 </p>
               } @else {
@@ -952,7 +952,7 @@ import { Id } from "@convex/_generated/dataModel";
                               class="font-medium text-gray-700 dark:text-gray-300"
                               >{{ driverClass.className }}</span
                             >
-                            <span class="text-xs text-gray-500"
+                            <span class="text-xs text-gray-500 dark:text-gray-400"
                               >({{ driverClass.driversCount }} drivers)</span
                             >
                           </div>
@@ -1007,7 +1007,7 @@ import { Id } from "@convex/_generated/dataModel";
                         @if (editingDriverClassId !== driverClass._id) {
                           <button
                             (click)="editDriverClass(driverClass)"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 dark:text-gray-500"
                           >
                             <svg
                               class="w-4 h-4"

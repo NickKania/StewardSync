@@ -15,6 +15,7 @@ interface FilterState {
   searchQuery: string;
   seriesId: string;
   userId: string;
+  candidateForStandardizationOnly: boolean;
   startDate: string;
   endDate: string;
 }
@@ -38,8 +39,8 @@ interface FilterState {
     <div class="space-y-6">
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Review Search</h1>
-          <p class="text-gray-500 mt-1">Search and filter review comments</p>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Review Search</h1>
+          <p class="text-gray-500 mt-1 dark:text-gray-400">Search and filter review comments</p>
         </div>
       </div>
 
@@ -47,12 +48,12 @@ interface FilterState {
         <app-card>
           <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
+            <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
               Search Query
             </label>
             <div class="relative">
               <svg
-                class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -74,13 +75,13 @@ interface FilterState {
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
                 Series
               </label>
               @if (!initialDataLoaded()) {
-                <div class="px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
+                <div class="px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
                   Loading...
                 </div>
               } @else {
@@ -95,11 +96,11 @@ interface FilterState {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
                 Reviewer
               </label>
               @if (!initialDataLoaded()) {
-                <div class="px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm">
+                <div class="px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
                   Loading...
                 </div>
               } @else {
@@ -114,7 +115,7 @@ interface FilterState {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
                 Start Date
               </label>
               <input
@@ -126,7 +127,7 @@ interface FilterState {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">
                 End Date
               </label>
               <input
@@ -135,6 +136,18 @@ interface FilterState {
                 (ngModelChange)="onFilterChange()"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
               />
+            </div>
+
+            <div class="flex items-end">
+              <label class="flex items-center gap-2 text-sm text-gray-700 pb-2 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="filters().candidateForStandardizationOnly"
+                  (ngModelChange)="onFilterChange()"
+                  class="rounded border-gray-300 dark:border-gray-700"
+                />
+                Candidate for standardization
+              </label>
             </div>
           </div>
 
@@ -160,41 +173,53 @@ interface FilterState {
         } @else if (results().length > 0) {
           <div class="overflow-x-auto">
             <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr class="text-left text-sm text-gray-500">
+              <thead class="bg-gray-50 dark:bg-gray-800">
+                <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th class="px-6 py-3 font-medium">Reviewer</th>
                   <th class="px-6 py-3 font-medium">Series</th>
                   <th class="px-6 py-3 font-medium">Event</th>
                   <th class="px-6 py-3 font-medium">Incident Description</th>
                   <th class="px-6 py-3 font-medium">Review Notes</th>
+                  <th class="px-6 py-3 font-medium">Standardization</th>
                   <th class="px-6 py-3 font-medium">Created</th>
                   <th class="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 @for (result of results(); track result._id) {
-                  <tr class="hover:bg-gray-50">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900">{{ result.reviewer?.name || 'Unknown' }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ result.reviewer?.name || 'Unknown' }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900">{{ result.series?.name || 'N/A' }}</p>
+                      <p class="text-gray-900 dark:text-gray-100">{{ result.series?.name || 'N/A' }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900">{{ result.event?.trackName }}</p>
-                      <p class="text-sm text-gray-500">Race {{ result.race?.raceNumber }}</p>
+                      <p class="text-gray-900 dark:text-gray-100">{{ result.event?.trackName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ result.race?.raceNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900 max-w-xs truncate">
+                      <p class="text-gray-900 max-w-xs truncate dark:text-gray-100">
                         {{ result.incidentDescription }}
                       </p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900 max-w-xs truncate">
+                      <p class="text-gray-900 max-w-xs truncate dark:text-gray-100">
                         {{ result.reviewNotes }}
                       </p>
                     </td>
-                    <td class="px-6 py-4 text-gray-500 text-sm">
+                    <td class="px-6 py-4">
+                      @if (result.candidateForStandardization) {
+                        <span
+                          class="inline-block px-2.5 py-0.5 text-sm font-medium rounded-full bg-amber-100 text-amber-800"
+                        >
+                          Candidate
+                        </span>
+                      } @else {
+                        <span class="text-gray-400 dark:text-gray-500">-</span>
+                      }
+                    </td>
+                    <td class="px-6 py-4 text-gray-500 text-sm dark:text-gray-400">
                       {{ result.createdAt | date: 'short' }}
                     </td>
                     <td class="px-6 py-4">
@@ -233,8 +258,8 @@ interface FilterState {
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               ></path>
             </svg>
-            <p class="text-gray-500">No reviews found</p>
-            <p class="text-sm text-gray-400 mt-1">Try adjusting your search or filters</p>
+            <p class="text-gray-500 dark:text-gray-400">No reviews found</p>
+            <p class="text-sm text-gray-400 mt-1 dark:text-gray-500">Try adjusting your search or filters</p>
           </div>
         }
       </app-card>
@@ -251,6 +276,7 @@ export class ReviewSearchComponent {
     searchQuery: '',
     seriesId: '',
     userId: '',
+    candidateForStandardizationOnly: false,
     startDate: '',
     endDate: '',
   });
@@ -283,6 +309,7 @@ export class ReviewSearchComponent {
       f.searchQuery ||
       f.seriesId ||
       f.userId ||
+      f.candidateForStandardizationOnly ||
       f.startDate ||
       f.endDate
     );
@@ -335,6 +362,7 @@ export class ReviewSearchComponent {
       searchQuery: '',
       seriesId: '',
       userId: '',
+      candidateForStandardizationOnly: false,
       startDate: '',
       endDate: '',
     });
@@ -392,6 +420,10 @@ export class ReviewSearchComponent {
       if (f.userId) {
         searchParams.userId = f.userId;
         countParams.userId = f.userId;
+      }
+      if (f.candidateForStandardizationOnly) {
+        searchParams.candidateForStandardization = true;
+        countParams.candidateForStandardization = true;
       }
       if (f.startDate) {
         const startDate = new Date(f.startDate).getTime();

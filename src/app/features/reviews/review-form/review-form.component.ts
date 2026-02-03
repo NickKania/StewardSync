@@ -1,4 +1,12 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed, Input } from "@angular/core";
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  signal,
+  computed,
+  Input,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Router, RouterLink } from "@angular/router";
 import {
@@ -46,8 +54,8 @@ import { SelectOption } from "@shared/components/select/select.component";
           class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
         >
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">Review Incident</h1>
-            <p class="text-gray-500 mt-1">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Review Incident</h1>
+            <p class="text-gray-500 mt-1 dark:text-gray-400">
               {{ report()?.event?.trackName }} - Race
               {{ report()?.race?.raceNumber }}
             </p>
@@ -76,7 +84,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                       placeholder="Describe the incident as you see it..."
                       rows="4"
                     ></textarea>
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       You can modify the incident description if needed
                     </p>
                   </div>
@@ -143,21 +151,15 @@ import { SelectOption } from "@shared/components/select/select.component";
                   <!-- At fault driver -->
                   <div>
                     <label class="label">At Fault Driver</label>
-                    <select
-                      formControlName="atFaultDriverId"
-                      class="input"
-                    >
+                    <select formControlName="atFaultDriverId" class="input">
                       <option value="">Select driver</option>
-                      @for (
-                        driver of drivers();
-                        track driver._id
-                      ) {
+                      @for (driver of drivers(); track driver._id) {
                         <option [value]="driver._id">
                           {{ driver.driverName }} ({{ driver.driverNumber }})
                         </option>
                       }
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Pre-selected to reported driver, change if different
                     </p>
                   </div>
@@ -180,6 +182,24 @@ import { SelectOption } from "@shared/components/select/select.component";
                     />
                   </div>
 
+                  <!-- Candidate for standardization -->
+                  <div>
+                    <label
+                      class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                    >
+                      <input
+                        type="checkbox"
+                        formControlName="candidateForStandardization"
+                        class="rounded border-gray-300 dark:border-gray-700"
+                      />
+                      Candidate for standardization
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                      Optional: Mark if this incident would be a good example
+                      for standardization
+                    </p>
+                  </div>
+
                   <!-- Adjusted reason (conditionally shown) -->
                   @if (form.get("isAdjusted")?.value) {
                     <div>
@@ -190,7 +210,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                         placeholder="Explain why the incident was adjusted..."
                         rows="3"
                       ></textarea>
-                      <p class="text-xs text-gray-500 mt-1">
+                      <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                         This will be added as a note to the incident description
                       </p>
                     </div>
@@ -205,7 +225,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                       class="input"
                       placeholder="e.g., 1:23:45 or Lap 15, T3 Entry"
                     />
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Optional: Reference to video evidence
                     </p>
                   </div>
@@ -218,7 +238,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                       [options]="stewardOptions()"
                       placeholder="Search stewards by name..."
                     />
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Stewards involved as drivers in this incident are excluded
                       from the list
                     </p>
@@ -228,7 +248,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                 <!-- Footer -->
                 <div
                   card-footer
-                  class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3"
+                  class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
                 >
                   <div class="flex gap-3">
                     <app-button
@@ -294,19 +314,19 @@ import { SelectOption } from "@shared/components/select/select.component";
               <app-card title="Other Reviews" class="mt-6">
                 <div class="space-y-4">
                   @for (review of existingReviews(); track review._id) {
-                    <div class="p-4 bg-gray-50 rounded-lg">
+                    <div class="p-4 bg-gray-50 rounded-lg dark:bg-gray-800">
                       <div class="flex items-start justify-between mb-3">
                         <div>
-                          <p class="font-medium text-gray-900">
+                          <p class="font-medium text-gray-900 dark:text-gray-100">
                             {{ review.reviewer?.name }}
                           </p>
                           @if (review.linkedReview) {
-                            <p class="text-xs text-gray-500">
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
                               Joint review with
                               {{ review.linkedReview.reviewer?.name }}
                             </p>
                           }
-                          <p class="text-sm text-gray-500">
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
                             {{ review.reviewDate | timeAgo }}
                           </p>
                         </div>
@@ -321,13 +341,20 @@ import { SelectOption } from "@shared/components/select/select.component";
                           </app-badge>
                         }
                       </div>
-                      <p class="text-gray-700 text-sm whitespace-pre-wrap">
+                      @if (review.candidateForStandardization) {
+                        <div class="mb-3">
+                          <app-badge variant="warning"
+                            >Candidate for standardization</app-badge
+                          >
+                        </div>
+                      }
+                      <p class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300">
                         {{ review.reviewNotes }}
                         @if (review.isAdjusted && review.adjustedReason) {
                           <br /><span class="text-amber-700"
                             >[Adjusted: {{ review.adjustedReason }}]</span
-                            >
-                          }
+                          >
+                        }
                       </p>
                     </div>
                   }
@@ -341,34 +368,34 @@ import { SelectOption } from "@shared/components/select/select.component";
             <app-card title="Incident Details">
               <dl class="space-y-4">
                 <div>
-                  <dt class="text-sm text-gray-500">Reported Driver</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported Driver</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reportedDriver?.driverName }}
                   </dd>
-                  <dd class="text-sm text-gray-500">
+                  <dd class="text-sm text-gray-500 dark:text-gray-400">
                     #{{ report()?.reportedDriver?.driverNumber }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Reported By</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported By</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reportingUser?.name || "Unknown User" }}
                   </dd>
                   @if (report()?.isStewardReported) {
-                    <dd class="text-sm text-gray-500">
+                    <dd class="text-sm text-gray-500 dark:text-gray-400">
                       <app-badge variant="info" size="sm">Steward</app-badge>
                     </dd>
                   }
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Location</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Location</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     Lap {{ report()?.lap }}, Turn {{ report()?.turn }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Filed</dt>
-                  <dd class="text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Filed</dt>
+                  <dd class="text-gray-900 dark:text-gray-100">
                     {{ report()?.reportDate | dateFormat: "PPp" }}
                   </dd>
                 </div>
@@ -376,7 +403,7 @@ import { SelectOption } from "@shared/components/select/select.component";
             </app-card>
 
             <app-card title="Original Description">
-              <p class="text-gray-700 text-sm whitespace-pre-wrap">
+              <p class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300">
                 {{ report()?.description }}
               </p>
             </app-card>
@@ -385,7 +412,7 @@ import { SelectOption } from "@shared/components/select/select.component";
       } @else {
         <app-card>
           <div class="text-center py-12">
-            <p class="text-gray-500">Report not found</p>
+            <p class="text-gray-500 dark:text-gray-400">Report not found</p>
             <a routerLink="/reviews" class="mt-4 inline-block">
               <app-button variant="primary">Back to Reviews</app-button>
             </a>
@@ -485,6 +512,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       secondStewardId: [""],
       isSelfReport: [false],
       isAdjusted: [false],
+      candidateForStandardization: [false],
       adjustedReason: [""],
     });
   }
@@ -623,7 +651,10 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     }
 
     // If saved steward matches reporting user, it would cause a conflict
-    if (report.reportingUserId && String(savedStewardId) === String(report.reportingUserId)) {
+    if (
+      report.reportingUserId &&
+      String(savedStewardId) === String(report.reportingUserId)
+    ) {
       localStorage.removeItem("selectedSecondSteward");
       this.form.patchValue({ secondStewardId: "" });
       return;
@@ -638,7 +669,10 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
     // Also check if saved steward is linked to reported driver
     const reportedDriverUserId = report.reportedDriver?.userId;
-    if (reportedDriverUserId && String(savedStewardId) === String(reportedDriverUserId)) {
+    if (
+      reportedDriverUserId &&
+      String(savedStewardId) === String(reportedDriverUserId)
+    ) {
       localStorage.removeItem("selectedSecondSteward");
       this.form.patchValue({ secondStewardId: "" });
       return;
@@ -646,18 +680,23 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
     // Also check if saved steward is linked to reporting driver
     const reportingDriverUserId = report.reportingDriver?.userId;
-    if (reportingDriverUserId && String(savedStewardId) === String(reportingDriverUserId)) {
+    if (
+      reportingDriverUserId &&
+      String(savedStewardId) === String(reportingDriverUserId)
+    ) {
       localStorage.removeItem("selectedSecondSteward");
       this.form.patchValue({ secondStewardId: "" });
       return;
     }
 
     // Disconnects valueChanges subscription before patching to prevent re-saving
-    const secondStewardControl = this.form.get('secondStewardId');
+    const secondStewardControl = this.form.get("secondStewardId");
     if (secondStewardControl) {
-      const subscription = secondStewardControl.valueChanges.subscribe((value) => {
-        this.saveStewardSelection(value);
-      });
+      const subscription = secondStewardControl.valueChanges.subscribe(
+        (value) => {
+          this.saveStewardSelection(value);
+        },
+      );
       this.unsubscribes.push(() => subscription.unsubscribe());
     }
 
@@ -678,7 +717,9 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const reportedDriver = report.reportedDriver ? this.drivers().find(d => d._id === report.reportedDriver) : null;
+    const reportedDriver = report.reportedDriver
+      ? this.drivers().find((d) => d._id === report.reportedDriver)
+      : null;
     const reportedDriverUserId = reportedDriver?.userId;
 
     if (String(stewardId) === String(reportedDriverUserId)) {
@@ -718,6 +759,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           secondStewardId: formValue.secondStewardId || undefined,
           isSelfReport: formValue.isSelfReport || false,
           isAdjusted: formValue.isAdjusted || false,
+          candidateForStandardization:
+            formValue.candidateForStandardization || false,
           adjustedReason:
             formValue.isAdjusted && formValue.adjustedReason
               ? formValue.adjustedReason

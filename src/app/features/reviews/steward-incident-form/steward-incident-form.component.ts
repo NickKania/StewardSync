@@ -45,10 +45,10 @@ import { SelectOption } from "@shared/components/select/select.component";
         <app-loading text="Loading..." />
       } @else if (!isReportingOpen() && reportingStatusMessage()) {
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Create Steward Incident
           </h1>
-          <p class="text-gray-500 mt-1">
+          <p class="text-gray-500 mt-1 dark:text-gray-400">
             File an incident report and submit review with penalty
             recommendation
           </p>
@@ -68,17 +68,17 @@ import { SelectOption } from "@shared/components/select/select.component";
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               ></path>
             </svg>
-            <p class="text-lg font-semibold text-gray-900">
+            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {{ reportingStatusMessage() }}
             </p>
           </div>
         </app-card>
       } @else {
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Create Steward Incident
           </h1>
-          <p class="text-gray-500 mt-1">
+          <p class="text-gray-500 mt-1 dark:text-gray-400">
             File an incident report and submit review with penalty
             recommendation
           </p>
@@ -108,7 +108,7 @@ import { SelectOption } from "@shared/components/select/select.component";
         <div class="grid lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2">
             <form [formGroup]="form" (ngSubmit)="onSubmit()">
-              <app-card title="Incident Details">
+              <app-card title="Incident Details" [overflowHidden]="false">
                 <div class="space-y-4">
                   <div>
                     <label class="label">Series</label>
@@ -309,7 +309,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                         </option>
                       }
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Pre-selected to reported driver, change if different
                     </p>
                   </div>
@@ -330,6 +330,23 @@ import { SelectOption } from "@shared/components/select/select.component";
                     />
                   </div>
 
+                  <div>
+                    <label
+                      class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                    >
+                      <input
+                        type="checkbox"
+                        formControlName="candidateForStandardization"
+                        class="rounded border-gray-300 dark:border-gray-700"
+                      />
+                      Candidate for standardization
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                      Optional: Mark if this incident would be a good example
+                      for standardization
+                    </p>
+                  </div>
+
                   <!-- Adjusted reason (conditionally shown) -->
                   @if (form.get("isAdjusted")?.value) {
                     <div>
@@ -340,7 +357,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                         placeholder="Explain why the incident was adjusted..."
                         rows="3"
                       ></textarea>
-                      <p class="text-xs text-gray-500 mt-1">
+                      <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                         This will be added as a note to the incident description
                       </p>
                     </div>
@@ -363,7 +380,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                       [options]="stewardOptions()"
                       placeholder="Search stewards by name..."
                     />
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Stewards involved as drivers in this incident are excluded
                       from the list
                     </p>
@@ -372,7 +389,7 @@ import { SelectOption } from "@shared/components/select/select.component";
 
                 <div
                   card-footer
-                  class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3"
+                  class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
                 >
                   <app-button
                     type="button"
@@ -383,12 +400,12 @@ import { SelectOption } from "@shared/components/select/select.component";
                   </app-button>
                   <div class="flex gap-3 items-center">
                     <label
-                      class="flex items-center gap-2 text-sm text-gray-700"
+                      class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
                     >
                       <input
                         type="checkbox"
                         formControlName="createAnother"
-                        class="rounded border-gray-300"
+                        class="rounded border-gray-300 dark:border-gray-700"
                       />
                       Create another
                     </label>
@@ -421,9 +438,9 @@ import { SelectOption } from "@shared/components/select/select.component";
             <app-card title="Reporter Information">
               <dl class="space-y-4">
                 <div>
-                  <dt class="text-sm text-gray-500">Reporter</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reporter</dt>
                   <div class="flex items-center gap-2">
-                    <dd class="font-medium text-gray-900">
+                    <dd class="font-medium text-gray-900 dark:text-gray-100">
                       {{ currentUser()?.name }}
                     </dd>
                     <app-badge variant="info" size="sm">Steward</app-badge>
@@ -436,20 +453,20 @@ import { SelectOption } from "@shared/components/select/select.component";
               <app-card title="Event Information">
                 <dl class="space-y-2 text-sm">
                   <div>
-                    <dt class="text-gray-500">Track</dt>
-                    <dd class="font-medium text-gray-900">
+                    <dt class="text-gray-500 dark:text-gray-400">Track</dt>
+                    <dd class="font-medium text-gray-900 dark:text-gray-100">
                       {{ selectedEvent()?.trackName }}
                     </dd>
                   </div>
                   <div>
-                    <dt class="text-gray-500">Series</dt>
-                    <dd class="font-medium text-gray-900">
+                    <dt class="text-gray-500 dark:text-gray-400">Series</dt>
+                    <dd class="font-medium text-gray-900 dark:text-gray-100">
                       {{ selectedEvent()?.series.name }}
                     </dd>
                   </div>
                   <div>
-                    <dt class="text-gray-500">Round</dt>
-                    <dd class="font-medium text-gray-900">
+                    <dt class="text-gray-500 dark:text-gray-400">Round</dt>
+                    <dd class="font-medium text-gray-900 dark:text-gray-100">
                       Round {{ selectedEvent()?.eventNumber }}
                     </dd>
                   </div>
@@ -563,7 +580,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     }
 
     const series = event.series;
-    
+
     if (series.isReportingLocked === true) {
       return false;
     }
@@ -574,7 +591,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
     const eventDate = new Date(event.eventDate);
     const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-    
+
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
@@ -593,9 +610,9 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     }
 
     const series = event.series;
-    
+
     if (series.isReportingLocked === true) {
-      return 'Reports have been locked for this series';
+      return "Reports have been locked for this series";
     }
 
     if (!series.reportingOpenTime || !series.reportingCloseDuration) {
@@ -604,7 +621,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
     const eventDate = new Date(event.eventDate);
     const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-    
+
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
@@ -643,6 +660,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       secondStewardId: [""],
       isSelfReport: [false],
       isAdjusted: [false],
+      candidateForStandardization: [false],
       adjustedReason: [""],
       createAnother: [false],
     });
@@ -1016,6 +1034,8 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           secondStewardId: formValue.secondStewardId || undefined,
           isSelfReport: formValue.isSelfReport || false,
           isAdjusted: formValue.isAdjusted || false,
+          candidateForStandardization:
+            formValue.candidateForStandardization || false,
           adjustedReason:
             formValue.isAdjusted && formValue.adjustedReason
               ? formValue.adjustedReason

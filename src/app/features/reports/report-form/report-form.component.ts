@@ -45,10 +45,10 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
     <div class="max-w-2xl mx-auto space-y-6">
       <!-- Header -->
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {{ isEdit ? "Edit Report" : "File a Report" }}
         </h1>
-        <p class="text-gray-500 mt-1">
+        <p class="text-gray-500 mt-1 dark:text-gray-400">
           {{
             isEdit
               ? "Update the incident details"
@@ -65,7 +65,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
              <svg class="w-16 h-16 mx-auto text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
              </svg>
-             <p class="text-lg font-semibold text-gray-900">{{ reportingStatusMessage() }}</p>
+             <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ reportingStatusMessage() }}</p>
            </div>
          </app-card>
        } @else {
@@ -243,7 +243,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
              <!-- Footer -->
              <div
                card-footer
-               class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3"
+               class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
              >
                <app-button
                  type="button"
@@ -255,12 +255,12 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                @if (!isEdit) {
                  <div class="flex gap-3 items-center">
                    <label
-                     class="flex items-center gap-2 text-sm text-gray-700"
+                     class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
                    >
                      <input
                        type="checkbox"
                        formControlName="createAnother"
-                       class="rounded border-gray-300"
+                       class="rounded border-gray-300 dark:border-gray-700"
                      />
                      Create another
                    </label>

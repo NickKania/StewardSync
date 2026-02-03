@@ -42,7 +42,7 @@ import { Penalty } from "@core/models/series.model";
     ToggleComponent,
   ],
   template: `
-    <div class="space-y-6">
+    <div class="space-y-6 text-gray-900 dark:text-gray-100">
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
         <div class="space-y-4">
           <!-- Decision description -->

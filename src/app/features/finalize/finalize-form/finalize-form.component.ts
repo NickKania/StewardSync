@@ -57,8 +57,8 @@ import { Penalty } from "@core/models/series.model";
           class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
         >
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">Finalize Report</h1>
-            <p class="text-gray-500 mt-1">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Finalize Report</h1>
+            <p class="text-gray-500 mt-1 dark:text-gray-400">
               {{ report()?.event?.trackName }} - Race
               {{ report()?.race?.raceNumber }}
             </p>
@@ -87,7 +87,7 @@ import { Penalty } from "@core/models/series.model";
                       placeholder="Describe the incident as observed in the steward review..."
                       rows="4"
                     ></textarea>
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       You can modify the incident description if needed
                     </p>
                     @if (
@@ -108,7 +108,7 @@ import { Penalty } from "@core/models/series.model";
                       [options]="driverOptions()"
                       placeholder="Search drivers by name..."
                     />
-                    <p class="text-xs text-gray-500 mt-1">
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Pre-selected from latest review, change if different
                     </p>
                   </div>
@@ -147,8 +147,8 @@ import { Penalty } from "@core/models/series.model";
                         No penalties configured for this series. Please
                         configure penalties first.
                       </p>
-                     }
-                   </div>
+                    }
+                  </div>
 
                   <!-- Self report toggle -->
                   <div>
@@ -157,6 +157,23 @@ import { Penalty } from "@core/models/series.model";
                       label="Self Report"
                       hint="Mark if this is a self-reported incident"
                     />
+                  </div>
+
+                  <div>
+                    <label
+                      class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                    >
+                      <input
+                        type="checkbox"
+                        formControlName="candidateForStandardization"
+                        class="rounded border-gray-300 dark:border-gray-700"
+                      />
+                      Candidate for standardization
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                      Optional: Mark if this incident would be a good example
+                      for standardization
+                    </p>
                   </div>
 
                   <!-- Official notes -->
@@ -174,7 +191,7 @@ import { Penalty } from "@core/models/series.model";
                 <!-- Footer -->
                 <div
                   card-footer
-                  class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3"
+                  class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
                 >
                   <app-button
                     type="button"
@@ -209,7 +226,7 @@ import { Penalty } from "@core/models/series.model";
               <app-card title="Steward Reviews" class="mt-6">
                 <div class="space-y-4">
                   @for (review of reviews(); track review._id) {
-                    <div class="p-4 bg-gray-50 rounded-lg">
+                    <div class="p-4 bg-gray-50 rounded-lg dark:bg-gray-800">
                       <div class="flex items-start justify-between mb-3">
                         <div>
                           @if (review.linkedReview) {
@@ -217,17 +234,17 @@ import { Penalty } from "@core/models/series.model";
                               <app-badge variant="success" size="sm"
                                 >Joint Review</app-badge
                               >
-                              <p class="font-medium text-gray-900">
+                              <p class="font-medium text-gray-900 dark:text-gray-100">
                                 {{ review.reviewer?.name }} &
                                 {{ review.linkedReview.reviewer?.name }}
                               </p>
                             </div>
                           } @else {
-                            <p class="font-medium text-gray-900">
+                            <p class="font-medium text-gray-900 dark:text-gray-100">
                               {{ review.reviewer?.name }}
                             </p>
                           }
-                          <p class="text-sm text-gray-500">
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
                             {{ review.reviewDate | timeAgo }}
                           </p>
                         </div>
@@ -237,7 +254,14 @@ import { Penalty } from "@core/models/series.model";
                           </app-badge>
                         }
                       </div>
-                      <p class="text-gray-700 text-sm whitespace-pre-wrap">
+                      @if (review.candidateForStandardization) {
+                        <div class="mb-3">
+                          <app-badge variant="warning"
+                            >Candidate for standardization</app-badge
+                          >
+                        </div>
+                      }
+                      <p class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300">
                         {{ review.reviewNotes }}
                         @if (review.isAdjusted && review.adjustedReason) {
                           <br /><span class="text-amber-700"
@@ -257,29 +281,29 @@ import { Penalty } from "@core/models/series.model";
             <app-card title="Incident Summary">
               <dl class="space-y-4">
                 <div>
-                  <dt class="text-sm text-gray-500">Reported Driver</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported Driver</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reportedDriver?.driverName }}
                   </dd>
-                  <dd class="text-sm text-gray-500">
+                  <dd class="text-sm text-gray-500 dark:text-gray-400">
                     #{{ report()?.reportedDriver?.driverNumber }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Reported By</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported By</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reportingUser?.name || "Unknown User" }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Location</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Location</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     Turn {{ report()?.turn }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Reviews</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reviews</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reviews?.length || 0 }} review(s)
                   </dd>
                 </div>
@@ -287,7 +311,7 @@ import { Penalty } from "@core/models/series.model";
             </app-card>
 
             <app-card title="Original Description">
-              <p class="text-gray-700 text-sm whitespace-pre-wrap">
+              <p class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300">
                 {{ report()?.description }}
               </p>
             </app-card>
@@ -298,7 +322,7 @@ import { Penalty } from "@core/models/series.model";
                 <div class="space-y-2">
                   @for (rec of penaltyRecommendations(); track rec.penaltyId) {
                     <div class="flex items-center justify-between">
-                      <span class="text-sm text-gray-700">{{
+                      <span class="text-sm text-gray-700 dark:text-gray-300">{{
                         rec.penaltyName
                       }}</span>
                       <app-badge variant="default">{{ rec.count }}</app-badge>
@@ -312,7 +336,7 @@ import { Penalty } from "@core/models/series.model";
       } @else {
         <app-card>
           <div class="text-center py-12">
-            <p class="text-gray-500">Report not found</p>
+            <p class="text-gray-500 dark:text-gray-400">Report not found</p>
             <a routerLink="/finalize" class="mt-4 inline-block">
               <app-button variant="primary">Back to Finalization</app-button>
             </a>
@@ -327,7 +351,7 @@ import { Penalty } from "@core/models/series.model";
       title="Reject Report"
       (close)="showRejectModal = false"
     >
-      <p class="text-gray-600 mb-4">
+      <p class="text-gray-600 mb-4 dark:text-gray-300">
         Are you sure you want to reject this report? This action cannot be
         undone.
       </p>
@@ -342,7 +366,7 @@ import { Penalty } from "@core/models/series.model";
       </div>
       <div
         modal-footer
-        class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3"
+        class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 dark:bg-gray-800 dark:border-gray-700"
       >
         <app-button variant="secondary" (onClick)="showRejectModal = false">
           Cancel
@@ -419,6 +443,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       atFaultDriverId: [""],
       officialNotes: [""],
       isSelfReport: [false],
+      candidateForStandardization: [false],
     });
   }
 
@@ -467,14 +492,19 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
         // Auto-fill incident description and isSelfReport from latest review
         if (data?.reviews && data.reviews.length > 0) {
-          const latestReview = data.reviews.reduce((latest: any, current: any) => {
-            const latestDate = latest.reviewDate || latest.createdAt || 0;
-            const currentDate = current.reviewDate || current.createdAt || 0;
-            return currentDate > latestDate ? current : latest;
-          });
+          const latestReview = data.reviews.reduce(
+            (latest: any, current: any) => {
+              const latestDate = latest.reviewDate || latest.createdAt || 0;
+              const currentDate = current.reviewDate || current.createdAt || 0;
+              return currentDate > latestDate ? current : latest;
+            },
+          );
 
           const incidentControl = this.form.get("incidentDescription");
           const selfReportControl = this.form.get("isSelfReport");
+          const standardizationControl = this.form.get(
+            "candidateForStandardization",
+          );
           const atFaultDriverControl = this.form.get("atFaultDriverId");
 
           if (latestReview?.incidentDescription && incidentControl) {
@@ -495,9 +525,22 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             }
           }
 
+          if (
+            latestReview?.candidateForStandardization !== undefined &&
+            standardizationControl
+          ) {
+            const currentValue = standardizationControl.value;
+            const newValue = latestReview.candidateForStandardization;
+
+            if (standardizationControl.pristine && currentValue !== newValue) {
+              standardizationControl.setValue(newValue);
+            }
+          }
+
           // Pre-select atFaultDriverId from latest review or reportedDriver
           if (atFaultDriverControl && atFaultDriverControl.pristine) {
-            const defaultDriver = latestReview?.atFaultDriverId || data?.reportedDriverId;
+            const defaultDriver =
+              latestReview?.atFaultDriverId || data?.reportedDriverId;
             if (defaultDriver) {
               atFaultDriverControl.setValue(String(defaultDriver));
             }
@@ -623,6 +666,25 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       }
 
       const formValue = this.form.value;
+      const reportData = this.report();
+
+      if (reportData?.reviews && reportData.reviews.length > 0) {
+        const latestReview = reportData.reviews.reduce(
+          (latest: any, current: any) => {
+            const latestDate = latest.reviewDate || latest.createdAt || 0;
+            const currentDate = current.reviewDate || current.createdAt || 0;
+            return currentDate > latestDate ? current : latest;
+          },
+        );
+
+        if (latestReview?._id) {
+          await this.convex.mutation(this.convex.api.reviews.update, {
+            reviewId: latestReview._id,
+            candidateForStandardization:
+              formValue.candidateForStandardization || false,
+          });
+        }
+      }
 
       const result = await this.convex.mutation(
         this.convex.api.reports.finalize,

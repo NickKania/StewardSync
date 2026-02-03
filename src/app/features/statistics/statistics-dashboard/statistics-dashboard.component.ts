@@ -88,7 +88,7 @@ interface DriverPointsRow {
   ],
   template: `
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold text-gray-900">Statistics</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Statistics</h1>
 
       @if (loading()) {
         <div>
@@ -107,7 +107,7 @@ interface DriverPointsRow {
         <!-- Export Mode: Show Header -->
         @if (isExportMode()) {
           <div class="export-header">
-            <div class="text-lg font-semibold text-gray-900">
+            <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
               @if (activeTab() === "event_rundown") {
                 Event Rundown
               } @else if (activeTab() === "series_overview") {
@@ -123,14 +123,14 @@ interface DriverPointsRow {
             <div class="space-y-6">
               <app-card>
                 <div
-                  class="px-6 py-4 border-b border-gray-200 flex items-center justify-between"
+                  class="px-6 py-4 border-b border-gray-200 flex items-center justify-between dark:border-gray-700"
                 >
-                  <h3 class="text-lg font-semibold text-gray-900">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Event Rundown
                   </h3>
                   <button
                     (click)="exportTableImage(eventRundownExportContainer, 'event-rundown.png')"
-                    class="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded hover:bg-gray-100"
+                    class="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
                   >
                     <svg
                       class="h-5 w-5"
@@ -180,24 +180,24 @@ interface DriverPointsRow {
                     @for (race of filteredAndSortedRaces(); track race.raceId) {
                       <div class="space-y-4">
                         <div class="flex items-center gap-2 pt-4">
-                          <h3 class="text-lg font-semibold text-gray-900">
+                          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                             {{ race.raceName }}
                           </h3>
                         </div>
                         @if (getRaceReports(race.raceId).length > 0) {
                           <div #eventRundownTable class="overflow-x-auto">
-                             <table class="w-full text-sm border border-gray-300">
+                             <table class="w-full text-sm border border-gray-300 dark:border-gray-700">
                               <thead
-                                class="bg-gray-50 border-b border-gray-300"
+                                class="bg-gray-50 border-b border-gray-300 dark:bg-gray-800 dark:border-gray-700"
                               >
                                 <tr>
                                   <th
-                                    class="w-[5%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center align-middle leading-tight text-xs"
+                                    class="w-[5%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400"
                                   >
                                     Ticket #
                                   </th>
                                   <th
-                                    class="w-[5%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[5%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(
                                         race.raceNumber,
@@ -215,7 +215,7 @@ interface DriverPointsRow {
                                     }}
                                   </th>
                                   <th
-                                    class="w-[10%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[10%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(
                                         race.raceNumber,
@@ -233,7 +233,7 @@ interface DriverPointsRow {
                                     }}
                                   </th>
                                   <th
-                                    class="w-[8%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[8%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(
                                         race.raceNumber,
@@ -251,7 +251,7 @@ interface DriverPointsRow {
                                     }}
                                   </th>
                                   <th
-                                    class="w-[3%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[3%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(race.raceNumber, 'lap')
                                     "
@@ -266,7 +266,7 @@ interface DriverPointsRow {
                                     }}
                                   </th>
                                   <th
-                                    class="w-[3%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[3%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(race.raceNumber, 'turn')
                                     "
@@ -281,7 +281,7 @@ interface DriverPointsRow {
                                     }}
                                   </th>
                                   <th
-                                    class="w-[47%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[47%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(
                                         race.raceNumber,
@@ -299,7 +299,7 @@ interface DriverPointsRow {
                                     }}
                                   </th>
                                   <th
-                                    class="w-[8%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[8%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(
                                         race.raceNumber,
@@ -317,7 +317,7 @@ interface DriverPointsRow {
                                     }}
                                   </th>
                                   <th
-                                    class="w-[8%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[8%] border-r border-gray-300 px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(
                                         race.raceNumber,
@@ -335,7 +335,7 @@ interface DriverPointsRow {
                                     }}
                                   </th>
                                   <th
-                                    class="w-[3%] px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                    class="w-[3%] px-1.5 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:text-gray-400 dark:hover:text-gray-200"
                                     (click)="
                                       sortEventRundown(
                                         race.raceNumber,
@@ -354,28 +354,25 @@ interface DriverPointsRow {
                                   </th>
                                 </tr>
                               </thead>
-                              <tbody class="divide-y divide-gray-100">
+                              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                                 @for (
                                   row of getRaceReports(race.raceId);
                                   track row.reportId;
                                   let i = $index
                                 ) {
-                                  <tr
-                                    [style.background-color]="i % 2 === 1 ? '#f3f4f6' : '#ffffff'"
-                                    [class]="isExportMode() ? '' : (i % 2 === 1 ? 'hover:bg-gray-200' : 'hover:bg-gray-50')"
-                                  >
+                                  <tr [class]="getStripedRowClasses(i)">
                                     <td
-                                      class="w-[5%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs"
+                                      class="w-[5%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                     >
                                       {{ row.reportId || "-" }}
                                     </td>
                                     <td
-                                      class="w-[5%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs"
+                                      class="w-[5%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                     >
                                       {{ row.carNumber ?? "-" }}
                                     </td>
                                     <td
-                                      class="w-[10%] border-r border-gray-300 px-3 py-2 font-medium text-left align-middle leading-tight text-xs"
+                                      class="w-[10%] border-r border-gray-300 px-3 py-2 font-medium text-left align-middle leading-tight text-xs dark:border-gray-700"
                                     >
                                       @if (row.driverId) {
                                         <a
@@ -383,33 +380,33 @@ interface DriverPointsRow {
                                             '/drivers',
                                             row.driverId,
                                           ]"
-                                          class="text-blue-600 hover:text-blue-800 hover:underline"
+                                          class="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                                         >
                                           {{ row.driverName ?? "-" }}
                                         </a>
                                       } @else {
-                                        <span class="text-gray-900">
+                                        <span class="text-gray-900 dark:text-gray-100">
                                           {{ row.driverName ?? "-" }}
                                         </span>
                                       }
                                     </td>
                                     <td
-                                      class="w-[8%] border-r border-gray-300 px-3 py-2 text-gray-600 text-left align-middle leading-tight text-xs"
+                                      class="w-[8%] border-r border-gray-300 px-3 py-2 text-gray-600 text-left align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-300"
                                     >
                                       {{ row.driverClass ?? "-" }}
                                     </td>
                                     <td
-                                      class="w-[3%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs"
+                                      class="w-[3%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                     >
                                       {{ row.lap ?? "-" }}
                                     </td>
                                     <td
-                                      class="w-[3%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs"
+                                      class="w-[3%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                     >
                                       {{ row.turn ?? "-" }}
                                     </td>
                                     <td
-                                      class="w-[47%] border-r border-gray-300 px-3 py-2 text-gray-700 text-left align-middle leading-tight text-xs"
+                                      class="w-[47%] border-r border-gray-300 px-3 py-2 text-gray-700 text-left align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-300"
                                     >
                                       <div class="whitespace-pre-wrap">
                                         {{ row.incidentDescription }}
@@ -423,19 +420,19 @@ interface DriverPointsRow {
                                       }
                                     </td>
                                     <td
-                                      class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs"
+                                      class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                     >
                                       @if (row.penaltyName) {
-                                        <span class="text-gray-700">
+                                        <span class="text-gray-700 dark:text-gray-300">
                                           {{ row.penaltyName
                                           }}{{ !row.isFinalized ? "*" : "" }}
                                         </span>
                                       } @else {
-                                        <span class="text-gray-400">-</span>
+                                        <span class="text-gray-400 dark:text-gray-500">-</span>
                                       }
                                     </td>
                                     <td
-                                      class="w-[8%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs"
+                                      class="w-[8%] border-r border-gray-300 px-1.5 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                     >
                                       @if (row.timePenaltySeconds > 0) {
                                         <app-badge
@@ -451,7 +448,7 @@ interface DriverPointsRow {
                                           }
                                         </app-badge>
                                       } @else {
-                                        <span class="text-gray-400">-</span>
+                                        <span class="text-gray-400 dark:text-gray-500">-</span>
                                       }
                                     </td>
                                     <td
@@ -463,7 +460,7 @@ interface DriverPointsRow {
                                       ) {
                                         {{ row.licensePoints }}
                                       } @else {
-                                        <span class="text-gray-400">-</span>
+                                        <span class="text-gray-400 dark:text-gray-500">-</span>
                                       }
                                     </td>
                                   </tr>
@@ -472,15 +469,15 @@ interface DriverPointsRow {
                             </table>
                           </div>
                         } @else {
-                          <p class="text-gray-500 text-center py-4">
+                          <p class="text-gray-500 text-center py-4 dark:text-gray-400">
                             No reviewed reports
                           </p>
                         }
                       </div>
                     }
                     @if (filteredAndSortedRaces().length > 0) {
-                      <div class="mt-6 pt-4 border-t border-gray-200">
-                        <p class="text-sm text-gray-600">
+                      <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
                           <span class="font-semibold">*</span> Indicates an
                           incident that has been reviewed but not yet finalized.
                         </p>
@@ -488,7 +485,7 @@ interface DriverPointsRow {
                     }
 
                     @if (isExportMode()) {
-                      <div class="mt-6 pt-4 border-t border-gray-200">
+                      <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <app-legend
                           [items]="legendItems()"
                           [title]="legendItems().length > 0 ? 'Legend' : ''"
@@ -497,11 +494,11 @@ interface DriverPointsRow {
                     }
                     </div>
                   } @else if (selectedEventId) {
-                    <p class="text-gray-500 text-center py-4">
+                    <p class="text-gray-500 text-center py-4 dark:text-gray-400">
                       No finalized reports for this event
                     </p>
                   } @else {
-                    <p class="text-gray-500 text-center py-4">
+                    <p class="text-gray-500 text-center py-4 dark:text-gray-400">
                       Select an event to view reports
                     </p>
                   }
@@ -514,14 +511,14 @@ interface DriverPointsRow {
             <div class="space-y-6">
               <app-card>
                 <div
-                  class="px-6 py-4 border-b border-gray-200 flex items-center justify-between"
+                  class="px-6 py-4 border-b border-gray-200 flex items-center justify-between dark:border-gray-700"
                 >
-                  <h3 class="text-lg font-semibold text-gray-900">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     Series Overview - License Points
                   </h3>
                   <button
                     (click)="exportTableImage(seriesOverviewExportContainer, 'series-overview.png')"
-                    class="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded hover:bg-gray-100"
+                    class="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
                   >
                     <svg
                       class="h-5 w-5"
@@ -570,11 +567,11 @@ interface DriverPointsRow {
                     @if (filteredAndSortedSeriesPoints().length > 0) {
                       <div #seriesOverviewExportContainer class="export-container">
                       <div #seriesPointsTable class="overflow-x-auto">
-                         <table class="w-full text-sm border border-gray-300">
-                          <thead class="bg-gray-50 border-b border-gray-300">
+                         <table class="w-full text-sm border border-gray-300 dark:border-gray-700">
+                          <thead class="bg-gray-50 border-b border-gray-300 dark:bg-gray-800 dark:border-gray-700">
                             <tr>
                               <th
-                                class="w-[8%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                class="w-[8%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                 (click)="sortSeriesPoints('driverNumber')"
                               >
                                 Car #
@@ -587,7 +584,7 @@ interface DriverPointsRow {
                                 }}
                               </th>
                               <th
-                                class="w-[18%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                class="w-[18%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                 (click)="sortSeriesPoints('driverName')"
                               >
                                 Driver
@@ -600,7 +597,7 @@ interface DriverPointsRow {
                                 }}
                               </th>
                               <th
-                                class="w-[12%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                class="w-[12%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                 (click)="sortSeriesPoints('driverClass')"
                               >
                                 Class
@@ -613,7 +610,7 @@ interface DriverPointsRow {
                                 }}
                               </th>
                               <th
-                                class="w-[12%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs"
+                                class="w-[12%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                 (click)="sortSeriesPoints('totalLicensePoints')"
                               >
                                 Total Points
@@ -626,51 +623,48 @@ interface DriverPointsRow {
                                 }}
                               </th>
                               <th
-                                class="w-[50%] px-3 py-2 font-bold text-gray-500 text-left align-middle leading-tight text-xs"
+                                class="w-[50%] px-3 py-2 font-bold text-gray-500 text-left align-middle leading-tight text-xs dark:text-gray-400"
                               >
                                 Series Penalties
                               </th>
                             </tr>
                           </thead>
-                          <tbody class="divide-y divide-gray-100">
+                          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                             @for (
                               row of filteredAndSortedSeriesPoints();
                               track row.driverId;
                               let i = $index
                             ) {
-                              <tr
-                                [style.background-color]="i % 2 === 1 ? '#f3f4f6' : '#ffffff'"
-                                [class]="isExportMode() ? '' : (i % 2 === 1 ? 'hover:bg-gray-200' : 'hover:bg-gray-50')"
-                              >
+                              <tr [class]="getStripedRowClasses(i)">
                                 <td
-                                  class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs"
+                                  class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                 >
                                   {{ row.driverNumber }}
                                 </td>
                                 <td
-                                  class="w-[18%] border-r border-gray-300 px-3 py-2 font-medium text-left align-middle leading-tight text-xs"
+                                  class="w-[18%] border-r border-gray-300 px-3 py-2 font-medium text-left align-middle leading-tight text-xs dark:border-gray-700"
                                 >
                                   <a
                                     [routerLink]="['/drivers', row.driverId]"
-                                    class="text-blue-600 hover:text-blue-800 hover:underline"
+                                    class="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                                   >
                                     {{ row.driverName }}
                                   </a>
                                 </td>
                                 <td
-                                  class="w-[12%] border-r border-gray-300 px-3 py-2 text-gray-600 text-left align-middle leading-tight text-xs"
+                                  class="w-[12%] border-r border-gray-300 px-3 py-2 text-gray-600 text-left align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-300"
                                 >
                                   {{ row.driverClass }}
                                 </td>
                                 <td
-                                  class="w-[12%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs"
+                                  class="w-[12%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                 >
                                   @if (row.totalLicensePoints > 0) {
                                     <app-badge>
                                       {{ row.totalLicensePoints }}
                                     </app-badge>
                                   } @else {
-                                    <span class="text-gray-400">0</span>
+                                    <span class="text-gray-400 dark:text-gray-500">0</span>
                                   }
                                 </td>
                                 <td
@@ -704,7 +698,7 @@ interface DriverPointsRow {
                                       }
                                     </div>
                                   } @else {
-                                    <span class="text-gray-400">-</span>
+                                    <span class="text-gray-400 dark:text-gray-500">-</span>
                                   }
                                 </td>
                               </tr>
@@ -714,7 +708,7 @@ interface DriverPointsRow {
                       </div>
 
                       @if (isExportMode()) {
-                        <div class="mt-6 pt-4 border-t border-gray-200">
+                        <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                           <app-legend
                             [items]="legendItems()"
                             [title]="legendItems().length > 0 ? 'Legend' : ''"
@@ -723,16 +717,16 @@ interface DriverPointsRow {
                       }
                       </div>
                     } @else {
-                      <p class="text-gray-500 text-center py-4">
+                      <p class="text-gray-500 text-center py-4 dark:text-gray-400">
                         No results match your filter
                       </p>
                     }
                   } @else if (selectedSeriesId) {
-                    <p class="text-gray-500 text-center py-4">
+                    <p class="text-gray-500 text-center py-4 dark:text-gray-400">
                       No drivers found for this series
                     </p>
                   } @else {
-                    <p class="text-gray-500 text-center py-4">
+                    <p class="text-gray-500 text-center py-4 dark:text-gray-400">
                       Select a series to view license points
                     </p>
                   }
@@ -1346,6 +1340,22 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       console.error("Failed to load series points:", error);
       this.seriesPoints.set([]);
     }
+  }
+
+  getStripedRowClasses(index: number): string {
+    const zebraClasses =
+      index % 2 === 1 ? "bg-gray-100 dark:bg-gray-800/70" : "bg-white dark:bg-gray-900";
+
+    if (this.isExportMode()) {
+      return zebraClasses;
+    }
+
+    const hoverClasses =
+      index % 2 === 1
+        ? "hover:bg-gray-200 dark:hover:bg-gray-700"
+        : "hover:bg-gray-50 dark:hover:bg-gray-800";
+
+    return `${zebraClasses} ${hoverClasses}`;
   }
 
   toggleExportMode(): void {

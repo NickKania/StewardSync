@@ -666,6 +666,7 @@ export const createBySteward = mutation({
     secondStewardId: v.optional(v.id("users")),
     isSelfReport: v.optional(v.boolean()),
     isAdjusted: v.optional(v.boolean()),
+    candidateForStandardization: v.optional(v.boolean()),
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -759,6 +760,7 @@ export const createBySteward = mutation({
       videoTimestamp: args.videoTimestamp,
       isSelfReport: args.isSelfReport,
       isAdjusted: args.isAdjusted,
+      candidateForStandardization: args.candidateForStandardization,
       adjustedReason: args.adjustedReason,
       reviewDate: now,
       createdAt: now,

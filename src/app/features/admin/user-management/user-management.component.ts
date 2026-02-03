@@ -28,8 +28,8 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
     <div class="space-y-6">
       <!-- Header -->
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">User Management</h1>
-        <p class="text-gray-500 mt-1">Manage user roles and permissions</p>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">User Management</h1>
+        <p class="text-gray-500 mt-1 dark:text-gray-400">Manage user roles and permissions</p>
       </div>
 
       <!-- Users table -->
@@ -41,8 +41,8 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
         } @else if (users().length > 0) {
           <div class="overflow-x-auto">
             <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr class="text-left text-sm text-gray-500">
+              <thead class="bg-gray-50 dark:bg-gray-800">
+                <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th class="px-6 py-3 font-medium">User</th>
                   <th class="px-6 py-3 font-medium">Email</th>
                   <th class="px-6 py-3 font-medium">Role</th>
@@ -50,9 +50,9 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                   <th class="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 @for (user of users(); track user._id) {
-                  <tr class="hover:bg-gray-50">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-6 py-4">
                       <div class="flex items-center gap-3">
                         @if (user.avatarUrl) {
@@ -68,16 +68,16 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                             </span>
                           </div>
                         }
-                        <span class="font-medium text-gray-900">{{ user.name }}</span>
+                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ user.name }}</span>
                       </div>
                     </td>
-                    <td class="px-6 py-4 text-gray-500">{{ user.email }}</td>
+                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ user.email }}</td>
                     <td class="px-6 py-4">
                       <app-badge [variant]="getRoleVariant(user.role?.name)">
                         {{ user.role?.displayName }}
                       </app-badge>
                     </td>
-                    <td class="px-6 py-4 text-gray-500 text-sm">
+                    <td class="px-6 py-4 text-gray-500 text-sm dark:text-gray-400">
                       {{ user.createdAt | dateFormat:'PP' }}
                     </td>
                     <td class="px-6 py-4">
@@ -96,7 +96,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
           </div>
         } @else {
           <div class="text-center py-12">
-            <p class="text-gray-500">No users found</p>
+            <p class="text-gray-500 dark:text-gray-400">No users found</p>
           </div>
         }
       </app-card>
@@ -110,7 +110,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
     >
       @if (selectedUser) {
         <div class="space-y-4">
-          <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg dark:bg-gray-800">
             @if (selectedUser.avatarUrl) {
               <img
                 [src]="selectedUser.avatarUrl"
@@ -125,8 +125,8 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
               </div>
             }
             <div>
-              <p class="font-medium text-gray-900">{{ selectedUser.name }}</p>
-              <p class="text-sm text-gray-500">{{ selectedUser.email }}</p>
+              <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedUser.name }}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ selectedUser.email }}</p>
             </div>
           </div>
 
@@ -142,7 +142,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
       }
 
       @if (selectedUser) {
-        <div modal-footer class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+        <div modal-footer class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 dark:bg-gray-800 dark:border-gray-700">
           <app-button variant="secondary" (onClick)="closeEditModal()">
             Cancel
           </app-button>

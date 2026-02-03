@@ -128,6 +128,7 @@ export const create = mutation({
     reportId: v.id("reports"),
     incidentDescription: v.string(),
     reviewNotes: v.string(),
+    candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
     videoTimestamp: v.optional(v.string()),
@@ -207,6 +208,7 @@ export const create = mutation({
       reportId: args.reportId,
       incidentDescription: args.incidentDescription,
       reviewNotes: args.reviewNotes,
+      candidateForStandardization: args.candidateForStandardization,
       recommendedPenalty: args.recommendedPenalty,
       atFaultDriverId: args.atFaultDriverId,
       videoTimestamp: args.videoTimestamp,
@@ -245,6 +247,7 @@ export const update = mutation({
     reviewId: v.id("reviews"),
     incidentDescription: v.optional(v.string()),
     reviewNotes: v.optional(v.string()),
+    candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.optional(v.string()),
     videoTimestamp: v.optional(v.string()),
     isAdjusted: v.optional(v.boolean()),
@@ -336,6 +339,7 @@ export const migrateSecondStewardToLinkedReviews = mutation({
           reportId: reviewDoc.reportId,
           incidentDescription: reviewDoc.incidentDescription,
           reviewNotes: reviewDoc.reviewNotes,
+          candidateForStandardization: reviewDoc.candidateForStandardization,
           recommendedPenalty: reviewDoc.recommendedPenalty,
           videoTimestamp: reviewDoc.videoTimestamp,
           reviewDate: reviewDoc.reviewDate,
@@ -348,6 +352,7 @@ export const migrateSecondStewardToLinkedReviews = mutation({
           reportId: reviewDoc.reportId,
           incidentDescription: reviewDoc.incidentDescription,
           reviewNotes: reviewDoc.reviewNotes,
+          candidateForStandardization: reviewDoc.candidateForStandardization,
           recommendedPenalty: reviewDoc.recommendedPenalty,
           videoTimestamp: reviewDoc.videoTimestamp,
           linkedReviewId: primaryReviewId,
@@ -371,6 +376,7 @@ export const search = query({
     searchQuery: v.optional(v.string()),
     seriesId: v.optional(v.id("series")),
     userId: v.optional(v.id("users")),
+    candidateForStandardization: v.optional(v.boolean()),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
     limit: v.number(),
@@ -433,6 +439,14 @@ export const search = query({
       );
     }
 
+    if (args.candidateForStandardization !== undefined) {
+      filteredReviews = filteredReviews.filter(
+        (review) =>
+          Boolean(review.candidateForStandardization) ===
+          args.candidateForStandardization,
+      );
+    }
+
     if (args.startDate) {
       filteredReviews = filteredReviews.filter(
         (review) => review.createdAt >= args.startDate!
@@ -479,6 +493,7 @@ export const searchCount = query({
     searchQuery: v.optional(v.string()),
     seriesId: v.optional(v.id("series")),
     userId: v.optional(v.id("users")),
+    candidateForStandardization: v.optional(v.boolean()),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
@@ -506,6 +521,14 @@ export const searchCount = query({
 
     if (args.userId) {
       reviews = reviews.filter((review) => review.userId === args.userId);
+    }
+
+    if (args.candidateForStandardization !== undefined) {
+      reviews = reviews.filter(
+        (review) =>
+          Boolean(review.candidateForStandardization) ===
+          args.candidateForStandardization,
+      );
     }
 
     if (args.startDate) {

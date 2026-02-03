@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4">
-      <p class="text-sm text-gray-500">
+      <p class="text-sm text-gray-500 dark:text-gray-400">
         Showing {{ startItem() }}-{{ endItem() }} of {{ totalResults() }} results
       </p>
       
@@ -22,7 +22,7 @@ import { CommonModule } from '@angular/common';
         
         @for (pageNum of visiblePages(); track pageNum) {
           @if (pageNum === 'ellipsis') {
-            <span class="px-3 py-2 text-gray-400">...</span>
+            <span class="px-3 py-2 text-gray-400 dark:text-gray-500">...</span>
           } @else {
             <button
               (click)="onPageChange(pageNum)"

@@ -34,7 +34,7 @@ import { CommonModule } from '@angular/common';
                 @if (showClose) {
                   <button
                     type="button"
-                    class="p-1 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-gray-800"
+                    class="p-1 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-gray-800 dark:text-gray-500 dark:hover:text-gray-300"
                     (click)="close.emit()"
                     aria-label="Close"
                   >

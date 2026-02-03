@@ -14,8 +14,8 @@ import { ButtonComponent } from '../button/button.component';
 
     <!-- Fullscreen overlay -->
     @if (isExportMode()) {
-      <div class="fixed inset-0 z-[9999] bg-white flex flex-col overflow-auto export-fullscreen">
-        <div class="flex-shrink-0 border-b border-gray-200 bg-gray-50 p-4">
+      <div class="fixed inset-0 z-[9999] bg-white flex flex-col overflow-auto export-fullscreen dark:bg-gray-900">
+        <div class="flex-shrink-0 border-b border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
           <div class="max-w-7xl mx-auto flex items-center justify-between">
             <app-legend [items]="legendItems()" [title]="legendTitle()" />
             <app-button variant="secondary" (click)="exitExportMode.emit()">

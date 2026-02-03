@@ -37,14 +37,14 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <div class="flex items-center gap-3 mb-2">
-              <h1 class="text-2xl font-bold text-gray-900">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Incident Report
               </h1>
               <app-badge [variant]="getStatusVariant(report()?.status)">
                 {{ report()?.status }}
               </app-badge>
             </div>
-            <p class="text-gray-500">
+            <p class="text-gray-500 dark:text-gray-400">
               Filed {{ report()?.reportDate | timeAgo }} at {{ report()?.event?.trackName }}
             </p>
           </div>
@@ -81,31 +81,31 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
             <app-card title="Incident Details">
               <dl class="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <dt class="text-sm text-gray-500">Event</dt>
-                  <dd class="font-medium text-gray-900">{{ report()?.event?.trackName }}</dd>
-                  <dd class="text-sm text-gray-500">{{ report()?.event?.series?.name }} Round {{ report()?.event?.eventNumber }}</dd>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Event</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">{{ report()?.event?.trackName }}</dd>
+                  <dd class="text-sm text-gray-500 dark:text-gray-400">{{ report()?.event?.series?.name }} Round {{ report()?.event?.eventNumber }}</dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Race & Location</dt>
-                  <dd class="font-medium text-gray-900">Race {{ report()?.race?.raceNumber }}, Lap {{ report()?.lap }}, Turn {{ report()?.turn }}</dd>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Race & Location</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">Race {{ report()?.race?.raceNumber }}, Lap {{ report()?.lap }}, Turn {{ report()?.turn }}</dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Reported Driver</dt>
-                  <dd class="font-medium text-gray-900">{{ report()?.reportedDriver?.displayName || report()?.reportedDriver?.officialName || report()?.reportedDriver?.driverName }}</dd>
-                  <dd class="text-sm text-gray-500">#{{ report()?.reportedDriver?.driverNumber }} - {{ report()?.reportedDriver?.driverClass }}</dd>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported Driver</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">{{ report()?.reportedDriver?.displayName || report()?.reportedDriver?.officialName || report()?.reportedDriver?.driverName }}</dd>
+                  <dd class="text-sm text-gray-500 dark:text-gray-400">#{{ report()?.reportedDriver?.driverNumber }} - {{ report()?.reportedDriver?.driverClass }}</dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Reported By</dt>
-                    <dd class="font-medium text-gray-900">{{ report()?.reportingUser?.name || 'Unknown User' }}</dd>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported By</dt>
+                    <dd class="font-medium text-gray-900 dark:text-gray-100">{{ report()?.reportingUser?.name || 'Unknown User' }}</dd>
                     @if (report()?.isStewardReported) {
                       <app-badge variant="info" size="sm">Steward</app-badge>
                     }
                   </div>
               </dl>
 
-              <div class="mt-6 pt-6 border-t border-gray-200">
-                <dt class="text-sm text-gray-500 mb-2">Description</dt>
-                <dd class="text-gray-900 whitespace-pre-wrap">{{ report()?.description }}</dd>
+              <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <dt class="text-sm text-gray-500 mb-2 dark:text-gray-400">Description</dt>
+                <dd class="text-gray-900 whitespace-pre-wrap dark:text-gray-100">{{ report()?.description }}</dd>
               </div>
             </app-card>
 
@@ -114,7 +114,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
               <app-card>
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
-                    <h3 class="text-lg font-semibold text-gray-900">Official Decision</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Official Decision</h3>
                     @if (report()?.isEdited) {
                       <app-badge variant="warning" size="sm">Edited</app-badge>
                     }
@@ -134,43 +134,43 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                 </div>
                 <div class="space-y-4 mt-4">
                   <div>
-                    <dt class="text-sm text-gray-500">Decision</dt>
-                    <dd class="font-medium text-gray-900">{{ report()?.finalDecision }}</dd>
+                    <dt class="text-sm text-gray-500 dark:text-gray-400">Decision</dt>
+                    <dd class="font-medium text-gray-900 dark:text-gray-100">{{ report()?.finalDecision }}</dd>
                   </div>
                   <div>
-                    <dt class="text-sm text-gray-500">At Fault Driver</dt>
+                    <dt class="text-sm text-gray-500 dark:text-gray-400">At Fault Driver</dt>
                     @if (report()?.atFaultDriver) {
-                      <dd class="font-medium text-gray-900">{{ report()?.atFaultDriver?.displayName || report()?.atFaultDriver?.officialName || report()?.atFaultDriver?.driverName }}</dd>
-                      <dd class="text-sm text-gray-500">#{{ report()?.atFaultDriver?.driverNumber }} - {{ report()?.atFaultDriver?.driverClass }}</dd>
+                      <dd class="font-medium text-gray-900 dark:text-gray-100">{{ report()?.atFaultDriver?.displayName || report()?.atFaultDriver?.officialName || report()?.atFaultDriver?.driverName }}</dd>
+                      <dd class="text-sm text-gray-500 dark:text-gray-400">#{{ report()?.atFaultDriver?.driverNumber }} - {{ report()?.atFaultDriver?.driverClass }}</dd>
                     } @else {
-                      <dd class="text-sm text-gray-500 italic">Not assigned</dd>
+                      <dd class="text-sm text-gray-500 italic dark:text-gray-400">Not assigned</dd>
                     }
                   </div>
                   @if (report()?.appliedPenaltyObj) {
                     <div>
-                      <dt class="text-sm text-gray-500">Penalty Applied</dt>
-                      <dd class="font-medium text-gray-900">
+                      <dt class="text-sm text-gray-500 dark:text-gray-400">Penalty Applied</dt>
+                      <dd class="font-medium text-gray-900 dark:text-gray-100">
                         {{ report()?.appliedPenaltyObj?.name }}
                       </dd>
-                      <dd class="text-sm text-gray-500 mt-1">
+                      <dd class="text-sm text-gray-500 mt-1 dark:text-gray-400">
                         Time: {{ report()?.appliedPenaltyObj?.timePenalty }}s / Lap 1: {{ report()?.appliedPenaltyObj?.timePenaltyLap1 }}s / SR Reduction: {{ report()?.appliedPenaltyObj?.selfReportReduction ?? 0 }}s | License Points: {{ report()?.appliedPenaltyObj?.licensePoints }}
                       </dd>
                     </div>
                   }
                   @if (report()?.officialNotes) {
                     <div>
-                      <dt class="text-sm text-gray-500">Official Notes</dt>
-                      <dd class="text-gray-900 whitespace-pre-wrap">{{ report()?.officialNotes }}</dd>
+                      <dt class="text-sm text-gray-500 dark:text-gray-400">Official Notes</dt>
+                      <dd class="text-gray-900 whitespace-pre-wrap dark:text-gray-100">{{ report()?.officialNotes }}</dd>
                     </div>
                   }
                   @if (adjustedReviews().length > 0) {
-                    <div class="pt-4 border-t border-gray-200">
-                      <dt class="text-sm text-gray-500 mb-2">Review Adjustments</dt>
+                    <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <dt class="text-sm text-gray-500 mb-2 dark:text-gray-400">Review Adjustments</dt>
                       <div class="space-y-2">
                         @for (adjustedReview of adjustedReviews(); track adjustedReview._id) {
                           <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
                             <div class="flex items-center justify-between mb-1">
-                              <span class="font-medium text-gray-900">{{ adjustedReview.reviewer?.name }}</span>
+                              <span class="font-medium text-gray-900 dark:text-gray-100">{{ adjustedReview.reviewer?.name }}</span>
                             </div>
                             <p class="text-sm text-amber-800">{{ adjustedReview.adjustedReason }}</p>
                           </div>
@@ -178,7 +178,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                       </div>
                     </div>
                   }
-                  <div class="text-sm text-gray-500">
+                  <div class="text-sm text-gray-500 dark:text-gray-400">
                     Finalized {{ report()?.finalizedAt | dateFormat:'PPp' }}
                   </div>
                 </div>
@@ -190,18 +190,18 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
               <app-card title="Steward Reviews">
                 <div class="space-y-4">
                   @for (review of reviews(); track review._id) {
-                    <div class="p-4 bg-gray-50 rounded-lg">
+                    <div class="p-4 bg-gray-50 rounded-lg dark:bg-gray-800">
                       <div class="flex items-start justify-between mb-3">
                         <div>
                           @if (review.linkedReview) {
                             <div class="flex items-center gap-2">
                               <app-badge variant="success" size="sm">Joint Review</app-badge>
-                              <p class="font-medium text-gray-900">{{ review.reviewer?.name }} & {{ review.linkedReview.reviewer?.name }}</p>
+                              <p class="font-medium text-gray-900 dark:text-gray-100">{{ review.reviewer?.name }} & {{ review.linkedReview.reviewer?.name }}</p>
                             </div>
                           } @else {
-                            <p class="font-medium text-gray-900">{{ review.reviewer?.name }}</p>
+                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ review.reviewer?.name }}</p>
                           }
-                          <p class="text-sm text-gray-500">{{ review.reviewDate | timeAgo }}</p>
+                          <p class="text-sm text-gray-500 dark:text-gray-400">{{ review.reviewDate | timeAgo }}</p>
                         </div>
                         @if (review.recommendedPenaltyObj) {
                           <app-badge variant="info">
@@ -209,9 +209,9 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                           </app-badge>
                         }
                       </div>
-                      <p class="text-gray-700 text-sm">{{ review.reviewNotes }}</p>
+                      <p class="text-gray-700 text-sm dark:text-gray-300">{{ review.reviewNotes }}</p>
                       @if (review.videoTimestamp) {
-                        <p class="text-sm text-gray-500 mt-2">
+                        <p class="text-sm text-gray-500 mt-2 dark:text-gray-400">
                           Video timestamp: {{ review.videoTimestamp }}
                         </p>
                       }
@@ -259,8 +259,8 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                     }
                   </div>
                   <div>
-                    <p class="font-medium text-gray-900 capitalize">{{ report()?.status }}</p>
-                    <p class="text-sm text-gray-500">
+                    <p class="font-medium text-gray-900 capitalize dark:text-gray-100">{{ report()?.status }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
                       @switch (report()?.status) {
                         @case ('pending') { Awaiting steward review }
                         @case ('reviewed') { Ready for finalization }
@@ -271,8 +271,8 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                   </div>
                 </div>
 
-                <div class="pt-4 border-t border-gray-200">
-                  <p class="text-sm text-gray-500">
+                <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
                     {{ report()?.reviews?.length || 0 }} review(s) submitted
                   </p>
                 </div>
@@ -296,7 +296,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
       } @else {
         <app-card>
           <div class="text-center py-12">
-            <p class="text-gray-500">Report not found</p>
+            <p class="text-gray-500 dark:text-gray-400">Report not found</p>
             <a routerLink="/reports" class="mt-4 inline-block">
               <app-button variant="primary">Back to Reports</app-button>
             </a>

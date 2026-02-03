@@ -58,14 +58,14 @@ interface SeriesPenaltyGroup {
               <span class="text-3xl font-bold text-primary-700">{{ driver()?.driverNumber }}</span>
             </div>
             <div>
-              <h1 class="text-2xl font-bold text-gray-900">{{ driver()?.displayName ?? driver()?.driverName }}</h1>
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ driver()?.displayName ?? driver()?.driverName }}</h1>
               @if (driver()?.displayName && driver()?.displayName !== driver()?.driverName) {
-                <p class="text-sm text-gray-600">{{ driver()?.driverName }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300">{{ driver()?.driverName }}</p>
               }
               <div class="flex items-center gap-2 mt-1">
                 <app-badge variant="primary">{{ driver()?.driverClass }}</app-badge>
                 @if (driver()?.externalId) {
-                  <span class="text-sm text-gray-500">ID: {{ driver()?.externalId }}</span>
+                  <span class="text-sm text-gray-500 dark:text-gray-400">ID: {{ driver()?.externalId }}</span>
                 }
               </div>
             </div>
@@ -85,26 +85,26 @@ interface SeriesPenaltyGroup {
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <app-card>
               <div class="text-center">
-                <p class="text-3xl font-bold text-gray-900">{{ stats()?.reportsFiledCount || 0 }}</p>
-                <p class="text-sm text-gray-500 mt-1">Reports Filed</p>
+                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats()?.reportsFiledCount || 0 }}</p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Reports Filed</p>
               </div>
             </app-card>
             <app-card>
               <div class="text-center">
                 <p class="text-3xl font-bold text-amber-600">{{ stats()?.reportsAgainstCount || 0 }}</p>
-                <p class="text-sm text-gray-500 mt-1">Reports Against</p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Reports Against</p>
               </div>
             </app-card>
             <app-card>
               <div class="text-center">
                 <p class="text-3xl font-bold text-blue-600">{{ stats()?.pendingReports || 0 }}</p>
-                <p class="text-sm text-gray-500 mt-1">Pending</p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Pending</p>
               </div>
             </app-card>
             <app-card>
               <div class="text-center">
                 <p class="text-3xl font-bold text-green-600">{{ stats()?.finalizedReports || 0 }}</p>
-                <p class="text-sm text-gray-500 mt-1">Finalized</p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Finalized</p>
               </div>
             </app-card>
           </div>
@@ -114,20 +114,20 @@ interface SeriesPenaltyGroup {
         <app-card title="Driver Information">
           <dl class="grid sm:grid-cols-2 gap-4">
             <div>
-              <dt class="text-sm text-gray-500">Driver Number</dt>
-              <dd class="font-medium text-gray-900">#{{ driver()?.driverNumber }}</dd>
+              <dt class="text-sm text-gray-500 dark:text-gray-400">Driver Number</dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">#{{ driver()?.driverNumber }}</dd>
             </div>
             <div>
-              <dt class="text-sm text-gray-500">Full Name</dt>
-              <dd class="font-medium text-gray-900">{{ driver()?.driverName }}</dd>
+              <dt class="text-sm text-gray-500 dark:text-gray-400">Full Name</dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">{{ driver()?.driverName }}</dd>
             </div>
             <div>
-              <dt class="text-sm text-gray-500">Class</dt>
-              <dd class="font-medium text-gray-900">{{ driver()?.driverClass }}</dd>
+              <dt class="text-sm text-gray-500 dark:text-gray-400">Class</dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">{{ driver()?.driverClass }}</dd>
             </div>
             <div>
-              <dt class="text-sm text-gray-500">Official Name</dt>
-              <dd class="font-medium text-gray-900">
+              <dt class="text-sm text-gray-500 dark:text-gray-400">Official Name</dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">
                 @if (isEditingOfficialName()) {
                   <div class="flex items-center gap-2">
                     <input
@@ -171,20 +171,20 @@ interface SeriesPenaltyGroup {
             </div>
             @if (linkedUser()) {
               <div>
-                <dt class="text-sm text-gray-500">Linked User</dt>
-                <dd class="font-medium text-gray-900">{{ linkedUser()?.name }}</dd>
+                <dt class="text-sm text-gray-500 dark:text-gray-400">Linked User</dt>
+                <dd class="font-medium text-gray-900 dark:text-gray-100">{{ linkedUser()?.name }}</dd>
               </div>
               @if (linkedUser()?.officialName) {
                 <div>
-                  <dt class="text-sm text-gray-500">User Official Name</dt>
-                  <dd class="font-medium text-gray-900">{{ linkedUser()?.officialName }}</dd>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">User Official Name</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">{{ linkedUser()?.officialName }}</dd>
                 </div>
               }
             }
             @if (driver()?.externalId) {
               <div>
-                <dt class="text-sm text-gray-500">External ID</dt>
-                <dd class="font-medium text-gray-900">{{ driver()?.externalId }}</dd>
+                <dt class="text-sm text-gray-500 dark:text-gray-400">External ID</dt>
+                <dd class="font-medium text-gray-900 dark:text-gray-100">{{ driver()?.externalId }}</dd>
               </div>
             }
           </dl>
@@ -221,17 +221,17 @@ interface SeriesPenaltyGroup {
               @for (seriesGroup of filteredAndSortedSeriesPenalties(); track seriesGroup.seriesId) {
                 <div class="space-y-4">
                   <div class="flex items-center gap-2 pt-4">
-                    <h3 class="text-lg font-semibold text-gray-900">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {{ seriesGroup.seriesName }}
                     </h3>
                   </div>
                   @if (getSeriesPenalties(seriesGroup.seriesId).length > 0) {
                     <div class="overflow-x-auto">
                       <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-gray-50 dark:bg-gray-800">
                           <tr class="text-left">
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
                               (click)="sortSeriesPenalties(seriesGroup.seriesId, 'penaltyName')"
                             >
                               Penalty
@@ -244,7 +244,7 @@ interface SeriesPenaltyGroup {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
                               (click)="sortSeriesPenalties(seriesGroup.seriesId, 'threshold')"
                             >
                               Threshold
@@ -257,7 +257,7 @@ interface SeriesPenaltyGroup {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
                               (click)="sortSeriesPenalties(seriesGroup.seriesId, 'pointsAtAssignment')"
                             >
                               Points at Assignment
@@ -270,7 +270,7 @@ interface SeriesPenaltyGroup {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
                               (click)="sortSeriesPenalties(seriesGroup.seriesId, 'assignedAt')"
                             >
                               Assigned Date
@@ -283,7 +283,7 @@ interface SeriesPenaltyGroup {
                               }}
                             </th>
                             <th
-                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight"
+                              class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
                               (click)="sortSeriesPenalties(seriesGroup.seriesId, 'isServed')"
                             >
                               Status
@@ -295,19 +295,19 @@ interface SeriesPenaltyGroup {
                                 )
                               }}
                             </th>
-                            <th class="px-4 py-2 font-medium text-gray-500 align-middle leading-tight">Actions</th>
+                            <th class="px-4 py-2 font-medium text-gray-500 align-middle leading-tight dark:text-gray-400">Actions</th>
                           </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                           @for (
                             penalty of getSeriesPenalties(seriesGroup.seriesId);
                             track penalty._id
                           ) {
-                            <tr class="hover:bg-gray-50">
-                              <td class="px-4 py-3 font-medium text-gray-900">{{ penalty.penaltyName ?? '-' }}</td>
-                              <td class="px-4 py-3 text-gray-600">{{ penalty.threshold ?? '-' }} pts</td>
-                              <td class="px-4 py-3 text-gray-600">{{ penalty.pointsAtAssignment }} pts</td>
-                              <td class="px-4 py-3 text-gray-600">{{ formatDate(penalty.assignedAt) }}</td>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                              <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{{ penalty.penaltyName ?? '-' }}</td>
+                              <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ penalty.threshold ?? '-' }} pts</td>
+                              <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ penalty.pointsAtAssignment }} pts</td>
+                              <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ formatDate(penalty.assignedAt) }}</td>
                               <td class="px-4 py-3">
                                 @if (penalty.isServed) {
                                   <app-badge variant="success">Served</app-badge>
@@ -325,7 +325,7 @@ interface SeriesPenaltyGroup {
                                     Mark as Served
                                   </app-button>
                                 } @else if (penalty.isServed && penalty.servedByUserName) {
-                                  <span class="text-sm text-gray-500">
+                                  <span class="text-sm text-gray-500 dark:text-gray-400">
                                     By {{ penalty.servedByUserName }} on {{ formatDate(penalty.servedAt!) }}
                                   </span>
                                 }
@@ -336,21 +336,21 @@ interface SeriesPenaltyGroup {
                       </table>
                     </div>
                   } @else {
-                    <p class="text-gray-500 text-center py-4">No penalties for this series</p>
+                    <p class="text-gray-500 text-center py-4 dark:text-gray-400">No penalties for this series</p>
                   }
                 </div>
               }
             } @else if (selectedSeriesId || seriesOptions().length === 1) {
-              <p class="text-gray-500 text-center py-4">No series penalties assigned to this driver</p>
+              <p class="text-gray-500 text-center py-4 dark:text-gray-400">No series penalties assigned to this driver</p>
             } @else {
-              <p class="text-gray-500 text-center py-4">Select a series to view penalties</p>
+              <p class="text-gray-500 text-center py-4 dark:text-gray-400">Select a series to view penalties</p>
             }
           </div>
         </app-card>
       } @else {
         <app-card>
           <div class="text-center py-12">
-            <p class="text-gray-500">Driver not found</p>
+            <p class="text-gray-500 dark:text-gray-400">Driver not found</p>
             <a routerLink="/drivers" class="mt-4 inline-block">
               <app-button variant="primary">Back to Drivers</app-button>
             </a>

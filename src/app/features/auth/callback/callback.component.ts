@@ -9,9 +9,9 @@ import { ActivatedRoute } from '@angular/router';
   imports: [CommonModule],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-gray-900">
-      <div class="bg-white rounded-2xl shadow-2xl p-8 text-center">
+      <div class="bg-white rounded-2xl shadow-2xl p-8 text-center dark:bg-gray-900">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-        <h2 class="text-xl font-semibold text-gray-900">Completing sign in...</h2>
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Completing sign in...</h2>
       </div>
     </div>
   `

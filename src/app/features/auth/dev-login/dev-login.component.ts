@@ -24,7 +24,7 @@ interface DevUser {
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-gray-900 p-4">
       <div class="w-full max-w-2xl">
-        <div class="bg-white rounded-2xl shadow-2xl p-8">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 dark:bg-gray-900">
           <!-- Header -->
           <div class="text-center mb-8">
             <div class="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -33,8 +33,8 @@ interface DevUser {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
               </svg>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900">Dev Mode Login</h1>
-            <p class="text-gray-500 mt-2">Select a demo user to test different roles</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Dev Mode Login</h1>
+            <p class="text-gray-500 mt-2 dark:text-gray-400">Select a demo user to test different roles</p>
           </div>
 
           <!-- Warning Banner -->
@@ -53,19 +53,19 @@ interface DevUser {
           <!-- Loading State -->
           <div *ngIf="isLoadingUsers" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p class="text-gray-500 mt-2">Loading demo users...</p>
+            <p class="text-gray-500 mt-2 dark:text-gray-400">Loading demo users...</p>
           </div>
 
           <!-- User List -->
           <div *ngIf="!isLoadingUsers && devUsers().length > 0" class="space-y-3">
             <div *ngFor="let user of devUsers()"
-                 class="border border-gray-200 rounded-lg p-4 hover:border-primary-300 hover:bg-primary-50 transition-all cursor-pointer"
+                 class="border border-gray-200 rounded-lg p-4 hover:border-primary-300 hover:bg-primary-50 transition-all cursor-pointer dark:border-gray-700"
                  [class.opacity-50]="isLoggingIn"
                  (click)="!isLoggingIn && loginAsUser(user)">
               <div class="flex items-center justify-between">
                 <div class="flex-1">
-                  <h3 class="font-semibold text-gray-900">{{ user.name }}</h3>
-                  <p class="text-sm text-gray-500">{{ user.email }}</p>
+                  <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ user.name }}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
                   <div class="mt-2">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                           [ngClass]="{
@@ -78,7 +78,7 @@ interface DevUser {
                     </span>
                   </div>
                 </div>
-                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                 </svg>
               </div>
@@ -87,15 +87,15 @@ interface DevUser {
 
           <!-- No Users Found -->
           <div *ngIf="!isLoadingUsers && devUsers().length === 0" class="text-center py-8">
-            <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-12 h-12 text-gray-400 mx-auto mb-3 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
             </svg>
-            <p class="text-gray-500 mb-4">No demo users found</p>
-            <p class="text-sm text-gray-400">Run <code class="bg-gray-100 px-2 py-1 rounded">npx convex run seed:seedDemoUsers</code> to create demo users</p>
+            <p class="text-gray-500 mb-4 dark:text-gray-400">No demo users found</p>
+            <p class="text-sm text-gray-400 dark:text-gray-500">Run <code class="bg-gray-100 px-2 py-1 rounded dark:bg-gray-800">npx convex run seed:seedDemoUsers</code> to create demo users</p>
           </div>
 
           <!-- Back to Login -->
-          <div class="mt-6 pt-6 border-t border-gray-200">
+          <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <a routerLink="/login"
                class="text-sm text-primary-600 hover:text-primary-700 flex items-center justify-center">
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

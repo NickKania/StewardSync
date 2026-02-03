@@ -161,6 +161,7 @@ export default defineSchema({
     reportId: v.id("reports"),
     incidentDescription: v.string(),
     reviewNotes: v.string(),
+    candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
     videoTimestamp: v.optional(v.string()),

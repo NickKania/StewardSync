@@ -11,6 +11,7 @@ export interface Review {
   reportId: Id<'reports'>;
   incidentDescription: string;
   reviewNotes: string;
+  candidateForStandardization?: boolean;
   recommendedPenalty?: PenaltyType;
   videoTimestamp?: string;
   isSelfReport?: boolean;
@@ -26,6 +27,7 @@ export interface CreateReviewDto {
   reportId: Id<'reports'>;
   incidentDescription: string;
   reviewNotes: string;
+  candidateForStandardization?: boolean;
   recommendedPenalty?: PenaltyType;
   videoTimestamp?: string;
   isSelfReport?: boolean;
@@ -35,6 +37,7 @@ export interface UpdateReviewDto {
   reviewId: Id<'reviews'>;
   incidentDescription?: string;
   reviewNotes?: string;
+  candidateForStandardization?: boolean;
   recommendedPenalty?: PenaltyType;
   videoTimestamp?: string;
 }

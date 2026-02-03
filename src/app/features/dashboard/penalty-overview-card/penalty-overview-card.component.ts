@@ -131,7 +131,7 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
                                 {{ penalty.seriesPenaltyThreshold.threshold }} points
                               } @else {
                                 <span
-                                  class="text-gray-400 italic"
+                                  class="text-gray-400 italic dark:text-gray-500"
                                   title="Threshold data not available - data may need to be migrated"
                                 >
                                   Not available

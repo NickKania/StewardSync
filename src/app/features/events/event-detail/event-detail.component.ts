@@ -42,10 +42,10 @@ import { Id } from "@convex/_generated/dataModel";
           class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
         >
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {{ event()?.trackName }}
             </h1>
-            <p class="text-gray-500 mt-1">
+            <p class="text-gray-500 mt-1 dark:text-gray-400">
               {{ event()?.series?.name }} - Round {{ event()?.eventNumber }}
             </p>
           </div>
@@ -80,26 +80,26 @@ import { Id } from "@convex/_generated/dataModel";
             <app-card title="Event Information">
               <dl class="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <dt class="text-sm text-gray-500">Track</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Track</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ event()?.trackName }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Series</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Series</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ event()?.series?.name }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Round Number</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Round Number</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ event()?.eventNumber }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500">Date</dt>
-                  <dd class="font-medium text-gray-900">
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Date</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ event()?.eventDate | dateFormat: "PPP" }}
                   </dd>
                 </div>
@@ -112,7 +112,7 @@ import { Id } from "@convex/_generated/dataModel";
                 *appHasRole="['event_manager']"
                 class="flex items-center justify-between mb-3"
               >
-                <span class="text-sm text-gray-500"
+                <span class="text-sm text-gray-500 dark:text-gray-400"
                   >Manage races for this event</span
                 >
                 <app-button
@@ -140,7 +140,7 @@ import { Id } from "@convex/_generated/dataModel";
                 <div class="space-y-3">
                   @for (race of event()?.races; track race._id) {
                     <div
-                      class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      class="flex items-center justify-between p-3 bg-gray-50 rounded-lg dark:bg-gray-800"
                     >
                       <div class="flex items-center gap-3">
                         <div
@@ -150,14 +150,14 @@ import { Id } from "@convex/_generated/dataModel";
                             race.raceNumber
                           }}</span>
                         </div>
-                        <span class="font-medium text-gray-900"
+                        <span class="font-medium text-gray-900 dark:text-gray-100"
                           >Race {{ race.raceNumber }}</span
                         >
                       </div>
                       <div class="flex items-center gap-2">
                         <button
                           (click)="removeRace(race._id)"
-                          class="text-gray-400 hover:text-red-600 p-1"
+                          class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
                           title="Delete race"
                         >
                           <svg
@@ -189,7 +189,7 @@ import { Id } from "@convex/_generated/dataModel";
                   }
                 </div>
               } @else {
-                <p class="text-gray-500 text-center py-4">No races scheduled</p>
+                <p class="text-gray-500 text-center py-4 dark:text-gray-400">No races scheduled</p>
               }
             </app-card>
           </div>
@@ -199,13 +199,13 @@ import { Id } from "@convex/_generated/dataModel";
             <app-card title="Quick Stats">
               <div class="space-y-4">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500">Total Races</span>
-                  <span class="font-bold text-gray-900">{{
+                  <span class="text-gray-500 dark:text-gray-400">Total Races</span>
+                  <span class="font-bold text-gray-900 dark:text-gray-100">{{
                     event()?.races?.length || 0
                   }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500">Status</span>
+                  <span class="text-gray-500 dark:text-gray-400">Status</span>
                   <app-badge [variant]="getEventStatus(event()?.eventDate)">
                     {{ getEventStatusLabel(event()?.eventDate) }}
                   </app-badge>
@@ -217,7 +217,7 @@ import { Id } from "@convex/_generated/dataModel";
       } @else {
         <app-card>
           <div class="text-center py-12">
-            <p class="text-gray-500">Event not found</p>
+            <p class="text-gray-500 dark:text-gray-400">Event not found</p>
             <a routerLink="/events" class="mt-4 inline-block">
               <app-button variant="primary">Back to Events</app-button>
             </a>
@@ -231,11 +231,11 @@ import { Id } from "@convex/_generated/dataModel";
           *appHasRole="['event_manager']"
           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         >
-          <div class="bg-white rounded-lg p-6 w-full max-w-md">
+          <div class="bg-white rounded-lg p-6 w-full max-w-md dark:bg-gray-900">
             <h3 class="text-lg font-semibold mb-4">Add Race</h3>
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1"
+                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
                   >Race Number</label
                 >
                 <input

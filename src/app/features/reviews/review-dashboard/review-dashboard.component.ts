@@ -26,8 +26,8 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
     <div class="space-y-6">
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Review Queue</h1>
-          <p class="text-gray-500 mt-1">Reports pending your review</p>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Review Queue</h1>
+          <p class="text-gray-500 mt-1 dark:text-gray-400">Reports pending your review</p>
         </div>
         <div class="flex gap-2">
           @if (canSearchReviews()) {
@@ -56,25 +56,25 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
         <app-card>
           <div class="text-center">
             <p class="text-3xl font-bold text-amber-600">{{ pendingReports().length }}</p>
-            <p class="text-sm text-gray-500 mt-1">Pending Review</p>
+            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Pending Review</p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-gray-900">{{ reviewStats()?.total || 0 }}</p>
-            <p class="text-sm text-gray-500 mt-1">Your Total Reviews</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ reviewStats()?.total || 0 }}</p>
+            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Your Total Reviews</p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
             <p class="text-3xl font-bold text-green-600">{{ reviewStats()?.today || 0 }}</p>
-            <p class="text-sm text-gray-500 mt-1">Reviewed Today</p>
+            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Reviewed Today</p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
             <p class="text-3xl font-bold text-blue-600">{{ reviewedReports().length }}</p>
-            <p class="text-sm text-gray-500 mt-1">Ready to Finalize</p>
+            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Ready to Finalize</p>
           </div>
         </app-card>
       </div>
@@ -88,8 +88,8 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
         } @else if (pendingReports().length > 0) {
           <div class="overflow-x-auto">
             <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr class="text-left text-sm text-gray-500">
+              <thead class="bg-gray-50 dark:bg-gray-800">
+                <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th class="px-6 py-3 font-medium">At Fault Driver</th>
                   <th class="px-6 py-3 font-medium">Event</th>
                   <th class="px-6 py-3 font-medium">Incident</th>
@@ -98,24 +98,24 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                   <th class="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                  @for (report of pendingReports(); track report._id) {
-                  <tr class="hover:bg-gray-50">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900">{{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500">#{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900">{{ report.event?.trackName }}</p>
-                      <p class="text-sm text-gray-500">Race {{ report.race?.raceNumber }}</p>
+                      <p class="text-gray-900 dark:text-gray-100">{{ report.event?.trackName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ report.race?.raceNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900">Turn {{ report.turn }}</p>
-                      <p class="text-sm text-gray-500 truncate max-w-xs">
+                      <p class="text-gray-900 dark:text-gray-100">Turn {{ report.turn }}</p>
+                      <p class="text-sm text-gray-500 truncate max-w-xs dark:text-gray-400">
                         {{ report.description }}
                       </p>
                     </td>
-                    <td class="px-6 py-4 text-gray-500 text-sm">
+                    <td class="px-6 py-4 text-gray-500 text-sm dark:text-gray-400">
                       {{ report.reportDate | timeAgo }}
                     </td>
                     <td class="px-6 py-4">
@@ -141,8 +141,8 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <p class="text-gray-500">No reports pending review</p>
-            <p class="text-sm text-gray-400 mt-1">All caught up!</p>
+            <p class="text-gray-500 dark:text-gray-400">No reports pending review</p>
+            <p class="text-sm text-gray-400 mt-1 dark:text-gray-500">All caught up!</p>
           </div>
         }
       </app-card>
@@ -152,8 +152,8 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
         <app-card title="Ready for Finalization" subtitle="These reports have been reviewed and await final decision" [noPadding]="true">
           <div class="overflow-x-auto">
             <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr class="text-left text-sm text-gray-500">
+              <thead class="bg-gray-50 dark:bg-gray-800">
+                <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th class="px-6 py-3 font-medium">At Fault Driver</th>
                   <th class="px-6 py-3 font-medium">Event</th>
                   <th class="px-6 py-3 font-medium">Reviews</th>
@@ -161,16 +161,16 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                   <th class="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                  @for (report of reviewedReports(); track report._id) {
-                  <tr class="hover:bg-gray-50">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-6 py-4">
-                      <p class="font-medium text-gray-900">{{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}</p>
-                      <p class="text-sm text-gray-500">#{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}</p>
                     </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900">{{ report.event?.trackName }}</p>
-                      <p class="text-sm text-gray-500">Race {{ report.race?.raceNumber }}, Turn {{ report.turn }}</p>
+                      <p class="text-gray-900 dark:text-gray-100">{{ report.event?.trackName }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ report.race?.raceNumber }}, Turn {{ report.turn }}</p>
                     </td>
                     <td class="px-6 py-4">
                       <app-badge variant="info">

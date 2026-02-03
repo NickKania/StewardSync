@@ -5,6 +5,7 @@ import {
   signal,
   ViewChild,
   ElementRef,
+  HostListener,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from "@angular/forms";
@@ -41,6 +42,7 @@ import { SelectOption } from "../select/select.component";
           [disabled]="disabled"
           [class]="getInputClasses()"
           [(ngModel)]="searchTerm"
+          (input)="onInputChange()"
           (focus)="onFocus()"
           (click)="onClick()"
           (blur)="onBlur()"
@@ -69,7 +71,11 @@ import { SelectOption } from "../select/select.component";
 
       @if (isOpen()) {
         <div
-          class="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto dark:bg-gray-900 dark:border-gray-700"
+          class="absolute z-[9999] w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto dark:bg-gray-900 dark:border-gray-700"
+          [class.top-full]="dropdownDirection() === 'down'"
+          [class.mt-1]="dropdownDirection() === 'down'"
+          [class.bottom-full]="dropdownDirection() === 'up'"
+          [class.mb-1]="dropdownDirection() === 'up'"
           [style.max-height]="'300px'"
           style="transform: translateZ(0);"
         >
@@ -117,6 +123,7 @@ export class SearchSelectComponent implements ControlValueAccessor {
   value = signal("");
   searchTerm = "";
   isOpen = signal(false);
+  dropdownDirection = signal<"up" | "down">("down");
   selectedIndex = signal(0);
   private optionsInternal: SelectOption[] = [];
   @ViewChild("searchInput", { static: false })
@@ -182,13 +189,22 @@ export class SearchSelectComponent implements ControlValueAccessor {
   }
 
   onFocus(): void {
+    this.updateDropdownDirection();
     this.isOpen.set(true);
   }
 
   onClick(): void {
     this.searchTerm = "";
+    this.updateDropdownDirection();
     this.isOpen.set(true);
     this.selectedIndex.set(0);
+  }
+
+  onInputChange(): void {
+    this.selectedIndex.set(0);
+    if (this.isOpen()) {
+      this.updateDropdownDirection();
+    }
   }
 
   onBlur(): void {
@@ -270,6 +286,41 @@ export class SearchSelectComponent implements ControlValueAccessor {
         }
         break;
     }
+  }
+
+  @HostListener("window:resize")
+  onWindowResize(): void {
+    if (this.isOpen()) {
+      this.updateDropdownDirection();
+    }
+  }
+
+  @HostListener("window:scroll")
+  onWindowScroll(): void {
+    if (this.isOpen()) {
+      this.updateDropdownDirection();
+    }
+  }
+
+  private updateDropdownDirection(): void {
+    if (!this.searchInput?.nativeElement) {
+      this.dropdownDirection.set("down");
+      return;
+    }
+
+    const rect = this.searchInput.nativeElement.getBoundingClientRect();
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight;
+    const dropdownHeight = Math.min(
+      300,
+      Math.max(120, this.filteredOptions().length * 44),
+    );
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    const shouldOpenUp =
+      spaceBelow < Math.min(dropdownHeight, 240) && spaceAbove > spaceBelow;
+    this.dropdownDirection.set(shouldOpenUp ? "up" : "down");
   }
 
   getInputClasses(): string {
