@@ -232,11 +232,19 @@ export const create = mutation({
 
       await ctx.db.patch(primaryReviewId, { linkedReviewId: secondReviewId });
 
+      if (args.videoTimestamp) {
+        await ctx.db.patch(args.reportId, { videoTimestamp: args.videoTimestamp });
+      }
+
       return success(primaryReviewId);
     }
 
     // Single review
     const reviewId = await ctx.db.insert("reviews", reviewData);
+
+    if (args.videoTimestamp) {
+      await ctx.db.patch(args.reportId, { videoTimestamp: args.videoTimestamp });
+    }
 
     return success(reviewId);
   },

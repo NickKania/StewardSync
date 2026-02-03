@@ -90,6 +90,10 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                   <dd class="font-medium text-gray-900 dark:text-gray-100">Race {{ report()?.race?.raceNumber }}, Lap {{ report()?.lap }}, Turn {{ report()?.turn }}</dd>
                 </div>
                 <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">Video Timestamp</dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">{{ report()?.videoTimestamp || 'Not specified' }}</dd>
+                </div>
+                <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">Reported Driver</dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">{{ report()?.reportedDriver?.displayName || report()?.reportedDriver?.officialName || report()?.reportedDriver?.driverName }}</dd>
                   <dd class="text-sm text-gray-500 dark:text-gray-400">#{{ report()?.reportedDriver?.driverNumber }} - {{ report()?.reportedDriver?.driverClass }}</dd>

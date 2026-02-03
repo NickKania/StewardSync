@@ -112,6 +112,9 @@ import { SelectOption } from "@shared/components/select/select.component";
                         Review notes are required
                       </p>
                     }
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                      Not public facing - internal use only
+                    </p>
                   </div>
 
                   <!-- Recommended penalty -->

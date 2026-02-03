@@ -575,15 +575,26 @@ import { Id } from "@convex/_generated/dataModel";
                   class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
                   >Reporting Opens At (optional)</label
                 >
-                <input
-                  type="time"
-                  class="input w-full"
-                  [(ngModel)]="seriesForm.reportingOpenTime"
-                  placeholder="e.g., 18:00"
-                />
+                <div class="flex gap-2">
+                  <input
+                    type="time"
+                    class="input flex-1"
+                    [(ngModel)]="seriesForm.reportingOpenTime"
+                    placeholder="e.g., 18:00"
+                  />
+                  @if (seriesForm.reportingOpenTime) {
+                    <button
+                      type="button"
+                      (click)="seriesForm.reportingOpenTime = ''"
+                      class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-300 rounded-md dark:border-gray-600"
+                    >
+                      Clear
+                    </button>
+                  }
+                </div>
                 <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
-                  Time in 24-hour UTC format (HH:MM). Reporting opens at this
-                  UTC time on the event date.
+                  Time in your local timezone (HH:MM, 24-hour format). Reporting
+                  opens at this local time on the event date.
                 </p>
               </div>
               <div>
@@ -1210,7 +1221,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       name: series.name,
       description: series.description || "",
       simgridLink: series.simgridLink || "",
-      reportingOpenTime: series.reportingOpenTime || "",
+      reportingOpenTime: this.utcToLocalTime(series.reportingOpenTime || ""),
       reportingCloseDuration: series.reportingCloseDuration || 0,
       isReportingLocked: series.isReportingLocked || false,
       isActive: series.isActive !== false,
@@ -1219,13 +1230,17 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   }
 
   async saveSeries(): Promise<void> {
+    const utcTime = this.seriesForm.reportingOpenTime
+      ? this.localToUtcTime(this.seriesForm.reportingOpenTime)
+      : "";
+    
     if (this.editingSeriesId) {
       await this.convex.mutation(this.convex.api.series.update, {
         id: this.editingSeriesId,
         name: this.seriesForm.name,
         description: this.seriesForm.description || undefined,
         simgridLink: this.seriesForm.simgridLink || undefined,
-        reportingOpenTime: this.seriesForm.reportingOpenTime || undefined,
+        reportingOpenTime: utcTime,
         reportingCloseDuration:
           this.seriesForm.reportingCloseDuration || undefined,
         isReportingLocked: this.seriesForm.isReportingLocked,
@@ -1236,7 +1251,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         name: this.seriesForm.name,
         description: this.seriesForm.description || undefined,
         simgridLink: this.seriesForm.simgridLink || undefined,
-        reportingOpenTime: this.seriesForm.reportingOpenTime || undefined,
+        reportingOpenTime: utcTime,
         reportingCloseDuration:
           this.seriesForm.reportingCloseDuration || undefined,
         isReportingLocked: this.seriesForm.isReportingLocked,
@@ -1274,6 +1289,26 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       isReportingLocked: false,
       isActive: true,
     };
+  }
+
+  private utcToLocalTime(utcTime: string | null | undefined): string {
+    if (!utcTime) return "";
+    const [hours, minutes] = utcTime.split(":").map(Number);
+    const utcDate = new Date();
+    utcDate.setUTCHours(hours, minutes, 0, 0);
+    return utcDate.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+
+  private localToUtcTime(localTime: string): string {
+    if (!localTime) return "";
+    const [hours, minutes] = localTime.split(":").map(Number);
+    const localDate = new Date();
+    localDate.setHours(hours, minutes, 0, 0);
+    return localDate.getUTCHours().toString().padStart(2, "0") + ":" + localDate.getUTCMinutes().toString().padStart(2, "0");
   }
 
   addPenalty(seriesId: Id<"series">): void {

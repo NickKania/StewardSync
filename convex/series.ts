@@ -86,8 +86,10 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
 
-    if (updates.reportingOpenTime && !isValidTimeFormat(updates.reportingOpenTime)) {
-      throw new UserFacingError("Invalid reportingOpenTime format. Use HH:MM (24-hour format)");
+    if (updates.reportingOpenTime) {
+      if (!isValidTimeFormat(updates.reportingOpenTime)) {
+        throw new UserFacingError("Invalid reportingOpenTime format. Use HH:MM (24-hour format)");
+      }
     }
 
     if (updates.reportingCloseDuration !== undefined && updates.reportingCloseDuration <= 0) {
@@ -99,7 +101,9 @@ export const update = mutation({
     if (updates.name !== undefined) cleanUpdates.name = updates.name;
     if (updates.description !== undefined) cleanUpdates.description = updates.description;
     if (updates.simgridLink !== undefined) cleanUpdates.simgridLink = updates.simgridLink;
-    if (updates.reportingOpenTime !== undefined) cleanUpdates.reportingOpenTime = updates.reportingOpenTime;
+    if (updates.reportingOpenTime !== undefined) {
+      cleanUpdates.reportingOpenTime = updates.reportingOpenTime || undefined;
+    }
     if (updates.reportingCloseDuration !== undefined) cleanUpdates.reportingCloseDuration = updates.reportingCloseDuration;
     if (updates.isReportingLocked !== undefined) cleanUpdates.isReportingLocked = updates.isReportingLocked;
     if (updates.isActive !== undefined) cleanUpdates.isActive = updates.isActive;

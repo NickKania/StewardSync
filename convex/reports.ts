@@ -333,6 +333,7 @@ export const create = mutation({
     lap: v.string(),
     turn: v.string(),
     description: v.string(),
+    videoTimestamp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Validate that reporting and reported drivers are different if reportingDriverId is provided
@@ -385,6 +386,7 @@ export const create = mutation({
       lap: args.lap,
       turn: args.turn,
       description: args.description,
+      videoTimestamp: args.videoTimestamp,
       reportDate: now,
       status: "pending",
       isFinalized: false,
@@ -403,6 +405,7 @@ export const update = mutation({
     lap: v.optional(v.string()),
     turn: v.optional(v.string()),
     description: v.optional(v.string()),
+    videoTimestamp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { reportId, ...updates } = args;
@@ -748,6 +751,7 @@ export const createBySteward = mutation({
       lap: args.lap,
       turn: args.turn,
       description: args.description,
+      videoTimestamp: args.videoTimestamp,
       reportDate: now,
       status: "pending",
       isFinalized: false,

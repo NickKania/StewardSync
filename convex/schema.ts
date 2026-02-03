@@ -159,6 +159,7 @@ export default defineSchema({
     isSelfReport: v.optional(v.boolean()),
     isStewardReported: v.optional(v.boolean()),
     isEdited: v.optional(v.boolean()),
+    videoTimestamp: v.optional(v.string()),
     reportId: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
