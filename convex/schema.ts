@@ -21,6 +21,16 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_discord_id", ["discordId"]),
 
+  steamUserMappings: defineTable({
+    steamId: v.string(),
+    userId: v.id("users"),
+    isBanned: v.boolean(),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_steam_id", ["steamId"])
+    .index("by_user_id", ["userId"]),
+
   driverClasses: defineTable({
     seriesId: v.id("series"),
     className: v.string(),
@@ -41,6 +51,8 @@ export default defineSchema({
     steamId: v.optional(v.string()),
     championshipId: v.optional(v.id("series")),
     userId: v.optional(v.id("users")),
+    accumulatedLicensePoints: v.optional(v.number()),
+    isActive: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_number", ["driverNumber"])

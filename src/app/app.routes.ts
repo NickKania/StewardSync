@@ -139,6 +139,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: "user/:userId",
+        loadComponent: () =>
+          import(
+            "@features/drivers/driver-user-detail/driver-user-detail.component"
+          ).then((m) => m.DriverUserDetailComponent),
+      },
+      {
         path: ":id",
         loadComponent: () =>
           import("@features/drivers/driver-detail/driver-detail.component").then(

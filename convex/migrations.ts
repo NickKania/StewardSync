@@ -25,6 +25,70 @@ export const migratePenaltiesAddLap1Time = mutation({
   },
 });
 
+export const migrateDriversToV2 = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    console.log("[MIGRATION] Starting Drivers 2.0 migration");
+
+    const drivers = await ctx.db.query("drivers").collect();
+    let migratedCount = 0;
+    let totalPointsCalculated = 0;
+
+    for (const driver of drivers) {
+      const driverDoc = driver as any;
+
+      if (driverDoc.accumulatedLicensePoints !== undefined && driverDoc.isActive !== undefined) {
+        continue;
+      }
+
+      const reports = await ctx.db
+        .query("reports")
+        .withIndex("by_reported_driver", (q) => q.eq("reportedDriverId", driver._id))
+        .collect();
+
+      const finalizedReports = reports.filter((r) =>
+        r.status === "finalized" &&
+        (r.atFaultDriverId === driver._id || (!r.atFaultDriverId && r.reportedDriverId === driver._id))
+      );
+
+      let totalPoints = 0;
+      for (const report of finalizedReports) {
+        if (report.appliedPenalty) {
+          const event = await ctx.db.get(report.eventId);
+          if (event) {
+            const penalty = await ctx.db
+              .query("penalties")
+              .withIndex("by_series", (q) => q.eq("seriesId", event.seriesId))
+              .collect()
+              .then((penalties) =>
+                penalties.find((p) => p.name === report.appliedPenalty)
+              );
+
+            totalPoints += penalty?.licensePoints || 0;
+          }
+        }
+      }
+
+      await ctx.db.patch(driver._id, {
+        accumulatedLicensePoints: totalPoints,
+        isActive: true,
+      });
+
+      migratedCount++;
+      totalPointsCalculated += totalPoints;
+
+      console.log(`[MIGRATION] Driver #${driver.driverNumber} (${driver.driverName}): ${totalPoints} points`);
+    }
+
+    console.log(`[MIGRATION] Complete: ${migratedCount} drivers, ${totalPointsCalculated} total points`);
+
+    return {
+      migratedCount,
+      totalPointsCalculated,
+    };
+  },
+});
+
 export const migrateReportsAddLap = mutation({
   args: {},
   handler: async (ctx) => {
@@ -570,5 +634,240 @@ export const getMigrationStatus = mutation({
     }
 
     return status;
+  },
+});
+
+/**
+ * Backfill steamUserMappings from existing linked drivers.
+ *
+ * This ensures each driver with both `steamId` and `userId` has a corresponding
+ * steamUserMappings record, and optionally resolves conflicting mappings.
+ */
+export const backfillSteamUserMappings = mutation({
+  args: {
+    dryRun: v.optional(v.boolean()),
+    resolveConflicts: v.optional(v.boolean()),
+    linkUnassignedDrivers: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun ?? true;
+    const resolveConflicts = args.resolveConflicts ?? false;
+    const linkUnassignedDrivers = args.linkUnassignedDrivers ?? false;
+
+    const [drivers, existingMappings] = await Promise.all([
+      ctx.db.query("drivers").collect(),
+      ctx.db.query("steamUserMappings").collect(),
+    ]);
+
+    const mappingsBySteamId = new Map<string, typeof existingMappings>();
+    for (const mapping of existingMappings) {
+      const rows = mappingsBySteamId.get(mapping.steamId) ?? [];
+      rows.push(mapping);
+      mappingsBySteamId.set(mapping.steamId, rows);
+    }
+
+    let duplicateMappingsFound = 0;
+    let duplicateMappingsDeleted = 0;
+    let mappingsCreated = 0;
+    let mappingsAlreadyValid = 0;
+    let conflictsFound = 0;
+    let conflictsResolved = 0;
+    let driversLinkedFromMapping = 0;
+
+    const duplicates: Array<{ steamId: string; deletedMappingIds: Id<"steamUserMappings">[] }> = [];
+    const conflicts: Array<{
+      steamId: string;
+      driverId: Id<"drivers">;
+      driverUserId: Id<"users">;
+      mappedUserId: Id<"users">;
+      mappingId: Id<"steamUserMappings">;
+    }> = [];
+
+    const canonicalBySteamId = new Map<string, (typeof existingMappings)[number]>();
+    for (const [steamId, rows] of mappingsBySteamId.entries()) {
+      const sorted = [...rows].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+      const keeper = sorted[0];
+      canonicalBySteamId.set(steamId, keeper);
+
+      if (sorted.length > 1) {
+        duplicateMappingsFound += sorted.length - 1;
+        const duplicateIds = sorted.slice(1).map((row) => row._id);
+        duplicates.push({ steamId, deletedMappingIds: duplicateIds });
+
+        if (!dryRun) {
+          for (const row of sorted.slice(1)) {
+            await ctx.db.delete(row._id);
+            duplicateMappingsDeleted++;
+          }
+        }
+      }
+    }
+
+    for (const driver of drivers) {
+      const steamId = driver.steamId?.trim();
+      if (!steamId) continue;
+
+      const existing = canonicalBySteamId.get(steamId);
+
+      if (!driver.userId) {
+        if (linkUnassignedDrivers && existing) {
+          if (!dryRun) {
+            await ctx.db.patch(driver._id, { userId: existing.userId });
+          }
+          driversLinkedFromMapping++;
+        }
+        continue;
+      }
+
+      if (!existing) {
+        if (!dryRun) {
+          const newId = await ctx.db.insert("steamUserMappings", {
+            steamId,
+            userId: driver.userId,
+            isBanned: false,
+            createdAt: Date.now(),
+          });
+          canonicalBySteamId.set(steamId, {
+            _id: newId,
+            _creationTime: Date.now(),
+            steamId,
+            userId: driver.userId,
+            isBanned: false,
+            createdAt: Date.now(),
+          } as any);
+        }
+        mappingsCreated++;
+        continue;
+      }
+
+      if (existing.userId === driver.userId) {
+        mappingsAlreadyValid++;
+        continue;
+      }
+
+      conflictsFound++;
+      conflicts.push({
+        steamId,
+        driverId: driver._id,
+        driverUserId: driver.userId,
+        mappedUserId: existing.userId,
+        mappingId: existing._id,
+      });
+
+      if (resolveConflicts) {
+        if (!dryRun) {
+          await ctx.db.patch(existing._id, { userId: driver.userId });
+        }
+        conflictsResolved++;
+      }
+    }
+
+    return {
+      dryRun,
+      resolveConflicts,
+      linkUnassignedDrivers,
+      totalDrivers: drivers.length,
+      totalMappings: existingMappings.length,
+      duplicateMappingsFound,
+      duplicateMappingsDeleted,
+      mappingsCreated,
+      mappingsAlreadyValid,
+      conflictsFound,
+      conflictsResolved,
+      driversLinkedFromMapping,
+      duplicates,
+      conflicts,
+    };
+  },
+});
+
+/**
+ * Reconciles Drivers 2.0 consistency:
+ * - ensures `isActive` is set
+ * - recalculates `accumulatedLicensePoints` from finalized reports
+ */
+export const reconcileDriversV2Consistency = mutation({
+  args: {
+    dryRun: v.optional(v.boolean()),
+    seriesId: v.optional(v.id("series")),
+  },
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun ?? true;
+
+    let drivers = await ctx.db.query("drivers").collect();
+    if (args.seriesId) {
+      drivers = drivers.filter((driver) => driver.championshipId === args.seriesId);
+    }
+
+    let updatedDrivers = 0;
+    let fixedIsActive = 0;
+    let fixedPoints = 0;
+    const changes: Array<{
+      driverId: Id<"drivers">;
+      driverNumber: number;
+      driverName: string;
+      fromPoints: number;
+      toPoints: number;
+      fromIsActive: boolean | null;
+      toIsActive: boolean;
+    }> = [];
+
+    for (const driver of drivers) {
+      const reports = await ctx.db
+        .query("reports")
+        .withIndex("by_reported_driver", (q) => q.eq("reportedDriverId", driver._id))
+        .collect();
+
+      let expectedPoints = 0;
+      for (const report of reports) {
+        if (report.status !== "finalized") continue;
+
+        const effectiveAtFaultDriverId = report.atFaultDriverId ?? report.reportedDriverId;
+        if (effectiveAtFaultDriverId !== driver._id) continue;
+        if (!report.appliedPenalty) continue;
+
+        const penalty = (await ctx.db.get(report.appliedPenalty as any)) as any;
+        expectedPoints += penalty?.licensePoints ?? 0;
+      }
+
+      const currentPoints = driver.accumulatedLicensePoints ?? 0;
+      const currentIsActive = driver.isActive;
+      const nextIsActive = currentIsActive ?? true;
+
+      const shouldFixPoints = currentPoints !== expectedPoints;
+      const shouldFixIsActive = currentIsActive === undefined;
+      if (!shouldFixPoints && !shouldFixIsActive) continue;
+
+      changes.push({
+        driverId: driver._id,
+        driverNumber: driver.driverNumber,
+        driverName: driver.driverName,
+        fromPoints: currentPoints,
+        toPoints: expectedPoints,
+        fromIsActive: currentIsActive ?? null,
+        toIsActive: nextIsActive,
+      });
+
+      if (!dryRun) {
+        const patch: { accumulatedLicensePoints?: number; isActive?: boolean } = {};
+        if (shouldFixPoints) patch.accumulatedLicensePoints = expectedPoints;
+        if (shouldFixIsActive) patch.isActive = true;
+        await ctx.db.patch(driver._id, patch);
+      }
+
+      if (shouldFixIsActive) fixedIsActive++;
+      if (shouldFixPoints) fixedPoints++;
+      updatedDrivers++;
+    }
+
+    return {
+      dryRun,
+      seriesId: args.seriesId ?? null,
+      scannedDrivers: drivers.length,
+      updatedDrivers,
+      fixedIsActive,
+      fixedPoints,
+      changes,
+    };
   },
 });

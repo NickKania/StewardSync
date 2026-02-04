@@ -12,6 +12,8 @@ const DISCORD_STATE_KEY = "steward_sync_discord_state";
 const DISCORD_VERIFIER_KEY = "steward_sync_discord_verifier";
 const DISCORD_AUTH_SUCCESS = "discord-auth-success";
 const DISCORD_AUTH_ERROR = "discord-auth-error";
+const DISCORD_AUTH_RESULT_KEY = "steward_sync_discord_auth_result";
+const AUTH_DEBUG = !environment.production;
 
 @Injectable({
   providedIn: "root",
@@ -30,6 +32,32 @@ export class AuthService {
   readonly userRole = computed(
     () => this._user()?.role?.name as RoleName | undefined,
   );
+
+  private logAuth(step: string, details?: Record<string, unknown>): void {
+    if (!AUTH_DEBUG) return;
+    console.log("[DiscordAuth]", step, details ?? {});
+  }
+
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    timeoutMessage: string,
+  ): Promise<T> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(timeoutMessage));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
 
   async initialize(): Promise<void> {
     // Try to restore session from localStorage
@@ -59,6 +87,11 @@ export class AuthService {
 
   async loginWithDiscord(): Promise<void> {
     const clientId = environment.discordClientId;
+    this.logAuth("loginWithDiscord:start", {
+      hasClientId: Boolean(clientId),
+      origin: window.location.origin,
+    });
+
     if (!clientId) {
       throw new Error("Discord client ID not configured");
     }
@@ -70,6 +103,11 @@ export class AuthService {
 
     sessionStorage.setItem(DISCORD_STATE_KEY, state);
     sessionStorage.setItem(DISCORD_VERIFIER_KEY, codeVerifier);
+    this.logAuth("pkce:generated", {
+      redirectUri,
+      statePrefix: state.slice(0, 8),
+      verifierLength: codeVerifier.length,
+    });
 
     const authUrl = new URL("https://discord.com/api/oauth2/authorize");
     authUrl.search = new URLSearchParams({
@@ -91,6 +129,7 @@ export class AuthService {
     if (!popup) {
       throw new Error("Failed to open Discord login window");
     }
+    this.logAuth("popup:opened");
 
     const { code, state: returnedState } = await new Promise<{
       code: string;
@@ -103,9 +142,53 @@ export class AuthService {
         }
       }, 500);
 
+      const popupPoll = setInterval(() => {
+        try {
+          if (popup.closed) {
+            cleanup();
+            reject(new Error("Discord login window closed"));
+            return;
+          }
+
+          const popupUrl = popup.location.href;
+          if (!popupUrl.startsWith(redirectUri)) return;
+
+          const callbackUrl = new URL(popupUrl);
+          const code = callbackUrl.searchParams.get("code");
+          const state = callbackUrl.searchParams.get("state");
+          const error = callbackUrl.searchParams.get("error");
+          const errorDescription = callbackUrl.searchParams.get(
+            "error_description",
+          );
+
+          cleanup();
+          popup.close();
+
+          if (error) {
+            this.logAuth("popup:poll:error", { error, errorDescription });
+            reject(new Error(errorDescription || error));
+            return;
+          }
+
+          if (!code) {
+            reject(new Error("No authorization code received"));
+            return;
+          }
+
+          this.logAuth("popup:poll:success", {
+            statePrefix: (state ?? "").slice(0, 8),
+          });
+          resolve({ code, state: state ?? "" });
+        } catch {
+          // Cross-origin while on Discord domain; ignore until redirected back.
+        }
+      }, 250);
+
       const cleanup = () => {
         window.removeEventListener("message", handleMessage);
+        window.removeEventListener("storage", handleStorage);
         clearInterval(timeout);
+        clearInterval(popupPoll);
       };
 
       const handleMessage = (event: MessageEvent) => {
@@ -113,23 +196,61 @@ export class AuthService {
         const data = event.data || {};
 
         if (data.type === DISCORD_AUTH_SUCCESS && data.code) {
+          this.logAuth("popup:message:success", {
+            statePrefix: String(data.state ?? "").slice(0, 8),
+          });
           cleanup();
           resolve({ code: data.code, state: data.state });
         }
 
         if (data.type === DISCORD_AUTH_ERROR) {
+          this.logAuth("popup:message:error", { error: data.error });
           cleanup();
           reject(new Error(data.error || "Discord authentication failed"));
         }
       };
 
+      const handleStorage = (event: StorageEvent) => {
+        if (event.key !== DISCORD_AUTH_RESULT_KEY || !event.newValue) return;
+
+        try {
+          const data = JSON.parse(event.newValue);
+          localStorage.removeItem(DISCORD_AUTH_RESULT_KEY);
+
+          if (data.type === DISCORD_AUTH_SUCCESS && data.code) {
+            this.logAuth("popup:storage:success", {
+              statePrefix: String(data.state ?? "").slice(0, 8),
+            });
+            cleanup();
+            resolve({ code: data.code, state: data.state });
+            return;
+          }
+
+          if (data.type === DISCORD_AUTH_ERROR) {
+            this.logAuth("popup:storage:error", { error: data.error });
+            cleanup();
+            reject(new Error(data.error || "Discord authentication failed"));
+          }
+        } catch {
+          cleanup();
+          reject(new Error("Invalid Discord authentication response"));
+        }
+      };
+
       window.addEventListener("message", handleMessage);
+      window.addEventListener("storage", handleStorage);
     });
 
     const storedState = sessionStorage.getItem(DISCORD_STATE_KEY);
     const storedVerifier = sessionStorage.getItem(DISCORD_VERIFIER_KEY);
     sessionStorage.removeItem(DISCORD_STATE_KEY);
     sessionStorage.removeItem(DISCORD_VERIFIER_KEY);
+    this.logAuth("callback:received", {
+      hasStoredState: Boolean(storedState),
+      hasStoredVerifier: Boolean(storedVerifier),
+      returnedStatePrefix: returnedState.slice(0, 8),
+      storedStatePrefix: (storedState ?? "").slice(0, 8),
+    });
 
     if (!storedState || storedState !== returnedState) {
       throw new Error("Discord login state mismatch");
@@ -145,24 +266,37 @@ export class AuthService {
       redirectUri,
       clientId,
     );
+    this.logAuth("token:exchange:success", {
+      hasAccessToken: Boolean(tokenData?.access_token),
+      tokenType: tokenData?.token_type,
+      scope: tokenData?.scope,
+    });
 
     const profile = await this.fetchDiscordProfile(tokenData.access_token);
+    this.logAuth("profile:fetch:success", {
+      discordId: profile?.id,
+      username: profile?.username,
+      hasEmail: Boolean(profile?.email),
+    });
     const name = profile.global_name || profile.username;
     const avatarUrl = profile.avatar
       ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
       : undefined;
 
-    const userId = await this.convex.mutation(
-      this.convex.api.auth.getOrCreateUser as any,
-      {
+    this.logAuth("convex:getOrCreateUser:start");
+    const userId = await this.withTimeout(
+      this.convex.mutation(this.convex.api.auth.getOrCreateUser as any, {
         email: profile.email || undefined,
         name,
         avatarUrl,
         discordId: profile.id,
         discordUsername: profile.username,
         discordGlobalName: profile.global_name || undefined,
-      } as any,
+      } as any),
+      15000,
+      "Timed out waiting for Convex mutation. Check Convex backend connection.",
     );
+    this.logAuth("convex:getOrCreateUser:success", { userId });
 
     const user = await this.convex.query(this.convex.api.auth.getCurrentUser, {
       userId,
@@ -173,6 +307,7 @@ export class AuthService {
       this._userId.set(userId);
       localStorage.setItem(STORAGE_KEY, userId);
       this.router.navigate(["/"]);
+      this.logAuth("loginWithDiscord:complete", { userId });
     }
   }
 
@@ -303,6 +438,7 @@ export class AuthService {
     redirectUri: string,
     clientId: string,
   ): Promise<any> {
+    this.logAuth("token:exchange:start", { redirectUri });
     const response = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: {
@@ -318,13 +454,21 @@ export class AuthService {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to exchange code for token");
+      const errorBody = await response.text();
+      this.logAuth("token:exchange:error", {
+        status: response.status,
+        body: errorBody.slice(0, 300),
+      });
+      throw new Error(
+        `Failed to exchange code for token (status ${response.status})`,
+      );
     }
 
     return response.json();
   }
 
   private async fetchDiscordProfile(accessToken: string): Promise<any> {
+    this.logAuth("profile:fetch:start");
     const response = await fetch("https://discord.com/api/users/@me", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -332,7 +476,12 @@ export class AuthService {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to fetch Discord profile");
+      const errorBody = await response.text();
+      this.logAuth("profile:fetch:error", {
+        status: response.status,
+        body: errorBody.slice(0, 300),
+      });
+      throw new Error(`Failed to fetch Discord profile (status ${response.status})`);
     }
 
     return response.json();

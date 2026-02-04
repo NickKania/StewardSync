@@ -143,8 +143,10 @@ export class LoginComponent {
     try {
       await this.authService.loginWithDiscord();
     } catch (error) {
-      this.toastService.error("Failed to sign in with Discord");
-      console.error(error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to sign in with Discord";
+      this.toastService.error(errorMessage);
+      console.error("Discord login error:", error);
     } finally {
       this.isLoading = false;
     }

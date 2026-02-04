@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
 import { AuthService } from '@core/services/auth.service';
+import { ToastService } from '@core/services/toast.service';
 import { CardComponent } from '@shared/components/card/card.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
@@ -190,6 +191,80 @@ interface SeriesPenaltyGroup {
           </dl>
         </app-card>
 
+        @if (canManageDriverProfile()) {
+          <app-card title="Series Driver Management">
+            <div class="grid lg:grid-cols-3 gap-4">
+              <div class="space-y-2">
+                <label class="label">Driver Class</label>
+                <select
+                  class="input"
+                  [ngModel]="selectedNewClassId()"
+                  (ngModelChange)="selectedNewClassId.set($event)"
+                >
+                  <option value="">Select class</option>
+                  @for (driverClass of driverClassOptions(); track driverClass._id) {
+                    <option [value]="driverClass._id">{{ driverClass.displayName }}</option>
+                  }
+                </select>
+
+                <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    [ngModel]="adjustLicensePointsOnClassChange()"
+                    (ngModelChange)="adjustLicensePointsOnClassChange.set($event)"
+                  />
+                  Adjust license points with class move
+                </label>
+
+                <app-button
+                  variant="primary"
+                  size="sm"
+                  [disabled]="!selectedNewClassId()"
+                  (onClick)="saveDriverClass()"
+                >
+                  Save Class
+                </app-button>
+              </div>
+
+              <div class="space-y-2">
+                <label class="label">License Points</label>
+                <input
+                  type="number"
+                  min="0"
+                  class="input"
+                  [ngModel]="editedLicensePoints()"
+                  (ngModelChange)="editedLicensePoints.set($event === '' ? 0 : +$event)"
+                />
+                <app-button variant="secondary" size="sm" (onClick)="saveLicensePoints()">
+                  Save Points
+                </app-button>
+              </div>
+
+              <div class="space-y-2">
+                <label class="label">Associated User</label>
+                <select
+                  class="input"
+                  [ngModel]="selectedNewUserId()"
+                  (ngModelChange)="selectedNewUserId.set($event)"
+                >
+                  <option value="">No linked user</option>
+                  @for (user of allUsers(); track user._id) {
+                    <option [value]="user._id">{{ user.name }}</option>
+                  }
+                </select>
+                <app-button
+                  variant="secondary"
+                  size="sm"
+                  [disabled]="!selectedNewUserId()"
+                  (onClick)="saveUserAssociation()"
+                >
+                  Save User Link
+                </app-button>
+              </div>
+            </div>
+          </app-card>
+        }
+
         <!-- Series Penalties -->
         <app-card title="Series Penalties">
           <div class="space-y-4">
@@ -347,6 +422,33 @@ interface SeriesPenaltyGroup {
             }
           </div>
         </app-card>
+
+        <app-card title="Finalized Report Penalty History">
+          @if (penaltyHistory().length === 0) {
+            <p class="text-gray-500 dark:text-gray-400">No finalized penalties for this driver yet.</p>
+          } @else {
+            <div class="space-y-2">
+              @for (row of penaltyHistory(); track row.reportId) {
+                <a
+                  [routerLink]="['/reports', row.reportId]"
+                  class="block rounded-md border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">
+                        {{ row.penaltyName || 'No Penalty' }} ({{ row.licensePoints || 0 }} LP)
+                      </p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ row.eventName }} - Event {{ row.eventNumber }} / Race {{ row.raceNumber || '-' }}
+                      </p>
+                    </div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(row.finalizedAt) }}</span>
+                  </div>
+                </a>
+              }
+            </div>
+          }
+        </app-card>
       } @else {
         <app-card>
           <div class="text-center py-12">
@@ -365,6 +467,7 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
 
   private convex = inject(ConvexService);
   authService = inject(AuthService);
+  private toast = inject(ToastService);
   private destroyRef = inject(DestroyRef);
 
   driver = signal<any>(null);
@@ -378,10 +481,17 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
   officialNameSaving = signal(false);
 
   penalties = signal<DriverSeriesPenaltyDetails[]>([]);
+  penaltyHistory = signal<any[]>([]);
   penaltiesLoading = signal(false);
   selectedSeriesId = '';
 
   series = signal<any[]>([]);
+  driverClassOptions = signal<any[]>([]);
+  allUsers = signal<any[]>([]);
+  selectedNewClassId = signal('');
+  adjustLicensePointsOnClassChange = signal(false);
+  editedLicensePoints = signal<number | null>(null);
+  selectedNewUserId = signal('');
 
   seriesFilterText = signal('');
   seriesSortColumn = signal<Record<string, keyof SeriesPenaltyRow>>({});
@@ -491,12 +601,35 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
       if (driver) {
         // Set linked user info
         this.linkedUser.set(driver.linkedUser);
+        this.editedLicensePoints.set(driver.accumulatedLicensePoints ?? 0);
+        this.selectedNewUserId.set(driver.userId ?? '');
 
         const stats = await this.convex.query(
           this.convex.api.drivers.getDriverStats,
           { driverId: this.id as any }
         );
         this.stats.set(stats);
+
+        if (driver.championshipId) {
+          const classes = await this.convex.query(
+            this.convex.api.drivers.getDriverClassesBySeries,
+            { seriesId: driver.championshipId as any }
+          );
+          this.driverClassOptions.set(classes || []);
+        } else {
+          this.driverClassOptions.set([]);
+        }
+
+        if (this.authService.hasMinimumRole('event_manager')) {
+          const users = await this.convex.query(this.convex.api.users.list, {});
+          this.allUsers.set(users || []);
+        }
+
+        const history = await this.convex.query(this.convex.api.drivers.getPenaltyHistory, {
+          driverId: this.id as any,
+          championshipId: driver.championshipId ?? undefined,
+        });
+        this.penaltyHistory.set(history || []);
 
         await this.loadSeries();
         await this.loadPenalties();
@@ -606,6 +739,79 @@ export class DriverDetailComponent implements OnInit, OnDestroy {
       console.error('Failed to save official name:', error);
     } finally {
       this.officialNameSaving.set(false);
+    }
+  }
+
+  canManageDriverProfile(): boolean {
+    return this.authService.hasMinimumRole('event_manager');
+  }
+
+  async saveDriverClass(): Promise<void> {
+    const driver = this.driver();
+    const userId = this.authService.getUserId();
+    if (!driver?._id || !userId) return;
+
+    const classId = this.selectedNewClassId();
+    if (!classId) return;
+
+    try {
+      await this.convex.mutation(this.convex.api.drivers.updateDriverClass, {
+        driverId: driver._id,
+        newDriverClassId: classId as any,
+        userId,
+        adjustLicensePoints: this.adjustLicensePointsOnClassChange(),
+        newLicensePoints: this.adjustLicensePointsOnClassChange()
+          ? this.editedLicensePoints() ?? 0
+          : undefined,
+      });
+
+      this.toast.success('Driver class updated');
+      this.selectedNewClassId.set('');
+      this.adjustLicensePointsOnClassChange.set(false);
+      await this.loadDriver();
+    } catch (error: any) {
+      console.error('Failed to update driver class:', error);
+      this.toast.error(error?.message || 'Failed to update class');
+    }
+  }
+
+  async saveLicensePoints(): Promise<void> {
+    const driver = this.driver();
+    const userId = this.authService.getUserId();
+    const points = this.editedLicensePoints();
+    if (!driver?._id || !userId || points === null) return;
+
+    try {
+      await this.convex.mutation(this.convex.api.drivers.updateDriverLicensePoints, {
+        driverId: driver._id,
+        newPoints: points,
+        userId,
+      });
+      this.toast.success('License points updated');
+      await this.loadDriver();
+    } catch (error: any) {
+      console.error('Failed to update license points:', error);
+      this.toast.error(error?.message || 'Failed to update points');
+    }
+  }
+
+  async saveUserAssociation(): Promise<void> {
+    const driver = this.driver();
+    const userId = this.authService.getUserId();
+    const newUserId = this.selectedNewUserId();
+    if (!driver?._id || !userId || !newUserId) return;
+
+    try {
+      await this.convex.mutation(this.convex.api.drivers.updateUserAssociation, {
+        driverId: driver._id,
+        newUserId: newUserId as any,
+        userId,
+      });
+      this.toast.success('Driver association updated');
+      await this.loadDriver();
+    } catch (error: any) {
+      console.error('Failed to update user association:', error);
+      this.toast.error(error?.message || 'Failed to update association');
     }
   }
 

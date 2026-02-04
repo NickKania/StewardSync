@@ -32,6 +32,7 @@ import type * as series from "../series.js";
 import type * as seriesPenalties from "../seriesPenalties.js";
 import type * as seriesPenaltyThresholds from "../seriesPenaltyThresholds.js";
 import type * as statistics from "../statistics.js";
+import type * as steamUserMappings from "../steamUserMappings.js";
 import type * as users from "../users.js";
 
 import type {
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   seriesPenalties: typeof seriesPenalties;
   seriesPenaltyThresholds: typeof seriesPenaltyThresholds;
   statistics: typeof statistics;
+  steamUserMappings: typeof steamUserMappings;
   users: typeof users;
 }>;
 

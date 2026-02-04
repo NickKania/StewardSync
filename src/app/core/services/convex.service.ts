@@ -15,6 +15,11 @@ export class ConvexService implements OnDestroy {
   private subscriptions: Map<string, () => void> = new Map();
 
   constructor() {
+    if (!environment.production) {
+      console.log('[ConvexService] initializing client', {
+        convexUrl: environment.convexUrl,
+      });
+    }
     this.client = new ConvexClient(environment.convexUrl, {
       logger: new ConvexCustomLogger()
     });

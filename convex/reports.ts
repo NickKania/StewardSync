@@ -499,18 +499,37 @@ export const finalize = mutation({
     }
 
     const now = Date.now();
+    const effectiveAtFaultDriverId = args.atFaultDriverId ?? report.reportedDriverId;
+
+    let appliedPenaltyDoc: any = null;
+    if (args.appliedPenalty) {
+      appliedPenaltyDoc = await ctx.db.get(args.appliedPenalty as any);
+    }
+
     await ctx.db.patch(args.reportId, {
       status: "finalized",
       isFinalized: true,
       finalDecision: args.finalDecision,
       appliedPenalty: args.appliedPenalty,
-      atFaultDriverId: args.atFaultDriverId,
+      atFaultDriverId: effectiveAtFaultDriverId,
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
       finalizedBy: args.userId,
       finalizedAt: now,
       updatedAt: now,
     });
+
+    if (effectiveAtFaultDriverId && appliedPenaltyDoc) {
+      const atFaultDriver = await ctx.db.get(effectiveAtFaultDriverId);
+      const pointsToAdd = appliedPenaltyDoc.licensePoints ?? 0;
+
+      if (atFaultDriver && pointsToAdd > 0) {
+        await ctx.db.patch(effectiveAtFaultDriverId, {
+          accumulatedLicensePoints:
+            (atFaultDriver.accumulatedLicensePoints || 0) + pointsToAdd,
+        });
+      }
+    }
 
     const event = await ctx.db.get(report.eventId);
     if (event) {

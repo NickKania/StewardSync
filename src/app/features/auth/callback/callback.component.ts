@@ -1,7 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
+import { take } from 'rxjs';
+
+const DISCORD_AUTH_SUCCESS = 'discord-auth-success';
+const DISCORD_AUTH_ERROR = 'discord-auth-error';
+const DISCORD_AUTH_RESULT_KEY = 'steward_sync_discord_auth_result';
 
 @Component({
   selector: 'app-callback',
@@ -18,14 +22,27 @@ import { ActivatedRoute } from '@angular/router';
 })
 export class CallbackComponent implements OnInit {
   constructor(
-    private router: Router,
     private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe(async (params) => {
+    this.route.queryParams.pipe(take(1)).subscribe((params) => {
       const code = params['code'];
       const state = params['state'];
+      const error = params['error'];
+      const errorDescription = params['error_description'];
+      console.log('[DiscordCallback] params received', {
+        hasCode: Boolean(code),
+        statePrefix: String(state ?? '').slice(0, 8),
+        error,
+        errorDescription,
+        hasOpener: Boolean(window.opener),
+      });
+
+      if (error) {
+        this.handleAuthError(errorDescription || error);
+        return;
+      }
 
       if (!code) {
         this.handleAuthError('No authorization code received');
@@ -33,37 +50,61 @@ export class CallbackComponent implements OnInit {
       }
 
       try {
+        localStorage.setItem(
+          DISCORD_AUTH_RESULT_KEY,
+          JSON.stringify({
+            type: DISCORD_AUTH_SUCCESS,
+            code,
+            state,
+          })
+        );
+        console.log('[DiscordCallback] wrote success payload to localStorage');
+
         if (window.opener) {
           window.opener.postMessage(
             {
-              type: 'discord-auth-success',
+              type: DISCORD_AUTH_SUCCESS,
               code,
               state,
             },
             window.location.origin
           );
+          console.log('[DiscordCallback] posted success message to opener');
           window.close();
         } else {
-          this.router.navigate(['/']);
+          console.log('[DiscordCallback] no opener found, closing window');
+          window.close();
         }
       } catch (error) {
+        console.error('[DiscordCallback] exception in callback handler', error);
         this.handleAuthError('Failed to complete authentication');
       }
     });
   }
 
   private handleAuthError(error: string): void {
+    localStorage.setItem(
+      DISCORD_AUTH_RESULT_KEY,
+      JSON.stringify({
+        type: DISCORD_AUTH_ERROR,
+        error,
+      })
+    );
+    console.error('[DiscordCallback] auth error', { error });
+
     if (window.opener) {
       window.opener.postMessage(
         {
-          type: 'discord-auth-error',
+          type: DISCORD_AUTH_ERROR,
           error: error,
         },
         window.location.origin
       );
+      console.log('[DiscordCallback] posted error message to opener');
       window.close();
     } else {
-      this.router.navigate(['/login']);
+      console.log('[DiscordCallback] no opener found on error, closing window');
+      window.close();
     }
   }
 }
