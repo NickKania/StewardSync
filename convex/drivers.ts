@@ -3,6 +3,46 @@ import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { formatDriverName, getDriverDisplayName } from "./lib/formatting";
 
+const normalizeUsername = (value?: string): string | undefined => {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  return normalized.startsWith("@") ? normalized.slice(1) : normalized;
+};
+
+const findUserByDiscordUsername = async (ctx: any, username?: string) => {
+  const normalizedUsername = normalizeUsername(username);
+  if (!normalizedUsername) return null;
+
+  const users = await ctx.db.query("users").collect();
+  return (
+    users.find((user: any) => normalizeUsername(user.discordUsername) === normalizedUsername) ??
+    null
+  );
+};
+
+const linkDriverToMatchedUser = async (
+  ctx: any,
+  args: {
+    driverId: any;
+    username?: string;
+    fallbackOfficialName?: string;
+  },
+) => {
+  const matchedUser = await findUserByDiscordUsername(ctx, args.username);
+  if (!matchedUser) return;
+
+  const driver = await ctx.db.get(args.driverId);
+  if (!driver || driver.userId) return;
+
+  await ctx.db.patch(args.driverId, { userId: matchedUser._id });
+
+  if (!matchedUser.officialName) {
+    await ctx.db.patch(matchedUser._id, {
+      officialName: args.fallbackOfficialName ?? driver.driverName,
+    });
+  }
+};
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -495,6 +535,13 @@ export const importOrUpdateDriver = mutation({
         steamId: args.steamId,
         isActive: true,
       });
+
+      await linkDriverToMatchedUser(ctx, {
+        driverId: driverInThisChampionship._id,
+        username: args.username,
+        fallbackOfficialName: args.driverName,
+      });
+
       return { action: 'updated', driverId: driverInThisChampionship._id };
     }
 
@@ -511,6 +558,13 @@ export const importOrUpdateDriver = mutation({
         championshipId: args.championshipId,
         isActive: true,
       });
+
+      await linkDriverToMatchedUser(ctx, {
+        driverId: unassignedDriver._id,
+        username: args.username,
+        fallbackOfficialName: args.driverName,
+      });
+
       return { action: 'updated', driverId: unassignedDriver._id };
     }
 
@@ -525,6 +579,13 @@ export const importOrUpdateDriver = mutation({
       isActive: true,
       createdAt: Date.now(),
     });
+
+    await linkDriverToMatchedUser(ctx, {
+      driverId,
+      username: args.username,
+      fallbackOfficialName: args.driverName,
+    });
+
     return { action: 'created', driverId };
   },
 });

@@ -35,5 +35,5 @@ yarn-error.log*
 
 # OS files
 Thumbs.db
-src/environments/environment.local*
+**/environment.local*
 .tmp/**
