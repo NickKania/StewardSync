@@ -128,6 +128,7 @@ interface SlotOption {
                     name="slotSelection"
                     [value]="slot.value"
                     [(ngModel)]="selectedSlotValue"
+                    (ngModelChange)="onSlotChange($event)"
                     class="mt-1 h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500"
                     [disabled]="!canManage() || review()!.status === 'completed'"
                   />
@@ -142,6 +143,39 @@ interface SlotOption {
                 </label>
               }
             </div>
+          }
+
+          @if (selectedSlotValue && canManage() && review()!.status !== "completed") {
+            <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label class="text-sm text-gray-700 dark:text-gray-300">
+                <span class="block font-medium text-gray-900 dark:text-gray-100">
+                  Meeting start
+                </span>
+                <input
+                  type="datetime-local"
+                  class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  [min]="selectedWindowMin()"
+                  [max]="selectedWindowMax()"
+                  [(ngModel)]="selectedMeetingStartInput"
+                />
+              </label>
+              <label class="text-sm text-gray-700 dark:text-gray-300">
+                <span class="block font-medium text-gray-900 dark:text-gray-100">
+                  Meeting end
+                </span>
+                <input
+                  type="datetime-local"
+                  class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  [min]="selectedWindowMin()"
+                  [max]="selectedWindowMax()"
+                  [(ngModel)]="selectedMeetingEndInput"
+                />
+              </label>
+            </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Choose a specific time within the selected availability window. You can reschedule
+              later if needed.
+            </p>
           }
 
           @if (canManage() && review()!.status !== "completed") {
@@ -238,6 +272,8 @@ export class RaceReviewManagementComponent implements OnInit {
   readonly markingCompleted = signal(false);
   readonly markingServed = signal(false);
   selectedSlotValue = "";
+  selectedMeetingStartInput = "";
+  selectedMeetingEndInput = "";
 
   readonly slotOptions = computed<SlotOption[]>(() => {
     const review = this.review();
@@ -290,12 +326,32 @@ export class RaceReviewManagementComponent implements OnInit {
       return;
     }
 
-    const [startString, endString] = this.selectedSlotValue.split("|");
-    const selectedMeetingStartAt = Number(startString);
-    const selectedMeetingEndAt = Number(endString);
+    const selectedWindow = this.getSelectedWindow();
+    if (!selectedWindow) {
+      alert("Please choose a valid availability window.");
+      return;
+    }
+
+    const selectedMeetingStartAt = this.parseLocalDateTime(
+      this.selectedMeetingStartInput,
+    );
+    const selectedMeetingEndAt = this.parseLocalDateTime(this.selectedMeetingEndInput);
 
     if (!Number.isFinite(selectedMeetingStartAt) || !Number.isFinite(selectedMeetingEndAt)) {
-      alert("Please choose a valid availability slot.");
+      alert("Please choose a valid meeting start and end time.");
+      return;
+    }
+
+    if (
+      selectedMeetingStartAt < selectedWindow.startAt ||
+      selectedMeetingEndAt > selectedWindow.endAt
+    ) {
+      alert("Selected meeting time must be within the chosen availability window.");
+      return;
+    }
+
+    if (selectedMeetingEndAt <= selectedMeetingStartAt) {
+      alert("Meeting end time must be after the start time.");
       return;
     }
 
@@ -405,10 +461,30 @@ export class RaceReviewManagementComponent implements OnInit {
         userId,
       });
       this.review.set(review);
-      if (review?.selectedMeetingStartAt && review?.selectedMeetingEndAt) {
-        this.selectedSlotValue = `${review.selectedMeetingStartAt}|${review.selectedMeetingEndAt}`;
+    if (review?.selectedMeetingStartAt && review?.selectedMeetingEndAt) {
+        const window = this.findMatchingWindow(
+          review.availabilityWindows,
+          review.selectedMeetingStartAt,
+          review.selectedMeetingEndAt,
+        );
+        this.selectedSlotValue = window
+          ? `${window.startAt}|${window.endAt}`
+          : "";
+        if (window) {
+          this.selectedMeetingStartInput = this.toLocalDateTimeInput(
+            review.selectedMeetingStartAt,
+          );
+          this.selectedMeetingEndInput = this.toLocalDateTimeInput(
+            review.selectedMeetingEndAt,
+          );
+        } else {
+          this.selectedMeetingStartInput = "";
+          this.selectedMeetingEndInput = "";
+        }
       } else {
         this.selectedSlotValue = "";
+        this.selectedMeetingStartInput = "";
+        this.selectedMeetingEndInput = "";
       }
     } catch (error) {
       console.error("Failed to load race review:", error);
@@ -416,5 +492,71 @@ export class RaceReviewManagementComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  onSlotChange(value: string): void {
+    this.selectedSlotValue = value;
+    const selectedWindow = this.getSelectedWindow();
+    if (selectedWindow) {
+      this.selectedMeetingStartInput = this.toLocalDateTimeInput(
+        selectedWindow.startAt,
+      );
+      this.selectedMeetingEndInput = this.toLocalDateTimeInput(selectedWindow.endAt);
+    } else {
+      this.selectedMeetingStartInput = "";
+      this.selectedMeetingEndInput = "";
+    }
+  }
+
+  selectedWindowMin(): string {
+    const window = this.getSelectedWindow();
+    return window ? this.toLocalDateTimeInput(window.startAt) : "";
+  }
+
+  selectedWindowMax(): string {
+    const window = this.getSelectedWindow();
+    return window ? this.toLocalDateTimeInput(window.endAt) : "";
+  }
+
+  private getSelectedWindow(): SlotOption | null {
+    return (
+      this.slotOptions().find((slot) => slot.value === this.selectedSlotValue) ??
+      null
+    );
+  }
+
+  private findMatchingWindow(
+    windows: Array<{ startAt: number; endAt: number }> | undefined,
+    selectedStartAt: number,
+    selectedEndAt: number,
+  ): { startAt: number; endAt: number } | null {
+    if (!windows) {
+      return null;
+    }
+    return (
+      windows.find(
+        (window) =>
+          selectedStartAt >= window.startAt && selectedEndAt <= window.endAt,
+      ) ?? null
+    );
+  }
+
+  private toLocalDateTimeInput(timestamp: number): string {
+    const date = new Date(timestamp);
+    const pad = (value: number) => value.toString().padStart(2, "0");
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  private parseLocalDateTime(value: string): number {
+    if (!value) {
+      return Number.NaN;
+    }
+    const timestamp = new Date(value).getTime();
+    return Number.isFinite(timestamp) ? timestamp : Number.NaN;
   }
 }

@@ -5,6 +5,7 @@ import { ButtonComponent } from "@shared/components/button/button.component";
 import { DashboardReportListComponent } from "../dashboard-report-list/dashboard-report-list.component";
 import { DashboardSeriesPenaltyListComponent } from "../dashboard-series-penalty-list/dashboard-series-penalty-list.component";
 import { DashboardRaceReviewRequestListComponent } from "../dashboard-race-review-request-list/dashboard-race-review-request-list.component";
+import { DashboardRaceReviewRequirementsComponent } from "../dashboard-race-review-requirements/dashboard-race-review-requirements.component";
 
 @Component({
   selector: "app-head-steward-dashboard",
@@ -16,6 +17,7 @@ import { DashboardRaceReviewRequestListComponent } from "../dashboard-race-revie
     DashboardReportListComponent,
     DashboardSeriesPenaltyListComponent,
     DashboardRaceReviewRequestListComponent,
+    DashboardRaceReviewRequirementsComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -52,6 +54,8 @@ import { DashboardRaceReviewRequestListComponent } from "../dashboard-race-revie
       />
 
       <app-dashboard-race-review-request-list />
+
+      <app-dashboard-race-review-requirements />
 
       <app-dashboard-series-penalty-list />
     </div>

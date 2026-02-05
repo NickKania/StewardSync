@@ -553,6 +553,7 @@ export const getDashboardPenaltyGroups = query({
     const seriesCache = new Map<string, any>();
     const eventCache = new Map<string, any[]>();
     const driverCache = new Map<string, any>();
+    const userCache = new Map<string, any>();
     const driverClassCache = new Map<string, any>();
     const seriesPenaltyCache = new Map<string, any>();
     const thresholdCache = new Map<string, any>();
@@ -595,6 +596,14 @@ export const getDashboardPenaltyGroups = query({
       return driverClassCache.get(key);
     };
 
+    const getUser = async (userId: any) => {
+      const key = userId.toString();
+      if (!userCache.has(key)) {
+        userCache.set(key, await ctx.db.get(userId));
+      }
+      return userCache.get(key);
+    };
+
     const getSeriesPenalty = async (seriesPenaltyId: any) => {
       const key = seriesPenaltyId.toString();
       if (!seriesPenaltyCache.has(key)) {
@@ -623,6 +632,7 @@ export const getDashboardPenaltyGroups = query({
         const requiresReview =
           dsp.requiresReview ?? threshold?.requiresReview ?? false;
 
+        const driverUser = driver?.userId ? await getUser(driver.userId) : null;
         const driverClass = driver?.driverClassId
           ? await getDriverClass(driver.driverClassId)
           : null;
@@ -645,6 +655,7 @@ export const getDashboardPenaltyGroups = query({
           seriesId: dsp.seriesId,
           seriesName: series?.name ?? "Unknown Series",
           driverName: driver?.driverName ?? "Unknown Driver",
+          discordUsername: driverUser?.discordUsername ?? null,
           driverNumber: driver?.driverNumber ?? null,
           driverClass: driverClass?.displayName ?? null,
           penaltyName: seriesPenalty?.penaltyName ?? "Unknown Penalty",

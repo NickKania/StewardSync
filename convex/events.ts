@@ -168,16 +168,7 @@ export const importOrUpdateEvent = mutation({
       }
 
       if (existing.eventDate !== args.eventDate) {
-        const hasManualEventDateEdit = await hasManualFieldEdit(
-          ctx,
-          "events",
-          String(existing._id),
-          "eventDate",
-        );
-
-        if (!hasManualEventDateEdit) {
-          updates.eventDate = args.eventDate;
-        }
+        updates.eventDate = args.eventDate;
       }
 
       if (Object.keys(updates).length > 0) {
@@ -226,7 +217,7 @@ async function runGetSeriesByIdWithSimgridLink(
   ctx: any,
   args: { id: Id<"series"> }
 ) {
-  return ctx.runQuery(api.series.getByIdWithSimgridLink, args);
+  return ctx.runQuery("series:getByIdWithSimgridLink", args);
 }
 
 export const importFromSimGrid = action({
@@ -304,26 +295,6 @@ function extractChampionshipId(url: string): string | null {
   }
 
   return null;
-}
-
-async function hasManualFieldEdit(
-  ctx: any,
-  tableName: string,
-  documentId: string,
-  fieldName: string,
-): Promise<boolean> {
-  const existingManualEdit = await ctx.db
-    .query("changeHistory")
-    .withIndex("by_entity_field_source", (q: any) =>
-      q
-        .eq("tableName", tableName)
-        .eq("documentId", documentId)
-        .eq("fieldName", fieldName)
-        .eq("source", "manual"),
-    )
-    .first();
-
-  return !!existingManualEdit;
 }
 
 function serializeValue(value: unknown): string | undefined {

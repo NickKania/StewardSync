@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
+import { getCurrentUserRole, hasMinimumRole } from "./lib/auth";
 import { formatDriverName, getDriverDisplayName } from "./lib/formatting";
 
 const normalizeUsername = (value?: string): string | undefined => {
@@ -242,10 +243,19 @@ export const getPenaltyHistory = query({
 });
 
 export const getUserProfile = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), currentUserId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) return null;
+    let canViewNotes = false;
+    if (args.currentUserId) {
+      try {
+        const role = await getCurrentUserRole(ctx, args.currentUserId);
+        canViewNotes = hasMinimumRole(role, "steward");
+      } catch {
+        canViewNotes = false;
+      }
+    }
 
     const seriesRecency = new Map<string, number>();
     const profiles = await Promise.all(
@@ -336,6 +346,7 @@ export const getUserProfile = query({
         name: user.name,
         officialName: user.officialName,
         discordUsername: user.discordUsername,
+        note: canViewNotes ? user.note : undefined,
       },
       profiles: profiles.sort((a, b) => {
         if (a.seriesLastEventDate !== b.seriesLastEventDate) {

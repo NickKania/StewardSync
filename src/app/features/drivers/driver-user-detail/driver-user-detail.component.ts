@@ -94,6 +94,31 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
           </div>
         </app-card>
 
+        @if (canViewStaffNotes()) {
+          <app-card>
+            <label class="label">Staff Notes</label>
+            <textarea
+              class="input min-h-[120px]"
+              [ngModel]="staffNoteDraft()"
+              (ngModelChange)="setStaffNoteDraft($event)"
+              placeholder="Add internal notes for staff only..."
+            ></textarea>
+            <div class="flex items-center justify-between mt-3">
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Visible to stewards and above only.
+              </p>
+              <app-button
+                variant="primary"
+                size="sm"
+                [loading]="savingStaffNote()"
+                (onClick)="saveStaffNote()"
+              >
+                Save Note
+              </app-button>
+            </div>
+          </app-card>
+        }
+
         <div class="space-y-4">
           @for (
             seriesProfile of visibleProfiles();
@@ -312,6 +337,8 @@ export class DriverUserDetailComponent implements OnInit {
   loading = signal(true);
   profile = signal<any>(null);
   selectedDriverIds = signal<string[]>([]);
+  staffNoteDraft = signal<string>("");
+  savingStaffNote = signal(false);
 
   classOptionsBySeries = signal<Record<string, any[]>>({});
   classSelection = signal<Record<string, string>>({});
@@ -340,6 +367,35 @@ export class DriverUserDetailComponent implements OnInit {
     return this.authService.hasMinimumRole("event_manager");
   }
 
+  canViewStaffNotes(): boolean {
+    return this.authService.hasMinimumRole("steward");
+  }
+
+  setStaffNoteDraft(value: string): void {
+    this.staffNoteDraft.set(value);
+  }
+
+  async saveStaffNote(): Promise<void> {
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId || !this.userId) return;
+
+    this.savingStaffNote.set(true);
+    try {
+      await this.convex.mutation(this.convex.api.users.updateNote, {
+        userId: this.userId as any,
+        note: this.staffNoteDraft(),
+        currentUserId,
+      });
+      this.toast.success("Staff note updated");
+      await this.load();
+    } catch (error: any) {
+      console.error("Failed to update staff note:", error);
+      this.toast.error(error?.message || "Failed to update staff note");
+    } finally {
+      this.savingStaffNote.set(false);
+    }
+  }
+
   async load(): Promise<void> {
     if (!this.userId) {
       this.loading.set(false);
@@ -352,9 +408,11 @@ export class DriverUserDetailComponent implements OnInit {
         this.convex.api.drivers.getUserProfile,
         {
           userId: this.userId as any,
+          currentUserId: this.authService.getUserId() ?? undefined,
         },
       );
       this.profile.set(profile);
+      this.staffNoteDraft.set(profile?.user?.note || "");
 
       if (profile?.profiles?.length) {
         const defaultDriverIds = profile.profiles

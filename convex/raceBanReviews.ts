@@ -321,6 +321,7 @@ export const listOutstandingRequirements = query({
           threshold: threshold.threshold,
           isServed: penalty.isServed,
           status,
+          selectedMeetingStartAt: linkedRequest?.selectedMeetingStartAt ?? null,
         };
       }),
     );

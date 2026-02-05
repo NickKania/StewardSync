@@ -41,7 +41,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                 Incident Report
               </h1>
               <app-badge [variant]="getStatusVariant(report()?.status)">
-                {{ report()?.status }}
+                {{ formatReportStatus(report()?.status) }}
               </app-badge>
             </div>
             <p class="text-gray-500 dark:text-gray-400">
@@ -271,7 +271,9 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                     }
                   </div>
                   <div>
-                    <p class="font-medium text-gray-900 capitalize dark:text-gray-100">{{ report()?.status }}</p>
+                    <p class="font-medium text-gray-900 capitalize dark:text-gray-100">
+                      {{ formatReportStatus(report()?.status) }}
+                    </p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
                       @switch (report()?.status) {
                         @case ('pending') { Awaiting steward review }
@@ -424,6 +426,11 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
       case 'rejected': return 'danger';
       default: return 'info';
     }
+  }
+
+  formatReportStatus(status: string | undefined): string {
+    if (!status) return '';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
   editDecisionSuccess(): void {

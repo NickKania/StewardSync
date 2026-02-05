@@ -14,6 +14,7 @@ export default defineSchema({
     discordId: v.optional(v.string()),
     discordUsername: v.optional(v.string()),
     officialName: v.optional(v.string()),
+    note: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_discord_id", ["discordId"]),

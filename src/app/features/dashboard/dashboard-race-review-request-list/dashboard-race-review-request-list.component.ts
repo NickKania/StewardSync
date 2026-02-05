@@ -94,7 +94,15 @@ interface PendingRaceReviewRow {
                     }
                   </td>
                   <td class="px-6 py-4">
-                    <app-badge [variant]="request.status === 'open' ? 'warning' : 'info'">
+                    <app-badge
+                      [variant]="request.status === 'open' ? 'warning' : 'info'"
+                      [attr.title]="
+                        request.status === 'scheduled' &&
+                        request.selectedMeetingStartAt
+                          ? (request.selectedMeetingStartAt | dateFormat: 'PPp')
+                          : null
+                      "
+                    >
                       {{ request.status === "open" ? "Needs Scheduling" : "Scheduled" }}
                     </app-badge>
                   </td>

@@ -6,6 +6,7 @@ import { AuthService } from "@core/services/auth.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 
 interface ReviewRequirementRow {
   driverSeriesPenaltyId: string;
@@ -17,6 +18,7 @@ interface ReviewRequirementRow {
   threshold: number;
   isServed: boolean;
   status: "missing_request" | "open" | "scheduled";
+  selectedMeetingStartAt: number | null;
 }
 
 @Component({
@@ -28,6 +30,7 @@ interface ReviewRequirementRow {
     CardComponent,
     BadgeComponent,
     LoadingComponent,
+    DateFormatPipe,
   ],
   template: `
     <app-card
@@ -81,13 +84,24 @@ interface ReviewRequirementRow {
                   <td class="px-6 py-4">
                     <app-badge
                       [variant]="
-                        row.status === 'missing_request' ? 'danger' : 'warning'
+                        row.status === 'missing_request'
+                          ? 'danger'
+                          : row.status === 'scheduled'
+                            ? 'info'
+                            : 'warning'
+                      "
+                      [attr.title]="
+                        row.status === 'scheduled' && row.selectedMeetingStartAt
+                          ? (row.selectedMeetingStartAt | dateFormat: 'PPp')
+                          : null
                       "
                     >
                       {{
                         row.status === "missing_request"
                           ? "Missing Request"
-                          : "Review In Progress"
+                          : row.status === "scheduled"
+                            ? "Scheduled"
+                            : "Review In Progress"
                       }}
                     </app-badge>
                   </td>

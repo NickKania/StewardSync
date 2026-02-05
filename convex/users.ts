@@ -108,3 +108,24 @@ export const updateOfficialName = mutation({
     return userId;
   },
 });
+
+export const updateNote = mutation({
+  args: {
+    userId: v.id("users"),
+    note: v.string(),
+    currentUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const { userId, note, currentUserId } = args;
+
+    // Verify current user is steward or higher
+    await requireRole(ctx, currentUserId, ["steward"]);
+
+    const trimmed = note.trim();
+    await ctx.db.patch(userId, {
+      note: trimmed || undefined,
+    });
+
+    return userId;
+  },
+});

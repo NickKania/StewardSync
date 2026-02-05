@@ -153,7 +153,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                     </td>
                     <td class="px-6 py-4">
                       <app-badge [variant]="getStatusVariant(report.status)">
-                        {{ report.status }}
+                        {{ formatReportStatus(report.status) }}
                       </app-badge>
                     </td>
                     <td class="px-6 py-4">
@@ -319,6 +319,11 @@ export class ReportListComponent implements OnInit, OnDestroy {
     }
 
     this.filteredReports.set(filtered);
+  }
+
+  formatReportStatus(status: string | undefined): string {
+    if (!status) return "";
+    return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
   getStatusVariant(status: string): "warning" | "info" | "success" | "danger" {

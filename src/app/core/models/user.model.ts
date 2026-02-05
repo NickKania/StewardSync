@@ -17,6 +17,7 @@ export interface User {
   discordId?: string;
   discordUsername?: string;
   officialName?: string;
+  note?: string;
   createdAt: number;
 }
 

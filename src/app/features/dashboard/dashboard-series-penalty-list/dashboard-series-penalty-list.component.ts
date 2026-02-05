@@ -32,6 +32,7 @@ interface DashboardPenaltyRow {
   seriesId: Id<"series">;
   seriesName: string;
   driverName: string;
+  discordUsername: string | null;
   driverNumber: number | null;
   driverClass: string | null;
   penaltyName: string;
@@ -133,6 +134,13 @@ interface DashboardPenaltyGroup {
                             >
                               {{ penalty.driverName }}
                             </p>
+                            @if (penalty.discordUsername) {
+                              <p
+                                class="text-sm text-gray-500 dark:text-gray-400"
+                              >
+                                &#64;{{ penalty.discordUsername }}
+                              </p>
+                            }
                             <p class="text-sm text-gray-500 dark:text-gray-400">
                               #{{ penalty.driverNumber ?? "-" }}
                             </p>
