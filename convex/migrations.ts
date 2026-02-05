@@ -382,7 +382,7 @@ export const cleanupIncorrectDriverSeriesPenalties = internalMutation({
             driverSeriesPenaltyId: dsp._id,
             driverId: dsp.driverId,
             driverName: driver.driverName,
-            driverClass: driver.driverClass,
+            driverClassId: driver.driverClassId,
             seriesId: dsp.seriesId,
             penaltySeries: penaltySeries
               ? (penaltySeries as any).name || "Unknown"
@@ -634,6 +634,110 @@ export const getMigrationStatus = mutation({
     }
 
     return status;
+  },
+});
+
+/**
+ * Remove legacy driverClass string field after migration to driverClassId
+ */
+export const removeLegacyDriverClassField = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const drivers = await ctx.db.query("drivers").collect();
+
+    let removed = 0;
+    for (const driver of drivers) {
+      const driverDoc = driver as any;
+
+      // Remove driverClass field if it exists
+      if (driverDoc.driverClass !== undefined) {
+        await ctx.db.replace(driver._id, {
+          driverNumber: driver.driverNumber,
+          driverName: driver.driverName,
+          officialName: driver.officialName,
+          username: driver.username,
+          externalId: driver.externalId,
+          driverClassId: driver.driverClassId,
+          steamId: driver.steamId,
+          championshipId: driver.championshipId,
+          userId: driver.userId,
+          accumulatedLicensePoints: driver.accumulatedLicensePoints,
+          isActive: driver.isActive,
+          createdAt: driver.createdAt,
+        });
+        removed++;
+      }
+    }
+
+    return { removed };
+  },
+});
+
+/**
+ * Remove legacy email and discordGlobalName fields from users
+ */
+export const removeLegacyUserFields = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+
+    let removed = 0;
+    for (const user of users) {
+      const userDoc = user as any;
+
+      if (userDoc.email !== undefined || userDoc.discordGlobalName !== undefined) {
+        await ctx.db.replace(user._id, {
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+          roleId: user.roleId,
+          discordId: user.discordId,
+          discordUsername: user.discordUsername,
+          officialName: user.officialName,
+          createdAt: user.createdAt,
+        });
+        removed++;
+      }
+    }
+
+    return { removed };
+  },
+});
+
+/**
+ * Remove legacy secondStewardId field from reviews
+ */
+export const removeLegacySecondStewardField = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const reviews = await ctx.db.query("reviews").collect();
+
+    let removed = 0;
+    for (const review of reviews) {
+      const reviewDoc = review as any;
+
+      if (reviewDoc.secondStewardId !== undefined) {
+        await ctx.db.replace(review._id, {
+          reviewDate: review.reviewDate,
+          userId: review.userId,
+          reportId: review.reportId,
+          incidentDescription: review.incidentDescription,
+          reviewNotes: review.reviewNotes,
+          candidateForStandardization: review.candidateForStandardization,
+          recommendedPenalty: review.recommendedPenalty,
+          atFaultDriverId: review.atFaultDriverId,
+          videoTimestamp: review.videoTimestamp,
+          linkedReviewId: review.linkedReviewId,
+          isSelfReport: review.isSelfReport,
+          isAdjusted: review.isAdjusted,
+          adjustedReason: review.adjustedReason,
+          createdAt: review.createdAt,
+          updatedAt: review.updatedAt,
+        });
+        removed++;
+      }
+    }
+
+    return { removed };
   },
 });
 

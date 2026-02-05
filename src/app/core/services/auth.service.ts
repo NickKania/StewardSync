@@ -276,7 +276,6 @@ export class AuthService {
     this.logAuth("profile:fetch:success", {
       discordId: profile?.id,
       username: profile?.username,
-      hasEmail: Boolean(profile?.email),
     });
     const name = profile.global_name || profile.username;
     const avatarUrl = profile.avatar
@@ -286,12 +285,10 @@ export class AuthService {
     this.logAuth("convex:getOrCreateUser:start");
     const userId = await this.withTimeout(
       this.convex.mutation(this.convex.api.auth.getOrCreateUser as any, {
-        email: profile.email || undefined,
         name,
         avatarUrl,
         discordId: profile.id,
         discordUsername: profile.username,
-        discordGlobalName: profile.global_name || undefined,
       } as any),
       15000,
       "Timed out waiting for Convex mutation. Check Convex backend connection.",
@@ -316,7 +313,6 @@ export class AuthService {
     const userId = await this.convex.mutation(
       this.convex.api.auth.getOrCreateUser,
       {
-        email: "demo@stewardsync.com",
         name: "Demo User",
         avatarUrl: undefined,
         discordId: "demo-user-123",

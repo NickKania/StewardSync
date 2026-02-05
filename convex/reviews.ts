@@ -11,10 +11,9 @@ export const list = query({
 
     const populatedReviews = await Promise.all(
       reviews.map(async (review) => {
-        const [user, report, secondSteward, linkedReview] = await Promise.all([
+        const [user, report, linkedReview] = await Promise.all([
           ctx.db.get(review.userId),
           ctx.db.get(review.reportId),
-          (review as any).secondStewardId ? ctx.db.get((review as any).secondStewardId) : null,
           review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
         ]);
 
@@ -27,7 +26,6 @@ export const list = query({
           ...review,
           reviewer: user,
           report,
-          secondSteward,
           linkedReview: linkedReviewWithReviewer,
         };
       })
@@ -47,9 +45,8 @@ export const getByReport = query({
 
     const populatedReviews = await Promise.all(
       reviews.map(async (review) => {
-        const [user, secondSteward, linkedReview] = await Promise.all([
+        const [user, linkedReview] = await Promise.all([
           ctx.db.get(review.userId),
-          (review as any).secondStewardId ? ctx.db.get((review as any).secondStewardId) : null,
           review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
         ]);
 
@@ -61,7 +58,6 @@ export const getByReport = query({
         return {
           ...review,
           reviewer: user,
-          secondSteward,
           linkedReview: linkedReviewWithReviewer,
         };
       })
@@ -100,10 +96,9 @@ export const getById = query({
     const review = await ctx.db.get(args.reviewId);
     if (!review) return null;
 
-    const [user, report, secondSteward, linkedReview] = await Promise.all([
+    const [user, report, linkedReview] = await Promise.all([
       ctx.db.get(review.userId),
       ctx.db.get(review.reportId),
-      (review as any).secondStewardId ? ctx.db.get((review as any).secondStewardId) : null,
       review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
     ]);
 
@@ -116,7 +111,6 @@ export const getById = query({
       ...review,
       reviewer: user,
       report,
-      secondSteward,
       linkedReview: linkedReviewWithReviewer,
     };
   },
@@ -395,10 +389,9 @@ export const search = query({
 
     const populatedReviews = await Promise.all(
       reviews.map(async (review) => {
-        const [user, report, secondSteward, linkedReview] = await Promise.all([
+        const [user, report, linkedReview] = await Promise.all([
           ctx.db.get(review.userId),
           ctx.db.get(review.reportId),
-          review.secondStewardId ? ctx.db.get(review.secondStewardId) : null,
           review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
         ]);
 
@@ -411,7 +404,6 @@ export const search = query({
           ...review,
           reviewer: user,
           report,
-          secondSteward,
           linkedReview: linkedReviewWithReviewer,
         };
       })

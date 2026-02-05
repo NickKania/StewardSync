@@ -73,25 +73,21 @@ export const seedDemoUsers = mutation({
     // Define demo users
     const demoUsers = [
       {
-        email: "headsteward@demo.stewardsync.com",
         name: "Demo Head Steward",
         discordId: "demo-head-steward-001",
         roleId: headStewardRole._id,
       },
       {
-        email: "steward@demo.stewardsync.com",
         name: "Demo Steward",
         discordId: "demo-steward-001",
         roleId: stewardRole._id,
       },
       {
-        email: "eventmanager@demo.stewardsync.com",
         name: "Demo Event Manager",
         discordId: "demo-event-manager-001",
         roleId: eventManagerRole._id,
       },
       {
-        email: "leaguemanager@demo.stewardsync.com",
         name: "Demo League Manager",
         discordId: "demo-league-manager-001",
         roleId: leagueManagerRole._id,

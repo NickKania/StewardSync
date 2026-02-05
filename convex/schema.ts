@@ -8,17 +8,14 @@ export default defineSchema({
   }).index("by_name", ["name"]),
 
   users: defineTable({
-    email: v.optional(v.string()),
     name: v.string(),
     avatarUrl: v.optional(v.string()),
     roleId: v.id("roles"),
     discordId: v.optional(v.string()),
     discordUsername: v.optional(v.string()),
-    discordGlobalName: v.optional(v.string()),
     officialName: v.optional(v.string()),
     createdAt: v.number(),
   })
-    .index("by_email", ["email"])
     .index("by_discord_id", ["discordId"]),
 
   steamUserMappings: defineTable({
@@ -47,7 +44,6 @@ export default defineSchema({
     username: v.optional(v.string()),
     externalId: v.optional(v.string()),
     driverClassId: v.optional(v.id("driverClasses")),
-    driverClass: v.optional(v.string()),
     steamId: v.optional(v.string()),
     championshipId: v.optional(v.id("series")),
     userId: v.optional(v.id("users")),
@@ -194,7 +190,6 @@ export default defineSchema({
     recommendedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
     videoTimestamp: v.optional(v.string()),
-    secondStewardId: v.optional(v.id("users")),
     linkedReviewId: v.optional(v.id("reviews")),
     isSelfReport: v.optional(v.boolean()),
     isAdjusted: v.optional(v.boolean()),

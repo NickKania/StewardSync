@@ -10,6 +10,7 @@
 
 import type * as actions from "../actions.js";
 import type * as auth from "../auth.js";
+import type * as cleanup from "../cleanup.js";
 import type * as debug from "../debug.js";
 import type * as driverClasses from "../driverClasses.js";
 import type * as driverSeriesPenalties from "../driverSeriesPenalties.js";
@@ -44,6 +45,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   auth: typeof auth;
+  cleanup: typeof cleanup;
   debug: typeof debug;
   driverClasses: typeof driverClasses;
   driverSeriesPenalties: typeof driverSeriesPenalties;

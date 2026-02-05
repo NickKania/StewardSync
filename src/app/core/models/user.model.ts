@@ -10,14 +10,12 @@ export interface Role {
 
 export interface User {
   _id: Id<'users'>;
-  email?: string;
   name: string;
   avatarUrl?: string;
   roleId: Id<'roles'>;
   role?: Role;
   discordId?: string;
   discordUsername?: string;
-  discordGlobalName?: string;
   officialName?: string;
   createdAt: number;
 }
