@@ -94,19 +94,19 @@ export class SidebarComponent {
       label: 'Review Queue',
       path: '/reviews',
       icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>',
-      roles: ['steward', 'head_steward', 'event_manager', 'league_manager']
+      roles: ['steward', 'head_steward', 'league_manager']
     },
     {
       label: 'Review Search',
       path: '/reviews/search',
       icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>',
-      roles: ['head_steward', 'event_manager', 'league_manager']
+      roles: ['head_steward', 'league_manager']
     },
     {
       label: 'Finalization',
       path: '/finalize',
       icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
-      roles: ['head_steward', 'event_manager', 'league_manager']
+      roles: ['head_steward', 'league_manager']
     },
     {
       label: 'Drivers',

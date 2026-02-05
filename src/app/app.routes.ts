@@ -70,7 +70,7 @@ export const routes: Routes = [
     path: "reviews",
     canActivate: [authGuard, roleGuard],
     data: {
-      roles: ["steward", "head_steward", "event_manager", "league_manager"],
+      roles: ["steward", "head_steward", "league_manager"],
     },
     children: [
       {
@@ -83,7 +83,7 @@ export const routes: Routes = [
       {
         path: "search",
         canActivate: [roleGuard],
-        data: { roles: ["head_steward", "event_manager", "league_manager"] },
+        data: { roles: ["head_steward", "league_manager"] },
         loadComponent: () =>
           import("@features/reviews/review-search/review-search.component").then(
             (m) => m.ReviewSearchComponent,
@@ -108,7 +108,7 @@ export const routes: Routes = [
   {
     path: "finalize",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ["head_steward", "event_manager", "league_manager"] },
+    data: { roles: ["head_steward", "league_manager"] },
     children: [
       {
         path: "",

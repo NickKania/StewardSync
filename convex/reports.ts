@@ -860,6 +860,109 @@ export const getStats = query({
   },
 });
 
+const dashboardStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("reviewed"),
+  v.literal("finalized"),
+  v.literal("rejected"),
+);
+
+export const getDashboardStats = query({
+  args: {
+    seriesId: v.optional(v.id("series")),
+  },
+  handler: async (ctx, args) => {
+    const reports = await ctx.db.query("reports").collect();
+    const eventSeriesCache = new Map<string, string | null>();
+
+    const filteredReports = [];
+    for (const report of reports) {
+      if (!args.seriesId) {
+        filteredReports.push(report);
+        continue;
+      }
+
+      const eventId = report.eventId.toString();
+      if (!eventSeriesCache.has(eventId)) {
+        const event = await ctx.db.get(report.eventId);
+        eventSeriesCache.set(eventId, event?.seriesId?.toString() ?? null);
+      }
+
+      if (eventSeriesCache.get(eventId) === args.seriesId.toString()) {
+        filteredReports.push(report);
+      }
+    }
+
+    return {
+      total: filteredReports.length,
+      pending: filteredReports.filter((r) => r.status === "pending").length,
+      reviewed: filteredReports.filter((r) => r.status === "reviewed").length,
+      finalized: filteredReports.filter((r) => r.status === "finalized").length,
+      rejected: filteredReports.filter((r) => r.status === "rejected").length,
+    };
+  },
+});
+
+export const listDashboard = query({
+  args: {
+    seriesId: v.optional(v.id("series")),
+    status: v.optional(dashboardStatusValidator),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const reports = await ctx.db
+      .query("reports")
+      .withIndex("by_date")
+      .order("desc")
+      .collect();
+
+    const eventCache = new Map<string, any>();
+    const seriesCache = new Map<string, any>();
+    const result: any[] = [];
+
+    for (const report of reports) {
+      if (args.status && report.status !== args.status) {
+        continue;
+      }
+
+      const eventId = report.eventId.toString();
+      if (!eventCache.has(eventId)) {
+        eventCache.set(eventId, await ctx.db.get(report.eventId));
+      }
+      const event = eventCache.get(eventId);
+      if (!event) {
+        continue;
+      }
+
+      if (args.seriesId && event.seriesId !== args.seriesId) {
+        continue;
+      }
+
+      const seriesId = event.seriesId.toString();
+      if (!seriesCache.has(seriesId)) {
+        seriesCache.set(seriesId, await ctx.db.get(event.seriesId));
+      }
+      const series = seriesCache.get(seriesId);
+
+      result.push({
+        _id: report._id,
+        reportId: report.reportId ?? null,
+        reportDate: report.reportDate,
+        status: report.status,
+        seriesId: event.seriesId,
+        seriesName: series?.name ?? "Unknown Series",
+        eventName: `Event ${event.eventNumber} - ${event.trackName}`,
+      });
+
+      if (args.limit && result.length >= args.limit) {
+        break;
+      }
+    }
+
+    return result;
+  },
+});
+
 export const getDriverFinalizedReports = query({
   args: {
     driverId: v.id("drivers"),

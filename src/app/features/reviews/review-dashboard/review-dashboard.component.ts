@@ -269,6 +269,6 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
   }
 
   canSearchReviews(): boolean {
-    return this.authService.hasRole('head_steward', 'event_manager', 'league_manager');
+    return this.authService.hasRole('head_steward', 'league_manager');
   }
 }

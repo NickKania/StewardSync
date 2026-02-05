@@ -59,7 +59,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
                 </app-button>
               </a>
             }
-            <div *appHasRole="['steward', 'head_steward', 'event_manager']">
+            <div *appHasRole="['steward', 'head_steward', 'league_manager']">
               @if (!report()?.isFinalized) {
                 <a [routerLink]="['/reviews', report()?._id]">
                   <app-button variant="primary">
@@ -292,7 +292,7 @@ import { EditDecisionComponent } from '../edit-decision/edit-decision.component'
             </app-card>
 
             <!-- Quick actions -->
-            <div *appHasRole="['head_steward', 'event_manager']">
+            <div *appHasRole="['head_steward', 'league_manager']">
               @if (report()?.status === 'reviewed' && !report()?.isFinalized) {
                 <app-card title="Actions">
                   <a [routerLink]="['/finalize', report()?._id]" class="block">

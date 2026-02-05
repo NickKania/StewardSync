@@ -150,7 +150,8 @@ export const debugPenaltyAssignment = query({
         .collect();
 
       for (const threshold of thresholds) {
-        const appliesToDriver = threshold.driverClassIds.some(id => id.toString() === (driver.driverClass || ""));
+        const driverClassId = driver.driverClassId?.toString() ?? "";
+        const appliesToDriver = threshold.driverClassIds.some((id) => id.toString() === driverClassId);
         const thresholdMet = totalPoints >= threshold.threshold;
         const alreadyAssigned = assignedThresholds.includes(threshold._id.toString());
 
@@ -159,7 +160,7 @@ export const debugPenaltyAssignment = query({
           seriesPenaltyName: seriesPenalty.penaltyName,
           thresholdId: threshold._id,
           thresholdValue: threshold.threshold,
-          driverClass: driver.driverClass,
+          driverClassId: driver.driverClassId,
           thresholdDriverClasses: threshold.driverClassIds,
           appliesToDriver,
           totalPoints,
@@ -190,7 +191,7 @@ export const debugPenaltyAssignment = query({
         _id: driver._id,
         driverNumber: driver.driverNumber,
         driverName: driver.driverName,
-        driverClass: driver.driverClass,
+        driverClassId: driver.driverClassId,
         championshipId: driver.championshipId,
       },
       event: {
@@ -288,9 +289,9 @@ export const manuallyAssignPenaltiesForReport = mutation({
     for (const driver of drivers) {
       const driverId = driver._id.toString();
       const totalPoints = penaltyAccumulator[driverId] ?? 0;
-      const driverClass = driver.driverClass || "";
+      const driverClassId = driver.driverClassId?.toString() ?? "";
 
-      console.log(`[MANUAL ASSIGN] Driver ${driver.driverNumber}: ${totalPoints} points, class: ${driverClass}`);
+      console.log(`[MANUAL ASSIGN] Driver ${driver.driverNumber}: ${totalPoints} points, classId: ${driverClassId}`);
 
       const existingDriverSeriesPenalties = await ctx.db
         .query("driverSeriesPenalties")
@@ -312,7 +313,7 @@ export const manuallyAssignPenaltiesForReport = mutation({
           .collect();
 
         for (const threshold of thresholds) {
-          const appliesToDriver = threshold.driverClassIds.some(id => id.toString() === driverClass);
+          const appliesToDriver = threshold.driverClassIds.some((id) => id.toString() === driverClassId);
           const thresholdMet = totalPoints >= threshold.threshold;
           const alreadyAssigned = assignedThresholds.includes(threshold._id.toString());
 
