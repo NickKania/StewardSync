@@ -3,6 +3,7 @@ import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { Id } from "@convex/_generated/dataModel";
 import { ConvexService } from "@core/services/convex.service";
+import { AuthService } from "@core/services/auth.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
@@ -17,6 +18,7 @@ interface DashboardReportRow {
   reportId: number | null;
   reportDate: number;
   status: DashboardReportStatus;
+  reportingUserId?: Id<"users"> | null;
   seriesId: Id<"series">;
   seriesName: string;
   eventName: string;
@@ -80,7 +82,7 @@ interface DashboardReportRow {
                       [routerLink]="getReportLink(report)"
                       class="text-primary-600 hover:text-primary-700 font-medium text-sm dark:text-primary-400 dark:hover:text-primary-300"
                     >
-                      {{ actionLabel() }}
+                      {{ actionLabel(report) }}
                     </a>
                   </td>
                 </tr>
@@ -98,6 +100,7 @@ interface DashboardReportRow {
 })
 export class DashboardReportListComponent {
   private readonly convex = inject(ConvexService);
+  private readonly authService = inject(AuthService);
   private requestId = 0;
 
   readonly title = input("Reports");
@@ -110,7 +113,11 @@ export class DashboardReportListComponent {
 
   readonly reports = signal<DashboardReportRow[]>([]);
   readonly loading = signal(true);
-  readonly actionLabel = computed(() => {
+  readonly actionLabel = (report: DashboardReportRow): string => {
+    if (this.actionMode() === "review" && this.isReportingUser(report)) {
+      return "Edit";
+    }
+
     switch (this.actionMode()) {
       case "review":
         return "Review";
@@ -119,7 +126,7 @@ export class DashboardReportListComponent {
       default:
         return "View";
     }
-  });
+  };
 
   private readonly loadEffect = effect(
     () => {
@@ -175,6 +182,14 @@ export class DashboardReportListComponent {
       default:
         return ["/reports", report._id];
     }
+  }
+
+  private isReportingUser(report: DashboardReportRow): boolean {
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId || !report.reportingUserId) {
+      return false;
+    }
+    return String(report.reportingUserId) === String(currentUserId);
   }
 
   statusLabel(status: DashboardReportStatus): string {

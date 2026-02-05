@@ -243,6 +243,22 @@ import { SelectOption } from "@shared/components/select/select.component";
                       [options]="stewardOptions()"
                       placeholder="Search stewards by name..."
                     />
+                    @if (form.get("secondStewardId")?.value) {
+                      <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                        Linked review with
+                        {{
+                          getSecondStewardLabel(
+                            form.get("secondStewardId")?.value
+                          )
+                        }}
+                      </p>
+                    }
+                    @if (shouldWarnSecondStewardRelink()) {
+                      <p class="text-xs text-amber-700 mt-1">
+                        This steward already has a review on this report. Saving
+                        changes will relink to that existing review.
+                      </p>
+                    }
                     <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Stewards involved as drivers in this incident are excluded
                       from the list
@@ -271,7 +287,16 @@ import { SelectOption } from "@shared/components/select/select.component";
                       [loading]="submitting()"
                       [disabled]="form.invalid"
                     >
-                      Submit Review
+                      {{ primaryActionLabel() }}
+                    </app-button>
+                    <app-button
+                      type="button"
+                      variant="primary"
+                      [loading]="submitting()"
+                      [disabled]="form.invalid || submitting()"
+                      (onClick)="onSubmitAndCreateIncident()"
+                    >
+                      {{ secondaryActionLabel() }}
                     </app-button>
                   </div>
                 </div>
@@ -416,6 +441,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
   form: FormGroup;
   report = signal<any>(null);
+  currentUserReview = signal<any>(null);
+  isReportingUser = signal(false);
   availablePenalties = signal<Penalty[]>([]);
   existingReviews = signal<any[]>([]);
   stewards = signal<any[]>([]);
@@ -423,6 +450,14 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   loading = signal(true);
   submitting = signal(false);
   secondStewardUnsubscribe: (() => void) | null = null;
+  primaryActionLabel = computed(() =>
+    this.isReportingUser() ? "Save Changes" : "Submit Review",
+  );
+  secondaryActionLabel = computed(() =>
+    this.isReportingUser()
+      ? "Save Changes and Create Related Incident"
+      : "Submit Review and Create Subsequent Incident",
+  );
 
   availableStewards = computed(() => {
     const currentUserId = this.authService.getUserId();
@@ -539,8 +574,22 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
         // Pre-fill incident description (only if control is pristine and value has changed)
         if (data) {
+          const currentUserId = this.authService.getUserId();
+          const isReportingUser =
+            currentUserId &&
+            String(currentUserId) === String(data.reportingUserId);
+          this.isReportingUser.set(Boolean(isReportingUser));
+
+          const currentUserReview = currentUserId
+            ? (data.reviews || []).find(
+                (review: any) => String(review.userId) === String(currentUserId),
+              )
+            : null;
+          this.currentUserReview.set(currentUserReview || null);
+
           const incidentControl = this.form.get("incidentDescription");
-          const newValue = data.description;
+          const newValue =
+            currentUserReview?.incidentDescription ?? data.description;
 
           if (
             incidentControl &&
@@ -550,18 +599,36 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
             incidentControl.setValue(newValue);
           }
 
-          // Pre-select atFaultDriverId to reportedDriver
-          if (data.reportedDriverId) {
-            const atFaultDriverControl = this.form.get("atFaultDriverId");
-            if (atFaultDriverControl && atFaultDriverControl.pristine) {
-              atFaultDriverControl.setValue(data.reportedDriverId);
+          const atFaultDriverControl = this.form.get("atFaultDriverId");
+          if (atFaultDriverControl && atFaultDriverControl.pristine) {
+            const atFaultDriverValue =
+              currentUserReview?.atFaultDriverId ?? data.reportedDriverId;
+            if (atFaultDriverValue) {
+              atFaultDriverControl.setValue(atFaultDriverValue);
             }
           }
 
+          if (currentUserReview) {
+            this.form.patchValue({
+              reviewNotes: currentUserReview.reviewNotes || "",
+              recommendedPenalty: currentUserReview.recommendedPenalty || "",
+              videoTimestamp: currentUserReview.videoTimestamp || "",
+              secondStewardId:
+                currentUserReview.linkedReview?.userId ||
+                currentUserReview.linkedReviewId ||
+                "",
+              isSelfReport: Boolean(currentUserReview.isSelfReport),
+              isAdjusted: Boolean(currentUserReview.isAdjusted),
+              candidateForStandardization: Boolean(
+                currentUserReview.candidateForStandardization,
+              ),
+              adjustedReason: currentUserReview.adjustedReason || "",
+            });
+          }
+
           // Filter out current user's review if exists
-          const userId = this.authService.getUserId();
           const otherReviews = (data.reviews || []).filter(
-            (r: any) => r.userId !== userId,
+            (r: any) => r.userId !== currentUserId,
           );
           this.existingReviews.set(otherReviews);
 
@@ -704,6 +771,20 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit(): Promise<void> {
+    await this.submitReview({ redirectTo: "/reviews" });
+  }
+
+  async onSubmitAndCreateIncident(): Promise<void> {
+    await this.submitReview({
+      redirectTo: "/reviews/steward-incident",
+      queryParams: { sourceReportId: this.reportId },
+    });
+  }
+
+  private async submitReview(options: {
+    redirectTo: string;
+    queryParams?: Record<string, string>;
+  }): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -718,43 +799,116 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       }
 
       const formValue = this.form.value;
+      const currentUserReview = this.currentUserReview();
+      const useUpdate = this.isReportingUser() && Boolean(currentUserReview);
 
-      const result = await this.convex.mutation(
-        this.convex.api.reviews.create,
-        {
-          userId,
-          reportId: this.reportId as any,
-          incidentDescription: formValue.incidentDescription,
-          reviewNotes: formValue.reviewNotes,
-          recommendedPenalty: formValue.recommendedPenalty || undefined,
-          atFaultDriverId: formValue.atFaultDriverId || undefined,
-          videoTimestamp: formValue.videoTimestamp || undefined,
-          secondStewardId: formValue.secondStewardId || undefined,
-          isSelfReport: formValue.isSelfReport || false,
-          isAdjusted: formValue.isAdjusted || false,
-          candidateForStandardization:
-            formValue.candidateForStandardization || false,
-          adjustedReason:
-            formValue.isAdjusted && formValue.adjustedReason
-              ? formValue.adjustedReason
-              : undefined,
-        },
-      );
+      const updatePayload = {
+        reviewId: currentUserReview?._id,
+        incidentDescription: formValue.incidentDescription,
+        reviewNotes: formValue.reviewNotes,
+        recommendedPenalty: formValue.recommendedPenalty || undefined,
+        atFaultDriverId: formValue.atFaultDriverId || undefined,
+        videoTimestamp: formValue.videoTimestamp || undefined,
+        isSelfReport: formValue.isSelfReport || false,
+        isAdjusted: formValue.isAdjusted || false,
+        candidateForStandardization: formValue.candidateForStandardization || false,
+        adjustedReason:
+          formValue.isAdjusted && formValue.adjustedReason
+            ? formValue.adjustedReason
+            : undefined,
+      };
 
-      if (!result.success) {
+      const result = useUpdate
+        ? formValue.secondStewardId
+          ? await this.convex.mutation(
+              this.convex.api.reviews.updateWithSecondSteward,
+              {
+                ...updatePayload,
+                secondStewardId: formValue.secondStewardId,
+              },
+            )
+          : await this.convex.mutation(
+              this.convex.api.reviews.update,
+              updatePayload,
+            )
+        : await this.convex.mutation(this.convex.api.reviews.create, {
+            userId,
+            reportId: this.reportId as any,
+            incidentDescription: formValue.incidentDescription,
+            reviewNotes: formValue.reviewNotes,
+            recommendedPenalty: formValue.recommendedPenalty || undefined,
+            atFaultDriverId: formValue.atFaultDriverId || undefined,
+            videoTimestamp: formValue.videoTimestamp || undefined,
+            secondStewardId: formValue.secondStewardId || undefined,
+            isSelfReport: formValue.isSelfReport || false,
+            isAdjusted: formValue.isAdjusted || false,
+            candidateForStandardization:
+              formValue.candidateForStandardization || false,
+            adjustedReason:
+              formValue.isAdjusted && formValue.adjustedReason
+                ? formValue.adjustedReason
+                : undefined,
+          });
+
+      if (!useUpdate && !result.success) {
         this.toast.error(result.error);
-        this.submitting.set(false);
         return;
       }
 
-      this.toast.success("Review submitted successfully");
+      this.toast.success(
+        useUpdate ? "Review updated successfully" : "Review submitted successfully",
+      );
 
-      this.router.navigate(["/reviews"]);
+      await this.router.navigate([options.redirectTo], {
+        queryParams: options.queryParams,
+      });
     } catch (error: any) {
       this.toast.error(error.message || "Failed to submit review");
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  getSecondStewardLabel(stewardId: string): string {
+    if (!stewardId) return "Unknown Steward";
+    const option = this.stewardOptions().find(
+      (steward) => String(steward.value) === String(stewardId),
+    );
+    return option?.label ?? "Unknown Steward";
+  }
+
+  shouldWarnSecondStewardRelink(): boolean {
+    const selectedStewardId = this.form.get("secondStewardId")?.value;
+    if (!selectedStewardId) return false;
+
+    const report = this.report();
+    const currentUserReview = this.currentUserReview();
+    if (!report || !currentUserReview) return false;
+
+    const linkedReviewId = currentUserReview.linkedReviewId;
+    const linkedReviewUserId = currentUserReview.linkedReview?.userId;
+
+    if (
+      linkedReviewUserId &&
+      String(linkedReviewUserId) === String(selectedStewardId)
+    ) {
+      return false;
+    }
+
+    const existingReview = (report.reviews || []).find((review: any) => {
+      if (String(review.userId) !== String(selectedStewardId)) {
+        return false;
+      }
+      if (String(review._id) === String(currentUserReview._id)) {
+        return false;
+      }
+      if (linkedReviewId && String(review._id) === String(linkedReviewId)) {
+        return false;
+      }
+      return true;
+    });
+
+    return Boolean(existingReview);
   }
 
   cancel(): void {

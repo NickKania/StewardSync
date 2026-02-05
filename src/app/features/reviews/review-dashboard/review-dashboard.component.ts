@@ -128,7 +128,7 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
                         [routerLink]="['/reviews', report._id]"
                         class="text-primary-600 hover:text-primary-700 font-medium text-sm"
                       >
-                        Review
+                        {{ reviewActionLabel(report) }}
                       </a>
                     </td>
                   </tr>
@@ -270,5 +270,15 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
 
   canSearchReviews(): boolean {
     return this.authService.hasRole('head_steward', 'league_manager');
+  }
+
+  reviewActionLabel(report: any): string {
+    return this.isReportingUser(report) ? 'Edit' : 'Review';
+  }
+
+  private isReportingUser(report: any): boolean {
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId) return false;
+    return String(report?.reportingUserId) === String(currentUserId);
   }
 }

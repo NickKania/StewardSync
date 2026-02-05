@@ -1,9 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { HasRoleDirective } from '@shared/directives/has-role.directive';
 import { SidebarStateService } from '@core/services/sidebar-state.service';
+import { ConvexService } from '@core/services/convex.service';
 
 interface NavItem {
   label: string;
@@ -44,13 +45,16 @@ interface NavItem {
               [routerLink]="item.path"
               routerLinkActive="bg-primary-50 text-primary-700 border-primary-500 dark:bg-primary-900/30 dark:text-primary-200 dark:border-primary-400"
               [routerLinkActiveOptions]="{ exact: true }"
-              class="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border-l-2 border-transparent dark:text-gray-200 dark:hover:bg-gray-800"
+              class="flex w-full items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border-l-2 border-transparent dark:text-gray-200 dark:hover:bg-gray-800"
               [class.justify-center]="sidebarStateService.isEffectivelyCollapsed()"
               (click)="sidebarStateService.closeMobile()"
             >
               <span [innerHTML]="item.icon" class="flex-shrink-0"></span>
               @if (!sidebarStateService.isEffectivelyCollapsed()) {
-                <span class="font-medium">{{ item.label }}</span>
+                <span class="flex-1 font-medium">{{ item.label }}</span>
+                @if (getBadgeCount(item) > 0) {
+                  <span [ngClass]="getBadgeClass(item)">{{ getBadgeCount(item) }}</span>
+                }
               }
             </a>
           }
@@ -69,9 +73,26 @@ interface NavItem {
     </aside>
   `
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnDestroy {
   private authService = inject(AuthService);
+  private convex = inject(ConvexService);
   readonly sidebarStateService = inject(SidebarStateService);
+
+  private pendingReviewQuery = this.convex.createReactiveQuery(
+    this.convex.api.reports.getPendingForReview,
+    {}
+  );
+  private finalizeQueueQuery = this.convex.createReactiveQuery(
+    this.convex.api.reports.getReadyForFinalization,
+    {}
+  );
+
+  readonly pendingReviewCount = computed(
+    () => this.pendingReviewQuery.data()?.length ?? 0
+  );
+  readonly finalizeQueueCount = computed(
+    () => this.finalizeQueueQuery.data()?.length ?? 0
+  );
 
   navItems: NavItem[] = [
     {
@@ -133,7 +154,32 @@ export class SidebarComponent {
     }
   ];
 
+  ngOnDestroy(): void {
+    this.pendingReviewQuery.unsubscribe();
+    this.finalizeQueueQuery.unsubscribe();
+  }
+
   hasAnyRole(roles: string[]): boolean {
     return this.authService.hasRole(...(roles as any[]));
+  }
+
+  getBadgeCount(item: NavItem): number {
+    if (item.path === '/reviews') {
+      return this.pendingReviewCount();
+    }
+    if (item.path === '/finalize') {
+      return this.finalizeQueueCount();
+    }
+    return 0;
+  }
+
+  getBadgeClass(item: NavItem): string {
+    if (item.path === '/reviews') {
+      return 'badge-pending';
+    }
+    if (item.path === '/finalize') {
+      return 'badge-reviewed';
+    }
+    return 'badge';
   }
 }

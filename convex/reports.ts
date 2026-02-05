@@ -705,7 +705,7 @@ export const createBySteward = mutation({
     raceId: v.id("races"),
     lap: v.string(),
     turn: v.string(),
-    description: v.string(),
+    description: v.optional(v.string()),
     incidentDescription: v.string(),
     reviewNotes: v.optional(v.string()),
     recommendedPenalty: v.string(),
@@ -716,6 +716,7 @@ export const createBySteward = mutation({
     isAdjusted: v.optional(v.boolean()),
     candidateForStandardization: v.optional(v.boolean()),
     adjustedReason: v.optional(v.string()),
+    reportNumber: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -776,9 +777,13 @@ export const createBySteward = mutation({
       }
     }
 
-    // Generate next reportId using sharded counter
-    await reportCounter.inc(ctx, "reportId");
-    const nextReportId = await reportCounter.count(ctx, "reportId");
+    let reportNumber = args.reportNumber;
+
+    if (typeof reportNumber !== "number") {
+      // Generate next reportId using sharded counter
+      await reportCounter.inc(ctx, "reportId");
+      reportNumber = await reportCounter.count(ctx, "reportId");
+    }
 
     const reportId = await ctx.db.insert("reports", {
       reportingUserId: args.reportingUserId,
@@ -787,12 +792,12 @@ export const createBySteward = mutation({
       raceId: args.raceId,
       lap: args.lap,
       turn: args.turn,
-      description: args.description,
+      description: args.description ?? args.incidentDescription,
       videoTimestamp: args.videoTimestamp,
       reportDate: now,
       status: "pending",
       isFinalized: false,
-      reportId: nextReportId,
+      reportId: reportNumber,
       isSelfReport: args.isSelfReport,
       isStewardReported: true,
       createdAt: now,
@@ -967,6 +972,7 @@ export const listDashboard = query({
         reportId: report.reportId ?? null,
         reportDate: report.reportDate,
         status: report.status,
+        reportingUserId: report.reportingUserId ?? null,
         seriesId: event.seriesId,
         seriesName: series?.name ?? "Unknown Series",
         eventName: `Event ${event.eventNumber} - ${event.trackName}`,

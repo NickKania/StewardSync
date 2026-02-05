@@ -269,7 +269,9 @@ export const update = mutation({
     reviewNotes: v.optional(v.string()),
     candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.optional(v.string()),
+    atFaultDriverId: v.optional(v.id("drivers")),
     videoTimestamp: v.optional(v.string()),
+    isSelfReport: v.optional(v.boolean()),
     isAdjusted: v.optional(v.boolean()),
     adjustedReason: v.optional(v.string()),
   },
@@ -295,6 +297,106 @@ export const update = mutation({
       ...cleanUpdates,
       updatedAt: Date.now(),
     });
+
+    return reviewId;
+  },
+});
+
+export const updateWithSecondSteward = mutation({
+  args: {
+    reviewId: v.id("reviews"),
+    secondStewardId: v.id("users"),
+    incidentDescription: v.optional(v.string()),
+    reviewNotes: v.optional(v.string()),
+    candidateForStandardization: v.optional(v.boolean()),
+    recommendedPenalty: v.optional(v.string()),
+    atFaultDriverId: v.optional(v.id("drivers")),
+    videoTimestamp: v.optional(v.string()),
+    isSelfReport: v.optional(v.boolean()),
+    isAdjusted: v.optional(v.boolean()),
+    adjustedReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { reviewId, secondStewardId, ...updates } = args;
+
+    const review = await ctx.db.get(reviewId);
+    if (!review) {
+      throw new Error("Review not found");
+    }
+
+    const report = await ctx.db.get(review.reportId);
+    if (report?.isFinalized) {
+      throw new UserFacingError("Cannot update review for a finalized report");
+    }
+
+    const secondConflict = await checkUserDriverConflict(
+      ctx,
+      secondStewardId,
+      report,
+    );
+    if (secondConflict.hasConflict) {
+      const secondSteward = await ctx.db.get(secondStewardId);
+      const getConflictTypeText = (type: string) => {
+        if (type === "reporting_user") return "reporting user";
+        if (type === "reporting_driver") return "reporting driver";
+        return "reported driver";
+      };
+      throw new UserFacingError(
+        `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${getConflictTypeText(secondConflict.conflictType!)}${secondConflict.driverName ? ` (${secondConflict.driverName})` : ""}.`,
+      );
+    }
+
+    const cleanUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, v]) => v !== undefined),
+    );
+
+    await ctx.db.patch(reviewId, {
+      ...cleanUpdates,
+      updatedAt: Date.now(),
+    });
+
+    let linkedReviewId = review.linkedReviewId ?? null;
+    if (linkedReviewId) {
+      const linkedReview = await ctx.db.get(linkedReviewId);
+      if (linkedReview) {
+        await ctx.db.patch(linkedReviewId, {
+          userId: secondStewardId,
+          updatedAt: Date.now(),
+        });
+        return reviewId;
+      }
+      linkedReviewId = null;
+    }
+
+    const existingSecondReview = await ctx.db
+      .query("reviews")
+      .withIndex("by_report", (q) => q.eq("reportId", review.reportId))
+      .filter((q) => q.eq(q.field("userId"), secondStewardId))
+      .first();
+
+    if (existingSecondReview) {
+      await ctx.db.patch(existingSecondReview._id, {
+        linkedReviewId: reviewId,
+        updatedAt: Date.now(),
+      });
+      await ctx.db.patch(reviewId, {
+        linkedReviewId: existingSecondReview._id,
+        updatedAt: Date.now(),
+      });
+      return reviewId;
+    }
+
+    const secondReviewId = await ctx.db.insert("reviews", {
+      userId: secondStewardId,
+      reportId: review.reportId,
+      ...cleanUpdates,
+      linkedReviewId: reviewId,
+      reviewDate: review.reviewDate ?? Date.now(),
+      createdAt: review.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await ctx.db.patch(reviewId, { linkedReviewId: secondReviewId });
 
     return reviewId;
   },

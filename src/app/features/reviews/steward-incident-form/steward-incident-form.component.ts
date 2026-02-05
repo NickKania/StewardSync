@@ -7,7 +7,7 @@ import {
   computed,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import {
   FormBuilder,
   FormGroup,
@@ -473,6 +473,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
 
   form: FormGroup;
@@ -490,6 +491,10 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   raceId = signal<string>("");
   eventWithSeries = signal<any>(null);
   selectedSeriesId = signal<string>("");
+  sourceReportId = signal<string | null>(null);
+  sourceReportNumber = signal<number | null>(null);
+  sourceReport = signal<any>(null);
+  prefillApplied = signal(false);
 
   driverOptions = computed(() => {
     return this.drivers().map((driver) => ({
@@ -655,6 +660,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     this.loadData();
     this.loadSavedSteward();
     this.loadSavedCreateAnother();
+    this.loadSourceReportFromQuery();
 
     this.form.get("seriesId")?.valueChanges.subscribe((value) => {
       this.onSeriesChange();
@@ -683,6 +689,26 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
         localStorage.removeItem("stewardFormSeriesId");
         localStorage.removeItem("selectedEventId");
         localStorage.removeItem("selectedRaceId");
+        // Stop reusing source report when createAnother is unchecked
+        localStorage.removeItem("sourceReportId");
+        localStorage.removeItem("sourceReportNumber");
+        this.sourceReportId.set(null);
+        this.sourceReportNumber.set(null);
+        this.sourceReport.set(null);
+        this.prefillApplied.set(false);
+      } else {
+        // Persist source report for subsequent incidents
+        const currentSourceId = this.sourceReportId();
+        const currentSourceNumber = this.sourceReportNumber();
+        if (currentSourceId) {
+          localStorage.setItem("sourceReportId", currentSourceId);
+          if (typeof currentSourceNumber === "number") {
+            localStorage.setItem(
+              "sourceReportNumber",
+              currentSourceNumber.toString(),
+            );
+          }
+        }
       }
     });
 
@@ -738,6 +764,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       const data = eventsQuery.data();
       if (data) {
         this.events.set(data);
+        this.tryPrefillFromSourceReport();
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkEvents));
@@ -745,6 +772,131 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     this.loadStewards();
     this.loadSavedSeries();
     this.loading.set(false);
+  }
+
+  private loadSourceReportFromQuery(): void {
+    const sourceReportId = this.route.snapshot.queryParamMap.get(
+      "sourceReportId",
+    );
+    if (!sourceReportId) {
+      this.loadSavedSourceReport();
+      return;
+    }
+
+    const priorSourceId = this.sourceReportId();
+    this.sourceReportId.set(sourceReportId);
+    if (priorSourceId !== sourceReportId) {
+      this.prefillApplied.set(false);
+      this.sourceReportNumber.set(null);
+      this.sourceReport.set(null);
+    }
+    this.loadSourceReportNumber(sourceReportId);
+
+    if (this.form.get("createAnother")?.value) {
+      localStorage.setItem("sourceReportId", sourceReportId);
+    }
+  }
+
+  private loadSavedSourceReport(): void {
+    if (!this.form.get("createAnother")?.value) {
+      return;
+    }
+
+    const savedSourceId = localStorage.getItem("sourceReportId");
+    if (!savedSourceId) {
+      return;
+    }
+
+    this.sourceReportId.set(savedSourceId);
+    const savedSourceNumber = localStorage.getItem("sourceReportNumber");
+    if (savedSourceNumber) {
+      const parsed = Number(savedSourceNumber);
+      if (!Number.isNaN(parsed)) {
+        this.sourceReportNumber.set(parsed);
+      }
+    }
+    this.loadSourceReportNumber(savedSourceId);
+  }
+
+  private async loadSourceReportNumber(reportId: string): Promise<void> {
+    try {
+      const report = await this.convex.query(this.convex.api.reports.getById, {
+        reportId: reportId as any,
+      });
+      if (report) {
+        this.sourceReport.set(report);
+        await this.tryPrefillFromSourceReport();
+      }
+      if (typeof report?.reportId === "number") {
+        this.sourceReportNumber.set(report.reportId);
+        if (this.form.get("createAnother")?.value) {
+          localStorage.setItem("sourceReportNumber", report.reportId.toString());
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load source report ticket number:", error);
+    }
+  }
+
+  private async prefillFromSourceReport(report: any): Promise<void> {
+    if (!report) {
+      return;
+    }
+
+    const seriesId = report.event?.seriesId || report.event?.series?._id;
+    const eventId = report.eventId || report.event?._id;
+    const raceId = report.raceId || report.race?._id;
+    const lap = report.lap ?? "";
+    const turn = report.turn ?? "";
+
+    const seriesControl = this.form.get("seriesId");
+    const eventControl = this.form.get("eventId");
+    const raceControl = this.form.get("raceId");
+    const lapControl = this.form.get("lap");
+    const turnControl = this.form.get("turn");
+
+    if (seriesId && seriesControl?.pristine) {
+      seriesControl.setValue(seriesId, { emitEvent: false });
+      this.selectedSeriesId.set(seriesId);
+      await this.onSeriesChange();
+    }
+
+    if (eventId && eventControl?.pristine) {
+      eventControl.setValue(eventId, { emitEvent: false });
+      this.eventId.set(eventId);
+      await this.onEventChange();
+    }
+
+    if (raceId && raceControl?.pristine) {
+      raceControl.setValue(raceId, { emitEvent: false });
+      this.raceId.set(raceId);
+    }
+
+    if (lapControl?.pristine && lap !== "") {
+      lapControl.setValue(lap);
+    }
+
+    if (turnControl?.pristine && turn !== "") {
+      turnControl.setValue(turn);
+    }
+  }
+
+  private async tryPrefillFromSourceReport(): Promise<void> {
+    if (this.prefillApplied()) {
+      return;
+    }
+
+    const report = this.sourceReport();
+    if (!report) {
+      return;
+    }
+
+    if (this.events().length === 0) {
+      return;
+    }
+
+    await this.prefillFromSourceReport(report);
+    this.prefillApplied.set(true);
   }
 
   private loadStewards(): void {
@@ -994,6 +1146,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     this.submitting.set(true);
 
     try {
+      const sourceReportId = this.sourceReportId();
+      if (sourceReportId && typeof this.sourceReportNumber() !== "number") {
+        await this.loadSourceReportNumber(sourceReportId);
+      }
+
       const userId = this.authService.getUserId();
       if (!userId) {
         throw new Error("Not authenticated");
@@ -1012,7 +1169,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           raceId: formValue.raceId,
           lap,
           turn,
-          description: formValue.description,
+          description: formValue.incidentDescription,
           incidentDescription: formValue.incidentDescription,
           reviewNotes: formValue.reviewNotes || "",
           recommendedPenalty: formValue.recommendedPenalty,
@@ -1027,6 +1184,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
             formValue.isAdjusted && formValue.adjustedReason
               ? formValue.adjustedReason
               : undefined,
+          reportNumber: this.sourceReportNumber() ?? undefined,
         },
       );
 
@@ -1037,7 +1195,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       }
 
       this.toast.success("Incident created successfully");
-      this.router.navigate(["/reports"]);
+      if (this.form.get("createAnother")?.value) {
+        this.resetForAnother();
+      } else {
+        this.router.navigate(["/reports"]);
+      }
     } catch (error: any) {
       this.toast.error(error.message || "Failed to create incident");
     } finally {
@@ -1047,5 +1209,35 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
   cancel(): void {
     this.router.navigate(["/reviews"]);
+  }
+
+  private resetForAnother(): void {
+    const seriesId = this.form.get("seriesId")?.value || "";
+    const eventId = this.form.get("eventId")?.value || "";
+    const raceId = this.form.get("raceId")?.value || "";
+    const secondStewardId = this.form.get("secondStewardId")?.value || "";
+
+    this.form.reset({
+      seriesId,
+      reportedDriverId: "",
+      eventId,
+      raceId,
+      lap: "",
+      turn: "",
+      incidentDescription: "",
+      reviewNotes: "",
+      recommendedPenalty: "",
+      atFaultDriverId: "",
+      videoTimestamp: "",
+      secondStewardId,
+      isSelfReport: false,
+      isAdjusted: false,
+      candidateForStandardization: false,
+      adjustedReason: "",
+      createAnother: true,
+    });
+
+    this.form.markAsPristine();
+    this.form.markAsUntouched();
   }
 }
