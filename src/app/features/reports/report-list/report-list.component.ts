@@ -99,7 +99,9 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th class="px-6 py-3 font-medium">Ticket #</th>
                   <th class="px-6 py-3 font-medium">At Fault Driver</th>
-                  <th class="px-6 py-3 font-medium">Reporting Driver</th>
+                  @if (canViewReportingUser()) {
+                    <th class="px-6 py-3 font-medium">Reporting Driver</th>
+                  }
                   <th class="px-6 py-3 font-medium">Event</th>
                   <th class="px-6 py-3 font-medium">Turn</th>
                   <th class="px-6 py-3 font-medium">Date</th>
@@ -121,18 +123,20 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                         #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
                       </p>
                     </td>
-                    <td class="px-6 py-4">
-                      <p class="text-gray-900 dark:text-gray-100">
-                        {{ report.reportingUser?.name || 'Unknown User' }}
-                      </p>
-                      @if (report.isStewardReported) {
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                          <app-badge variant="info" size="sm"
-                            >Steward</app-badge
-                          >
+                    @if (canViewReportingUser()) {
+                      <td class="px-6 py-4">
+                        <p class="text-gray-900 dark:text-gray-100">
+                          {{ report.reportingUser?.name || 'Unknown User' }}
                         </p>
-                      }
-                    </td>
+                        @if (report.isStewardReported) {
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
+                            <app-badge variant="info" size="sm"
+                              >Steward</app-badge
+                            >
+                          </p>
+                        }
+                      </td>
+                    }
                     <td class="px-6 py-4">
                       <p class="text-gray-900 dark:text-gray-100">
                         {{ report.event?.trackName }}
@@ -195,6 +199,10 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 export class ReportListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+
+  canViewReportingUser = computed(() =>
+    this.authService.hasMinimumRole("steward"),
+  );
 
   reports = signal<any[]>([]);
   filteredReports = signal<any[]>([]);

@@ -265,6 +265,23 @@ export const getDriverPenaltyDetails = query({
         .collect();
     }
 
+    const now = Date.now();
+    const eventCache = new Map<string, any[]>();
+
+    const getSeriesEvents = async (seriesId: any) => {
+      const key = seriesId.toString();
+      if (!eventCache.has(key)) {
+        const events = await ctx.db
+          .query("events")
+          .withIndex("by_series", (q) => q.eq("seriesId", seriesId))
+          .collect();
+
+        events.sort((a, b) => a.eventDate - b.eventDate);
+        eventCache.set(key, events);
+      }
+      return eventCache.get(key) ?? [];
+    };
+
     const driverSeriesPenaltiesWithDetails = await Promise.all(
       driverSeriesPenalties.map(async (dsp: any) => {
         const series = await ctx.db.get(dsp.seriesId);
@@ -290,12 +307,45 @@ export const getDriverPenaltyDetails = query({
           isServed: dsp.isServed,
           pointsAtAssignment: dsp.pointsAtAssignment,
           assignedAt: dsp.assignedAt,
+          expectedServeDate: null,
           servedAt: dsp.servedAt,
           servedBy: dsp.servedBy,
           servedByUserName: (servedByUser as any)?.name ?? null,
         };
       }),
     );
+
+    const penaltiesBySeries = new Map<string, typeof driverSeriesPenaltiesWithDetails>();
+    for (const penalty of driverSeriesPenaltiesWithDetails) {
+      const key = penalty.seriesId.toString();
+      if (!penaltiesBySeries.has(key)) {
+        penaltiesBySeries.set(key, []);
+      }
+      penaltiesBySeries.get(key)!.push(penalty);
+    }
+
+    for (const penalties of penaltiesBySeries.values()) {
+      const seriesId = penalties[0]?.seriesId;
+      if (!seriesId) {
+        continue;
+      }
+
+      const seriesEvents = await getSeriesEvents(seriesId);
+      const upcomingEvents = seriesEvents.filter((event) => event.eventDate >= now);
+
+      const unservedBySeverity = penalties
+        .filter((penalty) => !penalty.isServed)
+        .sort((a, b) => {
+          if (a.threshold !== b.threshold) {
+            return (b.threshold ?? 0) - (a.threshold ?? 0);
+          }
+          return a.assignedAt - b.assignedAt;
+        });
+
+      unservedBySeverity.forEach((penalty, index) => {
+        penalty.expectedServeDate = upcomingEvents[index]?.eventDate ?? null;
+      });
+    }
 
     return driverSeriesPenaltiesWithDetails.sort(
       (a, b) => b.assignedAt - a.assignedAt,

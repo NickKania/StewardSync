@@ -61,6 +61,7 @@ export interface DriverSeriesPenaltyDetails {
   isServed: boolean;
   pointsAtAssignment: number;
   assignedAt: number;
+  expectedServeDate: number | null;
   servedAt?: number;
   servedBy?: Id<'users'>;
   servedByUserName: string | null;

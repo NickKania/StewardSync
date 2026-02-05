@@ -122,6 +122,7 @@ import { Id } from "@convex/_generated/dataModel";
                           <th class="pb-3 font-medium">Threshold</th>
                           <th class="pb-3 font-medium">Points at Assignment</th>
                           <th class="pb-3 font-medium">Assigned Date</th>
+                          <th class="pb-3 font-medium">Expected Serve Date</th>
                           <th class="pb-3 font-medium">Status</th>
                         </tr>
                       </thead>
@@ -146,6 +147,17 @@ import { Id } from "@convex/_generated/dataModel";
                             </td>
                             <td class="py-3 text-gray-500 dark:text-gray-400">
                               {{ penalty.assignedAt | dateFormat: "PPP" }}
+                            </td>
+                            <td class="py-3 text-gray-500 dark:text-gray-400">
+                              @if (penalty.isServed) {
+                                Served
+                              } @else if (penalty.expectedServeDate) {
+                                {{
+                                  penalty.expectedServeDate | dateFormat: "PPP"
+                                }}
+                              } @else {
+                                No upcoming event
+                              }
                             </td>
                             <td class="py-3">
                               <app-badge
@@ -374,7 +386,12 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
       );
       const penalties = penaltiesByDriver
         .flat()
-        .sort((a, b) => b.assignedAt - a.assignedAt);
+        .sort((a, b) => {
+          if ((a.threshold ?? 0) !== (b.threshold ?? 0)) {
+            return (b.threshold ?? 0) - (a.threshold ?? 0);
+          }
+          return b.assignedAt - a.assignedAt;
+        });
 
       this.updateSeriesGroup(group.seriesKey, {
         seriesPenalties: penalties,
