@@ -285,7 +285,10 @@ export const update = mutation({
 
     // Check if the report is finalized
     const report = await ctx.db.get(review.reportId);
-    if (report?.isFinalized) {
+    if (!report) {
+      throw new Error("Report not found");
+    }
+    if (report.isFinalized) {
       throw new UserFacingError("Cannot update review for a finalized report");
     }
 
@@ -325,7 +328,11 @@ export const updateWithSecondSteward = mutation({
     }
 
     const report = await ctx.db.get(review.reportId);
-    if (report?.isFinalized) {
+    if (!report) {
+      throw new Error("Report not found");
+    }
+
+    if (report.isFinalized) {
       throw new UserFacingError("Cannot update review for a finalized report");
     }
 
@@ -346,8 +353,20 @@ export const updateWithSecondSteward = mutation({
       );
     }
 
+    const baseUpdates = {
+      incidentDescription: updates.incidentDescription,
+      reviewNotes: updates.reviewNotes,
+      candidateForStandardization: updates.candidateForStandardization,
+      recommendedPenalty: updates.recommendedPenalty,
+      atFaultDriverId: updates.atFaultDriverId,
+      videoTimestamp: updates.videoTimestamp,
+      isSelfReport: updates.isSelfReport,
+      isAdjusted: updates.isAdjusted,
+      adjustedReason: updates.adjustedReason,
+    };
+
     const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined),
+      Object.entries(baseUpdates).filter(([_, v]) => v !== undefined),
     );
 
     await ctx.db.patch(reviewId, {
@@ -389,7 +408,16 @@ export const updateWithSecondSteward = mutation({
     const secondReviewId = await ctx.db.insert("reviews", {
       userId: secondStewardId,
       reportId: review.reportId,
-      ...cleanUpdates,
+      incidentDescription:
+        updates.incidentDescription ?? review.incidentDescription,
+      reviewNotes: updates.reviewNotes ?? review.reviewNotes,
+      candidateForStandardization: updates.candidateForStandardization,
+      recommendedPenalty: updates.recommendedPenalty,
+      atFaultDriverId: updates.atFaultDriverId,
+      videoTimestamp: updates.videoTimestamp,
+      isSelfReport: updates.isSelfReport,
+      isAdjusted: updates.isAdjusted,
+      adjustedReason: updates.adjustedReason,
       linkedReviewId: reviewId,
       reviewDate: review.reviewDate ?? Date.now(),
       createdAt: review.createdAt ?? Date.now(),

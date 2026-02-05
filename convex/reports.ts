@@ -926,6 +926,78 @@ export const getDashboardStats = query({
   },
 });
 
+export const getPreviousWeekEventStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const seriesList = await ctx.db.query("series").collect();
+    const activeSeries = seriesList.filter((series) => series.isActive !== false);
+    const activeSeriesIds = new Set(
+      activeSeries.map((series) => series._id.toString()),
+    );
+    const seriesById = new Map(
+      activeSeries.map((series) => [series._id.toString(), series]),
+    );
+
+    if (activeSeries.length === 0) {
+      return [];
+    }
+
+    const events = await ctx.db
+      .query("events")
+      .withIndex("by_date")
+      .order("desc")
+      .collect();
+
+    const latestEventBySeries = new Map<string, typeof events[number]>();
+    for (const event of events) {
+      const seriesId = event.seriesId.toString();
+      if (!activeSeriesIds.has(seriesId)) {
+        continue;
+      }
+      if (!latestEventBySeries.has(seriesId)) {
+        latestEventBySeries.set(seriesId, event);
+        if (latestEventBySeries.size === activeSeriesIds.size) {
+          break;
+        }
+      }
+    }
+
+    const results = [];
+    for (const series of activeSeries) {
+      const event = latestEventBySeries.get(series._id.toString());
+      if (!event) {
+        results.push({
+          series: { id: series._id, name: series.name },
+          event: null,
+          stats: { pending: 0, reviewed: 0, finalized: 0 },
+        });
+        continue;
+      }
+
+      const reports = await ctx.db
+        .query("reports")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .collect();
+
+      results.push({
+        series: { id: series._id, name: series.name },
+        event: {
+          eventNumber: event.eventNumber,
+          trackName: event.trackName,
+          eventDate: event.eventDate,
+        },
+        stats: {
+          pending: reports.filter((report) => report.status === "pending").length,
+          reviewed: reports.filter((report) => report.status === "reviewed").length,
+          finalized: reports.filter((report) => report.status === "finalized").length,
+        },
+      });
+    }
+
+    return results.sort((a, b) => a.series.name.localeCompare(b.series.name));
+  },
+});
+
 export const listDashboard = query({
   args: {
     seriesId: v.optional(v.id("series")),

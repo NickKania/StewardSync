@@ -3,6 +3,7 @@ import { CommonModule } from "@angular/common";
 import { DashboardSeriesPenaltyListComponent } from "../dashboard-series-penalty-list/dashboard-series-penalty-list.component";
 import { DashboardRaceReviewRequirementsComponent } from "../dashboard-race-review-requirements/dashboard-race-review-requirements.component";
 import { DashboardRaceReviewRequestListComponent } from "../dashboard-race-review-request-list/dashboard-race-review-request-list.component";
+import { EventStatusCardComponent } from "../event-status-card/event-status-card.component";
 
 @Component({
   selector: "app-event-manager-dashboard",
@@ -12,6 +13,7 @@ import { DashboardRaceReviewRequestListComponent } from "../dashboard-race-revie
     DashboardSeriesPenaltyListComponent,
     DashboardRaceReviewRequirementsComponent,
     DashboardRaceReviewRequestListComponent,
+    EventStatusCardComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -23,6 +25,8 @@ import { DashboardRaceReviewRequestListComponent } from "../dashboard-race-revie
           Track series penalty assignment and serving status across events.
         </p>
       </div>
+
+      <app-event-status-card />
 
       <app-dashboard-race-review-request-list />
 

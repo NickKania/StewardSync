@@ -740,20 +740,6 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkSeries));
 
-    const driversQuery = this.convex.createReactiveQuery(
-      this.convex.api.drivers.list,
-      {},
-    );
-    this.unsubscribes.push(driversQuery.unsubscribe);
-
-    const checkDrivers = setInterval(() => {
-      const data = driversQuery.data();
-      if (data) {
-        this.drivers.set(data);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkDrivers));
-
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
       {},
@@ -1082,6 +1068,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       const event = this.events().find((e) => e._id === eventId);
       if (event?.seriesId) {
         this.selectedSeriesId.set(event.seriesId);
+        const seriesControl = this.form.get("seriesId");
+        if (seriesControl?.value !== event.seriesId) {
+          seriesControl?.setValue(event.seriesId, { emitEvent: false });
+        }
+        await this.loadDriversBySeries(event.seriesId);
       }
       await this.loadRaces(eventId);
       await this.loadPenalties(eventId);
