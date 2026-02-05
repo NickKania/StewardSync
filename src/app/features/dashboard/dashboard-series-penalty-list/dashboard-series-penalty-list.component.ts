@@ -9,6 +9,7 @@ import {
   signal,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { RouterLink } from "@angular/router";
 import { toPng } from "html-to-image";
 import { Id } from "@convex/_generated/dataModel";
 import { ConvexService } from "@core/services/convex.service";
@@ -16,12 +17,15 @@ import { AuthService } from "@core/services/auth.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
-import { LegendComponent, LegendItem } from "@shared/components/legend/legend.component";
+import {
+  LegendComponent,
+  LegendItem,
+} from "@shared/components/legend/legend.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 
-type PenaltyStatus = "active" | "served";
-type BadgeVariant = "warning" | "success";
+type PenaltyStatus = "active" | "served_pending_review";
+type BadgeVariant = "warning" | "info";
 
 interface DashboardPenaltyRow {
   _id: Id<"driverSeriesPenalties">;
@@ -37,6 +41,14 @@ interface DashboardPenaltyRow {
   assignedAt: number;
   expectedServeDate: number | null;
   isServed: boolean;
+  requiresReview: boolean;
+  reviewStatus:
+    | "not_required"
+    | "required_no_request"
+    | "open"
+    | "scheduled"
+    | "completed";
+  reviewRequestId: string | null;
   status: PenaltyStatus;
 }
 
@@ -51,6 +63,7 @@ interface DashboardPenaltyGroup {
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     CardComponent,
     ButtonComponent,
     BadgeComponent,
@@ -82,58 +95,82 @@ interface DashboardPenaltyGroup {
           <div #exportContainer class="space-y-8">
             @for (group of penaltyGroups(); track group.seriesId) {
               <div class="space-y-3">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <h3
+                  class="text-lg font-semibold text-gray-900 dark:text-gray-100"
+                >
                   {{ group.seriesName }}
                 </h3>
 
                 <div class="overflow-x-auto">
                   <table class="w-full">
                     <thead class="bg-gray-50 dark:bg-gray-800">
-                      <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
+                      <tr
+                        class="text-left text-sm text-gray-500 dark:text-gray-400"
+                      >
                         <th class="px-4 py-3 font-medium">Driver</th>
                         <th class="px-4 py-3 font-medium">Class</th>
                         <th class="px-4 py-3 font-medium">Penalty</th>
                         <th class="px-4 py-3 font-medium">Penalty Threshold</th>
                         <th class="px-4 py-3 font-medium">Penalty Points</th>
-                        <th class="px-4 py-3 font-medium">Penalty Accrued Date</th>
-                        <th class="px-4 py-3 font-medium">Expected Serve Date</th>
+                        <th class="px-4 py-3 font-medium">
+                          Penalty Accrued Date
+                        </th>
+                        <th class="px-4 py-3 font-medium">
+                          Expected Serve Date
+                        </th>
                         <th class="px-4 py-3 font-medium">Status</th>
                         <th class="px-4 py-3 font-medium"></th>
                       </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tbody
+                      class="divide-y divide-gray-100 dark:divide-gray-800"
+                    >
                       @for (penalty of group.penalties; track penalty._id) {
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                           <td class="px-4 py-3">
-                            <p class="font-medium text-gray-900 dark:text-gray-100">
+                            <p
+                              class="font-medium text-gray-900 dark:text-gray-100"
+                            >
                               {{ penalty.driverName }}
                             </p>
                             <p class="text-sm text-gray-500 dark:text-gray-400">
                               #{{ penalty.driverNumber ?? "-" }}
                             </p>
                           </td>
-                          <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                          <td
+                            class="px-4 py-3 text-gray-700 dark:text-gray-300"
+                          >
                             {{ penalty.driverClass ?? "-" }}
                           </td>
                           <td class="px-4 py-3">
-                            <p class="font-medium text-gray-900 dark:text-gray-100">
+                            <p
+                              class="font-medium text-gray-900 dark:text-gray-100"
+                            >
                               {{ penalty.penaltyName }}
                             </p>
                           </td>
-                          <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                          <td
+                            class="px-4 py-3 text-gray-700 dark:text-gray-300"
+                          >
                             @if (penalty.threshold !== null) {
                               {{ penalty.threshold }} pts
                             } @else {
                               -
                             }
                           </td>
-                          <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                          <td
+                            class="px-4 py-3 text-gray-700 dark:text-gray-300"
+                          >
                             {{ penalty.pointsAtAssignment }}
                           </td>
-                          <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
+                          <td
+                            class="px-4 py-3 text-gray-500 dark:text-gray-400"
+                          >
                             {{ penalty.assignedAt | dateFormat: "PP" }}
                           </td>
-                          <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
+                          <td
+                            class="px-4 py-3 text-gray-500 dark:text-gray-400"
+                          >
                             @if (penalty.expectedServeDate !== null) {
                               {{ penalty.expectedServeDate | dateFormat: "PP" }}
                             } @else {
@@ -141,11 +178,30 @@ interface DashboardPenaltyGroup {
                             }
                           </td>
                           <td class="px-4 py-3">
-                            <app-badge [variant]="getStatusVariant(penalty.status)">
-                              {{ penalty.isServed ? "Served" : "Active" }}
+                            <app-badge
+                              [variant]="getStatusVariant(penalty.status)"
+                            >
+                              {{ getStatusLabel(penalty.status) }}
                             </app-badge>
                           </td>
                           <td class="px-4 py-3">
+                            @if (penalty.reviewRequestId) {
+                              <a
+                                [routerLink]="[
+                                  '/race-reviews',
+                                  penalty.reviewRequestId,
+                                ]"
+                                class="inline-block text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 mr-2"
+                              >
+                                Open Review
+                              </a>
+                            } @else if (penalty.requiresReview) {
+                              <p
+                                class="text-xs text-red-700 dark:text-red-300 mb-2"
+                              >
+                                No review request submitted yet.
+                              </p>
+                            }
                             @if (canMarkAsServed() && !penalty.isServed) {
                               <app-button
                                 variant="secondary"
@@ -175,7 +231,8 @@ interface DashboardPenaltyGroup {
   `,
 })
 export class DashboardSeriesPenaltyListComponent {
-  @ViewChild("exportContainer") private exportContainer?: ElementRef<HTMLElement>;
+  @ViewChild("exportContainer")
+  private exportContainer?: ElementRef<HTMLElement>;
 
   private readonly convex = inject(ConvexService);
   private readonly authService = inject(AuthService);
@@ -222,7 +279,9 @@ export class DashboardSeriesPenaltyListComponent {
     { allowSignalWrites: true },
   );
 
-  private async loadPenaltyGroups(seriesId: Id<"series"> | null): Promise<void> {
+  private async loadPenaltyGroups(
+    seriesId: Id<"series"> | null,
+  ): Promise<void> {
     const currentRequest = ++this.requestId;
     this.loading.set(true);
 
@@ -304,7 +363,13 @@ export class DashboardSeriesPenaltyListComponent {
   }
 
   getStatusVariant(status: PenaltyStatus): BadgeVariant {
-    return status === "served" ? "success" : "warning";
+    return status === "served_pending_review" ? "warning" : "info";
+  }
+
+  getStatusLabel(status: PenaltyStatus): string {
+    return status === "served_pending_review"
+      ? "Served - Review Pending"
+      : "Active";
   }
 
   private slugify(value: string): string {

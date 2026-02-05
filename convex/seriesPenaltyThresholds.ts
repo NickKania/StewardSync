@@ -23,12 +23,14 @@ export const create = mutation({
     seriesPenaltyId: v.id("seriesPenalties"),
     threshold: v.number(),
     driverClassIds: v.array(v.id("driverClasses")),
+    requiresReview: v.boolean(),
   },
   handler: async (ctx, args) => {
     const thresholdId = await ctx.db.insert("seriesPenaltyThresholds", {
       seriesPenaltyId: args.seriesPenaltyId,
       threshold: args.threshold,
       driverClassIds: args.driverClassIds,
+      requiresReview: args.requiresReview,
       createdAt: Date.now(),
     });
     return thresholdId;
@@ -40,6 +42,7 @@ export const update = mutation({
     id: v.id("seriesPenaltyThresholds"),
     threshold: v.number(),
     driverClassIds: v.array(v.id("driverClasses")),
+    requiresReview: v.boolean(),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;

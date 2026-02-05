@@ -687,12 +687,14 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
     try {
       const formValue = this.form.value;
+      const lap = String(formValue.lap ?? "").trim();
+      const turn = String(formValue.turn ?? "").trim();
 
       if (this.isEdit && this.id) {
         await this.convex.mutation(this.convex.api.reports.update, {
           reportId: this.id as any,
-          lap: formValue.lap,
-          turn: formValue.turn,
+          lap,
+          turn,
           description: formValue.description,
           videoTimestamp: formValue.videoTimestamp || undefined,
         });
@@ -708,8 +710,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
           reportedDriverId: formValue.reportedDriverId,
           eventId: formValue.eventId,
           raceId: formValue.raceId,
-          lap: formValue.lap,
-          turn: formValue.turn,
+          lap,
+          turn,
           description: formValue.description,
           videoTimestamp: formValue.videoTimestamp || undefined,
         });

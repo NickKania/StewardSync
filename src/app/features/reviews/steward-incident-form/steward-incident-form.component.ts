@@ -417,17 +417,6 @@ import { SelectOption } from "@shared/components/select/select.component";
                     >
                       Submit Incident
                     </app-button>
-                    @if (canMarkAsReviewed()) {
-                      <app-button
-                        type="button"
-                        variant="success"
-                        [loading]="submitting()"
-                        [disabled]="form.invalid"
-                        (onClick)="submitAndMarkReviewed()"
-                      >
-                        Submit & Mark Reviewed
-                      </app-button>
-                    }
                   </div>
                 </div>
               </app-card>
@@ -567,10 +556,6 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           label: `${steward.name} (${steward.role?.name || "Unknown"})`,
         })),
     ];
-  });
-
-  canMarkAsReviewed = computed(() => {
-    return !!this.secondStewardId();
   });
 
   isReportingOpen = computed(() => {
@@ -1015,6 +1000,8 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       }
 
       const formValue = this.form.value;
+      const lap = String(formValue.lap ?? "").trim();
+      const turn = String(formValue.turn ?? "").trim();
 
       const result = await this.convex.mutation(
         this.convex.api.reports.createBySteward,
@@ -1023,8 +1010,8 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           reportedDriverId: formValue.reportedDriverId as any,
           eventId: formValue.eventId,
           raceId: formValue.raceId,
-          lap: formValue.lap,
-          turn: formValue.turn,
+          lap,
+          turn,
           description: formValue.description,
           incidentDescription: formValue.incidentDescription,
           reviewNotes: formValue.reviewNotes || "",
@@ -1056,20 +1043,6 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     } finally {
       this.submitting.set(false);
     }
-  }
-
-  async submitAndMarkReviewed(): Promise<void> {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    if (!this.form.get("secondStewardId")?.value) {
-      this.toast.error("Second steward is required to mark as reviewed");
-      return;
-    }
-
-    await this.onSubmit();
   }
 
   cancel(): void {

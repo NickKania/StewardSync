@@ -210,6 +210,30 @@ export const routes: Routes = [
     ],
   },
   {
+    path: "race-reviews",
+    canActivate: [authGuard],
+    children: [
+      {
+        path: "request/:driverSeriesPenaltyId",
+        canActivate: [roleGuard],
+        data: { roles: ["driver"] },
+        loadComponent: () =>
+          import(
+            "@features/race-ban-reviews/review-request-form/review-request-form.component"
+          ).then((m) => m.ReviewRequestFormComponent),
+      },
+      {
+        path: ":id",
+        canActivate: [roleGuard],
+        data: { roles: ["head_steward", "event_manager", "league_manager"] },
+        loadComponent: () =>
+          import(
+            "@features/race-ban-reviews/race-review-management/race-review-management.component"
+          ).then((m) => m.RaceReviewManagementComponent),
+      },
+    ],
+  },
+  {
     path: "**",
     redirectTo: "",
   },

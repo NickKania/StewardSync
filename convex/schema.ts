@@ -122,6 +122,7 @@ export default defineSchema({
     seriesPenaltyId: v.id("seriesPenalties"),
     threshold: v.number(),
     driverClassIds: v.array(v.id("driverClasses")),
+    requiresReview: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_series_penalty", ["seriesPenaltyId"]),
 
@@ -131,13 +132,50 @@ export default defineSchema({
     seriesPenaltyId: v.id("seriesPenalties"),
     seriesPenaltyThresholdId: v.id("seriesPenaltyThresholds"),
     isServed: v.boolean(),
+    requiresReview: v.optional(v.boolean()),
+    raceBanReviewId: v.optional(v.id("raceBanReviews")),
     pointsAtAssignment: v.number(),
     assignedAt: v.number(),
     servedAt: v.optional(v.number()),
     servedBy: v.optional(v.id("users")),
   })
     .index("by_driver_and_series", ["driverId", "seriesId"])
-    .index("by_series", ["seriesId"]),
+    .index("by_series", ["seriesId"])
+    .index("by_race_ban_review", ["raceBanReviewId"]),
+
+  raceBanReviews: defineTable({
+    driverSeriesPenaltyId: v.id("driverSeriesPenalties"),
+    driverId: v.id("drivers"),
+    userId: v.id("users"),
+    seriesId: v.id("series"),
+    seriesPenaltyId: v.id("seriesPenalties"),
+    seriesPenaltyThresholdId: v.id("seriesPenaltyThresholds"),
+    status: v.union(
+      v.literal("open"),
+      v.literal("scheduled"),
+      v.literal("completed"),
+    ),
+    availabilityWindows: v.array(
+      v.object({
+        startAt: v.number(),
+        endAt: v.number(),
+      }),
+    ),
+    selectedMeetingStartAt: v.optional(v.number()),
+    selectedMeetingEndAt: v.optional(v.number()),
+    scheduledBy: v.optional(v.id("users")),
+    scheduledAt: v.optional(v.number()),
+    completedBy: v.optional(v.id("users")),
+    completedAt: v.optional(v.number()),
+    notificationSentAt: v.optional(v.number()),
+    notificationError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_driver_series_penalty", ["driverSeriesPenaltyId"])
+    .index("by_status", ["status"])
+    .index("by_series", ["seriesId"])
+    .index("by_driver", ["driverId"]),
 
   reports: defineTable({
     reportDate: v.number(),

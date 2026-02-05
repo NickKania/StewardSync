@@ -185,9 +185,26 @@ export const assignPenaltiesForSeries = internalMutation({
         )
         .collect();
 
-      const assignedThresholds = existingDriverSeriesPenalties
-        .filter((dsp: any) => !dsp.isServed)
-        .map((dsp: any) => dsp.seriesPenaltyThresholdId);
+      const assignedThresholds: any[] = [];
+      for (const dsp of existingDriverSeriesPenalties) {
+        const linkedReview = dsp.raceBanReviewId
+          ? await ctx.db.get(dsp.raceBanReviewId)
+          : await ctx.db
+              .query("raceBanReviews")
+              .withIndex("by_driver_series_penalty", (q) =>
+                q.eq("driverSeriesPenaltyId", dsp._id),
+              )
+              .first();
+        const thresholdDoc = await ctx.db.get(dsp.seriesPenaltyThresholdId);
+        const requiresReview =
+          dsp.requiresReview ?? thresholdDoc?.requiresReview ?? false;
+        const stillActive =
+          !dsp.isServed ||
+          (requiresReview && linkedReview?.status !== "completed");
+        if (stillActive) {
+          assignedThresholds.push(dsp.seriesPenaltyThresholdId);
+        }
+      }
 
       for (const seriesPenalty of seriesPenalties) {
         const thresholds = await ctx.db
@@ -218,6 +235,7 @@ export const assignPenaltiesForSeries = internalMutation({
                   seriesPenaltyId: seriesPenalty._id,
                   seriesPenaltyThresholdId: threshold._id,
                   isServed: false,
+                  requiresReview: threshold.requiresReview ?? false,
                   pointsAtAssignment: totalPoints,
                   assignedAt: Date.now(),
                 },
@@ -295,6 +313,46 @@ export const backfillAtFaultDriverId = internalMutation({
     return {
       reportsUpdated,
       reviewsUpdated,
+    };
+  },
+});
+
+export const backfillReviewedReports = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const reports = await ctx.db.query("reports").collect();
+
+    let updatedCount = 0;
+    let skippedNonPending = 0;
+    let skippedInsufficientReviews = 0;
+
+    for (const report of reports) {
+      if (report.status !== "pending") {
+        skippedNonPending++;
+        continue;
+      }
+
+      const reviews = await ctx.db
+        .query("reviews")
+        .withIndex("by_report", (q) => q.eq("reportId", report._id))
+        .collect();
+
+      if (reviews.length < 2) {
+        skippedInsufficientReviews++;
+        continue;
+      }
+
+      await ctx.db.patch(report._id, {
+        status: "reviewed",
+        updatedAt: Date.now(),
+      });
+      updatedCount++;
+    }
+
+    return {
+      updatedCount,
+      skippedNonPending,
+      skippedInsufficientReviews,
     };
   },
 });

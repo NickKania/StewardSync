@@ -414,6 +414,11 @@ import { Id } from "@convex/_generated/dataModel";
                                     <app-badge variant="danger">
                                       {{ threshold.threshold }} pts
                                     </app-badge>
+                                    @if (threshold.requiresReview) {
+                                      <app-badge variant="warning" size="sm">
+                                        Review Required
+                                      </app-badge>
+                                    }
                                     <span class="text-xs text-gray-500 dark:text-gray-400"
                                       >for:</span
                                     >
@@ -861,6 +866,16 @@ import { Id } from "@convex/_generated/dataModel";
                           </svg>
                         </button>
                       </div>
+                      <label
+                        class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-3"
+                      >
+                        <input
+                          type="checkbox"
+                          class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          [(ngModel)]="threshold.requiresReview"
+                        />
+                        Requires race review meeting
+                      </label>
                       <div>
                         <label class="label">Driver Classes</label>
                         <app-multi-select
@@ -1121,6 +1136,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   thresholds: Array<{
     id?: string;
     threshold: number;
+    requiresReview: boolean;
     selectedDriverClasses: string[];
   }> = [];
 
@@ -1416,6 +1432,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       seriesPenalty.thresholds?.map((t: SeriesPenaltyThreshold) => ({
         id: t._id,
         threshold: t.threshold,
+        requiresReview: t.requiresReview ?? false,
         selectedDriverClasses:
           t.driverClassIds?.map((id) => id.toString()) || [],
       })) || [];
@@ -1442,6 +1459,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     this.thresholds.push({
       id: `new-${Date.now()}`,
       threshold: 0,
+      requiresReview: false,
       selectedDriverClasses: [],
     });
   }
@@ -1511,6 +1529,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
             {
               seriesPenaltyId: this.editingSeriesPenaltyId,
               threshold: threshold.threshold,
+              requiresReview: threshold.requiresReview,
               driverClassIds: threshold.selectedDriverClasses.map(
                 (id) => id as Id<"driverClasses">,
               ),
@@ -1534,6 +1553,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
             {
               seriesPenaltyId,
               threshold: threshold.threshold,
+              requiresReview: threshold.requiresReview,
               driverClassIds: threshold.selectedDriverClasses.map(
                 (id) => id as Id<"driverClasses">,
               ),

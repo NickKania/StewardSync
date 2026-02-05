@@ -595,9 +595,26 @@ export const finalize = mutation({
           )
           .collect();
 
-        const assignedThresholds = existingDriverSeriesPenalties
-          .filter((dsp: any) => !dsp.isServed)
-          .map((dsp: any) => dsp.seriesPenaltyThresholdId.toString());
+        const assignedThresholds: string[] = [];
+        for (const dsp of existingDriverSeriesPenalties) {
+          const linkedReview = dsp.raceBanReviewId
+            ? await ctx.db.get(dsp.raceBanReviewId)
+            : await ctx.db
+                .query("raceBanReviews")
+                .withIndex("by_driver_series_penalty", (q) =>
+                  q.eq("driverSeriesPenaltyId", dsp._id),
+                )
+                .first();
+          const thresholdDoc = await ctx.db.get(dsp.seriesPenaltyThresholdId);
+          const requiresReview =
+            dsp.requiresReview ?? thresholdDoc?.requiresReview ?? false;
+          const stillActive =
+            !dsp.isServed ||
+            (requiresReview && linkedReview?.status !== "completed");
+          if (stillActive) {
+            assignedThresholds.push(dsp.seriesPenaltyThresholdId.toString());
+          }
+        }
 
         console.log(`[FINALIZE] Driver ${driver.driverNumber} has ${existingDriverSeriesPenalties.length} existing penalties, ${assignedThresholds.length} unserved`);
 
@@ -624,6 +641,7 @@ export const finalize = mutation({
                 seriesPenaltyId: seriesPenalty._id,
                 seriesPenaltyThresholdId: threshold._id,
                 isServed: false,
+                requiresReview: threshold.requiresReview ?? false,
                 pointsAtAssignment: totalPoints,
                 assignedAt: Date.now(),
               });

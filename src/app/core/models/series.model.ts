@@ -28,6 +28,7 @@ export interface SeriesPenaltyThreshold {
   seriesPenaltyId: Id<'seriesPenalties'>;
   threshold: number;
   driverClassIds: Id<'driverClasses'>[];
+  requiresReview?: boolean;
   driverClassObjects?: DriverClass[]; // Populated by backend queries
   createdAt: number;
 }
@@ -39,6 +40,8 @@ export interface DriverSeriesPenalty {
   seriesPenaltyId: Id<'seriesPenalties'>;
   seriesPenaltyThresholdId: Id<'seriesPenaltyThresholds'>;
   isServed: boolean;
+  requiresReview?: boolean;
+  raceBanReviewId?: string;
   pointsAtAssignment: number;
   assignedAt: number;
   servedAt?: number;
@@ -59,6 +62,10 @@ export interface DriverSeriesPenaltyDetails {
   penaltyDescription: string | null;
   threshold: number | null;
   isServed: boolean;
+  requiresReview?: boolean;
+  reviewStatus?: 'not_required' | 'required_no_request' | 'open' | 'scheduled' | 'completed';
+  raceBanReviewId?: string | null;
+  status?: 'active' | 'served' | 'served_pending_review';
   pointsAtAssignment: number;
   assignedAt: number;
   expectedServeDate: number | null;

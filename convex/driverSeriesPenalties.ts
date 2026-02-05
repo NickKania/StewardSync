@@ -3,6 +3,37 @@ import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { getCurrentUserRole } from "./lib/auth";
 
+const getLinkedRaceBanReview = async (ctx: any, dsp: any) => {
+  if (dsp.raceBanReviewId) {
+    const linkedById = await ctx.db.get(dsp.raceBanReviewId);
+    if (linkedById) {
+      return linkedById;
+    }
+  }
+
+  const linkedByPenalty = await ctx.db
+    .query("raceBanReviews")
+    .withIndex("by_driver_series_penalty", (q: any) =>
+      q.eq("driverSeriesPenaltyId", dsp._id),
+    )
+    .first();
+
+  return linkedByPenalty;
+};
+
+const isPenaltyStillActive = (dsp: any, linkedReview: any): boolean => {
+  if (!dsp.isServed) {
+    return true;
+  }
+
+  const requiresReview = dsp.requiresReview ?? false;
+  if (!requiresReview) {
+    return false;
+  }
+
+  return linkedReview?.status !== "completed";
+};
+
 export const assignPenalty = mutation({
   args: {
     driverId: v.id("drivers"),
@@ -12,12 +43,18 @@ export const assignPenalty = mutation({
     pointsAtAssignment: v.number(),
   },
   handler: async (ctx, args) => {
+    const threshold = await ctx.db.get(args.seriesPenaltyThresholdId);
+    if (!threshold) {
+      throw new UserFacingError("Series penalty threshold not found");
+    }
+
     const driverSeriesPenaltyId = await ctx.db.insert("driverSeriesPenalties", {
       driverId: args.driverId,
       seriesId: args.seriesId,
       seriesPenaltyId: args.seriesPenaltyId,
       seriesPenaltyThresholdId: args.seriesPenaltyThresholdId,
       isServed: false,
+      requiresReview: threshold.requiresReview ?? false,
       pointsAtAssignment: args.pointsAtAssignment,
       assignedAt: Date.now(),
     });
@@ -115,9 +152,16 @@ export const checkAndAssignThresholds = mutation({
         )
         .collect();
 
-      const assignedThresholds = existingDriverSeriesPenalties
-        .filter((dsp: any) => !dsp.isServed)
-        .map((dsp: any) => dsp.seriesPenaltyThresholdId);
+      const assignedThresholds: any[] = [];
+      for (const dsp of existingDriverSeriesPenalties) {
+        const linkedReview = await getLinkedRaceBanReview(ctx, dsp);
+        const threshold = await ctx.db.get(dsp.seriesPenaltyThresholdId);
+        const requiresReview =
+          dsp.requiresReview ?? threshold?.requiresReview ?? false;
+        if (isPenaltyStillActive({ ...dsp, requiresReview }, linkedReview)) {
+          assignedThresholds.push(dsp.seriesPenaltyThresholdId);
+        }
+      }
 
       for (const seriesPenalty of seriesPenalties) {
         const thresholds = await ctx.db
@@ -146,6 +190,7 @@ export const checkAndAssignThresholds = mutation({
                 seriesPenaltyId: seriesPenalty._id,
                 seriesPenaltyThresholdId: threshold._id,
                 isServed: false,
+                requiresReview: threshold.requiresReview ?? false,
                 pointsAtAssignment: totalPoints,
                 assignedAt: Date.now(),
               },
@@ -189,12 +234,18 @@ export const getByDriverAndSeries = query({
         const seriesPenaltyThreshold = await ctx.db.get(
           dsp.seriesPenaltyThresholdId,
         );
+        const raceBanReview = await getLinkedRaceBanReview(ctx, dsp);
         const servedByUser = dsp.servedBy
           ? await ctx.db.get(dsp.servedBy)
           : null;
 
         return {
           ...dsp,
+          requiresReview:
+            dsp.requiresReview ??
+            (seriesPenaltyThreshold as any)?.requiresReview ??
+            false,
+          raceBanReview,
           driver,
           series,
           seriesPenalty,
@@ -224,12 +275,18 @@ export const getBySeries = query({
         const seriesPenaltyThreshold = await ctx.db.get(
           dsp.seriesPenaltyThresholdId,
         );
+        const raceBanReview = await getLinkedRaceBanReview(ctx, dsp);
         const servedByUser = dsp.servedBy
           ? await ctx.db.get(dsp.servedBy)
           : null;
 
         return {
           ...dsp,
+          requiresReview:
+            dsp.requiresReview ??
+            (seriesPenaltyThreshold as any)?.requiresReview ??
+            false,
+          raceBanReview,
           driver,
           series,
           seriesPenalty,
@@ -289,9 +346,21 @@ export const getDriverPenaltyDetails = query({
         const seriesPenaltyThreshold = await ctx.db.get(
           dsp.seriesPenaltyThresholdId,
         );
+        const raceBanReview = await getLinkedRaceBanReview(ctx, dsp);
         const servedByUser = dsp.servedBy
           ? await ctx.db.get(dsp.servedBy)
           : null;
+        const requiresReview =
+          dsp.requiresReview ??
+          (seriesPenaltyThreshold as any)?.requiresReview ??
+          false;
+        const reviewStatus = !requiresReview
+          ? "not_required"
+          : raceBanReview
+            ? raceBanReview.status
+            : "required_no_request";
+        const isServedButPendingReview =
+          dsp.isServed && requiresReview && reviewStatus !== "completed";
 
         return {
           _id: dsp._id,
@@ -305,12 +374,20 @@ export const getDriverPenaltyDetails = query({
             (seriesPenalty as any)?.penaltyDescription ?? null,
           threshold: (seriesPenaltyThreshold as any)?.threshold ?? null,
           isServed: dsp.isServed,
+          requiresReview,
+          reviewStatus,
+          raceBanReviewId: raceBanReview?._id ?? null,
           pointsAtAssignment: dsp.pointsAtAssignment,
           assignedAt: dsp.assignedAt,
           expectedServeDate: null,
           servedAt: dsp.servedAt,
           servedBy: dsp.servedBy,
           servedByUserName: (servedByUser as any)?.name ?? null,
+          status: isServedButPendingReview
+            ? "served_pending_review"
+            : dsp.isServed
+              ? "served"
+              : "active",
         };
       }),
     );
@@ -473,11 +550,6 @@ export const getDashboardPenaltyGroups = query({
           .collect()
       : await ctx.db.query("driverSeriesPenalties").collect();
 
-    // Only include unserved penalties - served penalties have already been served
-    const unservedPenalties = driverSeriesPenalties.filter(
-      (penalty) => !penalty.isServed,
-    );
-
     const seriesCache = new Map<string, any>();
     const eventCache = new Map<string, any[]>();
     const driverCache = new Map<string, any>();
@@ -540,13 +612,16 @@ export const getDashboardPenaltyGroups = query({
     };
 
     const penaltiesWithDetails = await Promise.all(
-      unservedPenalties.map(async (dsp: any) => {
+      driverSeriesPenalties.map(async (dsp: any) => {
         const [series, driver, seriesPenalty, threshold] = await Promise.all([
           getSeries(dsp.seriesId),
           getDriver(dsp.driverId),
           getSeriesPenalty(dsp.seriesPenaltyId),
           getThreshold(dsp.seriesPenaltyThresholdId),
         ]);
+        const linkedReview = await getLinkedRaceBanReview(ctx, dsp);
+        const requiresReview =
+          dsp.requiresReview ?? threshold?.requiresReview ?? false;
 
         const driverClass = driver?.driverClassId
           ? await getDriverClass(driver.driverClassId)
@@ -556,6 +631,14 @@ export const getDashboardPenaltyGroups = query({
         const expectedEvent = seriesEvents.find(
           (event) => event.eventDate >= dsp.assignedAt,
         );
+        const isServedButPendingReview =
+          dsp.isServed &&
+          requiresReview &&
+          linkedReview?.status !== "completed";
+
+        if (!isPenaltyStillActive({ ...dsp, requiresReview }, linkedReview)) {
+          return null;
+        }
 
         return {
           _id: dsp._id,
@@ -571,16 +654,26 @@ export const getDashboardPenaltyGroups = query({
           assignedAt: dsp.assignedAt,
           expectedServeDate: expectedEvent?.eventDate ?? null,
           isServed: dsp.isServed,
-          status: dsp.isServed ? "served" : "active",
+          requiresReview,
+          reviewStatus: !requiresReview
+            ? "not_required"
+            : linkedReview
+              ? linkedReview.status
+              : "required_no_request",
+          reviewRequestId: linkedReview?._id ?? null,
+          status: isServedButPendingReview
+            ? "served_pending_review"
+            : "active",
         };
       }),
     );
+    const activePenalties = penaltiesWithDetails.filter(Boolean);
 
     const grouped = new Map<
       string,
       { seriesId: any; seriesName: string; penalties: any[] }
     >();
-    for (const penalty of penaltiesWithDetails) {
+    for (const penalty of activePenalties as any[]) {
       const key = penalty.seriesId.toString();
       if (!grouped.has(key)) {
         grouped.set(key, {
@@ -596,8 +689,8 @@ export const getDashboardPenaltyGroups = query({
     groups.sort((a, b) => a.seriesName.localeCompare(b.seriesName));
     for (const group of groups) {
       group.penalties.sort((a, b) => {
-        if (a.isServed !== b.isServed) {
-          return a.isServed ? 1 : -1;
+        if (a.status !== b.status) {
+          return a.status === "active" ? -1 : 1;
         }
         return b.assignedAt - a.assignedAt;
       });

@@ -101,6 +101,40 @@ import { Id } from "@convex/_generated/dataModel";
                 </p>
               </div>
 
+              @if (seriesGroup.pendingReviewPenalties.length > 0) {
+                <app-card
+                  title="Action Required: Race Ban Review"
+                  subtitle="A review meeting request is needed for the penalties below"
+                >
+                  <div class="space-y-3">
+                    @for (
+                      penalty of seriesGroup.pendingReviewPenalties;
+                      track penalty._id
+                    ) {
+                      <div
+                        class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/20"
+                      >
+                        <p class="text-sm text-red-800 dark:text-red-200">
+                          You have recieved a penalty ({{ penalty.penaltyName }})
+                          which required meeting with a head steward, please
+                          submit a request here.
+                        </p>
+                        <a
+                          [routerLink]="['/race-reviews/request', penalty._id]"
+                          class="mt-2 inline-flex text-sm font-medium text-red-700 hover:text-red-900 dark:text-red-200 dark:hover:text-red-100"
+                        >
+                          {{
+                            penalty.raceBanReviewId
+                              ? "Update review availability"
+                              : "Submit review request"
+                          }}
+                        </a>
+                      </div>
+                    }
+                  </div>
+                </app-card>
+              }
+
               <app-card
                 title="Series Penalties"
                 subtitle="Accumulated penalties from license points"
@@ -150,7 +184,11 @@ import { Id } from "@convex/_generated/dataModel";
                             </td>
                             <td class="py-3 text-gray-500 dark:text-gray-400">
                               @if (penalty.isServed) {
-                                Served
+                                @if (penalty.status === "served_pending_review") {
+                                  Served - review pending
+                                } @else {
+                                  Served
+                                }
                               } @else if (penalty.expectedServeDate) {
                                 {{
                                   penalty.expectedServeDate | dateFormat: "PPP"
@@ -160,12 +198,8 @@ import { Id } from "@convex/_generated/dataModel";
                               }
                             </td>
                             <td class="py-3">
-                              <app-badge
-                                [variant]="
-                                  penalty.isServed ? 'success' : 'danger'
-                                "
-                              >
-                                {{ penalty.isServed ? "Served" : "Active" }}
+                              <app-badge [variant]="getPenaltyStatusVariant(penalty)">
+                                {{ getPenaltyStatusLabel(penalty) }}
                               </app-badge>
                             </td>
                           </tr>
@@ -343,6 +377,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
           loadingSeriesPenalties: true,
           loadingIndividualPenalties: true,
           seriesPenalties: [],
+          pendingReviewPenalties: [],
           individualPenalties: [],
         });
       }
@@ -395,12 +430,19 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
 
       this.updateSeriesGroup(group.seriesKey, {
         seriesPenalties: penalties,
+        pendingReviewPenalties: penalties.filter(
+          (penalty) =>
+            penalty.requiresReview &&
+            (penalty.reviewStatus === "required_no_request" ||
+              penalty.reviewStatus === "open"),
+        ),
         loadingSeriesPenalties: false,
       });
     } catch (error) {
       console.error('Failed to load series penalties:', error);
       this.updateSeriesGroup(group.seriesKey, {
         seriesPenalties: [],
+        pendingReviewPenalties: [],
         loadingSeriesPenalties: false,
       });
     }
@@ -434,5 +476,19 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         loadingIndividualPenalties: false,
       });
     }
+  }
+
+  getPenaltyStatusLabel(penalty: any): string {
+    if (penalty.status === "served_pending_review") {
+      return "Served - Review Pending";
+    }
+    return penalty.isServed ? "Served" : "Active";
+  }
+
+  getPenaltyStatusVariant(penalty: any): "danger" | "success" | "warning" {
+    if (penalty.status === "served_pending_review") {
+      return "warning";
+    }
+    return penalty.isServed ? "success" : "danger";
   }
 }

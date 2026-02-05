@@ -273,44 +273,8 @@ import { SelectOption } from "@shared/components/select/select.component";
                     >
                       Submit Review
                     </app-button>
-                    @if (
-                      authService.hasRole(
-                        "steward",
-                        "head_steward",
-                        "event_manager"
-                      )
-                    ) {
-                      <app-button
-                        type="button"
-                        variant="success"
-                        [loading]="submitting()"
-                        [disabled]="form.invalid || !canMarkAsReviewed()"
-                        (onClick)="submitAndMarkReviewed()"
-                      >
-                        Submit & Mark Reviewed
-                      </app-button>
-                    }
                   </div>
                 </div>
-                @if (
-                  authService.hasRole(
-                    "steward",
-                    "head_steward",
-                    "event_manager"
-                  ) &&
-                  !canMarkAsReviewed() &&
-                  !form.invalid
-                ) {
-                  <div
-                    card-footer
-                    class="px-6 py-2 bg-amber-50 border-t border-amber-100 text-center"
-                  >
-                    <p class="text-xs text-amber-800">
-                      Need at least 2 reviews or review with a second steward to
-                      mark as reviewed
-                    </p>
-                  </div>
-                }
               </app-card>
             </form>
 
@@ -507,16 +471,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           label: `${steward.name} (${steward.role?.name || "Unknown"})`,
         })),
     ];
-  });
-
-  canMarkAsReviewed = computed(() => {
-    const existingReviewCount = this.existingReviews().length;
-    const hasSecondSteward = !!this.form.get("secondStewardId")?.value;
-
-    // Enable if:
-    // - Already have 2+ reviews, OR
-    // - Submitting with a second steward (counts as 2 reviews)
-    return existingReviewCount >= 1 || hasSecondSteward;
   });
 
   private unsubscribes: (() => void)[] = [];
@@ -749,7 +703,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     localStorage.setItem("selectedSecondSteward", stewardId);
   }
 
-  async onSubmit(markAsReviewed = false): Promise<void> {
+  async onSubmit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -793,14 +747,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         return;
       }
 
-      if (markAsReviewed) {
-        await this.convex.mutation(this.convex.api.reports.markAsReviewed, {
-          reportId: this.reportId as any,
-        });
-        this.toast.success("Review submitted and report marked as reviewed");
-      } else {
-        this.toast.success("Review submitted successfully");
-      }
+      this.toast.success("Review submitted successfully");
 
       this.router.navigate(["/reviews"]);
     } catch (error: any) {
@@ -808,10 +755,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     } finally {
       this.submitting.set(false);
     }
-  }
-
-  submitAndMarkReviewed(): void {
-    this.onSubmit(true);
   }
 
   cancel(): void {

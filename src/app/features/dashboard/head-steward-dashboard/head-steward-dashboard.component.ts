@@ -4,6 +4,7 @@ import { RouterLink } from "@angular/router";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { DashboardReportListComponent } from "../dashboard-report-list/dashboard-report-list.component";
 import { DashboardSeriesPenaltyListComponent } from "../dashboard-series-penalty-list/dashboard-series-penalty-list.component";
+import { DashboardRaceReviewRequestListComponent } from "../dashboard-race-review-request-list/dashboard-race-review-request-list.component";
 
 @Component({
   selector: "app-head-steward-dashboard",
@@ -14,6 +15,7 @@ import { DashboardSeriesPenaltyListComponent } from "../dashboard-series-penalty
     ButtonComponent,
     DashboardReportListComponent,
     DashboardSeriesPenaltyListComponent,
+    DashboardRaceReviewRequestListComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -48,6 +50,8 @@ import { DashboardSeriesPenaltyListComponent } from "../dashboard-series-penalty
         actionMode="finalize"
         [limit]="15"
       />
+
+      <app-dashboard-race-review-request-list />
 
       <app-dashboard-series-penalty-list />
     </div>

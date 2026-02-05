@@ -214,6 +214,20 @@ export const create = mutation({
       updatedAt: now,
     };
 
+    const maybeMarkReviewed = async () => {
+      const reviewCount = await ctx.db
+        .query("reviews")
+        .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
+        .collect();
+
+      if (reviewCount.length >= 2 && report.status !== "reviewed") {
+        await ctx.db.patch(args.reportId, {
+          status: "reviewed",
+          updatedAt: Date.now(),
+        });
+      }
+    };
+
     // If second steward is provided, create two linked reviews
     if (args.secondStewardId) {
       const primaryReviewId = await ctx.db.insert("reviews", reviewData);
@@ -230,6 +244,8 @@ export const create = mutation({
         await ctx.db.patch(args.reportId, { videoTimestamp: args.videoTimestamp });
       }
 
+      await maybeMarkReviewed();
+
       return success(primaryReviewId);
     }
 
@@ -239,6 +255,8 @@ export const create = mutation({
     if (args.videoTimestamp) {
       await ctx.db.patch(args.reportId, { videoTimestamp: args.videoTimestamp });
     }
+
+    await maybeMarkReviewed();
 
     return success(reviewId);
   },
