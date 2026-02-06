@@ -173,13 +173,7 @@ export class SidebarComponent implements OnDestroy {
     return 0;
   }
 
-  getBadgeClass(item: NavItem): string {
-    if (item.path === '/reviews') {
-      return 'badge-pending';
-    }
-    if (item.path === '/finalize') {
-      return 'badge-reviewed';
-    }
-    return 'badge';
+  getBadgeClass(_item: NavItem): string {
+    return 'badge-rejected';
   }
 }

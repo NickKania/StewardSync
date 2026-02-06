@@ -24,6 +24,7 @@ import type * as lib_result from "../lib/result.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_backfillReportIds from "../migrations/backfillReportIds.js";
 import type * as penalties from "../penalties.js";
+import type * as raceBanReviewDiscord from "../raceBanReviewDiscord.js";
 import type * as raceBanReviews from "../raceBanReviews.js";
 import type * as races from "../races.js";
 import type * as reportCounter from "../reportCounter.js";
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   "migrations/backfillReportIds": typeof migrations_backfillReportIds;
   penalties: typeof penalties;
+  raceBanReviewDiscord: typeof raceBanReviewDiscord;
   raceBanReviews: typeof raceBanReviews;
   races: typeof races;
   reportCounter: typeof reportCounter;

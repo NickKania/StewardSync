@@ -4,6 +4,25 @@ import { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
 
+interface ImportOrUpdateEventResult {
+  action: "created" | "updated";
+  eventId: Id<"events">;
+}
+
+// Helper to avoid circular type inference in Convex API references.
+async function runImportOrUpdateEvent(
+  ctx: any,
+  args: {
+    seriesId: Id<"series">;
+    eventNumber: number;
+    trackName: string;
+    eventDate: number;
+  },
+): Promise<ImportOrUpdateEventResult> {
+  // @ts-ignore - Circular type inference in Convex API
+  return ctx.runMutation(api.events.importOrUpdateEvent, args);
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -268,7 +287,7 @@ export const importFromSimGrid = action({
 
       const trackName = race.track?.name || race.display_name || "Unknown Track";
 
-      const result = await ctx.runMutation(api.events.importOrUpdateEvent, {
+      const result = await runImportOrUpdateEvent(ctx, {
         seriesId: args.seriesId,
         eventNumber: i + 1,
         trackName: trackName,

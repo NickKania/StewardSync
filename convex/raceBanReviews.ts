@@ -1,4 +1,4 @@
-import { action, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserRole } from "./lib/auth";
 import { UserFacingError } from "./lib/errors";
@@ -9,6 +9,10 @@ const STAFF_ROLES = new Set([
   "league_manager",
 ]);
 const REVIEW_MANAGER_ROLES = new Set(["head_steward", "league_manager"]);
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const SEND_MEETING_REMINDER_FN = "raceBanReviewDiscord:sendMeetingReminder" as any;
+const CREATE_MEETING_THREAD_POST_FN =
+  "raceBanReviewDiscord:createOrUpdateMeetingThreadPost" as any;
 
 const normalizeAvailabilityWindows = (
   availabilityWindows: Array<{ startAt: number; endAt: number }>,
@@ -46,6 +50,20 @@ const getLinkedReviewForPenalty = async (ctx: any, penalty: any) => {
 };
 
 const canManageReview = (role: string) => REVIEW_MANAGER_ROLES.has(role);
+
+const formatMeetingWindow = (startAt: number, endAt?: number) => {
+  const meetingStartLabel = new Date(startAt).toLocaleString("en-US", {
+    dateStyle: "full",
+    timeStyle: "short",
+  });
+  if (!endAt) {
+    return meetingStartLabel;
+  }
+  const meetingEndLabel = new Date(endAt).toLocaleString("en-US", {
+    timeStyle: "short",
+  });
+  return `${meetingStartLabel} - ${meetingEndLabel}`;
+};
 
 export const getDriverRequirement = query({
   args: {
@@ -435,6 +453,59 @@ export const getById = query({
   },
 });
 
+export const getMeetingNotificationContext = internalQuery({
+  args: {
+    id: v.id("raceBanReviews"),
+  },
+  handler: async (ctx, args) => {
+    const request = await ctx.db.get(args.id);
+    if (
+      !request ||
+      request.status !== "scheduled" ||
+      !request.selectedMeetingStartAt ||
+      !request.scheduledBy
+    ) {
+      return null;
+    }
+
+    const [driver, requester, scheduler, series, seriesPenalty] = await Promise.all([
+      ctx.db.get(request.driverId),
+      ctx.db.get(request.userId),
+      ctx.db.get(request.scheduledBy),
+      ctx.db.get(request.seriesId),
+      ctx.db.get(request.seriesPenaltyId),
+    ]);
+
+    if (!requester || !scheduler) {
+      return null;
+    }
+
+    const driverLabel = driver
+      ? `${driver.driverName} #${driver.driverNumber}`
+      : "Unknown Driver";
+    const requesterName = requester.officialName || requester.name || "Requester";
+    const schedulerName = scheduler.officialName || scheduler.name || "Steward";
+
+    return {
+      reviewId: request._id,
+      selectedMeetingStartAt: request.selectedMeetingStartAt,
+      selectedMeetingEndAt: request.selectedMeetingEndAt ?? null,
+      meetingTimeLabel: formatMeetingWindow(
+        request.selectedMeetingStartAt,
+        request.selectedMeetingEndAt,
+      ),
+      meetingThreadId: request.meetingThreadId ?? null,
+      requesterDiscordId: requester.discordId ?? null,
+      schedulerDiscordId: scheduler.discordId ?? null,
+      requesterName,
+      schedulerName,
+      driverLabel,
+      seriesName: series?.name ?? "Unknown Series",
+      penaltyName: seriesPenalty?.penaltyName ?? "Race Review",
+    };
+  },
+});
+
 export const scheduleMeeting = mutation({
   args: {
     id: v.id("raceBanReviews"),
@@ -472,14 +543,22 @@ export const scheduleMeeting = mutation({
       );
     }
 
+    const now = Date.now();
+    if (request.meetingReminderJobId) {
+      await ctx.scheduler.cancel(request.meetingReminderJobId);
+    }
+
     await ctx.db.patch(args.id, {
       status: "scheduled",
       selectedMeetingStartAt: args.selectedMeetingStartAt,
       selectedMeetingEndAt: args.selectedMeetingEndAt,
       scheduledBy: args.scheduledBy,
-      scheduledAt: Date.now(),
+      scheduledAt: now,
       notificationError: undefined,
-      updatedAt: Date.now(),
+      meetingReminderError: undefined,
+      meetingReminderSentAt: undefined,
+      meetingReminderJobId: undefined,
+      updatedAt: now,
     });
 
     const driverPenalty = await ctx.db.get(request.driverSeriesPenaltyId);
@@ -488,6 +567,28 @@ export const scheduleMeeting = mutation({
         raceBanReviewId: request._id,
       });
     }
+
+    const reminderAt = args.selectedMeetingStartAt - ONE_HOUR_MS;
+    const reminderJobId =
+      reminderAt <= now
+        ? await ctx.scheduler.runAfter(0, SEND_MEETING_REMINDER_FN, {
+            id: args.id,
+            expectedMeetingStartAt: args.selectedMeetingStartAt,
+          })
+        : await ctx.scheduler.runAt(reminderAt, SEND_MEETING_REMINDER_FN, {
+            id: args.id,
+            expectedMeetingStartAt: args.selectedMeetingStartAt,
+          });
+
+    await ctx.db.patch(args.id, {
+      meetingReminderJobId: reminderJobId,
+      updatedAt: Date.now(),
+    });
+
+    await ctx.scheduler.runAfter(0, CREATE_MEETING_THREAD_POST_FN, {
+      id: args.id,
+      expectedMeetingStartAt: args.selectedMeetingStartAt,
+    });
 
     return args.id;
   },
@@ -511,10 +612,15 @@ export const markCompleted = mutation({
       throw new UserFacingError("Race review request not found.");
     }
 
+    if (request.meetingReminderJobId) {
+      await ctx.scheduler.cancel(request.meetingReminderJobId);
+    }
+
     await ctx.db.patch(args.id, {
       status: "completed",
       completedBy: args.completedBy,
       completedAt: Date.now(),
+      meetingReminderJobId: undefined,
       updatedAt: Date.now(),
     });
 
@@ -545,87 +651,71 @@ export const recordNotificationResult = mutation({
   },
 });
 
-export const getNotificationPayload = query({
-  args: { id: v.id("raceBanReviews") },
+export const recordMeetingThreadNotificationResult = internalMutation({
+  args: {
+    id: v.id("raceBanReviews"),
+    expectedMeetingStartAt: v.number(),
+    sent: v.boolean(),
+    threadId: v.optional(v.string()),
+    error: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.id);
-    if (!request || request.status !== "scheduled" || !request.selectedMeetingStartAt) {
+    if (!request || request.selectedMeetingStartAt !== args.expectedMeetingStartAt) {
       return null;
     }
 
-    const [driver, scheduler] = await Promise.all([
-      ctx.db.get(request.driverId),
-      request.scheduledBy ? ctx.db.get(request.scheduledBy) : Promise.resolve(null),
-    ]);
-
-    const driverUser =
-      driver?.userId ? await ctx.db.get(driver.userId) : null;
-
-    const schedulerName =
-      scheduler?.officialName || scheduler?.name || "A head steward";
-    const meetingStartLabel = new Date(request.selectedMeetingStartAt).toLocaleString(
-      "en-US",
-      {
-        dateStyle: "full",
-        timeStyle: "short",
-      },
-    );
-    const meetingEndLabel = request.selectedMeetingEndAt
-      ? new Date(request.selectedMeetingEndAt).toLocaleString("en-US", {
-          timeStyle: "short",
-        })
-      : null;
-
-    const meetingTime = meetingEndLabel
-      ? `${meetingStartLabel} - ${meetingEndLabel}`
-      : meetingStartLabel;
-
-    const message = `${schedulerName} will meet with you at ${meetingTime}. Please join any voice channel and they will move you where needed.`;
-
-    return {
-      requestId: request._id,
-      discordId: driverUser?.discordId ?? null,
-      message,
+    const now = Date.now();
+    const patch: Record<string, any> = {
+      updatedAt: now,
     };
+    if (args.threadId) {
+      patch["meetingThreadId"] = args.threadId;
+    }
+    if (args.sent) {
+      patch["notificationSentAt"] = now;
+      patch["notificationError"] = undefined;
+    } else {
+      patch["notificationError"] =
+        args.error ?? "Failed to create race review meeting thread.";
+    }
+
+    await ctx.db.patch(args.id, patch);
+    return args.id;
   },
 });
 
-export const sendScheduledMeetingNotification = action({
+export const recordMeetingReminderResult = internalMutation({
   args: {
-    discordId: v.optional(v.string()),
-    message: v.string(),
+    id: v.id("raceBanReviews"),
+    expectedMeetingStartAt: v.number(),
+    sent: v.boolean(),
+    threadId: v.optional(v.string()),
+    error: v.optional(v.string()),
   },
-  handler: async (_ctx, args): Promise<{ sent: boolean; error?: string }> => {
-    const webhookUrl = process.env["DISCORD_NOTIFICATIONS_WEBHOOK_URL"];
-    if (!webhookUrl) {
-      return {
-        sent: false,
-        error: "DISCORD_NOTIFICATIONS_WEBHOOK_URL is not configured.",
-      };
+  handler: async (ctx, args) => {
+    const request = await ctx.db.get(args.id);
+    if (!request || request.selectedMeetingStartAt !== args.expectedMeetingStartAt) {
+      return null;
     }
 
-    const mention = args.discordId ? `<@${args.discordId}> ` : "";
-    const content = `${mention}${args.message}`.trim();
-
-    try {
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content }),
-      });
-
-      if (!response.ok) {
-        const responseText = await response.text();
-        const error = `Discord notification failed (${response.status}): ${responseText}`;
-        return { sent: false, error };
-      }
-
-      return { sent: true };
-    } catch (error: any) {
-      const message = error?.message || "Failed to send Discord notification.";
-      return { sent: false, error: message };
+    const now = Date.now();
+    const patch: Record<string, any> = {
+      meetingReminderJobId: undefined,
+      updatedAt: now,
+    };
+    if (args.threadId) {
+      patch["meetingThreadId"] = args.threadId;
     }
+    if (args.sent) {
+      patch["meetingReminderSentAt"] = now;
+      patch["meetingReminderError"] = undefined;
+    } else {
+      patch["meetingReminderError"] =
+        args.error ?? "Failed to send race review meeting reminder.";
+    }
+
+    await ctx.db.patch(args.id, patch);
+    return args.id;
   },
 });

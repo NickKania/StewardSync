@@ -106,7 +106,7 @@ interface SlotOption {
           @if (review()!.notificationError) {
             <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/30 dark:bg-amber-950/20">
               <p class="text-sm text-amber-800 dark:text-amber-200">
-                Discord notification warning: {{ review()!.notificationError }}
+                Meeting notification warning: {{ review()!.notificationError }}
               </p>
             </div>
           }
@@ -181,7 +181,7 @@ interface SlotOption {
           @if (canManage() && review()!.status !== "completed") {
             <div class="mt-4 flex flex-wrap gap-2">
               <app-button
-                [loading]="scheduling() || notifying()"
+                [loading]="scheduling()"
                 [disabled]="!selectedSlotValue"
                 (onClick)="scheduleSelectedSlot()"
               >
@@ -268,7 +268,6 @@ export class RaceReviewManagementComponent implements OnInit {
   readonly loading = signal(true);
   readonly review = signal<any | null>(null);
   readonly scheduling = signal(false);
-  readonly notifying = signal(false);
   readonly markingCompleted = signal(false);
   readonly markingServed = signal(false);
   selectedSlotValue = "";
@@ -364,41 +363,12 @@ export class RaceReviewManagementComponent implements OnInit {
         selectedMeetingEndAt,
       });
 
-      this.notifying.set(true);
-      const payload = await this.convex.query(
-        this.convex.api.raceBanReviews.getNotificationPayload,
-        { id: review._id },
-      );
-
-      if (!payload) {
-        await this.convex.mutation(this.convex.api.raceBanReviews.recordNotificationResult, {
-          id: review._id,
-          sent: false,
-          error: "No scheduled meeting data found for notification.",
-        });
-      } else {
-        const notificationResult = await this.convex.action(
-          this.convex.api.raceBanReviews.sendScheduledMeetingNotification,
-          {
-            discordId: payload.discordId ?? undefined,
-            message: payload.message,
-          },
-        );
-
-        await this.convex.mutation(this.convex.api.raceBanReviews.recordNotificationResult, {
-          id: review._id,
-          sent: notificationResult.sent,
-          error: notificationResult.error,
-        });
-      }
-
       await this.loadReview();
     } catch (error: any) {
       console.error("Failed to schedule meeting:", error);
       alert(error?.message || "Failed to schedule the meeting.");
     } finally {
       this.scheduling.set(false);
-      this.notifying.set(false);
     }
   }
 
