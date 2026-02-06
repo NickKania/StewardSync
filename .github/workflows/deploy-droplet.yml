@@ -18,6 +18,7 @@ jobs:
       DROPLET_TARGET_DIR: ${{ vars.DROPLET_TARGET_DIR || secrets.DROPLET_TARGET_DIR }}
       DROPLET_USER: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
       DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+      DROPLET_SSH_PORT: ${{ vars.DROPLET_SSH_PORT || secrets.DROPLET_SSH_PORT || '22' }}
       DROPLET_ENV_FILE: ${{ secrets.DROPLET_ENV_FILE }}
 
     steps:
@@ -31,6 +32,7 @@ jobs:
           [ -n "${DROPLET_TARGET_DIR}" ]
           [ -n "${DROPLET_USER}" ]
           [ -n "${DROPLET_SSH_KEY}" ]
+          [ -n "${DROPLET_SSH_PORT}" ]
 
       - name: Configure SSH
         run: |
@@ -39,18 +41,33 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "${DROPLET_SSH_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "${DROPLET_HOST}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${DROPLET_SSH_PORT}" -H "${DROPLET_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Wait for SSH connectivity
+        run: |
+          set -euo pipefail
+          SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
+          for attempt in {1..12}; do
+            if ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "echo connected" >/dev/null 2>&1; then
+              echo "SSH reachable on attempt ${attempt}"
+              exit 0
+            fi
+            echo "SSH not reachable yet (attempt ${attempt}/12); retrying in 10s..."
+            sleep 10
+          done
+          echo "Unable to reach ${DROPLET_HOST}:${DROPLET_SSH_PORT} via SSH after retries." >&2
+          exit 1
 
       - name: Ensure target directory exists
         run: |
           set -euo pipefail
-          SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
+          SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
           ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "mkdir -p '${DROPLET_TARGET_DIR}'"
 
       - name: Sync repository to droplet
         run: |
           set -euo pipefail
-          RSYNC_SSH="ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30"
+          RSYNC_SSH="ssh -p ${DROPLET_SSH_PORT} -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30"
           rsync -az --delete \
             -e "${RSYNC_SSH}" \
             --exclude '.git/' \
@@ -64,8 +81,8 @@ jobs:
         if: env.DROPLET_ENV_FILE != ''
         run: |
           set -euo pipefail
-          RSYNC_SSH="ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30"
-          SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
+          RSYNC_SSH="ssh -p ${DROPLET_SSH_PORT} -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30"
+          SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
           ENV_FILE="$(mktemp)"
           printf '%s\n' "${DROPLET_ENV_FILE}" > "${ENV_FILE}"
           rsync -az -e "${RSYNC_SSH}" "${ENV_FILE}" "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/.env"
@@ -75,7 +92,7 @@ jobs:
       - name: Ensure environment file exists
         run: |
           set -euo pipefail
-          SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
+          SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
           ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "set -euo pipefail; cd '${DROPLET_TARGET_DIR}'; \
             if [ -f .env ]; then \
               echo '.env already present'; \
@@ -98,7 +115,7 @@ jobs:
       - name: Deploy and start services
         run: |
           set -euo pipefail
-          SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
+          SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
           ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "bash -s -- '${DROPLET_TARGET_DIR}' '${DROPLET_USER}'" <<'REMOTE'
           set -euo pipefail
           TARGET_DIR="$1"
@@ -117,7 +134,6 @@ jobs:
             exit 1
           fi
 
-          export PUBLIC_ENABLE_DEV_LOGIN=false
           "${DOCKER_CMD[@]}" compose up -d --build
           "${DOCKER_CMD[@]}" compose ps
           REMOTE
