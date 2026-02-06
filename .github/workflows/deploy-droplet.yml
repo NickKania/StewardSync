@@ -58,71 +58,81 @@ jobs:
           echo "Unable to reach ${DROPLET_HOST}:${DROPLET_SSH_PORT} via SSH after retries." >&2
           exit 1
 
-      - name: Ensure target directory exists
-        run: |
-          set -euo pipefail
-          SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
-          ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "mkdir -p '${DROPLET_TARGET_DIR}'"
-
       - name: Sync repository to droplet
         run: |
           set -euo pipefail
           RSYNC_SSH="ssh -p ${DROPLET_SSH_PORT} -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30"
-          rsync -az --delete \
-            -e "${RSYNC_SSH}" \
-            --exclude '.git/' \
-            --exclude 'node_modules/' \
-            --exclude '.angular/' \
-            --exclude 'dist/' \
-            --exclude '.env' \
-            ./ "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/"
+          for attempt in {1..5}; do
+            if rsync -az --delete \
+              -e "${RSYNC_SSH}" \
+              --rsync-path="mkdir -p '${DROPLET_TARGET_DIR}' && rsync" \
+              --exclude '.git/' \
+              --exclude 'node_modules/' \
+              --exclude '.angular/' \
+              --exclude 'dist/' \
+              --exclude '.env' \
+              ./ "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/"; then
+              echo "Repository sync succeeded on attempt ${attempt}"
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "Repository sync failed after retries." >&2
+              exit 1
+            fi
+            echo "Repository sync failed (attempt ${attempt}/5); retrying in 10s..."
+            sleep 10
+          done
 
       - name: Upload environment file from secret
         if: env.DROPLET_ENV_FILE != ''
         run: |
           set -euo pipefail
           RSYNC_SSH="ssh -p ${DROPLET_SSH_PORT} -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30"
-          SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
           ENV_FILE="$(mktemp)"
           printf '%s\n' "${DROPLET_ENV_FILE}" > "${ENV_FILE}"
-          rsync -az -e "${RSYNC_SSH}" "${ENV_FILE}" "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/.env"
+          for attempt in {1..5}; do
+            if rsync -az -e "${RSYNC_SSH}" --chmod=F600 "${ENV_FILE}" "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/.env"; then
+              echo "Environment file upload succeeded on attempt ${attempt}"
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "Environment file upload failed after retries." >&2
+              rm -f "${ENV_FILE}"
+              exit 1
+            fi
+            echo "Environment file upload failed (attempt ${attempt}/5); retrying in 10s..."
+            sleep 10
+          done
           rm -f "${ENV_FILE}"
-          ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "chmod 600 '${DROPLET_TARGET_DIR}/.env'"
-
-      - name: Ensure environment file exists
-        run: |
-          set -euo pipefail
-          SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
-          ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "set -euo pipefail; cd '${DROPLET_TARGET_DIR}'; \
-            if [ -f .env ]; then \
-              echo '.env already present'; \
-            elif [ -f .env.docker.example ]; then \
-              cp .env.docker.example .env; \
-              GENERATED_SECRET=\"\$(openssl rand -hex 32)\"; \
-              awk -v secret=\"\${GENERATED_SECRET}\" ' \
-                BEGIN { replaced = 0 } \
-                /^CONVEX_INSTANCE_SECRET=/ { print \"CONVEX_INSTANCE_SECRET=\" secret; replaced = 1; next } \
-                { print } \
-                END { if (!replaced) print \"CONVEX_INSTANCE_SECRET=\" secret } \
-              ' .env > .env.tmp && mv .env.tmp .env; \
-              chmod 600 .env; \
-              echo '.env created from .env.docker.example'; \
-            else \
-              echo 'Missing .env and .env.docker.example in target directory' >&2; \
-              exit 1; \
-            fi"
 
       - name: Deploy and start services
         run: |
           set -euo pipefail
           SSH_OPTS=(-p "${DROPLET_SSH_PORT}" -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
-          ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "bash -s -- '${DROPLET_TARGET_DIR}' '${DROPLET_USER}'" <<'REMOTE'
+          REMOTE_SCRIPT="$(mktemp)"
+          cat > "${REMOTE_SCRIPT}" <<'REMOTE'
           set -euo pipefail
           TARGET_DIR="$1"
           DEPLOY_USER="$2"
 
           cd "${TARGET_DIR}"
-          [ -f .env ]
+          if [ -f .env ]; then
+            echo ".env already present"
+          elif [ -f .env.docker.example ]; then
+            cp .env.docker.example .env
+            GENERATED_SECRET="$(openssl rand -hex 32)"
+            awk -v secret="${GENERATED_SECRET}" '
+              BEGIN { replaced = 0 }
+              /^CONVEX_INSTANCE_SECRET=/ { print "CONVEX_INSTANCE_SECRET=" secret; replaced = 1; next }
+              { print }
+              END { if (!replaced) print "CONVEX_INSTANCE_SECRET=" secret }
+            ' .env > .env.tmp && mv .env.tmp .env
+            chmod 600 .env
+            echo ".env created from .env.docker.example"
+          else
+            echo "Missing .env and .env.docker.example in target directory" >&2
+            exit 1
+          fi
 
           if docker info >/dev/null 2>&1; then
             DOCKER_CMD=(docker)
@@ -137,3 +147,17 @@ jobs:
           "${DOCKER_CMD[@]}" compose up -d --build
           "${DOCKER_CMD[@]}" compose ps
           REMOTE
+          for attempt in {1..5}; do
+            if ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "bash -s -- '${DROPLET_TARGET_DIR}' '${DROPLET_USER}'" < "${REMOTE_SCRIPT}"; then
+              echo "Remote deploy succeeded on attempt ${attempt}"
+              rm -f "${REMOTE_SCRIPT}"
+              exit 0
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "Remote deploy failed after retries." >&2
+              rm -f "${REMOTE_SCRIPT}"
+              exit 1
+            fi
+            echo "Remote deploy failed (attempt ${attempt}/5); retrying in 15s..."
+            sleep 15
+          done
