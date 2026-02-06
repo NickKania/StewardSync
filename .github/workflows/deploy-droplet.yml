@@ -1,0 +1,62 @@
+name: Deploy To Droplet
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-droplet
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DROPLET_HOST: ${{ vars.DROPLET_HOST || secrets.DROPLET_HOST }}
+      DROPLET_TARGET_DIR: ${{ vars.DROPLET_TARGET_DIR || secrets.DROPLET_TARGET_DIR }}
+      DROPLET_USER: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
+      DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate deployment settings
+        run: |
+          set -euo pipefail
+          [ -n "${DROPLET_HOST}" ]
+          [ -n "${DROPLET_TARGET_DIR}" ]
+          [ -n "${DROPLET_USER}" ]
+          [ -n "${DROPLET_SSH_KEY}" ]
+
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${DROPLET_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${DROPLET_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Ensure target directory exists
+        run: |
+          set -euo pipefail
+          ssh "${DROPLET_USER}@${DROPLET_HOST}" "mkdir -p '${DROPLET_TARGET_DIR}'"
+
+      - name: Sync repository to droplet
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude '.git/' \
+            --exclude 'node_modules/' \
+            --exclude '.angular/' \
+            --exclude 'dist/' \
+            --exclude '.env' \
+            ./ "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/"
+
+      - name: Deploy and start services
+        run: |
+          set -euo pipefail
+          ssh "${DROPLET_USER}@${DROPLET_HOST}" "cd '${DROPLET_TARGET_DIR}' && if [ ! -f .env ]; then echo 'Missing .env in target directory' >&2; exit 1; fi && docker compose up -d --build && docker compose ps"

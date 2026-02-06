@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, OnDestroy } from '@angular/core';
+import { Injectable, signal, OnDestroy } from '@angular/core';
 import { ConvexClient } from 'convex/browser';
 import { environment } from '../../../environments/environment';
 import { ConvexCustomLogger } from './convex-logger';
@@ -15,12 +15,14 @@ export class ConvexService implements OnDestroy {
   private subscriptions: Map<string, () => void> = new Map();
 
   constructor() {
+    const convexUrl = this.getConvexUrl();
+
     if (!environment.production) {
       console.log('[ConvexService] initializing client', {
-        convexUrl: environment.convexUrl,
+        convexUrl,
       });
     }
-    this.client = new ConvexClient(environment.convexUrl, {
+    this.client = new ConvexClient(convexUrl, {
       logger: new ConvexCustomLogger()
     });
   }
@@ -103,5 +105,15 @@ export class ConvexService implements OnDestroy {
     this.subscriptions.forEach((unsubscribe) => unsubscribe());
     this.subscriptions.clear();
     this.client.close();
+  }
+
+  private getConvexUrl(): string {
+    const runtimeConfig = (
+      globalThis as typeof globalThis & {
+        __STEWARDSYNC_CONFIG__?: { convexUrl?: string };
+      }
+    ).__STEWARDSYNC_CONFIG__;
+
+    return runtimeConfig?.convexUrl ?? environment.convexUrl;
   }
 }

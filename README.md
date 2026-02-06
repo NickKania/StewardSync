@@ -2,99 +2,134 @@
 
 A unified application for reviewing racing steward reports.
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
-- A Convex account (free tier available)
+- Docker Engine + Docker Compose plugin
+- `bun`
+- Node.js 20 via `nvm` (for non-Docker workflows)
 
-### Installation
+## Self-Contained Docker Stack
+
+The repository now ships with a single `compose.yaml` that brings up:
+
+- `backend` (Convex self-hosted API + HTTP actions)
+- `convex-keygen` (one-shot admin key generation)
+- `convex-deployer` (one-shot Convex function deployment)
+- `dashboard` (Convex dashboard)
+- `frontend` (Angular app served by Nginx with runtime config injection)
+
+### First Run
+
+1. Copy the template environment file:
+   ```bash
+   cp .env.docker.example .env
+   ```
+2. Set a secure Convex secret:
+   ```bash
+   openssl rand -hex 32
+   ```
+   Put that value in `CONVEX_INSTANCE_SECRET` in `.env`.
+3. Start the full stack:
+   ```bash
+   docker compose up -d --build
+   ```
+4. Verify containers:
+   ```bash
+   docker compose ps
+   ```
+5. Open services:
+   - App: `http://localhost:4200`
+   - Convex API: `http://127.0.0.1:3210`
+   - Convex Actions: `http://127.0.0.1:3211`
+   - Convex Dashboard: `http://localhost:6791`
+
+### How It Auto-Links
+
+- `convex-keygen` writes an admin key to shared volume path `/convex/shared/admin_key`.
+- `convex-deployer` waits for backend health, reads that key, and runs `bun x convex deploy`.
+- `frontend` waits for deploy completion and injects `PUBLIC_CONVEX_URL` into `runtime-config.js` at startup.
+
+## Convex Admin Key
+
+You can retrieve the active key any time with either command:
 
 ```bash
+docker compose exec backend ./generate_admin_key.sh
+```
+
+```bash
+docker compose run --rm --entrypoint /bin/sh convex-keygen -ceu 'cat /convex/shared/admin_key'
+```
+
+In the running stack, the generated key is stored in the shared Docker volume at `/convex/shared/admin_key`.
+
+## Useful Commands
+
+```bash
+# Node 20 (for local non-Docker flows)
+export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 20
+
 # Install dependencies
-npm install
+bun install
 
-# Set up Convex (first time only)
-npx convex dev
+# Cloud Convex + Angular dev
+bun run dev
+
+# Full Docker stack
+bun run docker:up:build
+bun run docker:logs
+bun run docker:down
+
+# Print local Convex admin key
+bun run convex:local:admin-key
 ```
 
-### Development
+## Cloud Vendor Deployment (Docker Compose)
 
-```bash
-# Run both Angular and Convex dev servers
-npm run dev
+This flow works on any provider where you control a Linux host/VM with Docker.
 
-# Or run them separately:
-npm run start        # Angular dev server
-npm run convex:dev   # Convex dev server
-```
+1. Provision host resources:
+   - Linux VM/instance
+   - Docker + Compose installed
+   - Persistent disk for Docker volumes
+2. Configure DNS:
+   - `app.<your-domain>` -> frontend
+   - `api.<your-domain>` -> Convex API (`3210`)
+   - `actions.<your-domain>` -> Convex HTTP actions (`3211`)
+   - Optional: `convex-dashboard.<your-domain>` -> dashboard (`6791`)
+3. Copy project and environment file:
+   ```bash
+   cp .env.docker.example .env
+   ```
+4. Set required `.env` values:
+   - `CONVEX_INSTANCE_SECRET`: generate with `openssl rand -hex 32`
+   - `CONVEX_INSTANCE_NAME`: stable instance label (for key derivation)
+   - `CONVEX_CLOUD_ORIGIN`: public Convex API URL, e.g. `https://api.example.com`
+   - `CONVEX_SITE_ORIGIN`: public Convex actions URL, e.g. `https://actions.example.com`
+   - `PUBLIC_CONVEX_URL`: browser-visible Convex API URL (usually same as `CONVEX_CLOUD_ORIGIN`)
+   - `NEXT_PUBLIC_DEPLOYMENT_URL`: dashboard target URL (usually same as `CONVEX_CLOUD_ORIGIN`)
+5. Deploy:
+   ```bash
+   docker compose up -d --build
+   ```
+6. Validate:
+   ```bash
+   docker compose ps
+   docker compose logs --tail=200 convex-deployer backend frontend
+   ```
+7. Capture and store admin key in your cloud secret manager:
+   ```bash
+   docker compose exec backend ./generate_admin_key.sh
+   ```
+8. For upgrades:
+   ```bash
+   git pull
+   docker compose up -d --build
+   ```
 
-The app will be available at `http://localhost:4200`
+## Tech Stack
 
-### Configuration
-
-1. Copy environment template and configure:
-   - Update `src/environments/environment.ts` with your Convex URL
-   - Set up Google OAuth credentials if using Google sign-in
-
-2. Seed initial data (optional):
-   - Run `npx convex run seed:seedRoles` to create roles
-   - Run `npx convex run seed:seedSampleData` to add sample drivers/events
-
-## Technical Details
-- **Frontend:** Angular 17+ (standalone components, signals)
-- **Backend:** Convex (real-time BaaS)
-- **Auth:** Google OAuth 2.0 + Demo mode
-- **Styling:** Tailwind CSS
-# Architectural Details
-## Models
-### Report
-- ReportId (pk)
-- ReportDate (auto_generated)
-- ReportingDriver (fk Driver)
-- ReportedDriver (fk Driver)
-- Event (fk Event)
-- Race (fk Race)
-- Turn (int)
-- Description (text)
-- IsFinalized (boolean)
-### Review
-- ReviewId (pk)
-- ReviewDate (auto_generated)
-- UserId (fk User)
-- ReviewedReport (fk Report)
-- IncidentDescription (text)
-- ReviewNotes (text)
-### User
-- UserId (pk)
-- UserName (text)
-- Role (fk Role)
-### Role
-- RoleId (pk)
-- RoleName (text)
-### Driver
-- DriverId (pk)
-- DriverNumber (int)
-- DriverName (text)
-- ExternalId (text)
-- DriverClass (string)
-### Event
-- EventId (pk)
-- Series
-- EventNumber (int)
-- TrackName (text)
-- EventDate (date)
-### Race
-- RaceId (pk)
-- Event (fk Event)
-- RaceNumber (int)
-
-## Reporting
-Reporting should be done via a report form that is hosted on the site. This should be available to all users, and should be accessible from the main menu. The form should include fields for the driver being reported, the driver reporting the incident, the event, the race, the turn, and the incident description. The form should also include a submit button that will save the report to the database.
-
-## Reviewing
-Reviewing should be done via a review form that is hosted on the site. This should be available to stewards and event managers only, and should be accessible from a link that will be displayed only for those roles that have access. The form should include fields for the steward reviewing the report, the report being reviewed, the incident description, and any additional notes. The incident information shaould also be displayed and able to be edited in the case that there are issues with the inital report. The form should also include a submit button that will save the review to the database.
-
-## Finalizing
-Finalizing should be done via a finalize form that is hosted on the site. This should be available to only head stewards and event managers, and should be accessible from the main menu. The form should include fields for the steward finalizing the report, the report being finalized, the incident description, and any additional notes from other stewards. The form should also include a submit button that will save the finalization to the database.
+- Frontend: Angular 17+ (standalone components, signals)
+- Backend: Convex (self-hosted or cloud)
+- Auth: Convex Auth with Google OAuth 2.0
+- Styling: Tailwind CSS
