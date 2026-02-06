@@ -1,6 +1,7 @@
 import { Routes } from "@angular/router";
 import { authGuard } from "@core/guards/auth.guard";
 import { roleGuard } from "@core/guards/role.guard";
+import { appRuntimeConfig } from "@core/config/runtime-config";
 
 export const routes: Routes = [
   {
@@ -18,13 +19,17 @@ export const routes: Routes = [
         (m) => m.LoginComponent,
       ),
   },
-  {
-    path: "dev-login",
-    loadComponent: () =>
-      import("@features/auth/dev-login/dev-login.component").then(
-        (m) => m.DevLoginComponent,
-      ),
-  },
+  ...(appRuntimeConfig.enableDevLogin
+    ? [
+        {
+          path: "dev-login",
+          loadComponent: () =>
+            import("@features/auth/dev-login/dev-login.component").then(
+              (m) => m.DevLoginComponent,
+            ),
+        },
+      ]
+    : []),
   {
     path: "auth/callback",
     loadComponent: () =>

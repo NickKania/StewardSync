@@ -20,6 +20,8 @@ FROM nginx:alpine
 
 RUN apk add --no-cache gettext
 
+ENV PUBLIC_ENABLE_DEV_LOGIN=false
+
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

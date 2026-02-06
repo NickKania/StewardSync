@@ -82,6 +82,7 @@ services:
       - "${APP_PORT:-4200}:80"
     environment:
       PUBLIC_CONVEX_URL: ${PUBLIC_CONVEX_URL:-http://localhost:3210}
+      PUBLIC_ENABLE_DEV_LOGIN: ${PUBLIC_ENABLE_DEV_LOGIN:-true}
     depends_on:
       backend:
         condition: service_healthy

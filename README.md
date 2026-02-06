@@ -47,7 +47,7 @@ The repository now ships with a single `compose.yaml` that brings up:
 
 - `convex-keygen` writes an admin key to shared volume path `/convex/shared/admin_key`.
 - `convex-deployer` waits for backend health, reads that key, and runs `bun x convex deploy`.
-- `frontend` waits for deploy completion and injects `PUBLIC_CONVEX_URL` into `runtime-config.js` at startup.
+- `frontend` waits for deploy completion and injects runtime flags (including `PUBLIC_CONVEX_URL` and `PUBLIC_ENABLE_DEV_LOGIN`) into `runtime-config.js` at startup.
 
 ## Convex Admin Key
 
@@ -107,6 +107,7 @@ This flow works on any provider where you control a Linux host/VM with Docker.
    - `CONVEX_CLOUD_ORIGIN`: public Convex API URL, e.g. `https://api.example.com`
    - `CONVEX_SITE_ORIGIN`: public Convex actions URL, e.g. `https://actions.example.com`
    - `PUBLIC_CONVEX_URL`: browser-visible Convex API URL (usually same as `CONVEX_CLOUD_ORIGIN`)
+   - `PUBLIC_ENABLE_DEV_LOGIN`: set to `false` for production deployments
    - `NEXT_PUBLIC_DEPLOYMENT_URL`: dashboard target URL (usually same as `CONVEX_CLOUD_ORIGIN`)
 5. Deploy:
    ```bash

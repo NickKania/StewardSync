@@ -5,6 +5,7 @@ import { AuthService } from "@core/services/auth.service";
 import { ToastService } from "@core/services/toast.service";
 import { ThemeService } from "@core/services/theme.service";
 import { ButtonComponent } from "@shared/components/button/button.component";
+import { appRuntimeConfig } from "@core/config/runtime-config";
 
 @Component({
   selector: "app-login",
@@ -102,14 +103,16 @@ import { ButtonComponent } from "@shared/components/button/button.component";
           </p>
 
           <!-- Dev Mode Link -->
-          <div class="mt-4 text-center">
-            <a
-              routerLink="/dev-login"
-              class="text-xs text-gray-400 hover:text-primary-600 transition-colors dark:text-gray-500 dark:hover:text-primary-300"
-            >
-              Developer Mode
-            </a>
-          </div>
+          @if (showDevLogin) {
+            <div class="mt-4 text-center">
+              <a
+                routerLink="/dev-login"
+                class="text-xs text-gray-400 hover:text-primary-600 transition-colors dark:text-gray-500 dark:hover:text-primary-300"
+              >
+                Developer Mode
+              </a>
+            </div>
+          }
         </div>
 
         <!-- Info cards -->
@@ -135,6 +138,7 @@ export class LoginComponent {
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
   public readonly themeService = inject(ThemeService);
+  protected readonly showDevLogin = appRuntimeConfig.enableDevLogin;
 
   isLoading = false;
 

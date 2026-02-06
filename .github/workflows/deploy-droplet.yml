@@ -44,12 +44,15 @@ jobs:
       - name: Ensure target directory exists
         run: |
           set -euo pipefail
-          ssh "${DROPLET_USER}@${DROPLET_HOST}" "mkdir -p '${DROPLET_TARGET_DIR}'"
+          SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
+          ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "mkdir -p '${DROPLET_TARGET_DIR}'"
 
       - name: Sync repository to droplet
         run: |
           set -euo pipefail
+          RSYNC_SSH="ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30"
           rsync -az --delete \
+            -e "${RSYNC_SSH}" \
             --exclude '.git/' \
             --exclude 'node_modules/' \
             --exclude '.angular/' \
@@ -61,16 +64,19 @@ jobs:
         if: env.DROPLET_ENV_FILE != ''
         run: |
           set -euo pipefail
+          RSYNC_SSH="ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30"
+          SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
           ENV_FILE="$(mktemp)"
           printf '%s\n' "${DROPLET_ENV_FILE}" > "${ENV_FILE}"
-          rsync -az "${ENV_FILE}" "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/.env"
+          rsync -az -e "${RSYNC_SSH}" "${ENV_FILE}" "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/.env"
           rm -f "${ENV_FILE}"
-          ssh "${DROPLET_USER}@${DROPLET_HOST}" "chmod 600 '${DROPLET_TARGET_DIR}/.env'"
+          ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "chmod 600 '${DROPLET_TARGET_DIR}/.env'"
 
       - name: Ensure environment file exists
         run: |
           set -euo pipefail
-          ssh "${DROPLET_USER}@${DROPLET_HOST}" "set -euo pipefail; cd '${DROPLET_TARGET_DIR}'; \
+          SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
+          ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "set -euo pipefail; cd '${DROPLET_TARGET_DIR}'; \
             if [ -f .env ]; then \
               echo '.env already present'; \
             elif [ -f .env.docker.example ]; then \
@@ -92,4 +98,26 @@ jobs:
       - name: Deploy and start services
         run: |
           set -euo pipefail
-          ssh "${DROPLET_USER}@${DROPLET_HOST}" "cd '${DROPLET_TARGET_DIR}' && [ -f .env ] && docker compose up -d --build && docker compose ps"
+          SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30)
+          ssh "${SSH_OPTS[@]}" "${DROPLET_USER}@${DROPLET_HOST}" "bash -s -- '${DROPLET_TARGET_DIR}' '${DROPLET_USER}'" <<'REMOTE'
+          set -euo pipefail
+          TARGET_DIR="$1"
+          DEPLOY_USER="$2"
+
+          cd "${TARGET_DIR}"
+          [ -f .env ]
+
+          if docker info >/dev/null 2>&1; then
+            DOCKER_CMD=(docker)
+          elif sudo -n docker info >/dev/null 2>&1; then
+            DOCKER_CMD=(sudo docker)
+          else
+            echo "Docker daemon access denied for ${DEPLOY_USER}." >&2
+            echo "Grant docker group access or passwordless sudo for docker commands." >&2
+            exit 1
+          fi
+
+          export PUBLIC_ENABLE_DEV_LOGIN=false
+          "${DOCKER_CMD[@]}" compose up -d --build
+          "${DOCKER_CMD[@]}" compose ps
+          REMOTE

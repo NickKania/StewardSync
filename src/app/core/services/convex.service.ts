@@ -3,6 +3,7 @@ import { ConvexClient } from 'convex/browser';
 import { environment } from '../../../environments/environment';
 import { ConvexCustomLogger } from './convex-logger';
 import { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
+import { appRuntimeConfig } from '@core/config/runtime-config';
 
 // Import API to avoid circular inference issues
 import * as ConvexApi from '@convex/_generated/api';
@@ -15,7 +16,7 @@ export class ConvexService implements OnDestroy {
   private subscriptions: Map<string, () => void> = new Map();
 
   constructor() {
-    const convexUrl = this.getConvexUrl();
+    const convexUrl = appRuntimeConfig.convexUrl;
 
     if (!environment.production) {
       console.log('[ConvexService] initializing client', {
@@ -105,15 +106,5 @@ export class ConvexService implements OnDestroy {
     this.subscriptions.forEach((unsubscribe) => unsubscribe());
     this.subscriptions.clear();
     this.client.close();
-  }
-
-  private getConvexUrl(): string {
-    const runtimeConfig = (
-      globalThis as typeof globalThis & {
-        __STEWARDSYNC_CONFIG__?: { convexUrl?: string };
-      }
-    ).__STEWARDSYNC_CONFIG__;
-
-    return runtimeConfig?.convexUrl ?? environment.convexUrl;
   }
 }
