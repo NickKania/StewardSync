@@ -18,6 +18,7 @@ jobs:
       DROPLET_TARGET_DIR: ${{ vars.DROPLET_TARGET_DIR || secrets.DROPLET_TARGET_DIR }}
       DROPLET_USER: ${{ vars.DROPLET_USER || secrets.DROPLET_USER }}
       DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+      DROPLET_ENV_FILE: ${{ secrets.DROPLET_ENV_FILE }}
 
     steps:
       - name: Checkout
@@ -56,7 +57,39 @@ jobs:
             --exclude '.env' \
             ./ "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/"
 
+      - name: Upload environment file from secret
+        if: env.DROPLET_ENV_FILE != ''
+        run: |
+          set -euo pipefail
+          ENV_FILE="$(mktemp)"
+          printf '%s\n' "${DROPLET_ENV_FILE}" > "${ENV_FILE}"
+          rsync -az "${ENV_FILE}" "${DROPLET_USER}@${DROPLET_HOST}:${DROPLET_TARGET_DIR}/.env"
+          rm -f "${ENV_FILE}"
+          ssh "${DROPLET_USER}@${DROPLET_HOST}" "chmod 600 '${DROPLET_TARGET_DIR}/.env'"
+
+      - name: Ensure environment file exists
+        run: |
+          set -euo pipefail
+          ssh "${DROPLET_USER}@${DROPLET_HOST}" "set -euo pipefail; cd '${DROPLET_TARGET_DIR}'; \
+            if [ -f .env ]; then \
+              echo '.env already present'; \
+            elif [ -f .env.docker.example ]; then \
+              cp .env.docker.example .env; \
+              GENERATED_SECRET=\"\$(openssl rand -hex 32)\"; \
+              awk -v secret=\"\${GENERATED_SECRET}\" ' \
+                BEGIN { replaced = 0 } \
+                /^CONVEX_INSTANCE_SECRET=/ { print \"CONVEX_INSTANCE_SECRET=\" secret; replaced = 1; next } \
+                { print } \
+                END { if (!replaced) print \"CONVEX_INSTANCE_SECRET=\" secret } \
+              ' .env > .env.tmp && mv .env.tmp .env; \
+              chmod 600 .env; \
+              echo '.env created from .env.docker.example'; \
+            else \
+              echo 'Missing .env and .env.docker.example in target directory' >&2; \
+              exit 1; \
+            fi"
+
       - name: Deploy and start services
         run: |
           set -euo pipefail
-          ssh "${DROPLET_USER}@${DROPLET_HOST}" "cd '${DROPLET_TARGET_DIR}' && if [ ! -f .env ]; then echo 'Missing .env in target directory' >&2; exit 1; fi && docker compose up -d --build && docker compose ps"
+          ssh "${DROPLET_USER}@${DROPLET_HOST}" "cd '${DROPLET_TARGET_DIR}' && [ -f .env ] && docker compose up -d --build && docker compose ps"
