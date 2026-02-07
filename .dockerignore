@@ -1,6 +1,7 @@
-﻿# Git files
+# Git files
 .git
 .gitignore
+.github
 
 # Environment files
 .env
@@ -15,22 +16,61 @@
 
 # Build output
 dist
+.angular
+.cache
+
+# Dependencies (copied separately via bun install)
 node_modules
+
+# Logs
 npm-debug.log
 yarn-error.log
+bun.lockb
+*.log
 
 # Documentation
 README.md
 LICENSE
+AGENTS.md
+plan.md
 *.md
 !package.json
 
 # Docker files (don't copy into container)
 Dockerfile
 docker-compose*.yml
+docker-compose*.yaml
+compose*.yml
+compose*.yaml
 .dockerignore
 
 # Test files
 *.spec.ts
 karma.conf.js
 tsconfig.spec.json
+test/
+tests/
+*.test.ts
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Misc
+.DS_Store
+Thumbs.db
+coverage/
+
+# Convex generated files
+convex/_generated/
+
+# Temporary files
+.tmp
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

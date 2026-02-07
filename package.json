@@ -7,6 +7,7 @@
     "start": "ng serve",
     "start:local": "ng serve --configuration local",
     "build": "ng build",
+    "build:docker": "ng build --parallel",
     "build:local": "ng build --configuration local",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
