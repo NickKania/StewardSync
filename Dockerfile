@@ -34,8 +34,8 @@ COPY src/styles.css ./src/
 # More frequently changed files (features, components)
 COPY src/app/ ./src/app/
 
-# Build the Angular application with parallel builds
-RUN bun run build:docker
+    # Build the Angular application
+    RUN bun run build
 
 # Production stage
 FROM nginx:alpine
