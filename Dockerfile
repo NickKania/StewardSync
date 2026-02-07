@@ -1,6 +1,15 @@
 # Build stage
 FROM oven/bun:1.2.21-alpine AS builder
 
+# Metadata labels (these will be overridden by buildx)
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.version="${VERSION}"
+
 WORKDIR /app
 
 # Set NODE_ENV early for optimization
@@ -31,6 +40,17 @@ RUN bun run build:docker
 # Production stage
 FROM nginx:alpine
 
+# Metadata labels (these will be overridden by buildx)
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.title="StewardSync Frontend" \
+      org.opencontainers.image.description="Angular frontend for StewardSync racing steward reports application"
+
 RUN apk add --no-cache gettext
 
 ENV PUBLIC_ENABLE_DEV_LOGIN=false
@@ -47,6 +67,10 @@ RUN chmod +x /entrypoint.sh
 
 # Expose port 80
 EXPOSE 80
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 # Start nginx with runtime config injection
 ENTRYPOINT ["/entrypoint.sh"]

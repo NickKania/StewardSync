@@ -122,10 +122,92 @@ This flow works on any provider where you control a Linux host/VM with Docker.
    ```bash
    docker compose exec backend ./generate_admin_key.sh
    ```
-8. For upgrades:
+ 8. For upgrades:
+  ```bash
+  git pull
+  docker compose up -d --build
+  ```
+
+## Container Registry Deployment (Docker Hub)
+
+### Automated CI/CD (Recommended)
+
+1. Configure Docker Hub credentials in GitHub Actions:
+   - Go to: **Settings → Secrets and variables → Actions**
+   - Add `DOCKER_USERNAME`: Your Docker Hub username
+   - Add `DOCKER_PASSWORD`: Docker Hub access token (create at https://hub.docker.com/settings/security)
+
+2. Images build automatically on push to `main` branch
+   - View workflow runs: **Actions** tab in GitHub
+   - Image tags: `<username>/stewardsync:frontend-<sha7>`, `<username>/stewardsync:deployer-<sha7>`
+   - Latest tags: `<username>/stewardsync:frontend-latest`, `<username>/stewardsync:deployer-latest`
+
+3. Update `.env` on your deployment host:
    ```bash
-   git pull
-   docker compose up -d --build
+   cp .env.docker.example .env
+   # Edit and set:
+   # DOCKER_USERNAME=your-dockerhub-username
+   ```
+
+4. Deploy:
+   ```bash
+   docker compose up -d
+   ```
+
+### Manual Image Management
+
+Build images locally without pushing:
+```bash
+# Set your Docker Hub username
+export DOCKER_USERNAME=your-username
+
+# Build images
+bun run docker:build:local
+
+# Or using script directly
+./scripts/build-images.sh
+```
+
+Push images to Docker Hub:
+```bash
+# Push images
+./scripts/push-images.sh
+
+# Tag and push as latest (after pushing specific version)
+TAG=$(git rev-parse --short HEAD)
+./scripts/tag-latest.sh ${TAG}
+```
+
+### Image Tags
+
+- `frontend-latest` / `deployer-latest`: Latest stable release from main branch
+- `frontend-<sha7>` / `deployer-<sha7>`: Specific commit version (immutable)
+- Use commit SHA tags for production deployments for reproducibility
+
+### Rolling Back to a Previous Version
+
+1. Find the commit SHA you want to rollback to:
+   ```bash
+   git log --oneline
+   ```
+
+2. Pull the specific image version:
+   ```bash
+   docker pull yourusername/stewardsync:frontend-<sha7>
+   docker pull yourusername/stewardsync:deployer-<sha7>
+   ```
+
+3. Update `compose.yaml` to use specific tags:
+   ```yaml
+   frontend:
+     image: yourusername/stewardsync:frontend-abc1234
+   convex-deployer:
+     image: yourusername/stewardsync:deployer-abc1234
+   ```
+
+4. Restart services:
+   ```bash
+   docker compose up -d
    ```
 
 ## Tech Stack

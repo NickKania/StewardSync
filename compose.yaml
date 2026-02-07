@@ -46,9 +46,7 @@ services:
         echo "Convex admin key written to /convex/shared/admin_key"
 
   convex-deployer:
-    build:
-      context: .
-      dockerfile: docker/convex-deployer.Dockerfile
+    image: ${DOCKER_USERNAME:-yourusername}/stewardsync:deployer-latest
     restart: "no"
     environment:
       CONVEX_SELF_HOSTED_URL: http://backend:3210
@@ -74,9 +72,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME:-yourusername}/stewardsync:frontend-latest
     restart: unless-stopped
     ports:
       - "${APP_PORT:-4200}:80"
