@@ -1,0 +1,50 @@
+# Optimized Dockerfile for faster CI builds
+# Uses Node.js instead of Bun for better CI compatibility
+
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies first (better caching)
+COPY package.json package-lock.json* bun.lock* ./
+
+# Use npm with optimizations
+RUN npm ci --prefer-offline --no-audit --legacy-peer-deps
+
+# Copy only necessary files
+COPY angular.json tsconfig.json tsconfig.app.json ./
+COPY tailwind.config.js postcss.config.js ./
+COPY src ./src
+
+# Build with optimizations - disable source maps and use production mode
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=8192"
+
+RUN npm run build -- \
+    --configuration=production \
+    --optimization=true \
+    --source-map=false \
+    --progress=false \
+    --verbose=false
+
+# Production stage
+FROM nginx:alpine
+
+RUN apk add --no-cache gettext
+
+# Copy nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built app
+COPY --from=builder /app/dist/steward-sync/browser /usr/share/nginx/html
+COPY docker/frontend/runtime-config.template.js /usr/share/nginx/html/
+COPY docker/frontend/entrypoint.sh /entrypoint.sh
+
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]

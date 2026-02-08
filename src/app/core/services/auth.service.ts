@@ -4,6 +4,7 @@ import { ConvexService } from "./convex.service";
 import { User, RoleName } from "@core/models";
 import { Id } from "@convex/_generated/dataModel";
 import { environment } from "../../../environments/environment";
+import { appRuntimeConfig } from '@core/config/runtime-config';
 
 declare const google: any;
 
@@ -86,7 +87,7 @@ export class AuthService {
   }
 
   async loginWithDiscord(): Promise<void> {
-    const clientId = environment.discordClientId;
+    const clientId = environment.discordClientId || appRuntimeConfig.discordClientId;
     this.logAuth("loginWithDiscord:start", {
       hasClientId: Boolean(clientId),
       origin: window.location.origin,

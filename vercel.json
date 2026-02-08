@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/steward-sync/browser",
+  "framework": "angular",
+  "installCommand": "npm install",
+  "devCommand": "npm start",
+  "env": {
+    "PUBLIC_CONVEX_URL": "@public_convex_url"
+  }
+}
