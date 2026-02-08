@@ -1,6 +1,6 @@
 # StewardSync
 
-A unified application for reviewing racing steward reports.
+A unified application for reviewing and reporting sim-racing incidents.
 
 ## Prerequisites
 
