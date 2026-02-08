@@ -1,0 +1,19 @@
+{
+  "extends": "./angular.json",
+  "cli": {
+    "cache": {
+      "enabled": true,
+      "path": ".angular/cache",
+      "environment": "all"
+    },
+    "analytics": false,
+    "schematicCollections": {
+      "@angular-eslint/schematics": true
+    }
+  },
+  "schematics": {
+    "@angular-eslint/schematics:application": {
+      "setStrictChecks": true
+    }
+  }
+}

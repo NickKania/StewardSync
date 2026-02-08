@@ -1,0 +1,50 @@
+services:
+  backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    restart: unless-stopped
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    environment:
+      INSTANCE_NAME: ${CONVEX_INSTANCE_NAME}
+      INSTANCE_SECRET: ${CONVEX_INSTANCE_SECRET}
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN}
+      RUST_LOG: ${CONVEX_RUST_LOG:-info}
+      DOCUMENT_RETENTION_DELAY: ${CONVEX_DOCUMENT_RETENTION_DELAY:-172800}
+      PORT: 3210
+    volumes:
+      - convex_data:/convex/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3210/version"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    restart: unless-stopped
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: ${NEXT_PUBLIC_DEPLOYMENT_URL}
+      PORT: 6791
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PUBLIC_CONVEX_URL: ${PUBLIC_CONVEX_URL}
+      PUBLIC_ENABLE_DEV_LOGIN: ${PUBLIC_ENABLE_DEV_LOGIN:-false}
+      PORT: 80
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  convex_data:

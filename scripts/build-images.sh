@@ -14,7 +14,11 @@ TAG="${TAG:-local}"
 
 echo "Building images for ${DOCKER_USERNAME}/stewardsync with tag: ${TAG}"
 
-BUILD_ARGS=""
+# Enable BuildKit for better caching and performance
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
+BUILD_ARGS="--cache-from=${DOCKER_USERNAME}/stewardsync:frontend-latest --cache-to=type=inline"
 if [ -n "${BUILD_DATE:-}" ]; then
   BUILD_ARGS="${BUILD_ARGS} --build-arg BUILD_DATE=${BUILD_DATE}"
 fi
@@ -25,7 +29,10 @@ if [ -n "${VERSION:-}" ]; then
   BUILD_ARGS="${BUILD_ARGS} --build-arg VERSION=${VERSION}"
 fi
 
-echo "Building frontend image..."
+echo "Building frontend image (this may take 5-10 minutes on macOS)..."
+echo "For faster local builds, consider using Dockerfile.fast instead"
+echo "See docs/docker-fast-build.md for more information"
+echo ""
 docker build ${BUILD_ARGS} \
   -t ${DOCKER_USERNAME}/stewardsync:frontend-${TAG} \
   -f Dockerfile \

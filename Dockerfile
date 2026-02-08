@@ -1,5 +1,5 @@
-# Build stage
-FROM oven/bun:1.2.21-alpine AS builder
+# Build stage - use Debian-based image for better performance
+FROM oven/bun:1.2.21 AS builder
 
 # Metadata labels (these will be overridden by buildx)
 ARG BUILD_DATE
@@ -13,7 +13,13 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
 WORKDIR /app
 
 # Set NODE_ENV early for optimization
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    NODE_OPTIONS=--max-old-space-size=4096 \
+    NG_BUILD_MAX_WORKERS=1 \
+    BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache \
+    BUN_INSTALL_GLOBAL_DIR=/root/.bun/install/global \
+    CI=true \
+    NG_CLI_ANALYTICS=false
 
 # Copy lockfile first for better dependency caching
 COPY bun.lock package.json ./
@@ -22,7 +28,7 @@ COPY bun.lock package.json ./
 RUN bun install --frozen-lockfile
 
 # Copy Angular configuration files (cached if unchanged)
-COPY angular.json tsconfig.json tailwind.config.js postcss.config.js ./
+COPY angular.json tsconfig.json tsconfig.app.json tailwind.config.js postcss.config.js ./
 
 # Copy source files in layers for better caching
 # Less frequently changed files first
@@ -34,8 +40,8 @@ COPY src/styles.css ./src/
 # More frequently changed files (features, components)
 COPY src/app/ ./src/app/
 
-    # Build the Angular application
-    RUN bun run build
+# Build the Angular application with optimized settings
+RUN bun run build --configuration=production --progress=false --verbose=false
 
 # Production stage
 FROM nginx:alpine

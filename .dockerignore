@@ -14,10 +14,12 @@
 .opencode
 .claude
 
-# Build output
-dist
+# Build output (except dist/steward-sync which is needed for fast builds)
 .angular
 .cache
+# Allow dist/steward-sync for fast Docker builds
+dist
+!dist/steward-sync
 
 # Dependencies (copied separately via bun install)
 node_modules
@@ -61,8 +63,8 @@ tests/
 Thumbs.db
 coverage/
 
-# Convex generated files
-convex/_generated/
+# Convex files - not needed for frontend build
+convex/
 
 # Temporary files
 .tmp
@@ -74,3 +76,8 @@ convex/_generated/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Additional optimization: Exclude unnecessary source maps and test files from build context
+coverage/
+*.map
+e2e/

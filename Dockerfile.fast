@@ -1,0 +1,40 @@
+# Fast Dockerfile for local development on macOS
+# This Dockerfile assumes the Angular project has already been built locally
+# and only copies the pre-built dist folder
+
+FROM nginx:alpine
+
+# Metadata labels
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.title="StewardSync Frontend (Fast Build)" \
+      org.opencontainers.image.description="Fast Docker image for local development using pre-built Angular assets"
+
+RUN apk add --no-cache gettext
+
+ENV PUBLIC_ENABLE_DEV_LOGIN=false
+
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy pre-built application from local build
+COPY dist/steward-sync/browser /usr/share/nginx/html
+COPY docker/frontend/runtime-config.template.js /usr/share/nginx/html/runtime-config.template.js
+COPY docker/frontend/entrypoint.sh /entrypoint.sh
+
+RUN chmod +x /entrypoint.sh
+
+# Expose port 80
+EXPOSE 80
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+
+# Start nginx with runtime config injection
+ENTRYPOINT ["/entrypoint.sh"]

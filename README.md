@@ -84,6 +84,37 @@ bun run docker:down
 bun run convex:local:admin-key
 ```
 
+## Fast Docker Build for macOS
+
+Docker builds on macOS can be slow due to filesystem I/O overhead. For faster local development:
+
+```bash
+# Fast build (pre-builds Angular locally, then creates Docker image)
+bun run docker:build:fast
+
+# Or run the script directly
+./scripts/build-docker-fast.sh
+
+# Then start the stack with the fast build
+docker compose -f docker-compose.fast.yml up
+```
+
+**Why use fast builds?**
+- Standard Docker build: 20+ minutes on macOS
+- Fast build: ~30 seconds (5 seconds for Angular + 25 seconds for Docker image)
+
+**When to use:**
+- Local development on macOS
+- Rapid iteration during development
+- When you need quick feedback loops
+
+**When NOT to use:**
+- CI/CD pipelines (use standard Dockerfile)
+- Production builds (use standard Dockerfile)
+- When building on Linux/WSL2 (standard build is fast enough)
+
+See [docs/docker-fast-build.md](docs/docker-fast-build.md) for more details and troubleshooting.
+
 ## Cloud Vendor Deployment (Docker Compose)
 
 This flow works on any provider where you control a Linux host/VM with Docker.
