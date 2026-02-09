@@ -1,5 +1,5 @@
 {
-  "buildCommand": "bun run build",
+  "buildCommand": "ng build --configuration staging",
   "outputDirectory": "dist/steward-sync/browser",
   "framework": "angular",
   "installCommand": "bun install",
