@@ -41,7 +41,7 @@ interface AvailabilityRow {
             <p class="mt-2 text-gray-500 dark:text-gray-400">
               This penalty either does not require review, or you do not have access.
             </p>
-            <a routerLink="/" class="mt-4 inline-block">
+            <a routerLink="/driver-dashboard" class="mt-4 inline-block">
               <app-button variant="secondary">Back to Dashboard</app-button>
             </a>
           </div>
@@ -156,7 +156,7 @@ interface AvailabilityRow {
         </app-card>
 
         <div class="flex justify-end gap-3">
-          <a routerLink="/">
+          <a routerLink="/driver-dashboard">
             <app-button variant="secondary">Cancel</app-button>
           </a>
           @if (
@@ -221,7 +221,7 @@ export class ReviewRequestFormComponent implements OnInit {
         availabilityWindows: windows,
       });
 
-      await this.router.navigate(["/"]);
+      await this.router.navigate(["/driver-dashboard"]);
     } catch (error: any) {
       console.error("Failed to submit race review request:", error);
       alert(error?.message || "Failed to submit request.");

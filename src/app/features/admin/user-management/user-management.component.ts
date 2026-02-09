@@ -44,7 +44,6 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th class="px-6 py-3 font-medium">User</th>
-                  <th class="px-6 py-3 font-medium">Email</th>
                   <th class="px-6 py-3 font-medium">Role</th>
                   <th class="px-6 py-3 font-medium">Joined</th>
                   <th class="px-6 py-3 font-medium"></th>
@@ -71,7 +70,6 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                         <span class="font-medium text-gray-900 dark:text-gray-100">{{ user.name }}</span>
                       </div>
                     </td>
-                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ user.email }}</td>
                     <td class="px-6 py-4">
                       <app-badge [variant]="getRoleVariant(user.role?.name)">
                         {{ user.role?.displayName }}
@@ -86,7 +84,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                         size="sm"
                         (onClick)="openEditModal(user)"
                       >
-                        Edit Role
+                        Edit User
                       </app-button>
                     </td>
                   </tr>
@@ -102,10 +100,10 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
       </app-card>
     </div>
 
-    <!-- Edit role modal -->
+    <!-- Edit user modal -->
     <app-modal
       [isOpen]="showEditModal"
-      title="Edit User Role"
+      title="Edit User"
       (close)="closeEditModal()"
     >
       @if (selectedUser) {
@@ -126,7 +124,6 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
             }
             <div>
               <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedUser.name }}</p>
-              <p class="text-sm text-gray-500 dark:text-gray-400">{{ selectedUser.email }}</p>
             </div>
           </div>
 
@@ -137,6 +134,16 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
                 <option [value]="role._id">{{ role.displayName }}</option>
               }
             </select>
+          </div>
+
+          <div>
+            <label class="label">Official Name</label>
+            <input
+              type="text"
+              class="input"
+              placeholder="Enter official name"
+              [(ngModel)]="selectedOfficialName"
+            />
           </div>
         </div>
       }
@@ -149,7 +156,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
           <app-button
             variant="primary"
             [loading]="saving()"
-            (onClick)="saveRole()"
+            (onClick)="saveChanges()"
           >
             Save Changes
           </app-button>
@@ -171,6 +178,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   showEditModal = false;
   selectedUser: any = null;
   selectedRoleId = '';
+  selectedOfficialName = '';
 
   private unsubscribes: (() => void)[] = [];
 
@@ -228,6 +236,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   openEditModal(user: any): void {
     this.selectedUser = user;
     this.selectedRoleId = user.roleId;
+    this.selectedOfficialName = user.officialName ?? '';
     this.showEditModal = true;
   }
 
@@ -235,9 +244,10 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.showEditModal = false;
     this.selectedUser = null;
     this.selectedRoleId = '';
+    this.selectedOfficialName = '';
   }
 
-  async saveRole(): Promise<void> {
+  async saveChanges(): Promise<void> {
     if (!this.selectedUser || !this.selectedRoleId) return;
 
     const currentUserId = this.authService.getUserId();
@@ -249,20 +259,44 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.saving.set(true);
 
     try {
-      await this.convex.mutation(
-        this.convex.api.users.updateRole,
-        {
-          userId: this.selectedUser._id,
-          roleId: this.selectedRoleId as any,
-          currentUserId: currentUserId
-        }
-      );
+      const roleChanged = this.selectedRoleId !== this.selectedUser.roleId;
+      const originalOfficialName = (this.selectedUser.officialName ?? '').trim();
+      const nextOfficialName = this.selectedOfficialName.trim();
+      const officialNameChanged = nextOfficialName !== originalOfficialName;
 
-      this.toast.success('User role updated successfully');
+      if (!roleChanged && !officialNameChanged) {
+        this.toast.info('No changes to save');
+        this.closeEditModal();
+        return;
+      }
+
+      if (roleChanged) {
+        await this.convex.mutation(
+          this.convex.api.users.updateRole,
+          {
+            userId: this.selectedUser._id,
+            roleId: this.selectedRoleId as any,
+            currentUserId: currentUserId
+          }
+        );
+      }
+
+      if (officialNameChanged) {
+        await this.convex.mutation(
+          this.convex.api.users.updateOfficialName,
+          {
+            userId: this.selectedUser._id,
+            officialName: this.selectedOfficialName,
+            currentUserId: currentUserId
+          }
+        );
+      }
+
+      this.toast.success('User updated successfully');
       this.closeEditModal();
     } catch (error: any) {
       const errorMessage = this.extractUserFacingError(error.message);
-      this.toast.error(errorMessage || 'Failed to update role');
+      this.toast.error(errorMessage || 'Failed to update user');
     } finally {
       this.saving.set(false);
     }

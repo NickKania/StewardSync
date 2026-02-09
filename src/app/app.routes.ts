@@ -6,11 +6,27 @@ import { appRuntimeConfig } from "@core/config/runtime-config";
 export const routes: Routes = [
   {
     path: "",
+    pathMatch: "full",
+    redirectTo: "driver-dashboard",
+  },
+  {
+    path: "driver-dashboard",
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import("@features/dashboard/driver-dashboard/driver-dashboard.component").then(
+        (m) => m.DriverDashboardComponent,
+      ),
+  },
+  {
+    path: "staff-dashboard",
+    canActivate: [authGuard, roleGuard],
+    data: {
+      roles: ["steward", "head_steward", "event_manager", "league_manager"],
+    },
     loadComponent: () =>
       import("@features/dashboard/dashboard.component").then(
-        (m) => m.DashboardComponent,
+        (m) => m.StaffDashboardComponent,
       ),
-    canActivate: [authGuard],
   },
   {
     path: "login",
@@ -240,6 +256,6 @@ export const routes: Routes = [
   },
   {
     path: "**",
-    redirectTo: "",
+    redirectTo: "driver-dashboard",
   },
 ];

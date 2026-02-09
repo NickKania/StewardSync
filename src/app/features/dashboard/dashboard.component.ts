@@ -2,18 +2,16 @@ import { Component, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { AuthService } from "@core/services/auth.service";
 import { CardComponent } from "@shared/components/card/card.component";
-import { DriverDashboardComponent } from "./driver-dashboard/driver-dashboard.component";
 import { StewardDashboardComponent } from "./steward-dashboard/steward-dashboard.component";
 import { HeadStewardDashboardComponent } from "./head-steward-dashboard/head-steward-dashboard.component";
 import { EventManagerDashboardComponent } from "./event-manager-dashboard/event-manager-dashboard.component";
 
 @Component({
-  selector: "app-dashboard",
+  selector: "app-staff-dashboard",
   standalone: true,
   imports: [
     CommonModule,
     CardComponent,
-    DriverDashboardComponent,
     StewardDashboardComponent,
     HeadStewardDashboardComponent,
     EventManagerDashboardComponent,
@@ -21,10 +19,8 @@ import { EventManagerDashboardComponent } from "./event-manager-dashboard/event-
   template: `
     @if (!authService.userRole()) {
       <app-card>
-        <p class="text-gray-500 dark:text-gray-400">Loading dashboard...</p>
+        <p class="text-gray-500 dark:text-gray-400">Loading staff dashboard...</p>
       </app-card>
-    } @else if (authService.userRole() === "driver") {
-      <app-driver-dashboard />
     } @else if (authService.userRole() === "steward") {
       <app-steward-dashboard />
     } @else if (authService.userRole() === "head_steward") {
@@ -37,12 +33,12 @@ import { EventManagerDashboardComponent } from "./event-manager-dashboard/event-
     } @else {
       <app-card>
         <p class="text-gray-500 dark:text-gray-400">
-          No dashboard configuration exists for this role.
+          Staff dashboard is only available to staff roles.
         </p>
       </app-card>
     }
   `,
 })
-export class DashboardComponent {
+export class StaffDashboardComponent {
   readonly authService = inject(AuthService);
 }

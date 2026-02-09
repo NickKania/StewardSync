@@ -42,7 +42,7 @@ interface SlotOption {
             <p class="mt-2 text-gray-500 dark:text-gray-400">
               The requested race review could not be loaded.
             </p>
-            <a routerLink="/" class="mt-4 inline-block">
+            <a routerLink="/staff-dashboard" class="mt-4 inline-block">
               <app-button variant="secondary">Back to Dashboard</app-button>
             </a>
           </div>
