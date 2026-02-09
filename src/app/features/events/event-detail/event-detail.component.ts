@@ -269,7 +269,7 @@ import { Id } from "@convex/_generated/dataModel";
       <!-- Add Race Modal -->
       @if (showAddRaceModal) {
         <div
-          *appHasRole="['event_manager']"
+          *appHasRole="['event_manager', 'league_manager']"
           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         >
           <div class="bg-white rounded-lg p-6 w-full max-w-md dark:bg-gray-900">
