@@ -3,11 +3,5 @@
   "outputDirectory": "dist/steward-sync/browser",
   "framework": null,
   "installCommand": "bun install",
-  "devCommand": "bun run start",
-  "env": {
-    "PUBLIC_CONVEX_URL": "@convex-url",
-    "PUBLIC_ENABLE_DEV_LOGIN": "@enable-dev-login",
-    "DISCORD_CLIENT_ID": "@discord-client-id",
-    "DISCORD_CLIENT_SECRET": "@discord-client-secret"
-  }
+  "devCommand": "bun run start"
 }

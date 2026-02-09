@@ -9,6 +9,7 @@
     "start:staging": "dotenv -e .env.staging -- ./scripts/generate-env.sh && ng serve --configuration staging",
     "build": "ng build",
     "build:prod": "./scripts/build-prod.sh",
+    "detect:convex-url": "./scripts/detect-convex-url.sh",
     "build:docker": "ng build",
     "docker:build:fast": "./scripts/build-docker-fast.sh",
     "build:fast": "ng build --configuration=production",

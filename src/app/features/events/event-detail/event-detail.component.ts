@@ -82,19 +82,25 @@ import { Id } from "@convex/_generated/dataModel";
             <app-card title="Event Information">
               <dl class="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Track</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Track
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ event()?.trackName }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Series</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Series
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ event()?.series?.name }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Round Number</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Round Number
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ event()?.eventNumber }}
                   </dd>
@@ -139,7 +145,7 @@ import { Id } from "@convex/_generated/dataModel";
             <!-- Races -->
             <app-card title="Races">
               <div
-                *appHasRole="['event_manager']"
+                *appHasRole="['event_manager', 'league_manager']"
                 class="flex items-center justify-between mb-3"
               >
                 <span class="text-sm text-gray-500 dark:text-gray-400"
@@ -180,7 +186,8 @@ import { Id } from "@convex/_generated/dataModel";
                             race.raceNumber
                           }}</span>
                         </div>
-                        <span class="font-medium text-gray-900 dark:text-gray-100"
+                        <span
+                          class="font-medium text-gray-900 dark:text-gray-100"
                           >Race {{ race.raceNumber }}</span
                         >
                       </div>
@@ -219,7 +226,9 @@ import { Id } from "@convex/_generated/dataModel";
                   }
                 </div>
               } @else {
-                <p class="text-gray-500 text-center py-4 dark:text-gray-400">No races scheduled</p>
+                <p class="text-gray-500 text-center py-4 dark:text-gray-400">
+                  No races scheduled
+                </p>
               }
             </app-card>
           </div>
@@ -229,7 +238,9 @@ import { Id } from "@convex/_generated/dataModel";
             <app-card title="Quick Stats">
               <div class="space-y-4">
                 <div class="flex items-center justify-between">
-                  <span class="text-gray-500 dark:text-gray-400">Total Races</span>
+                  <span class="text-gray-500 dark:text-gray-400"
+                    >Total Races</span
+                  >
                   <span class="font-bold text-gray-900 dark:text-gray-100">{{
                     event()?.races?.length || 0
                   }}</span>
@@ -265,7 +276,8 @@ import { Id } from "@convex/_generated/dataModel";
             <h3 class="text-lg font-semibold mb-4">Add Race</h3>
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
                   >Race Number</label
                 >
                 <input
@@ -438,7 +450,9 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
       await this.loadEvent();
     } catch (error: any) {
-      alert(`Failed to add race: ${this.extractUserFacingError(error.message)}`);
+      alert(
+        `Failed to add race: ${this.extractUserFacingError(error.message)}`,
+      );
     }
   }
 
@@ -455,7 +469,9 @@ export class EventDetailComponent implements OnInit, OnDestroy {
       await this.convex.mutation(this.convex.api.races.remove, { raceId });
       await this.loadEvent();
     } catch (error: any) {
-      alert(`Failed to delete race: ${this.extractUserFacingError(error.message)}`);
+      alert(
+        `Failed to delete race: ${this.extractUserFacingError(error.message)}`,
+      );
     }
   }
 
@@ -466,7 +482,9 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     if (!errorMessage) return "";
 
     // Try to extract UserFacingError message
-    const userFacingMatch = errorMessage.match(/Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s);
+    const userFacingMatch = errorMessage.match(
+      /Uncaught UserFacingError:\s*(.+?)(?:\s+at\s+|$)/s,
+    );
     if (userFacingMatch) {
       return userFacingMatch[1].trim();
     }
