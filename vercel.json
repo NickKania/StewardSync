@@ -3,8 +3,5 @@
   "outputDirectory": "dist/steward-sync/browser",
   "framework": "angular",
   "installCommand": "bun install",
-  "devCommand": "bun run start",
-  "env": {
-    "PUBLIC_CONVEX_URL": "@public_convex_url"
-  }
+  "devCommand": "bun run start"
 }
