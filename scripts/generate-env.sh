@@ -3,6 +3,11 @@
 # Generate environment file from environment variables
 # This script is used during build to inject environment variables into Angular
 
+# Load from .env file if environment variables are not set
+if [ -z "${PUBLIC_CONVEX_URL}" ] && [ -f .env.staging ]; then
+  export $(grep -v '^#' .env.staging | xargs)
+fi
+
 cat > src/environments/environment.staging.ts <<EOF
 /**
  * Staging environment configuration
