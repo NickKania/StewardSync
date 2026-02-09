@@ -1,4 +1,5 @@
 import { RuntimeConfigService } from '../services/runtime-config.service';
+import { environment } from '../../../environments/environment';
 
 type LocalRuntimeConfig = {
   convexUrl?: string;
@@ -35,9 +36,9 @@ const runtimeConfig = (
 ).__STEWARDSYNC_CONFIG__;
 
 export const appRuntimeConfig = {
-  convexUrl: runtimeConfig?.convexUrl || 'http://127.0.0.1:3210',
+  convexUrl: runtimeConfig?.convexUrl || environment.convexUrl,
   enableDevLogin:
-    coerceBoolean(runtimeConfig?.enableDevLogin) || false,
-  discordClientId: runtimeConfig?.discordClientId || '',
-  discordClientSecret: runtimeConfig?.discordClientSecret || ''
+    coerceBoolean(runtimeConfig?.enableDevLogin) || environment.enableDevLogin,
+  discordClientId: runtimeConfig?.discordClientId || environment.discordClientId,
+  discordClientSecret: runtimeConfig?.discordClientSecret || environment.discordClientSecret
 } as const;

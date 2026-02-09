@@ -1,27 +1,28 @@
 #!/bin/bash
 
-# Generate environment file from environment variables
-# This script is used during build to inject environment variables into Angular
+# Generate production environment file from environment variables
+# This script is used during production builds
 
 # Load from .env file if environment variables are not set
-if [ -z "${PUBLIC_CONVEX_URL}" ] && [ -f .env.staging ]; then
-  export $(grep -v '^#' .env.staging | xargs)
+if [ -z "${PUBLIC_CONVEX_URL}" ] && [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
 fi
 
 # Validate required variables
 if [ -z "${PUBLIC_CONVEX_URL}" ]; then
   echo "ERROR: PUBLIC_CONVEX_URL is not set"
+  echo "Usage: PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud bun run build:prod"
   exit 1
 fi
 
-cat > src/environments/environment.staging.ts <<EOF
+cat > src/environments/environment.prod.ts <<EOF
 /**
- * Staging environment configuration
+ * Production environment configuration
  * Generated at build time from environment variables
  */
 
 export const environment = {
-  production: false,
+  production: true,
   enableDevLogin: ${PUBLIC_ENABLE_DEV_LOGIN:-false},
   convexUrl: '${PUBLIC_CONVEX_URL}',
   discordClientId: '${DISCORD_CLIENT_ID:-}',
@@ -29,7 +30,7 @@ export const environment = {
 };
 EOF
 
-echo "Generated environment.staging.ts"
+echo "Generated environment.prod.ts"
 
 # Also generate runtime-config.js for local builds
 cat > src/runtime-config.js <<EOF
@@ -42,3 +43,6 @@ window.__STEWARDSYNC_CONFIG__ = {
 EOF
 
 echo "Generated src/runtime-config.js"
+
+# Run Angular build
+bun run ng build --configuration=production

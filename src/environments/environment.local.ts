@@ -1,3 +1,8 @@
+/**
+ * Local development environment configuration
+ * These values are used when running with --configuration local
+ */
+
 export const environment = {
   production: false,
   enableDevLogin: false,

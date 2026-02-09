@@ -1,13 +1,13 @@
 {
-  "buildCommand": "bun run build:staging",
+  "buildCommand": "./scripts/vercel-build.sh",
   "outputDirectory": "dist/steward-sync/browser",
-  "framework": "angular",
+  "framework": null,
   "installCommand": "bun install",
   "devCommand": "bun run start",
   "env": {
-    "PUBLIC_CONVEX_URL": "https://effervescent-possum-890.convex.cloud",
-    "DISCORD_CLIENT_ID": "1462225909867221227",
-    "DISCORD_CLIENT_SECRET": "_eHd2NggNcZuGNy9YUSQ3_YVCGbbW3gh",
-    "PUBLIC_ENABLE_DEV_LOGIN": "false"
+    "PUBLIC_CONVEX_URL": "@convex-url",
+    "PUBLIC_ENABLE_DEV_LOGIN": "@enable-dev-login",
+    "DISCORD_CLIENT_ID": "@discord-client-id",
+    "DISCORD_CLIENT_SECRET": "@discord-client-secret"
   }
 }

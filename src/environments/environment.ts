@@ -1,12 +1,13 @@
 /**
- * Angular production build with environment variable support
- * Build configuration that reads environment variables from process.env
+ * Development environment configuration
+ * This file should use runtime-config.js for environment variables
+ * Values here are fallbacks only when runtime-config.js is not available
  */
 
 export const environment = {
   production: false,
   enableDevLogin: false,
-  convexUrl: 'http://127.0.0.1:3210',
-  discordClientId: '1462225909867221227',
-  discordClientSecret: '_eHd2NggNcZuGNy9YUSQ3_YVCGbbW3gh'
+  convexUrl: '',
+  discordClientId: '',
+  discordClientSecret: ''
 };
