@@ -1,6 +1,5 @@
 /**
  * Staging environment configuration
- * Reads environment variables from process.env
  * Used for Cloud Development Convex deployment
  */
 
@@ -12,14 +11,10 @@ interface EnvironmentConfig {
   discordClientSecret: string;
 }
 
-function loadEnvConfig(): EnvironmentConfig {
-  return {
-    production: false,
-    enableDevLogin: (process.env as any)['PUBLIC_ENABLE_DEV_LOGIN'] === 'true',
-    convexUrl: (process.env as any)['PUBLIC_CONVEX_URL'] || '',
-    discordClientId: (process.env as any)['DISCORD_CLIENT_ID'] || '',
-    discordClientSecret: (process.env as any)['DISCORD_CLIENT_SECRET'] || ''
-  };
-}
-
-export const environment = loadEnvConfig();
+export const environment: EnvironmentConfig = {
+  production: false,
+  enableDevLogin: false,
+  convexUrl: 'https://effervescent-possum-890.convex.cloud',
+  discordClientId: '1462225909867221227',
+  discordClientSecret: '_eHd2NggNcZuGNy9YUSQ3_YVCGbbW3gh'
+};

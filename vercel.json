@@ -1,7 +1,13 @@
 {
-  "buildCommand": "ng build --configuration staging",
+  "buildCommand": "bun run build:staging",
   "outputDirectory": "dist/steward-sync/browser",
   "framework": "angular",
   "installCommand": "bun install",
-  "devCommand": "bun run start"
+  "devCommand": "bun run start",
+  "env": {
+    "PUBLIC_CONVEX_URL": "https://effervescent-possum-890.convex.cloud",
+    "DISCORD_CLIENT_ID": "1462225909867221227",
+    "DISCORD_CLIENT_SECRET": "_eHd2NggNcZuGNy9YUSQ3_YVCGbbW3gh",
+    "PUBLIC_ENABLE_DEV_LOGIN": "false"
+  }
 }
