@@ -39,3 +39,7 @@ Thumbs.db
 .tmp/**
 .vercel
 .env*
+
+# Generated environment files (contains secrets)
+src/environments/environment.staging.ts
+src/environments/environment.prod.ts

@@ -12,7 +12,7 @@
     "docker:build:fast": "./scripts/build-docker-fast.sh",
     "build:fast": "ng build --configuration=production",
     "build:local": "ng build --configuration local",
-    "build:staging": "cross-env PUBLIC_CONVEX_URL=\"$PUBLIC_CONVEX_URL\" DISCORD_CLIENT_ID=\"$DISCORD_CLIENT_ID\" DISCORD_CLIENT_SECRET=\"$DISCORD_CLIENT_SECRET\" PUBLIC_ENABLE_DEV_LOGIN=\"$PUBLIC_ENABLE_DEV_LOGIN\" ng build --configuration staging",
+    "build:staging": "./scripts/generate-env.sh && ng build --configuration staging",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "dev": "concurrently \"bun x convex dev\" \"ng serve\"",
