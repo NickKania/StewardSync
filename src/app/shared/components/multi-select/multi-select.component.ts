@@ -1,6 +1,7 @@
 import { Component, input, output, ElementRef, ViewChild, inject, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TruncateTextComponent } from '../truncate-text/truncate-text.component';
 
 export interface MultiSelectOption {
   value: string;
@@ -11,7 +12,7 @@ export interface MultiSelectOption {
 @Component({
   selector: 'app-multi-select',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TruncateTextComponent],
   template: `
     <div class="relative w-full">
       @if (label()) {
@@ -29,15 +30,7 @@ export interface MultiSelectOption {
         [attr.id]="id"
       >
         <div class="flex items-center justify-between">
-          <span class="truncate">
-            @if (selectedCount() > 0) {
-              {{ selectedCount() }} {{ selectedCount() === 1 ? 'option' : 'options' }} selected
-            } @else if (placeholder()) {
-              <span class="text-gray-400 dark:text-gray-500">{{ placeholder() }}</span>
-            } @else {
-              <span class="text-gray-400 dark:text-gray-500">Select options</span>
-            }
-          </span>
+          <app-truncate-text [text]="selectedCount() > 0 ? (selectedCount() + ' ' + (selectedCount() === 1 ? 'option' : 'options') + ' selected') : (placeholder() || 'Select options')" />
           <svg class="w-4 h-4 text-gray-400 transition-transform dark:text-gray-500" [class.rotate-180]="isOpen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
@@ -98,6 +91,16 @@ export class MultiSelectComponent {
 
   selectedCount() {
     return this.options().filter((opt) => opt.selected).length;
+  }
+
+  getDropdownText() {
+    if (this.selectedCount() > 0) {
+      return `${this.selectedCount()} ${this.selectedCount() === 1 ? 'option' : 'options'} selected`;
+    } else if (this.placeholder()) {
+      return this.placeholder();
+    } else {
+      return 'Select options';
+    }
   }
 
   toggleDropdown() {

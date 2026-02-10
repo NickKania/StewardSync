@@ -14,6 +14,7 @@ import {
   FormGroup,
   Validators,
   ReactiveFormsModule,
+  FormsModule,
 } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
@@ -37,6 +38,7 @@ import { User } from "@app/core/models";
     CommonModule,
     RouterLink,
     ReactiveFormsModule,
+    FormsModule,
     CardComponent,
     ButtonComponent,
     BadgeComponent,

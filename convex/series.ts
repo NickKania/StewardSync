@@ -40,6 +40,7 @@ export const create = mutation({
     reportingCloseDuration: v.optional(v.number()),
     isReportingLocked: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
+    seriesPenaltyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     if (args.reportingOpenTime && !isValidTimeFormat(args.reportingOpenTime)) {
@@ -56,6 +57,7 @@ export const create = mutation({
       simgridLink: args.simgridLink,
       reportingOpenTime: args.reportingOpenTime,
       reportingCloseDuration: args.reportingCloseDuration,
+      seriesPenaltyNotes: args.seriesPenaltyNotes,
       createdAt: Date.now(),
     };
 
@@ -82,6 +84,7 @@ export const update = mutation({
     reportingCloseDuration: v.optional(v.number()),
     isReportingLocked: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
+    seriesPenaltyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -107,6 +110,7 @@ export const update = mutation({
     if (updates.reportingCloseDuration !== undefined) cleanUpdates.reportingCloseDuration = updates.reportingCloseDuration;
     if (updates.isReportingLocked !== undefined) cleanUpdates.isReportingLocked = updates.isReportingLocked;
     if (updates.isActive !== undefined) cleanUpdates.isActive = updates.isActive;
+    if (updates.seriesPenaltyNotes !== undefined) cleanUpdates.seriesPenaltyNotes = updates.seriesPenaltyNotes;
 
     await ctx.db.patch(id, cleanUpdates);
     return id;

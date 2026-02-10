@@ -653,6 +653,18 @@ import { Id } from "@convex/_generated/dataModel";
                   dropdowns throughout the application.
                 </p>
               </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                  >Series Penalty Notes (optional)</label
+                >
+                <textarea
+                  class="input w-full"
+                  rows="3"
+                  [(ngModel)]="seriesForm.seriesPenaltyNotes"
+                  placeholder="Add notes to display when changing driver classes in this series..."
+                ></textarea>
+              </div>
               <div class="flex gap-2 justify-end">
                 <app-button variant="secondary" (click)="closeSeriesModal()"
                   >Cancel</app-button
@@ -1096,6 +1108,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     reportingCloseDuration: 0,
     isReportingLocked: false,
     isActive: true,
+    seriesPenaltyNotes: "",
   };
 
   penaltyForm = {
@@ -1241,6 +1254,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       reportingCloseDuration: series.reportingCloseDuration || 0,
       isReportingLocked: series.isReportingLocked || false,
       isActive: series.isActive !== false,
+      seriesPenaltyNotes: series.seriesPenaltyNotes || "",
     };
     this.showSeriesModal = true;
   }
@@ -1261,6 +1275,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           this.seriesForm.reportingCloseDuration || undefined,
         isReportingLocked: this.seriesForm.isReportingLocked,
         isActive: this.seriesForm.isActive,
+        seriesPenaltyNotes: this.seriesForm.seriesPenaltyNotes || undefined,
       });
     } else {
       await this.convex.mutation(this.convex.api.series.create, {
@@ -1272,6 +1287,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           this.seriesForm.reportingCloseDuration || undefined,
         isReportingLocked: this.seriesForm.isReportingLocked,
         isActive: this.seriesForm.isActive,
+        seriesPenaltyNotes: this.seriesForm.seriesPenaltyNotes || undefined,
       });
     }
     this.closeSeriesModal();
@@ -1304,6 +1320,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       reportingCloseDuration: 0,
       isReportingLocked: false,
       isActive: true,
+      seriesPenaltyNotes: "",
     };
   }
 

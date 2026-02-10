@@ -68,6 +68,7 @@ export default defineSchema({
     reportingCloseDuration: v.optional(v.number()),
     isReportingLocked: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
+    seriesPenaltyNotes: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_name", ["name"]),
 

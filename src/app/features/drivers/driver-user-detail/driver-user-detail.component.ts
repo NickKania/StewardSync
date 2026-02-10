@@ -191,6 +191,16 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                         >Cancel</app-button
                       >
                     </div>
+                    <textarea
+                      class="input w-full mt-2 border-red-300 dark:border-red-700"
+                      rows="3"
+                      [ngModel]="
+                        seriesData()[seriesProfile.seriesId]?.seriesPenaltyNotes ||
+                        ''
+                      "
+                      readonly
+                      placeholder="No series penalty notes configured for this series"
+                    ></textarea>
                   } @else {
                     <p class="font-medium text-gray-900 dark:text-gray-100">
                       {{ seriesProfile.driverClassName || "No class" }}
@@ -339,6 +349,7 @@ export class DriverUserDetailComponent implements OnInit {
   selectedDriverIds = signal<string[]>([]);
   staffNoteDraft = signal<string>("");
   savingStaffNote = signal(false);
+  seriesData = signal<Record<string, any>>({});
 
   classOptionsBySeries = signal<Record<string, any[]>>({});
   classSelection = signal<Record<string, string>>({});
@@ -420,6 +431,7 @@ export class DriverUserDetailComponent implements OnInit {
           .map((p: any) => p.driverId);
         this.selectedDriverIds.set(defaultDriverIds);
         await this.loadClassOptions(profile.profiles);
+        await this.loadSeriesDataForProfiles(profile.profiles);
       }
     } catch (error) {
       console.error("Failed to load user driver profile:", error);
@@ -450,6 +462,29 @@ export class DriverUserDetailComponent implements OnInit {
       map[String(seriesId)] = options;
     }
     this.classOptionsBySeries.set(map);
+  }
+
+  private async loadSeriesDataForProfiles(
+    seriesProfiles: any[],
+  ): Promise<void> {
+    const uniqueSeriesIds = [
+      ...new Set(seriesProfiles.map((p) => p.seriesId).filter(Boolean)),
+    ];
+
+    const map: Record<string, any> = {};
+    for (const seriesId of uniqueSeriesIds) {
+      try {
+        const series = await this.convex.query(this.convex.api.series.getById, {
+          id: seriesId as any,
+        });
+        if (series) {
+          map[String(seriesId)] = series;
+        }
+      } catch (error) {
+        console.error(`Failed to load series data for ${seriesId}:`, error);
+      }
+    }
+    this.seriesData.set(map);
   }
 
   toggleDriverSelection(driverId: string): void {

@@ -7,6 +7,7 @@ import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { TruncateTextComponent } from "@shared/components/truncate-text/truncate-text.component";
 import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 import { Id } from "@convex/_generated/dataModel";
 
@@ -20,6 +21,7 @@ import { Id } from "@convex/_generated/dataModel";
     ButtonComponent,
     BadgeComponent,
     LoadingComponent,
+    TruncateTextComponent,
     DateFormatPipe,
   ],
   template: `
@@ -282,10 +284,9 @@ import { Id } from "@convex/_generated/dataModel";
                             <td class="py-3 text-gray-700 dark:text-gray-300">
                               {{ penalty.appliedPenalty?.timePenalty }}s
                             </td>
-                            <td
-                              class="py-3 text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs"
-                            >
-                              {{ penalty.finalDecision }}
+                            <td class="py-3">
+                              <app-truncate-text [text]="penalty.finalDecision" maxW="max-w-xs"
+                                class="text-sm text-gray-600 dark:text-gray-400" />
                             </td>
                             <td class="py-3 text-gray-500 dark:text-gray-400">
                               {{ penalty.finalizedAt | dateFormat: "PPP" }}

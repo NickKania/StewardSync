@@ -6,6 +6,7 @@ import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { TruncateTextComponent } from "@shared/components/truncate-text/truncate-text.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 
 @Component({
@@ -18,6 +19,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
     ButtonComponent,
     BadgeComponent,
     LoadingComponent,
+    TruncateTextComponent,
     DateFormatPipe,
     TimeAgoPipe,
   ],
@@ -101,9 +103,8 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                     </td>
                     <td class="px-6 py-4">
                       <p class="text-gray-900 dark:text-gray-100">Turn {{ report.turn }}</p>
-                      <p class="text-sm text-gray-500 truncate max-w-xs dark:text-gray-400">
-                        {{ report.description }}
-                      </p>
+                      <app-truncate-text [text]="report.description" maxW="max-w-xs"
+                        class="text-sm text-gray-500 dark:text-gray-400" />
                     </td>
                     <td class="px-6 py-4">
                       <app-badge variant="info">
