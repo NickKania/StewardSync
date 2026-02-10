@@ -523,6 +523,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       candidateForStandardization: [false],
       adjustedReason: [""],
     });
+
+    // Add conditional validation for adjustedReason based on isAdjusted
+    this.form.get("isAdjusted")?.valueChanges.subscribe((isAdjusted) => {
+      this.updateAdjustedReasonValidation(isAdjusted);
+    });
   }
 
   ngOnInit(): void {
@@ -530,6 +535,18 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     this.loadStewards();
     this.loadDrivers();
     this.loadSavedSteward();
+  }
+
+  private updateAdjustedReasonValidation(isAdjusted: boolean): void {
+    const adjustedReasonControl = this.form.get("adjustedReason");
+    if (!adjustedReasonControl) return;
+
+    if (isAdjusted) {
+      adjustedReasonControl.setValidators([Validators.required]);
+    } else {
+      adjustedReasonControl.clearValidators();
+    }
+    adjustedReasonControl.updateValueAndValidity();
   }
 
   private loadDrivers(): void {
@@ -582,7 +599,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
           const currentUserReview = currentUserId
             ? (data.reviews || []).find(
-                (review: any) => String(review.userId) === String(currentUserId),
+                (review: any) =>
+                  String(review.userId) === String(currentUserId),
               )
             : null;
           this.currentUserReview.set(currentUserReview || null);
@@ -624,6 +642,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
               ),
               adjustedReason: currentUserReview.adjustedReason || "",
             });
+
+            // Initialize validation for adjustedReason based on isAdjusted value
+            this.updateAdjustedReasonValidation(
+              Boolean(currentUserReview.isAdjusted),
+            );
           }
 
           // Filter out current user's review if exists
@@ -811,7 +834,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         videoTimestamp: formValue.videoTimestamp || undefined,
         isSelfReport: formValue.isSelfReport || false,
         isAdjusted: formValue.isAdjusted || false,
-        candidateForStandardization: formValue.candidateForStandardization || false,
+        candidateForStandardization:
+          formValue.candidateForStandardization || false,
         adjustedReason:
           formValue.isAdjusted && formValue.adjustedReason
             ? formValue.adjustedReason
@@ -856,7 +880,9 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       }
 
       this.toast.success(
-        useUpdate ? "Review updated successfully" : "Review submitted successfully",
+        useUpdate
+          ? "Review updated successfully"
+          : "Review submitted successfully",
       );
 
       await this.router.navigate([options.redirectTo], {

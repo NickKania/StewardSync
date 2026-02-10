@@ -499,7 +499,8 @@ export const finalize = mutation({
     }
 
     const now = Date.now();
-    const effectiveAtFaultDriverId = args.atFaultDriverId ?? report.reportedDriverId;
+    const effectiveAtFaultDriverId =
+      args.atFaultDriverId ?? report.reportedDriverId;
 
     let appliedPenaltyDoc: any = null;
     if (args.appliedPenalty) {
@@ -586,7 +587,9 @@ export const finalize = mutation({
         const totalPoints = penaltyAccumulator[driverId] ?? 0;
         const driverClassId = driver.driverClassId || null;
 
-        console.log(`[FINALIZE] Checking driver ${driver.driverNumber} (${driverId}): totalPoints=${totalPoints}, driverClassId=${driverClassId}`);
+        console.log(
+          `[FINALIZE] Checking driver ${driver.driverNumber} (${driverId}): totalPoints=${totalPoints}, driverClassId=${driverClassId}`,
+        );
 
         const existingDriverSeriesPenalties = await ctx.db
           .query("driverSeriesPenalties")
@@ -616,7 +619,9 @@ export const finalize = mutation({
           }
         }
 
-        console.log(`[FINALIZE] Driver ${driver.driverNumber} has ${existingDriverSeriesPenalties.length} existing penalties, ${assignedThresholds.length} unserved`);
+        console.log(
+          `[FINALIZE] Driver ${driver.driverNumber} has ${existingDriverSeriesPenalties.length} existing penalties, ${assignedThresholds.length} unserved`,
+        );
 
         for (const seriesPenalty of seriesPenalties) {
           const thresholds = await ctx.db
@@ -627,14 +632,23 @@ export const finalize = mutation({
             .collect();
 
           for (const threshold of thresholds) {
-            const appliesToDriver = driverClassId && threshold.driverClassIds && threshold.driverClassIds.includes(driverClassId as any);
+            const appliesToDriver =
+              driverClassId &&
+              threshold.driverClassIds &&
+              threshold.driverClassIds.includes(driverClassId as any);
             const thresholdMet = totalPoints >= threshold.threshold;
-            const alreadyAssigned = assignedThresholds.includes(threshold._id.toString());
+            const alreadyAssigned = assignedThresholds.includes(
+              threshold._id.toString(),
+            );
 
-            console.log(`[FINALIZE] Checking threshold for ${seriesPenalty.penaltyName}: applies=${appliesToDriver}, threshold=${threshold.threshold}, met=${thresholdMet}, alreadyAssigned=${alreadyAssigned}`);
+            console.log(
+              `[FINALIZE] Checking threshold for ${seriesPenalty.penaltyName}: applies=${appliesToDriver}, threshold=${threshold.threshold}, met=${thresholdMet}, alreadyAssigned=${alreadyAssigned}`,
+            );
 
             if (appliesToDriver && thresholdMet && !alreadyAssigned) {
-              console.log(`[FINALIZE] >>> ASSIGNING penalty ${seriesPenalty.penaltyName} to driver ${driver.driverNumber}`);
+              console.log(
+                `[FINALIZE] >>> ASSIGNING penalty ${seriesPenalty.penaltyName} to driver ${driver.driverNumber}`,
+              );
               const insertedId = await ctx.db.insert("driverSeriesPenalties", {
                 driverId: driver._id,
                 seriesId: event.seriesId,
@@ -804,6 +818,16 @@ export const createBySteward = mutation({
       updatedAt: now,
     });
 
+    // Validate that adjustedReason is provided when isAdjusted is true
+    if (
+      args.isAdjusted &&
+      (!args.adjustedReason || args.adjustedReason.trim() === "")
+    ) {
+      return failure(
+        "Adjusted reason is required when the incident is marked as adjusted",
+      );
+    }
+
     const reviewData = {
       userId: args.reportingUserId,
       reportId: reportId,
@@ -930,7 +954,9 @@ export const getPreviousWeekEventStatus = query({
   args: {},
   handler: async (ctx) => {
     const seriesList = await ctx.db.query("series").collect();
-    const activeSeries = seriesList.filter((series) => series.isActive !== false);
+    const activeSeries = seriesList.filter(
+      (series) => series.isActive !== false,
+    );
     const activeSeriesIds = new Set(
       activeSeries.map((series) => series._id.toString()),
     );
@@ -948,7 +974,7 @@ export const getPreviousWeekEventStatus = query({
       .order("desc")
       .collect();
 
-    const latestEventBySeries = new Map<string, typeof events[number]>();
+    const latestEventBySeries = new Map<string, (typeof events)[number]>();
     for (const event of events) {
       const seriesId = event.seriesId.toString();
       if (!activeSeriesIds.has(seriesId)) {
@@ -987,9 +1013,12 @@ export const getPreviousWeekEventStatus = query({
           eventDate: event.eventDate,
         },
         stats: {
-          pending: reports.filter((report) => report.status === "pending").length,
-          reviewed: reports.filter((report) => report.status === "reviewed").length,
-          finalized: reports.filter((report) => report.status === "finalized").length,
+          pending: reports.filter((report) => report.status === "pending")
+            .length,
+          reviewed: reports.filter((report) => report.status === "reviewed")
+            .length,
+          finalized: reports.filter((report) => report.status === "finalized")
+            .length,
         },
       });
     }
