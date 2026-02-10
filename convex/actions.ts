@@ -98,6 +98,7 @@ async function runImportOrUpdateDriver(
     driverName: string;
     username?: string;
     steamId?: string;
+    driverClassId?: string;
   },
 ): Promise<ImportOrUpdateDriverResult> {
   // @ts-ignore - Circular type inference in Convex API
@@ -139,12 +140,23 @@ export const importDriversFromSimGrid = action({
           continue;
         }
 
+        // Get or create driver class based on carClass from SimGrid
+        let driverClassId: string | undefined;
+        if (simgridDriver.carClass) {
+          const classResult: any = await ctx.runMutation(api.driverClasses.getOrCreate, {
+            seriesId: args.championshipId,
+            className: simgridDriver.carClass,
+          });
+          driverClassId = classResult.driverClassId;
+        }
+
         const result = await runImportOrUpdateDriver(ctx, {
           championshipId: args.championshipId,
           driverNumber: carNumber,
           driverName: simgridDriver.realName,
           username: simgridDriver.username,
           steamId: simgridDriver.steam64Id || undefined,
+          driverClassId,
         });
         
         results.push({

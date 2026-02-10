@@ -525,6 +525,7 @@ export const importOrUpdateDriver = mutation({
     driverName: v.string(),
     username: v.optional(v.string()),
     steamId: v.optional(v.string()),
+    driverClassId: v.optional(v.id("driverClasses")),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -544,6 +545,7 @@ export const importOrUpdateDriver = mutation({
         officialName,
         username: args.username,
         steamId: args.steamId,
+        driverClassId: args.driverClassId,
         isActive: true,
       });
 
@@ -567,6 +569,7 @@ export const importOrUpdateDriver = mutation({
         username: args.username,
         steamId: args.steamId,
         championshipId: args.championshipId,
+        driverClassId: args.driverClassId,
         isActive: true,
       });
 
@@ -586,6 +589,7 @@ export const importOrUpdateDriver = mutation({
       username: args.username,
       steamId: args.steamId,
       championshipId: args.championshipId,
+      driverClassId: args.driverClassId,
       accumulatedLicensePoints: 0,
       isActive: true,
       createdAt: Date.now(),
