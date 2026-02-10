@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ConvexService } from '@core/services/convex.service';
@@ -90,17 +90,33 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
-                  <th class="px-6 py-3 font-medium">At Fault Driver</th>
-                  <th class="px-6 py-3 font-medium">Event</th>
-                  <th class="px-6 py-3 font-medium">Incident</th>
-                  <th class="px-6 py-3 font-medium">Filed</th>
-                  <th class="px-6 py-3 font-medium">Reviews</th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortPending('ticketId')">
+                    Ticket ID{{ getSortArrow('ticketId', pendingSortColumn(), pendingSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortPending('atFaultDriver')">
+                    At Fault Driver{{ getSortArrow('atFaultDriver', pendingSortColumn(), pendingSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortPending('event')">
+                    Event{{ getSortArrow('event', pendingSortColumn(), pendingSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortPending('incident')">
+                    Incident{{ getSortArrow('incident', pendingSortColumn(), pendingSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortPending('filed')">
+                    Filed{{ getSortArrow('filed', pendingSortColumn(), pendingSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortPending('reviews')">
+                    Reviews{{ getSortArrow('reviews', pendingSortColumn(), pendingSortDirection()) }}
+                  </th>
                   <th class="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                 @for (report of pendingReports(); track report._id) {
+                 @for (report of sortedPendingReports(); track report._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td class="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {{ report._id }}
+                    </td>
                     <td class="px-6 py-4">
                       <p class="font-medium text-gray-900 dark:text-gray-100">{{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}</p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}</p>
@@ -154,16 +170,30 @@ import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
-                  <th class="px-6 py-3 font-medium">At Fault Driver</th>
-                  <th class="px-6 py-3 font-medium">Event</th>
-                  <th class="px-6 py-3 font-medium">Reviews</th>
-                  <th class="px-6 py-3 font-medium">Status</th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortReviewed('ticketId')">
+                    Ticket ID{{ getSortArrow('ticketId', reviewedSortColumn(), reviewedSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortReviewed('atFaultDriver')">
+                    At Fault Driver{{ getSortArrow('atFaultDriver', reviewedSortColumn(), reviewedSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortReviewed('event')">
+                    Event{{ getSortArrow('event', reviewedSortColumn(), reviewedSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortReviewed('reviews')">
+                    Reviews{{ getSortArrow('reviews', reviewedSortColumn(), reviewedSortDirection()) }}
+                  </th>
+                  <th class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" (click)="sortReviewed('status')">
+                    Status{{ getSortArrow('status', reviewedSortColumn(), reviewedSortDirection()) }}
+                  </th>
                   <th class="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                 @for (report of reviewedReports(); track report._id) {
+                 @for (report of sortedReviewedReports(); track report._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td class="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {{ report._id }}
+                    </td>
                     <td class="px-6 py-4">
                       <p class="font-medium text-gray-900 dark:text-gray-100">{{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}</p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">#{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}</p>
@@ -206,6 +236,27 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
   reviewedReports = signal<any[]>([]);
   reviewStats = signal<any>(null);
   loading = signal(true);
+
+  pendingSortColumn = signal<string | null>(null);
+  pendingSortDirection = signal<'asc' | 'desc'>('asc');
+  reviewedSortColumn = signal<string | null>(null);
+  reviewedSortDirection = signal<'asc' | 'desc'>('asc');
+
+  sortedPendingReports = computed(() => {
+    const reports = this.pendingReports();
+    const column = this.pendingSortColumn();
+    const direction = this.pendingSortDirection();
+    if (!column) return reports;
+    return this.sortReports([...reports], column, direction);
+  });
+
+  sortedReviewedReports = computed(() => {
+    const reports = this.reviewedReports();
+    const column = this.reviewedSortColumn();
+    const direction = this.reviewedSortDirection();
+    if (!column) return reports;
+    return this.sortReports([...reports], column, direction);
+  });
 
   private unsubscribes: (() => void)[] = [];
 
@@ -280,5 +331,60 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
     const currentUserId = this.authService.getUserId();
     if (!currentUserId) return false;
     return String(report?.reportingUserId) === String(currentUserId);
+  }
+
+  sortPending(column: string): void {
+    if (this.pendingSortColumn() === column) {
+      this.pendingSortDirection.set(this.pendingSortDirection() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.pendingSortColumn.set(column);
+      this.pendingSortDirection.set('asc');
+    }
+  }
+
+  sortReviewed(column: string): void {
+    if (this.reviewedSortColumn() === column) {
+      this.reviewedSortDirection.set(this.reviewedSortDirection() === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.reviewedSortColumn.set(column);
+      this.reviewedSortDirection.set('asc');
+    }
+  }
+
+  private sortReports(reports: any[], column: string, direction: 'asc' | 'desc'): any[] {
+    return reports.sort((a, b) => {
+      let comparison = 0;
+      const aVal = this.getSortValue(a, column);
+      const bVal = this.getSortValue(b, column);
+      if (aVal < bVal) comparison = -1;
+      if (aVal > bVal) comparison = 1;
+      return direction === 'asc' ? comparison : -comparison;
+    });
+  }
+
+  private getSortValue(report: any, column: string): any {
+    switch (column) {
+      case 'ticketId':
+        return report._id;
+      case 'atFaultDriver':
+        return (report.atFaultDriver || report.reportedDriver)?.driverName?.toLowerCase() || '';
+      case 'event':
+        return `${report.event?.trackName || ''} ${report.race?.raceNumber || ''}`;
+      case 'incident':
+        return report.turn;
+      case 'filed':
+        return new Date(report.reportDate || 0);
+      case 'reviews':
+        return report.reviewCount || 0;
+      case 'status':
+        return 'Reviewed';
+      default:
+        return '';
+    }
+  }
+
+  getSortArrow(column: string, currentSortColumn: string | null, direction: 'asc' | 'desc'): string {
+    if (column !== currentSortColumn) return '';
+    return direction === 'asc' ? ' ↑' : ' ↓';
   }
 }

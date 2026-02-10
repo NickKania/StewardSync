@@ -199,24 +199,6 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 }
               </div>
 
-              <!-- Turn -->
-              <div>
-                <label class="label">Turn Number *</label>
-                <input
-                  type="number"
-                  formControlName="turn"
-                  class="input"
-                  [class.input-error]="
-                    form.get('turn')?.invalid && form.get('turn')?.touched
-                  "
-                  placeholder="Enter the turn"
-                  min="1"
-                />
-                @if (form.get("turn")?.invalid && form.get("turn")?.touched) {
-                  <p class="mt-1 text-sm text-red-600">Turn is required</p>
-                }
-              </div>
-
               <!-- Lap -->
               <div>
                 <label class="label">Lap Number *</label>
@@ -232,6 +214,24 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 />
                 @if (form.get("lap")?.invalid && form.get("lap")?.touched) {
                   <p class="mt-1 text-sm text-red-600">Lap is required</p>
+                }
+              </div>
+
+              <!-- Turn -->
+              <div>
+                <label class="label">Turn Number *</label>
+                <input
+                  type="number"
+                  formControlName="turn"
+                  class="input"
+                  [class.input-error]="
+                    form.get('turn')?.invalid && form.get('turn')?.touched
+                  "
+                  placeholder="Enter the turn"
+                  min="1"
+                />
+                @if (form.get("turn")?.invalid && form.get("turn")?.touched) {
+                  <p class="mt-1 text-sm text-red-600">Turn is required</p>
                 }
               </div>
 
