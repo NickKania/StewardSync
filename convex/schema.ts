@@ -174,6 +174,9 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     notificationSentAt: v.optional(v.number()),
     notificationError: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    notesUpdatedAt: v.optional(v.number()),
+    notesUpdatedBy: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

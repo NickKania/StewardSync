@@ -162,6 +162,16 @@ import { User } from "@app/core/models";
                     />
                   </div>
 
+                  <!-- Adjusted toggle -->
+                  <div>
+                    <app-toggle
+                      formControlName="isAdjusted"
+                      label="Adjusted"
+                      hint="Incident description was adjusted?"
+                    />
+                  </div>
+
+                  <!-- Candidate for standardization -->
                   <div>
                     <label
                       class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
@@ -178,6 +188,22 @@ import { User } from "@app/core/models";
                       for standardization
                     </p>
                   </div>
+
+                  <!-- Adjusted reason (conditionally shown) -->
+                  @if (form.get("isAdjusted")?.value) {
+                    <div>
+                      <label class="label">Adjusted Reason</label>
+                      <textarea
+                        formControlName="adjustedReason"
+                        class="input min-h-[80px]"
+                        placeholder="Explain why the incident was adjusted..."
+                        rows="3"
+                      ></textarea>
+                      <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                        This will be added as a note to the incident description
+                      </p>
+                    </div>
+                  }
 
                   <!-- Official notes -->
                   <div>
@@ -462,8 +488,26 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       atFaultDriverId: [""],
       officialNotes: [""],
       isSelfReport: [false],
+      isAdjusted: [false],
       candidateForStandardization: [false],
+      adjustedReason: [""],
     });
+
+    this.form.get("isAdjusted")?.valueChanges.subscribe((isAdjusted) => {
+      this.updateAdjustedReasonValidation(isAdjusted);
+    });
+  }
+
+  private updateAdjustedReasonValidation(isAdjusted: boolean): void {
+    const adjustedReasonControl = this.form.get("adjustedReason");
+    if (!adjustedReasonControl) return;
+
+    if (isAdjusted) {
+      adjustedReasonControl.setValidators([Validators.required]);
+    } else {
+      adjustedReasonControl.clearValidators();
+    }
+    adjustedReasonControl.updateValueAndValidity();
   }
 
   ngOnInit(): void {
@@ -524,6 +568,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           const standardizationControl = this.form.get(
             "candidateForStandardization",
           );
+          const adjustedControl = this.form.get("isAdjusted");
+          const adjustedReasonControl = this.form.get("adjustedReason");
           const atFaultDriverControl = this.form.get("atFaultDriverId");
 
           if (latestReview?.incidentDescription && incidentControl) {
@@ -554,6 +600,28 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             if (standardizationControl.pristine && currentValue !== newValue) {
               standardizationControl.setValue(newValue);
             }
+          }
+
+          if (latestReview?.isAdjusted !== undefined && adjustedControl) {
+            const currentValue = adjustedControl.value;
+            const newValue = latestReview.isAdjusted;
+
+            if (adjustedControl.pristine && currentValue !== newValue) {
+              adjustedControl.setValue(newValue);
+            }
+          }
+
+          if (latestReview?.adjustedReason && adjustedReasonControl) {
+            const currentValue = adjustedReasonControl.value;
+            const newValue = latestReview.adjustedReason;
+
+            if (adjustedReasonControl.pristine && currentValue !== newValue) {
+              adjustedReasonControl.setValue(newValue);
+            }
+          }
+
+          if (latestReview?.isAdjusted !== undefined) {
+            this.updateAdjustedReasonValidation(Boolean(latestReview.isAdjusted));
           }
 
           // Pre-select atFaultDriverId from latest review or reportedDriver
@@ -741,6 +809,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             reviewId: latestReview._id,
             candidateForStandardization:
               formValue.candidateForStandardization || false,
+            isAdjusted: formValue.isAdjusted || false,
+            adjustedReason:
+              formValue.isAdjusted && formValue.adjustedReason
+                ? formValue.adjustedReason
+                : undefined,
           });
         }
       }
@@ -755,6 +828,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           atFaultDriverId: formValue.atFaultDriverId || undefined,
           officialNotes: formValue.officialNotes || "",
           isSelfReport: formValue.isSelfReport || false,
+          isAdjusted: formValue.isAdjusted || false,
+          adjustedReason:
+            formValue.isAdjusted && formValue.adjustedReason
+              ? formValue.adjustedReason
+              : undefined,
         },
       );
 

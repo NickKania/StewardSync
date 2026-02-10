@@ -22,6 +22,7 @@ import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { ModalComponent } from "@shared/components/modal/modal.component";
 import { SearchSelectComponent } from "@shared/components/search-select/search-select.component";
 import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
@@ -40,6 +41,7 @@ import { User } from "@app/core/models";
     ButtonComponent,
     BadgeComponent,
     LoadingComponent,
+    ModalComponent,
     SearchSelectComponent,
     ToggleComponent,
     DateFormatPipe,
@@ -272,7 +274,14 @@ import { User } from "@app/core/models";
                   card-footer
                   class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
                 >
-                  <div class="flex gap-3">
+                  <div class="flex flex-col sm:flex-row gap-3">
+                    <app-button
+                      type="button"
+                      variant="danger"
+                      (onClick)="showRejectModal = true"
+                    >
+                      Reject Report
+                    </app-button>
                     <app-button
                       type="button"
                       variant="secondary"
@@ -429,6 +438,43 @@ import { User } from "@app/core/models";
         </app-card>
       }
     </div>
+
+    <!-- Reject confirmation modal -->
+    <app-modal
+      [isOpen]="showRejectModal"
+      title="Reject Report"
+      (close)="showRejectModal = false"
+    >
+      <p class="text-gray-600 mb-4 dark:text-gray-300">
+        Are you sure you want to reject this report? This action cannot be
+        undone.
+      </p>
+      <div>
+        <label class="label">Rejection Reason</label>
+        <textarea
+          [(ngModel)]="rejectionReason"
+          class="input min-h-[80px]"
+          placeholder="Explain why this report is being rejected..."
+          rows="3"
+        ></textarea>
+      </div>
+      <div
+        modal-footer
+        class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 dark:bg-gray-800 dark:border-gray-700"
+      >
+        <app-button variant="secondary" (onClick)="showRejectModal = false">
+          Cancel
+        </app-button>
+        <app-button
+          variant="danger"
+          [loading]="submitting()"
+          [disabled]="!rejectionReason"
+          (onClick)="rejectReport()"
+        >
+          Reject Report
+        </app-button>
+      </div>
+    </app-modal>
   `,
 })
 export class ReviewFormComponent implements OnInit, OnDestroy {
@@ -450,6 +496,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   drivers = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
+  showRejectModal = false;
+  rejectionReason = "";
   secondStewardUnsubscribe: (() => void) | null = null;
   primaryActionLabel = computed(() =>
     this.isReportingUser() ? "Save Changes" : "Submit Review",
@@ -655,6 +703,16 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
             (r: any) => r.userId !== currentUserId,
           );
           this.existingReviews.set(otherReviews);
+
+          // If there's exactly one other review and current user hasn't reviewed yet,
+          // pre-fill the form with that review's data
+          if (!currentUserReview && otherReviews.length === 1) {
+            const firstReview = otherReviews[0];
+            this.form.patchValue({
+              incidentDescription: firstReview.incidentDescription || "",
+              recommendedPenalty: firstReview.recommendedPenalty || "",
+            });
+          }
 
           // Load penalties for this series
           if (data?.event?.seriesId) {
@@ -936,6 +994,36 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     });
 
     return Boolean(existingReview);
+  }
+
+  async rejectReport(): Promise<void> {
+    if (!this.rejectionReason) return;
+
+    this.submitting.set(true);
+
+    try {
+      const result = await this.convex.mutation(
+        this.convex.api.reports.reject,
+        {
+          reportId: this.reportId as any,
+          officialNotes: this.rejectionReason,
+        },
+      );
+
+      if (!result.success) {
+        this.toast.error(result.error);
+        this.submitting.set(false);
+        return;
+      }
+
+      this.toast.success("Report rejected");
+      this.showRejectModal = false;
+      this.router.navigate(["/reviews"]);
+    } catch (error: any) {
+      this.toast.error(error.message || "Failed to reject report");
+    } finally {
+      this.submitting.set(false);
+    }
   }
 
   cancel(): void {

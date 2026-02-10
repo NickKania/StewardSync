@@ -375,16 +375,18 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                           </app-badge>
                         }
                       </div>
-                      <p class="text-gray-700 text-sm dark:text-gray-300">
-                        {{ review.reviewNotes }}
-                      </p>
-                      @if (review.videoTimestamp) {
-                        <p
-                          class="text-sm text-gray-500 mt-2 dark:text-gray-400"
-                        >
-                          Video timestamp: {{ review.videoTimestamp }}
+                      <div *appHasRole="['steward', 'head_steward', 'league_manager']">
+                        <p class="text-gray-700 text-sm dark:text-gray-300">
+                          {{ review.reviewNotes }}
                         </p>
-                      }
+                        @if (review.videoTimestamp) {
+                          <p
+                            class="text-sm text-gray-500 mt-2 dark:text-gray-400"
+                          >
+                            Video timestamp: {{ review.videoTimestamp }}
+                          </p>
+                        }
+                      </div>
                     </div>
                   }
                 </div>
