@@ -334,13 +334,13 @@ export class ReportListComponent implements OnInit, OnDestroy {
   filterReports(): void {
     let filtered = [...this.reports()];
 
-    // Filter by role: drivers can only see reports they filed
+    // Filter by role: drivers can see their own reports AND all finalized reports
     const userRole = this.authService.userRole();
     if (userRole === "driver") {
       const currentUserId = this.authService.getUserId();
-      // For drivers, filter to show only reports where they are the reporting user
-      // This handles both driver-filed reports and steward-filed reports on their behalf
-      filtered = filtered.filter((r) => r.reportingUserId === currentUserId);
+      filtered = filtered.filter((r) => 
+        r.reportingUserId === currentUserId || r.status === "finalized"
+      );
     }
 
     // Filter by series
