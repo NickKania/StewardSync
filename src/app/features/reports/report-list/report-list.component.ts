@@ -2,6 +2,7 @@ import { Component, inject, OnInit, OnDestroy, signal, computed } from "@angular
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
 import { CardComponent } from "@shared/components/card/card.component";
@@ -88,8 +89,17 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
               label="Event"
               [options]="eventOptions()"
               [(ngModel)]="selectedEvent"
-              (ngModelChange)="filterReports()"
+              (ngModelChange)="onEventChange()"
               placeholder="All events"
+            />
+          </div>
+          <div class="w-48">
+            <app-select
+              label="Race"
+              [options]="raceOptions()"
+              [(ngModel)]="selectedRace"
+              (ngModelChange)="filterReports()"
+              placeholder="All races"
             />
           </div>
         </div>
@@ -208,6 +218,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 export class ReportListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
 
   canViewReportingUser = computed(() =>
     this.authService.hasMinimumRole("steward"),
@@ -216,12 +227,14 @@ export class ReportListComponent implements OnInit, OnDestroy {
   reports = signal<any[]>([]);
   filteredReports = signal<any[]>([]);
   events = signal<any[]>([]);
+  races = signal<any[]>([]);
   activeSeries = signal<any[]>([]);
   loading = signal(true);
 
   selectedStatus = "";
   selectedEvent = "";
   selectedSeries = "";
+  selectedRace = "";
 
   statusOptions: SelectOption[] = [
     { value: "", label: "All statuses" },
@@ -263,6 +276,22 @@ export class ReportListComponent implements OnInit, OnDestroy {
       ...filteredEvents.map((e: any) => ({
         value: e._id,
         label: `${e.trackName} (${e.series.name})`,
+      })),
+    ];
+  });
+
+  raceOptions = computed<SelectOption[]>(() => {
+    let filteredRaces = this.races();
+
+    if (this.selectedEvent) {
+      filteredRaces = filteredRaces.filter((r) => r.eventId === this.selectedEvent);
+    }
+
+    return [
+      { value: "", label: "All races" },
+      ...filteredRaces.map((r: any) => ({
+        value: r._id,
+        label: `Race ${r.raceNumber}`,
       })),
     ];
   });
@@ -324,10 +353,42 @@ export class ReportListComponent implements OnInit, OnDestroy {
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkActiveSeries));
+
+    // Load races for filter
+    const racesQuery = this.convex.createReactiveQuery(
+      this.convex.api.races.list,
+      {},
+    );
+    this.unsubscribes.push(racesQuery.unsubscribe);
+
+    const checkRaces = setInterval(() => {
+      const data = racesQuery.data();
+      if (data) {
+        this.races.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkRaces));
+
+    // Read query parameters and apply initial filters
+    this.route.queryParams.subscribe((params) => {
+      if (params['event']) {
+        this.selectedEvent = params['event'];
+      }
+      if (params['race']) {
+        this.selectedRace = params['race'];
+      }
+      this.filterReports();
+    });
   }
 
   onSeriesChange(): void {
     this.selectedEvent = "";
+    this.selectedRace = "";
+    this.filterReports();
+  }
+
+  onEventChange(): void {
+    this.selectedRace = "";
     this.filterReports();
   }
 
@@ -338,7 +399,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
     const userRole = this.authService.userRole();
     if (userRole === "driver") {
       const currentUserId = this.authService.getUserId();
-      filtered = filtered.filter((r) => 
+      filtered = filtered.filter((r) =>
         r.reportingUserId === currentUserId || r.status === "finalized"
       );
     }
@@ -357,6 +418,10 @@ export class ReportListComponent implements OnInit, OnDestroy {
 
     if (this.selectedEvent) {
       filtered = filtered.filter((r) => r.eventId === this.selectedEvent);
+    }
+
+    if (this.selectedRace) {
+      filtered = filtered.filter((r) => r.raceId === this.selectedRace);
     }
 
     this.filteredReports.set(filtered);
