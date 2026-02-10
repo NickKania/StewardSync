@@ -67,6 +67,15 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
         <div class="flex flex-wrap gap-4">
           <div class="w-48">
             <app-select
+              label="Series"
+              [options]="seriesOptions()"
+              [(ngModel)]="selectedSeries"
+              (ngModelChange)="onSeriesChange()"
+              placeholder="All series"
+            />
+          </div>
+          <div class="w-48">
+            <app-select
               label="Status"
               [options]="statusOptions"
               [(ngModel)]="selectedStatus"
@@ -212,6 +221,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
 
   selectedStatus = "";
   selectedEvent = "";
+  selectedSeries = "";
 
   statusOptions: SelectOption[] = [
     { value: "", label: "All statuses" },
@@ -225,11 +235,27 @@ export class ReportListComponent implements OnInit, OnDestroy {
     this.activeSeries().map((s) => s._id.toString()),
   );
 
+  seriesOptions = computed<SelectOption[]>(() => {
+    return [
+      { value: "", label: "All series" },
+      ...this.activeSeries().map((s: any) => ({
+        value: s._id,
+        label: s.name,
+      })),
+    ];
+  });
+
   eventOptions = computed<SelectOption[]>(() => {
     const activeIds = this.activeSeriesIds();
-    const filteredEvents = this.events().filter((e) =>
+    let filteredEvents = this.events().filter((e) =>
       activeIds.includes(e.seriesId.toString()),
     );
+
+    // Further filter by selected series if one is chosen
+    if (this.selectedSeries) {
+      filteredEvents = filteredEvents.filter((e) => e.seriesId === this.selectedSeries);
+    }
+
     return [
       { value: "", label: "All events" },
       ...filteredEvents.map((e: any) => ({
@@ -298,6 +324,11 @@ export class ReportListComponent implements OnInit, OnDestroy {
     this.unsubscribes.push(() => clearInterval(checkActiveSeries));
   }
 
+  onSeriesChange(): void {
+    this.selectedEvent = "";
+    this.filterReports();
+  }
+
   filterReports(): void {
     let filtered = [...this.reports()];
 
@@ -308,6 +339,14 @@ export class ReportListComponent implements OnInit, OnDestroy {
       // For drivers, filter to show only reports where they are the reporting user
       // This handles both driver-filed reports and steward-filed reports on their behalf
       filtered = filtered.filter((r) => r.reportingUserId === currentUserId);
+    }
+
+    // Filter by series
+    if (this.selectedSeries) {
+      filtered = filtered.filter((r) => {
+        const event = this.events().find((e) => e._id === r.eventId);
+        return event && event.seriesId === this.selectedSeries;
+      });
     }
 
     if (this.selectedStatus) {
