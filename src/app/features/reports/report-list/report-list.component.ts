@@ -253,7 +253,9 @@ export class ReportListComponent implements OnInit, OnDestroy {
 
     // Further filter by selected series if one is chosen
     if (this.selectedSeries) {
-      filteredEvents = filteredEvents.filter((e) => e.seriesId === this.selectedSeries);
+      filteredEvents = filteredEvents.filter((e) =>
+        e.seriesId.toString() === this.selectedSeries.toString(),
+      );
     }
 
     return [
