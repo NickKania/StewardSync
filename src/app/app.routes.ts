@@ -169,9 +169,9 @@ export const routes: Routes = [
       {
         path: ":id",
         loadComponent: () =>
-          import("@features/drivers/driver-detail/driver-detail.component").then(
-            (m) => m.DriverDetailComponent,
-          ),
+          import(
+            "@features/drivers/driver-user-detail/driver-user-detail.component"
+          ).then((m) => m.DriverUserDetailComponent),
       },
     ],
   },
