@@ -150,7 +150,7 @@ export const routes: Routes = [
   {
     path: "drivers",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ["head_steward", "event_manager", "league_manager"] },
+    data: { roles: ["steward", "head_steward", "event_manager", "league_manager"] },
     children: [
       {
         path: "",
