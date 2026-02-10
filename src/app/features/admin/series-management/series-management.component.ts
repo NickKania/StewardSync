@@ -578,7 +578,7 @@ import { Id } from "@convex/_generated/dataModel";
               <div>
                 <label
                   class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
-                  >Reporting Opens At (optional)</label
+                  >Reporting Opens At (optional) - {{ timezoneDisplay() }}</label
                 >
                 <div class="flex gap-2">
                   <input
@@ -1160,6 +1160,15 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   selectedClasses = computed(() =>
     this.selectedDriverClasses().filter((opt) => opt.selected),
   );
+
+  timezoneDisplay = computed(() => {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const offset = new Date().getTimezoneOffset();
+    const offsetHours = Math.abs(Math.floor(offset / 60));
+    const offsetMinutes = Math.abs(offset % 60);
+    const sign = offset <= 0 ? '+' : '-';
+    return `${timeZone} (UTC${sign}${offsetHours.toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')})`;
+  });
 
   private unsubscribes: (() => void)[] = [];
   importing = signal(false);
