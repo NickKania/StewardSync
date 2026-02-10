@@ -433,10 +433,10 @@ export const updateWithSecondSteward = mutation({
     };
 
     const cleanUpdates = Object.fromEntries(
-      Object.entries(baseUpdates).filter(([_, v]) => v !== undefined),
+      Object.entries(updates).filter(([_, v]) => v !== undefined),
     );
 
-    await ctx.db.patch(reviewId, {
+    await ctx.db.patch(args.reviewId, {
       ...cleanUpdates,
       updatedAt: Date.now(),
     });
@@ -446,10 +446,10 @@ export const updateWithSecondSteward = mutation({
       const linkedReview = await ctx.db.get(linkedReviewId);
       if (linkedReview) {
         await ctx.db.patch(linkedReviewId, {
-          userId: secondStewardId,
+          userId: args.secondStewardId,
           updatedAt: Date.now(),
         });
-        return reviewId;
+        return args.reviewId;
       }
       linkedReviewId = null;
     }
@@ -457,23 +457,23 @@ export const updateWithSecondSteward = mutation({
     const existingSecondReview = await ctx.db
       .query("reviews")
       .withIndex("by_report", (q) => q.eq("reportId", review.reportId))
-      .filter((q) => q.eq(q.field("userId"), secondStewardId))
+      .filter((q) => q.eq(q.field("userId"), args.secondStewardId))
       .first();
 
     if (existingSecondReview) {
       await ctx.db.patch(existingSecondReview._id, {
-        linkedReviewId: reviewId,
+        linkedReviewId: args.reviewId,
         updatedAt: Date.now(),
       });
-      await ctx.db.patch(reviewId, {
+      await ctx.db.patch(args.reviewId, {
         linkedReviewId: existingSecondReview._id,
         updatedAt: Date.now(),
       });
-      return reviewId;
+      return args.reviewId;
     }
 
     const secondReviewId = await ctx.db.insert("reviews", {
-      userId: secondStewardId,
+      userId: args.secondStewardId,
       reportId: review.reportId,
       incidentDescription:
         updates.incidentDescription ?? review.incidentDescription,
@@ -485,15 +485,15 @@ export const updateWithSecondSteward = mutation({
       isSelfReport: updates.isSelfReport,
       isAdjusted: updates.isAdjusted,
       adjustedReason: updates.adjustedReason,
-      linkedReviewId: reviewId,
+      linkedReviewId: args.reviewId,
       reviewDate: review.reviewDate ?? Date.now(),
       createdAt: review.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     });
 
-    await ctx.db.patch(reviewId, { linkedReviewId: secondReviewId });
+    await ctx.db.patch(args.reviewId, { linkedReviewId: secondReviewId });
 
-    return reviewId;
+    return args.reviewId;
   },
 });
 

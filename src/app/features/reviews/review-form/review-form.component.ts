@@ -27,6 +27,7 @@ import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
 import { SelectOption } from "@shared/components/select/select.component";
+import { User } from "@app/core/models";
 
 @Component({
   selector: "app-review-form",
@@ -479,7 +480,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     return [
       { value: "", label: "Reviewing alone" },
       ...this.stewards()
-        .filter((steward) => {
+        .filter((steward: User) => {
           // Exclude current user
           if (String(steward._id) === String(currentUserId)) return false;
 
@@ -501,9 +502,9 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
           return true;
         })
-        .map((steward) => ({
+        .map((steward: User) => ({
           value: steward._id,
-          label: `${steward.name} (${steward.role?.name || "Unknown"})`,
+          label: `${steward.officialName ?? steward.name} (${steward.role?.name || "Unknown"})`,
         })),
     ];
   });
