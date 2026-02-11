@@ -100,11 +100,25 @@ export const getByIdWithUser = query({
       series = await ctx.db.get(driver.championshipId);
     }
 
+    let driverClassData = null;
+    if (driver.driverClassId) {
+      driverClassData = await ctx.db.get(driver.driverClassId);
+    }
+
     return {
       ...driver,
       linkedUser,
+      seriesId: series?._id ?? null,
       seriesName: series?.name ?? "No Series",
       displayName: getDriverDisplayName(driver, linkedUser ? { officialName: linkedUser.officialName } : undefined),
+      driverClassName: driverClassData?.displayName ?? null,
+      driverClass: driverClassData
+        ? {
+            _id: driverClassData._id,
+            className: driverClassData.className,
+            displayName: driverClassData.displayName,
+          }
+        : null,
     };
   },
 });

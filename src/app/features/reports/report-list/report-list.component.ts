@@ -1,4 +1,11 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed } from "@angular/core";
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  signal,
+  computed,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { FormsModule } from "@angular/forms";
@@ -131,21 +138,37 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 @for (report of filteredReports(); track report._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium">
-                      {{ report.reportId || '-' }}
+                    <td
+                      class="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium"
+                    >
+                      {{ report.reportId || "-" }}
                     </td>
                     <td class="px-6 py-4">
                       <p class="font-medium text-gray-900 dark:text-gray-100">
-                        {{ report.atFaultDriver?.displayName || report.atFaultDriver?.officialName || report.atFaultDriver?.driverName || report.reportedDriver?.displayName || report.reportedDriver?.officialName || report.reportedDriver?.driverName }}
+                        {{
+                          report.atFaultDriver?.displayName ||
+                            report.atFaultDriver?.officialName ||
+                            report.atFaultDriver?.driverName ||
+                            report.reportedDriver?.displayName ||
+                            report.reportedDriver?.officialName ||
+                            report.reportedDriver?.driverName
+                        }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                        #{{
+                          report.atFaultDriver?.driverNumber ||
+                            report.reportedDriver?.driverNumber
+                        }}
                       </p>
                     </td>
                     @if (canViewReportingUser()) {
                       <td class="px-6 py-4">
                         <p class="text-gray-900 dark:text-gray-100">
-                          {{ report.reportingUser?.name || 'Unknown User' }}
+                          {{
+                            report.reportingUser?.officialName ||
+                              report.reportingUser?.name ||
+                              "Unknown User"
+                          }}
                         </p>
                         @if (report.isStewardReported) {
                           <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -266,8 +289,8 @@ export class ReportListComponent implements OnInit, OnDestroy {
 
     // Further filter by selected series if one is chosen
     if (this.selectedSeries) {
-      filteredEvents = filteredEvents.filter((e) =>
-        e.seriesId.toString() === this.selectedSeries.toString(),
+      filteredEvents = filteredEvents.filter(
+        (e) => e.seriesId.toString() === this.selectedSeries.toString(),
       );
     }
 
@@ -285,7 +308,9 @@ export class ReportListComponent implements OnInit, OnDestroy {
       return [{ value: "", label: "Select an event first" }];
     }
 
-    let filteredRaces = this.races().filter((r) => r.eventId === this.selectedEvent);
+    let filteredRaces = this.races().filter(
+      (r) => r.eventId === this.selectedEvent,
+    );
 
     return [
       { value: "", label: "All races" },
@@ -371,11 +396,11 @@ export class ReportListComponent implements OnInit, OnDestroy {
 
     // Read query parameters and apply initial filters
     this.route.queryParams.subscribe((params) => {
-      if (params['event']) {
-        this.selectedEvent = params['event'];
+      if (params["event"]) {
+        this.selectedEvent = params["event"];
       }
-      if (params['race']) {
-        this.selectedRace = params['race'];
+      if (params["race"]) {
+        this.selectedRace = params["race"];
       }
       this.filterReports();
     });
@@ -399,8 +424,8 @@ export class ReportListComponent implements OnInit, OnDestroy {
     const userRole = this.authService.userRole();
     if (userRole === "driver") {
       const currentUserId = this.authService.getUserId();
-      filtered = filtered.filter((r) =>
-        r.reportingUserId === currentUserId || r.status === "finalized"
+      filtered = filtered.filter(
+        (r) => r.reportingUserId === currentUserId || r.status === "finalized",
       );
     }
 
