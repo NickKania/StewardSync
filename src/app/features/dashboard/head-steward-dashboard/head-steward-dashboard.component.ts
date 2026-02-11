@@ -6,6 +6,7 @@ import { DashboardReportListComponent } from "../dashboard-report-list/dashboard
 import { DashboardSeriesPenaltyListComponent } from "../dashboard-series-penalty-list/dashboard-series-penalty-list.component";
 import { DashboardRaceReviewRequestListComponent } from "../dashboard-race-review-request-list/dashboard-race-review-request-list.component";
 import { DashboardRaceReviewRequirementsComponent } from "../dashboard-race-review-requirements/dashboard-race-review-requirements.component";
+import { EventStatusCardComponent } from "../event-status-card/event-status-card.component";
 
 @Component({
   selector: "app-head-steward-dashboard",
@@ -18,6 +19,7 @@ import { DashboardRaceReviewRequirementsComponent } from "../dashboard-race-revi
     DashboardSeriesPenaltyListComponent,
     DashboardRaceReviewRequestListComponent,
     DashboardRaceReviewRequirementsComponent,
+    EventStatusCardComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -33,6 +35,10 @@ import { DashboardRaceReviewRequirementsComponent } from "../dashboard-race-revi
         <a routerLink="/reviews/search">
           <app-button variant="secondary">Search Reviews</app-button>
         </a>
+      </div>
+
+      <div class="space-y-4">
+        <app-event-status-card />
       </div>
 
       <app-dashboard-report-list

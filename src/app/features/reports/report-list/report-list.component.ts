@@ -1,7 +1,15 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed } from "@angular/core";
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  signal,
+  computed,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { FormsModule } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
 import { CardComponent } from "@shared/components/card/card.component";
@@ -67,6 +75,15 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
         <div class="flex flex-wrap gap-4">
           <div class="w-48">
             <app-select
+              label="Series"
+              [options]="seriesOptions()"
+              [(ngModel)]="selectedSeries"
+              (ngModelChange)="onSeriesChange()"
+              placeholder="All series"
+            />
+          </div>
+          <div class="w-48">
+            <app-select
               label="Status"
               [options]="statusOptions"
               [(ngModel)]="selectedStatus"
@@ -79,8 +96,17 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
               label="Event"
               [options]="eventOptions()"
               [(ngModel)]="selectedEvent"
-              (ngModelChange)="filterReports()"
+              (ngModelChange)="onEventChange()"
               placeholder="All events"
+            />
+          </div>
+          <div class="w-48">
+            <app-select
+              label="Race"
+              [options]="raceOptions()"
+              [(ngModel)]="selectedRace"
+              (ngModelChange)="filterReports()"
+              placeholder="All races"
             />
           </div>
         </div>
@@ -112,21 +138,37 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 @for (report of filteredReports(); track report._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium">
-                      {{ report.reportId || '-' }}
+                    <td
+                      class="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium"
+                    >
+                      {{ report.reportId || "-" }}
                     </td>
                     <td class="px-6 py-4">
                       <p class="font-medium text-gray-900 dark:text-gray-100">
-                        {{ report.atFaultDriver?.displayName || report.atFaultDriver?.officialName || report.atFaultDriver?.driverName || report.reportedDriver?.displayName || report.reportedDriver?.officialName || report.reportedDriver?.driverName }}
+                        {{
+                          report.atFaultDriver?.displayName ||
+                            report.atFaultDriver?.officialName ||
+                            report.atFaultDriver?.driverName ||
+                            report.reportedDriver?.displayName ||
+                            report.reportedDriver?.officialName ||
+                            report.reportedDriver?.driverName
+                        }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                        #{{
+                          report.atFaultDriver?.driverNumber ||
+                            report.reportedDriver?.driverNumber
+                        }}
                       </p>
                     </td>
                     @if (canViewReportingUser()) {
                       <td class="px-6 py-4">
                         <p class="text-gray-900 dark:text-gray-100">
-                          {{ report.reportingUser?.name || 'Unknown User' }}
+                          {{
+                            report.reportingUser?.officialName ||
+                              report.reportingUser?.name ||
+                              "Unknown User"
+                          }}
                         </p>
                         @if (report.isStewardReported) {
                           <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -199,6 +241,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 export class ReportListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
 
   canViewReportingUser = computed(() =>
     this.authService.hasMinimumRole("steward"),
@@ -207,11 +250,14 @@ export class ReportListComponent implements OnInit, OnDestroy {
   reports = signal<any[]>([]);
   filteredReports = signal<any[]>([]);
   events = signal<any[]>([]);
+  races = signal<any[]>([]);
   activeSeries = signal<any[]>([]);
   loading = signal(true);
 
   selectedStatus = "";
   selectedEvent = "";
+  selectedSeries = "";
+  selectedRace = "";
 
   statusOptions: SelectOption[] = [
     { value: "", label: "All statuses" },
@@ -225,16 +271,52 @@ export class ReportListComponent implements OnInit, OnDestroy {
     this.activeSeries().map((s) => s._id.toString()),
   );
 
+  seriesOptions = computed<SelectOption[]>(() => {
+    return [
+      { value: "", label: "All series" },
+      ...this.activeSeries().map((s: any) => ({
+        value: s._id,
+        label: s.name,
+      })),
+    ];
+  });
+
   eventOptions = computed<SelectOption[]>(() => {
     const activeIds = this.activeSeriesIds();
-    const filteredEvents = this.events().filter((e) =>
+    let filteredEvents = this.events().filter((e) =>
       activeIds.includes(e.seriesId.toString()),
     );
+
+    // Further filter by selected series if one is chosen
+    if (this.selectedSeries) {
+      filteredEvents = filteredEvents.filter(
+        (e) => e.seriesId.toString() === this.selectedSeries.toString(),
+      );
+    }
+
     return [
       { value: "", label: "All events" },
       ...filteredEvents.map((e: any) => ({
         value: e._id,
         label: `${e.trackName} (${e.series.name})`,
+      })),
+    ];
+  });
+
+  raceOptions = computed<SelectOption[]>(() => {
+    if (!this.selectedEvent) {
+      return [{ value: "", label: "Select an event first" }];
+    }
+
+    let filteredRaces = this.races().filter(
+      (r) => r.eventId === this.selectedEvent,
+    );
+
+    return [
+      { value: "", label: "All races" },
+      ...filteredRaces.map((r: any) => ({
+        value: r._id,
+        label: `Race ${r.raceNumber}`,
       })),
     ];
   });
@@ -296,18 +378,63 @@ export class ReportListComponent implements OnInit, OnDestroy {
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkActiveSeries));
+
+    // Load races for filter
+    const racesQuery = this.convex.createReactiveQuery(
+      this.convex.api.races.list,
+      {},
+    );
+    this.unsubscribes.push(racesQuery.unsubscribe);
+
+    const checkRaces = setInterval(() => {
+      const data = racesQuery.data();
+      if (data) {
+        this.races.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkRaces));
+
+    // Read query parameters and apply initial filters
+    this.route.queryParams.subscribe((params) => {
+      if (params["event"]) {
+        this.selectedEvent = params["event"];
+      }
+      if (params["race"]) {
+        this.selectedRace = params["race"];
+      }
+      this.filterReports();
+    });
+  }
+
+  onSeriesChange(): void {
+    this.selectedEvent = "";
+    this.selectedRace = "";
+    this.filterReports();
+  }
+
+  onEventChange(): void {
+    this.selectedRace = "";
+    this.filterReports();
   }
 
   filterReports(): void {
     let filtered = [...this.reports()];
 
-    // Filter by role: drivers can only see reports they filed
+    // Filter by role: drivers can see their own reports AND all finalized reports
     const userRole = this.authService.userRole();
     if (userRole === "driver") {
       const currentUserId = this.authService.getUserId();
-      // For drivers, filter to show only reports where they are the reporting user
-      // This handles both driver-filed reports and steward-filed reports on their behalf
-      filtered = filtered.filter((r) => r.reportingUserId === currentUserId);
+      filtered = filtered.filter(
+        (r) => r.reportingUserId === currentUserId || r.status === "finalized",
+      );
+    }
+
+    // Filter by series
+    if (this.selectedSeries) {
+      filtered = filtered.filter((r) => {
+        const event = this.events().find((e) => e._id === r.eventId);
+        return event && event.seriesId === this.selectedSeries;
+      });
     }
 
     if (this.selectedStatus) {
@@ -316,6 +443,10 @@ export class ReportListComponent implements OnInit, OnDestroy {
 
     if (this.selectedEvent) {
       filtered = filtered.filter((r) => r.eventId === this.selectedEvent);
+    }
+
+    if (this.selectedRace) {
+      filtered = filtered.filter((r) => r.raceId === this.selectedRace);
     }
 
     this.filteredReports.set(filtered);

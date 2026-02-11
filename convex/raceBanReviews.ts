@@ -390,6 +390,9 @@ export const getById = query({
     const completedBy = request.completedBy
       ? await ctx.db.get(request.completedBy)
       : null;
+    const notesUpdatedBy = request.notesUpdatedBy
+      ? await ctx.db.get(request.notesUpdatedBy)
+      : null;
 
     const reports = await ctx.db.query("reports").collect();
     const eventCache = new Map<string, any>();
@@ -446,6 +449,7 @@ export const getById = query({
       driverPenalty,
       scheduledBy,
       completedBy,
+      notesUpdatedBy,
       reports: atFaultReports
         .filter((report) => report !== null)
         .sort((a, b) => (b?.finalizedAt ?? 0) - (a?.finalizedAt ?? 0)),
@@ -716,6 +720,36 @@ export const recordMeetingReminderResult = internalMutation({
     }
 
     await ctx.db.patch(args.id, patch);
+    return args.id;
+  },
+});
+
+export const updateNotes = mutation({
+  args: {
+    id: v.id("raceBanReviews"),
+    userId: v.id("users"),
+    notes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const role = await getCurrentUserRole(ctx, args.userId);
+    if (!canManageReview(role)) {
+      throw new UserFacingError(
+        "Only head stewards and league managers can update race review notes.",
+      );
+    }
+
+    const request = await ctx.db.get(args.id);
+    if (!request) {
+      throw new UserFacingError("Race review request not found.");
+    }
+
+    await ctx.db.patch(args.id, {
+      notes: args.notes,
+      notesUpdatedAt: Date.now(),
+      notesUpdatedBy: args.userId,
+      updatedAt: Date.now(),
+    });
+
     return args.id;
   },
 });

@@ -14,6 +14,7 @@ import {
   FormGroup,
   Validators,
   ReactiveFormsModule,
+  FormsModule,
 } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
@@ -22,11 +23,13 @@ import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { ModalComponent } from "@shared/components/modal/modal.component";
 import { SearchSelectComponent } from "@shared/components/search-select/search-select.component";
 import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
 import { SelectOption } from "@shared/components/select/select.component";
+import { User } from "@app/core/models";
 
 @Component({
   selector: "app-review-form",
@@ -35,10 +38,12 @@ import { SelectOption } from "@shared/components/select/select.component";
     CommonModule,
     RouterLink,
     ReactiveFormsModule,
+    FormsModule,
     CardComponent,
     ButtonComponent,
     BadgeComponent,
     LoadingComponent,
+    ModalComponent,
     SearchSelectComponent,
     ToggleComponent,
     DateFormatPipe,
@@ -271,7 +276,14 @@ import { SelectOption } from "@shared/components/select/select.component";
                   card-footer
                   class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
                 >
-                  <div class="flex gap-3">
+                  <div class="flex flex-col sm:flex-row gap-3">
+                    <app-button
+                      type="button"
+                      variant="danger"
+                      (onClick)="showRejectModal = true"
+                    >
+                      Reject Report
+                    </app-button>
                     <app-button
                       type="button"
                       variant="secondary"
@@ -428,6 +440,43 @@ import { SelectOption } from "@shared/components/select/select.component";
         </app-card>
       }
     </div>
+
+    <!-- Reject confirmation modal -->
+    <app-modal
+      [isOpen]="showRejectModal"
+      title="Reject Report"
+      (close)="showRejectModal = false"
+    >
+      <p class="text-gray-600 mb-4 dark:text-gray-300">
+        Are you sure you want to reject this report? This action cannot be
+        undone.
+      </p>
+      <div>
+        <label class="label">Rejection Reason</label>
+        <textarea
+          [(ngModel)]="rejectionReason"
+          class="input min-h-[80px]"
+          placeholder="Explain why this report is being rejected..."
+          rows="3"
+        ></textarea>
+      </div>
+      <div
+        modal-footer
+        class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 dark:bg-gray-800 dark:border-gray-700"
+      >
+        <app-button variant="secondary" (onClick)="showRejectModal = false">
+          Cancel
+        </app-button>
+        <app-button
+          variant="danger"
+          [loading]="submitting()"
+          [disabled]="!rejectionReason"
+          (onClick)="rejectReport()"
+        >
+          Reject Report
+        </app-button>
+      </div>
+    </app-modal>
   `,
 })
 export class ReviewFormComponent implements OnInit, OnDestroy {
@@ -449,6 +498,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   drivers = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
+  showRejectModal = false;
+  rejectionReason = "";
   secondStewardUnsubscribe: (() => void) | null = null;
   primaryActionLabel = computed(() =>
     this.isReportingUser() ? "Save Changes" : "Submit Review",
@@ -479,7 +530,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     return [
       { value: "", label: "Reviewing alone" },
       ...this.stewards()
-        .filter((steward) => {
+        .filter((steward: User) => {
           // Exclude current user
           if (String(steward._id) === String(currentUserId)) return false;
 
@@ -501,9 +552,9 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
           return true;
         })
-        .map((steward) => ({
+        .map((steward: User) => ({
           value: steward._id,
-          label: `${steward.name} (${steward.role?.name || "Unknown"})`,
+          label: `${steward.officialName ?? steward.name} (${steward.role?.name || "Unknown"})`,
         })),
     ];
   });
@@ -523,6 +574,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       candidateForStandardization: [false],
       adjustedReason: [""],
     });
+
+    // Add conditional validation for adjustedReason based on isAdjusted
+    this.form.get("isAdjusted")?.valueChanges.subscribe((isAdjusted) => {
+      this.updateAdjustedReasonValidation(isAdjusted);
+    });
   }
 
   ngOnInit(): void {
@@ -530,6 +586,18 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     this.loadStewards();
     this.loadDrivers();
     this.loadSavedSteward();
+  }
+
+  private updateAdjustedReasonValidation(isAdjusted: boolean): void {
+    const adjustedReasonControl = this.form.get("adjustedReason");
+    if (!adjustedReasonControl) return;
+
+    if (isAdjusted) {
+      adjustedReasonControl.setValidators([Validators.required]);
+    } else {
+      adjustedReasonControl.clearValidators();
+    }
+    adjustedReasonControl.updateValueAndValidity();
   }
 
   private loadDrivers(): void {
@@ -582,7 +650,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
           const currentUserReview = currentUserId
             ? (data.reviews || []).find(
-                (review: any) => String(review.userId) === String(currentUserId),
+                (review: any) =>
+                  String(review.userId) === String(currentUserId),
               )
             : null;
           this.currentUserReview.set(currentUserReview || null);
@@ -624,6 +693,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
               ),
               adjustedReason: currentUserReview.adjustedReason || "",
             });
+
+            // Initialize validation for adjustedReason based on isAdjusted value
+            this.updateAdjustedReasonValidation(
+              Boolean(currentUserReview.isAdjusted),
+            );
           }
 
           // Filter out current user's review if exists
@@ -631,6 +705,16 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
             (r: any) => r.userId !== currentUserId,
           );
           this.existingReviews.set(otherReviews);
+
+          // If there's exactly one other review and current user hasn't reviewed yet,
+          // pre-fill the form with that review's data
+          if (!currentUserReview && otherReviews.length === 1) {
+            const firstReview = otherReviews[0];
+            this.form.patchValue({
+              incidentDescription: firstReview.incidentDescription || "",
+              recommendedPenalty: firstReview.recommendedPenalty || "",
+            });
+          }
 
           // Load penalties for this series
           if (data?.event?.seriesId) {
@@ -811,7 +895,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         videoTimestamp: formValue.videoTimestamp || undefined,
         isSelfReport: formValue.isSelfReport || false,
         isAdjusted: formValue.isAdjusted || false,
-        candidateForStandardization: formValue.candidateForStandardization || false,
+        candidateForStandardization:
+          formValue.candidateForStandardization || false,
         adjustedReason:
           formValue.isAdjusted && formValue.adjustedReason
             ? formValue.adjustedReason
@@ -856,7 +941,9 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       }
 
       this.toast.success(
-        useUpdate ? "Review updated successfully" : "Review submitted successfully",
+        useUpdate
+          ? "Review updated successfully"
+          : "Review submitted successfully",
       );
 
       await this.router.navigate([options.redirectTo], {
@@ -909,6 +996,36 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     });
 
     return Boolean(existingReview);
+  }
+
+  async rejectReport(): Promise<void> {
+    if (!this.rejectionReason) return;
+
+    this.submitting.set(true);
+
+    try {
+      const result = await this.convex.mutation(
+        this.convex.api.reports.reject,
+        {
+          reportId: this.reportId as any,
+          officialNotes: this.rejectionReason,
+        },
+      );
+
+      if (!result.success) {
+        this.toast.error(result.error);
+        this.submitting.set(false);
+        return;
+      }
+
+      this.toast.success("Report rejected");
+      this.showRejectModal = false;
+      this.router.navigate(["/reviews"]);
+    } catch (error: any) {
+      this.toast.error(error.message || "Failed to reject report");
+    } finally {
+      this.submitting.set(false);
+    }
   }
 
   cancel(): void {

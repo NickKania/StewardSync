@@ -256,6 +256,54 @@ interface SlotOption {
             </div>
           }
         </app-card>
+
+        @if (canManage()) {
+          <app-card title="Staff Notes (Internal)">
+            <div class="space-y-4">
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Notes are only visible to staff and not to drivers.
+              </p>
+
+              @if (review()!.notes) {
+                <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+                  <p class="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                    {{ review()!.notes }}
+                  </p>
+                  @if (review()!.notesUpdatedBy) {
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Last updated by {{ review()!.notesUpdatedBy.name || "Unknown" }}
+                      @if (review()!.notesUpdatedAt) {
+                        on {{ review()!.notesUpdatedAt | dateFormat: "PPp" }}
+                      }
+                    </p>
+                  }
+                </div>
+              }
+
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Add or Update Notes
+                </label>
+                <textarea
+                  [(ngModel)]="notesInput"
+                  rows="4"
+                  class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  placeholder="Add notes about this race review..."
+                ></textarea>
+              </div>
+
+              <div class="flex justify-end">
+                <app-button
+                  [loading]="savingNotes()"
+                  [disabled]="!notesInput.trim()"
+                  (onClick)="saveNotes()"
+                >
+                  Save Notes
+                </app-button>
+              </div>
+            </div>
+          </app-card>
+        }
       }
     </div>
   `,
@@ -270,6 +318,8 @@ export class RaceReviewManagementComponent implements OnInit {
   readonly scheduling = signal(false);
   readonly markingCompleted = signal(false);
   readonly markingServed = signal(false);
+  readonly savingNotes = signal(false);
+  notesInput = "";
   selectedSlotValue = "";
   selectedMeetingStartInput = "";
   selectedMeetingEndInput = "";
@@ -416,6 +466,29 @@ export class RaceReviewManagementComponent implements OnInit {
     }
   }
 
+  async saveNotes(): Promise<void> {
+    const userId = this.authService.getUserId();
+    const review = this.review();
+    if (!review || !userId) {
+      return;
+    }
+
+    this.savingNotes.set(true);
+    try {
+      await this.convex.mutation(this.convex.api.raceBanReviews.updateNotes, {
+        id: review._id,
+        userId,
+        notes: this.notesInput,
+      });
+      await this.loadReview();
+    } catch (error: any) {
+      console.error("Failed to save notes:", error);
+      alert(error?.message || "Failed to save notes.");
+    } finally {
+      this.savingNotes.set(false);
+    }
+  }
+
   private async loadReview(): Promise<void> {
     const reviewId = this.route.snapshot.paramMap.get("id");
     const userId = this.authService.getUserId();
@@ -431,6 +504,7 @@ export class RaceReviewManagementComponent implements OnInit {
         userId,
       });
       this.review.set(review);
+      this.notesInput = review?.notes ?? "";
     if (review?.selectedMeetingStartAt && review?.selectedMeetingEndAt) {
         const window = this.findMatchingWindow(
           review.availabilityWindows,

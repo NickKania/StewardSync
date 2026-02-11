@@ -9,6 +9,7 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { SearchSelectComponent } from '@shared/components/search-select/search-select.component';
+import { TruncateTextComponent } from '@shared/components/truncate-text/truncate-text.component';
 import { DateFormatPipe, TimeAgoPipe } from '@shared/pipes/date-format.pipe';
 
 interface FilterState {
@@ -32,6 +33,7 @@ interface FilterState {
     ButtonComponent,
     PaginationComponent,
     SearchSelectComponent,
+    TruncateTextComponent,
     DateFormatPipe,
     TimeAgoPipe,
   ],
@@ -189,24 +191,25 @@ interface FilterState {
                 @for (result of results(); track result._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-3 py-4">
-                      <p class="font-medium text-gray-900 truncate dark:text-gray-100">{{ result.reviewer?.name || 'Unknown' }}</p>
+                      <app-truncate-text [text]="result.reviewer?.name || 'Unknown'"
+                        class="font-medium text-gray-900 dark:text-gray-100" />
                     </td>
                     <td class="px-3 py-4">
-                      <p class="text-gray-900 truncate dark:text-gray-100">{{ result.series?.name || 'N/A' }}</p>
+                      <app-truncate-text [text]="result.series?.name || 'N/A'"
+                        class="text-gray-900 dark:text-gray-100" />
                     </td>
                     <td class="px-3 py-4">
-                      <p class="text-gray-900 truncate dark:text-gray-100">{{ result.event?.trackName }}</p>
+                      <app-truncate-text [text]="result.event?.trackName"
+                        class="text-gray-900 dark:text-gray-100" />
                       <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ result.race?.raceNumber }}</p>
                     </td>
                     <td class="px-3 py-4">
-                      <p class="text-gray-900 max-w-xs truncate dark:text-gray-100">
-                        {{ result.incidentDescription }}
-                      </p>
+                      <app-truncate-text [text]="result.incidentDescription" maxW="max-w-xs"
+                        class="text-gray-900 dark:text-gray-100" />
                     </td>
                     <td class="px-3 py-4">
-                      <p class="text-gray-900 max-w-xs truncate dark:text-gray-100">
-                        {{ result.reviewNotes }}
-                      </p>
+                      <app-truncate-text [text]="result.reviewNotes" maxW="max-w-xs"
+                        class="text-gray-900 dark:text-gray-100" />
                     </td>
                     <td class="px-3 py-4">
                       @if (result.candidateForStandardization) {

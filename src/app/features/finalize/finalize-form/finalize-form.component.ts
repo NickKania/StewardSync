@@ -28,6 +28,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
 import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
+import { User } from "@app/core/models";
 
 @Component({
   selector: "app-finalize-form",
@@ -57,7 +58,9 @@ import { Penalty } from "@core/models/series.model";
           class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
         >
           <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Finalize Report</h1>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Finalize Report
+            </h1>
             <p class="text-gray-500 mt-1 dark:text-gray-400">
               {{ report()?.event?.trackName }} - Race
               {{ report()?.race?.raceNumber }}
@@ -159,6 +162,16 @@ import { Penalty } from "@core/models/series.model";
                     />
                   </div>
 
+                  <!-- Adjusted toggle -->
+                  <div>
+                    <app-toggle
+                      formControlName="isAdjusted"
+                      label="Adjusted"
+                      hint="Incident description was adjusted?"
+                    />
+                  </div>
+
+                  <!-- Candidate for standardization -->
                   <div>
                     <label
                       class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
@@ -175,6 +188,22 @@ import { Penalty } from "@core/models/series.model";
                       for standardization
                     </p>
                   </div>
+
+                  <!-- Adjusted reason (conditionally shown) -->
+                  @if (form.get("isAdjusted")?.value) {
+                    <div>
+                      <label class="label">Adjusted Reason</label>
+                      <textarea
+                        formControlName="adjustedReason"
+                        class="input min-h-[80px]"
+                        placeholder="Explain why the incident was adjusted..."
+                        rows="3"
+                      ></textarea>
+                      <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                        This will be added as a note to the incident description
+                      </p>
+                    </div>
+                  }
 
                   <!-- Official notes -->
                   <div>
@@ -234,13 +263,17 @@ import { Penalty } from "@core/models/series.model";
                               <app-badge variant="success" size="sm"
                                 >Joint Review</app-badge
                               >
-                              <p class="font-medium text-gray-900 dark:text-gray-100">
+                              <p
+                                class="font-medium text-gray-900 dark:text-gray-100"
+                              >
                                 {{ review.reviewer?.name }} &
                                 {{ review.linkedReview.reviewer?.name }}
                               </p>
                             </div>
                           } @else {
-                            <p class="font-medium text-gray-900 dark:text-gray-100">
+                            <p
+                              class="font-medium text-gray-900 dark:text-gray-100"
+                            >
                               {{ review.reviewer?.name }}
                             </p>
                           }
@@ -261,7 +294,9 @@ import { Penalty } from "@core/models/series.model";
                           >
                         </div>
                       }
-                      <p class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300">
+                      <p
+                        class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300"
+                      >
                         {{ review.reviewNotes }}
                         @if (review.isAdjusted && review.adjustedReason) {
                           <br /><span class="text-amber-700"
@@ -281,7 +316,9 @@ import { Penalty } from "@core/models/series.model";
             <app-card title="Incident Summary">
               <dl class="space-y-4">
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported Driver</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Reported Driver
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reportedDriver?.driverName }}
                   </dd>
@@ -290,19 +327,25 @@ import { Penalty } from "@core/models/series.model";
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reported By</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Reported By
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reportingUser?.name || "Unknown User" }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Location</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Location
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     Turn {{ report()?.turn }}
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reviews</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Reviews
+                  </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ report()?.reviews?.length || 0 }} review(s)
                   </dd>
@@ -311,7 +354,9 @@ import { Penalty } from "@core/models/series.model";
             </app-card>
 
             <app-card title="Original Description">
-              <p class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300">
+              <p
+                class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300"
+              >
                 {{ report()?.description }}
               </p>
             </app-card>
@@ -443,8 +488,26 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       atFaultDriverId: [""],
       officialNotes: [""],
       isSelfReport: [false],
+      isAdjusted: [false],
       candidateForStandardization: [false],
+      adjustedReason: [""],
     });
+
+    this.form.get("isAdjusted")?.valueChanges.subscribe((isAdjusted) => {
+      this.updateAdjustedReasonValidation(isAdjusted);
+    });
+  }
+
+  private updateAdjustedReasonValidation(isAdjusted: boolean): void {
+    const adjustedReasonControl = this.form.get("adjustedReason");
+    if (!adjustedReasonControl) return;
+
+    if (isAdjusted) {
+      adjustedReasonControl.setValidators([Validators.required]);
+    } else {
+      adjustedReasonControl.clearValidators();
+    }
+    adjustedReasonControl.updateValueAndValidity();
   }
 
   ngOnInit(): void {
@@ -505,6 +568,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           const standardizationControl = this.form.get(
             "candidateForStandardization",
           );
+          const adjustedControl = this.form.get("isAdjusted");
+          const adjustedReasonControl = this.form.get("adjustedReason");
           const atFaultDriverControl = this.form.get("atFaultDriverId");
 
           if (latestReview?.incidentDescription && incidentControl) {
@@ -535,6 +600,28 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             if (standardizationControl.pristine && currentValue !== newValue) {
               standardizationControl.setValue(newValue);
             }
+          }
+
+          if (latestReview?.isAdjusted !== undefined && adjustedControl) {
+            const currentValue = adjustedControl.value;
+            const newValue = latestReview.isAdjusted;
+
+            if (adjustedControl.pristine && currentValue !== newValue) {
+              adjustedControl.setValue(newValue);
+            }
+          }
+
+          if (latestReview?.adjustedReason && adjustedReasonControl) {
+            const currentValue = adjustedReasonControl.value;
+            const newValue = latestReview.adjustedReason;
+
+            if (adjustedReasonControl.pristine && currentValue !== newValue) {
+              adjustedReasonControl.setValue(newValue);
+            }
+          }
+
+          if (latestReview?.isAdjusted !== undefined) {
+            this.updateAdjustedReasonValidation(Boolean(latestReview.isAdjusted));
           }
 
           // Pre-select atFaultDriverId from latest review or reportedDriver
@@ -657,16 +744,56 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const userId = this.authService.getUserId();
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const reportData = this.report();
+
+    if (!reportData) {
+      this.toast.error("Report not found");
+      return;
+    }
+
+    const reportingUserId = reportData.reportingUserId;
+
+    if (reportingUserId === userId) {
+      this.toast.error("You cannot finalize a report you submitted");
+      return;
+    }
+
+    const atFaultDriverId = this.form.get("atFaultDriverId")?.value;
+
+    if (atFaultDriverId) {
+      const atFaultDriver = await this.convex.query(
+        this.convex.api.drivers.getById,
+        { driverId: atFaultDriverId as any },
+      );
+
+      if (atFaultDriver?.userId && String(atFaultDriver.userId) === String(userId)) {
+        this.toast.error(
+          "You cannot finalize a report where you are the at-fault driver",
+        );
+        return;
+      }
+    }
+
+    const hasSubmittedReview = reportData.reviews?.some(
+      (review: any) => String(review.userId) === String(userId),
+    );
+
+    if (hasSubmittedReview) {
+      this.toast.error(
+        "You cannot finalize a report you have already reviewed",
+      );
+      return;
+    }
+
     this.submitting.set(true);
 
     try {
-      const userId = this.authService.getUserId();
-      if (!userId) {
-        throw new Error("Not authenticated");
-      }
-
       const formValue = this.form.value;
-      const reportData = this.report();
 
       if (reportData?.reviews && reportData.reviews.length > 0) {
         const latestReview = reportData.reviews.reduce(
@@ -682,6 +809,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             reviewId: latestReview._id,
             candidateForStandardization:
               formValue.candidateForStandardization || false,
+            isAdjusted: formValue.isAdjusted || false,
+            adjustedReason:
+              formValue.isAdjusted && formValue.adjustedReason
+                ? formValue.adjustedReason
+                : undefined,
           });
         }
       }
@@ -696,6 +828,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           atFaultDriverId: formValue.atFaultDriverId || undefined,
           officialNotes: formValue.officialNotes || "",
           isSelfReport: formValue.isSelfReport || false,
+          isAdjusted: formValue.isAdjusted || false,
+          adjustedReason:
+            formValue.isAdjusted && formValue.adjustedReason
+              ? formValue.adjustedReason
+              : undefined,
         },
       );
 

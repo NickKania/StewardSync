@@ -115,6 +115,13 @@ export const migrateReportsAddLap = mutation({
 export const assignPenaltiesForSeries = internalMutation({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
+    console.log("[assignPenaltiesForSeries] Starting assignment for series:", args.seriesId);
+
+    // Requirements for penalty assignment:
+    // 1. Driver must have driverClassId set (run migrateDriverClasses migration)
+    // 2. Threshold must have driverClassIds array with at least one entry (run migrateDriverClasses migration)
+    // 3. Driver's driverClassId must be in threshold's driverClassIds
+    // If these requirements are not met, check the returned diagnostic arrays for details
     const events = await ctx.db
       .query("events")
       .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
@@ -172,6 +179,9 @@ export const assignPenaltiesForSeries = internalMutation({
     const assignedPenalties: any[] = [];
     const existingPenalties: any[] = [];
     const skippedThresholds: any[] = [];
+    const missingDriverClass: any[] = [];
+    const emptyDriverClassIds: any[] = [];
+    const mismatchedDriverClass: any[] = [];
 
     for (const driver of drivers) {
       const driverId = driver._id.toString();
@@ -215,7 +225,45 @@ export const assignPenaltiesForSeries = internalMutation({
           .collect();
 
         for (const threshold of thresholds) {
-          const appliesToDriver = driverClassId && threshold.driverClassIds && threshold.driverClassIds.includes(driverClassId as any);
+          const hasDriverClass = !!driverClassId;
+          const hasThresholdClasses = threshold.driverClassIds && threshold.driverClassIds.length > 0;
+          const matchesDriverClass = hasDriverClass && hasThresholdClasses && threshold.driverClassIds.includes(driverClassId);
+          
+          let appliesToDriver = false;
+          let skipReason = "";
+
+          if (!hasDriverClass) {
+            skipReason = "missing_driver_class";
+            missingDriverClass.push({
+              driverId: driver._id,
+              driverName: driver.driverName,
+              penaltyName: seriesPenalty.penaltyName,
+              threshold: threshold.threshold,
+              currentPoints: totalPoints,
+            });
+          } else if (!hasThresholdClasses) {
+            skipReason = "empty_threshold_classes";
+            emptyDriverClassIds.push({
+              driverId: driver._id,
+              driverName: driver.driverName,
+              driverClassId,
+              penaltyName: seriesPenalty.penaltyName,
+              threshold: threshold.threshold,
+              currentPoints: totalPoints,
+            });
+          } else if (!matchesDriverClass) {
+            skipReason = "mismatched_driver_class";
+            mismatchedDriverClass.push({
+              driverId: driver._id,
+              driverName: driver.driverName,
+              driverClassId,
+              penaltyName: seriesPenalty.penaltyName,
+              threshold: threshold.threshold,
+              currentPoints: totalPoints,
+            });
+          } else {
+            appliesToDriver = true;
+          }
 
           if (appliesToDriver && totalPoints >= threshold.threshold) {
             if (assignedThresholds.includes(threshold._id)) {
@@ -259,11 +307,21 @@ export const assignPenaltiesForSeries = internalMutation({
               penaltyName: seriesPenalty.penaltyName,
               threshold: threshold.threshold,
               currentPoints: totalPoints,
+              skipReason: "insufficient_points",
             });
           }
         }
       }
     }
+
+    console.log("[assignPenaltiesForSeries] Assignment complete:", {
+      assignedCount: assignedPenalties.length,
+      existingCount: existingPenalties.length,
+      skippedThresholds: skippedThresholds.length,
+      missingDriverClass: missingDriverClass.length,
+      emptyDriverClassIds: emptyDriverClassIds.length,
+      mismatchedDriverClass: mismatchedDriverClass.length,
+    });
 
     return {
       assignedCount: assignedPenalties.length,
@@ -271,6 +329,9 @@ export const assignPenaltiesForSeries = internalMutation({
       assignedPenalties,
       existingPenalties,
       skippedThresholds,
+      missingDriverClass,
+      emptyDriverClassIds,
+      mismatchedDriverClass,
     };
   },
 });

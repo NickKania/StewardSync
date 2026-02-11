@@ -19,6 +19,21 @@ interface EventRundownRow {
   isFinalized: boolean;
 }
 
+interface DriverTimePenaltyRow {
+  driverId: string;
+  carNumber: number;
+  driverName: string;
+  driverClass: string;
+  totalTimePenaltySeconds: number;
+}
+
+interface RaceTimePenaltySummary {
+  raceId: string;
+  raceNumber: number;
+  raceName: string;
+  driverPenalties: DriverTimePenaltyRow[];
+}
+
 export const getEventRundown = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
@@ -655,5 +670,123 @@ export const debugSeriesDriverMismatches = query({
       mismatchCount: mismatches.length,
       correctCount: correct.length,
     };
+  },
+});
+
+export const getEventTimePenaltySummary = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      return [];
+    }
+
+    const races = await ctx.db
+      .query("races")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    races.sort((a, b) => a.raceNumber - b.raceNumber);
+
+    const timePenaltySummary = await Promise.all(
+      races.map(async (race) => {
+        const reports = await ctx.db
+          .query("reports")
+          .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+          .collect();
+
+        const raceReports = reports.filter((r) => r.raceId === race._id);
+
+        const finalizedReports = raceReports.filter((r) => r.status === "finalized");
+
+        const driverPenaltyMap = new Map<string, {
+          driverId: string;
+          carNumber: number;
+          driverName: string;
+          driverClass: string;
+          totalTimePenaltySeconds: number;
+        }>();
+
+        for (const report of finalizedReports) {
+          const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
+          const reportedDriver = await ctx.db.get(atFaultDriverId);
+
+          if (
+            reportedDriver &&
+            (!reportedDriver.championshipId ||
+              reportedDriver.championshipId !== event.seriesId)
+          ) {
+            continue;
+          }
+
+          let appliedPenalty: any = null;
+          if (report.appliedPenalty) {
+            appliedPenalty = await ctx.db.get(report.appliedPenalty as any);
+          }
+
+          if (!appliedPenalty) {
+            continue;
+          }
+
+          const lapNumber = parseInt(report.lap || "0", 10);
+          const isLap1 = !isNaN(lapNumber) && lapNumber === 1;
+
+          const baseTimePenalty = isLap1
+            ? (appliedPenalty.timePenaltyLap1 ?? appliedPenalty.timePenalty ?? 0)
+            : (appliedPenalty.timePenalty ?? 0);
+          const selfReportReduction = appliedPenalty.selfReportReduction ?? 0;
+          const timePenaltySeconds =
+            appliedPenalty && report.isSelfReport
+              ? Math.max(0, baseTimePenalty - selfReportReduction)
+              : baseTimePenalty;
+
+          let userOfficialName: string | undefined;
+          if (reportedDriver?.userId) {
+            const user = await ctx.db.get(reportedDriver.userId);
+            userOfficialName = user?.officialName;
+          }
+          const displayName = reportedDriver
+            ? getDriverDisplayName(
+                { driverName: reportedDriver.driverName, officialName: reportedDriver.officialName },
+                userOfficialName ? { officialName: userOfficialName } : undefined
+              )
+            : null;
+
+          let driverClassDisplayName: string | null = null;
+          if (reportedDriver?.driverClassId) {
+            const driverClass = await ctx.db.get(reportedDriver.driverClassId);
+            driverClassDisplayName = driverClass?.displayName ?? null;
+          }
+
+          const driverId = atFaultDriverId.toString();
+          const existing = driverPenaltyMap.get(driverId);
+
+          if (existing) {
+            existing.totalTimePenaltySeconds += timePenaltySeconds;
+          } else {
+            driverPenaltyMap.set(driverId, {
+              driverId,
+              carNumber: reportedDriver?.driverNumber ?? 0,
+              driverName: displayName || "",
+              driverClass: driverClassDisplayName || "",
+              totalTimePenaltySeconds: timePenaltySeconds,
+            });
+          }
+        }
+
+        const driverPenalties = Array.from(driverPenaltyMap.values());
+
+        driverPenalties.sort((a, b) => a.driverName.localeCompare(b.driverName));
+
+        return {
+          raceId: race._id,
+          raceNumber: race.raceNumber,
+          raceName: `Race ${race.raceNumber}`,
+          driverPenalties,
+        };
+      }),
+    );
+
+    return timePenaltySummary;
   },
 });

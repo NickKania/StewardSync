@@ -10,6 +10,7 @@ export interface Series {
   reportingCloseDuration?: number;
   isReportingLocked?: boolean;
   isActive?: boolean;
+  seriesPenaltyNotes?: string;
   createdAt: number;
 }
 

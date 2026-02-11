@@ -6,9 +6,11 @@ import {
   computed,
   inject,
   signal,
+  DestroyRef,
+  untracked,
 } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { RouterLink } from "@angular/router";
+import { RouterLink, ActivatedRoute } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
 import { ToastService } from "@core/services/toast.service";
@@ -16,6 +18,32 @@ import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { CardComponent } from "@shared/components/card/card.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import {
+  SelectComponent,
+  SelectOption,
+} from "@shared/components/select/select.component";
+import { DriverSeriesPenaltyDetails } from "@core/models";
+import { debounceTime, Subject } from "rxjs";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { effect } from "@angular/core";
+
+interface SeriesPenaltyRow {
+  _id: string;
+  penaltyName: string | null;
+  penaltyDescription: string | null;
+  threshold: number | null;
+  pointsAtAssignment: number;
+  assignedAt: number;
+  isServed: boolean;
+  servedAt?: number;
+  servedByUserName: string | null;
+}
+
+interface SeriesPenaltyGroup {
+  seriesId: string;
+  seriesName: string;
+  penalties: SeriesPenaltyRow[];
+}
 
 @Component({
   selector: "app-driver-user-detail",
@@ -28,73 +56,205 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
     ButtonComponent,
     CardComponent,
     LoadingComponent,
+    SelectComponent,
   ],
   template: `
     <div class="space-y-6">
       @if (loading()) {
-        <app-loading text="Loading user profile..." />
-      } @else if (!profile()) {
+        <app-loading text="Loading..." />
+      } @else if (!profile() && !driver()) {
         <app-card>
           <p class="text-center py-8 text-gray-500 dark:text-gray-400">
-            User profile not found.
+            @if (isDriverMode()) {
+              Driver not found.
+            } @else {
+              User profile not found.
+            }
           </p>
           <div class="text-center">
-            <a routerLink="/drivers"
-              ><app-button variant="secondary">Back to Drivers</app-button></a
-            >
+            <a routerLink="/drivers">
+              <app-button variant="secondary">Back to Drivers</app-button>
+            </a>
           </div>
         </app-card>
       } @else {
+        <!-- Header -->
         <div
           class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
         >
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {{ profile()?.user?.name }}
-            </h1>
-            @if (profile()?.user?.officialName) {
-              <p class="text-gray-600 dark:text-gray-300">
-                Official: {{ profile()?.user?.officialName }}
-              </p>
-            }
-            @if (profile()?.user?.discordUsername) {
-              <p class="text-gray-500 dark:text-gray-400">
-                Discord: {{ profile()?.user?.discordUsername }}
-              </p>
+          <div class="flex items-center gap-4">
+            @if (isDriverMode()) {
+              <div
+                class="w-20 h-20 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center"
+              >
+                <span class="text-3xl font-bold text-primary-700 dark:text-primary-100">{{
+                  driver()?.driverNumber
+                }}</span>
+              </div>
+              <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {{ driver()?.displayName ?? driver()?.driverName }}
+                </h1>
+                @if (
+                  driver()?.displayName &&
+                  driver()?.displayName !== driver()?.driverName
+                ) {
+                  <p class="text-sm text-gray-600 dark:text-gray-300">
+                    {{ driver()?.driverName }}
+                  </p>
+                }
+              </div>
+            } @else {
+              <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {{ profile()?.user?.name }}
+                </h1>
+                @if (profile()?.user?.officialName) {
+                  <p class="text-gray-600 dark:text-gray-300">
+                    Official: {{ profile()?.user?.officialName }}
+                  </p>
+                }
+                @if (profile()?.user?.discordUsername) {
+                  <p class="text-gray-500 dark:text-gray-400">
+                    Discord: {{ profile()?.user?.discordUsername }}
+                  </p>
+                }
+              </div>
             }
           </div>
-          <a routerLink="/drivers"
-            ><app-button variant="secondary">Back to Drivers</app-button></a
-          >
+          <a routerLink="/drivers">
+            <app-button variant="secondary">Back to Drivers</app-button>
+          </a>
         </div>
 
-        <app-card>
-          <label class="label">Visible Series Profiles</label>
-          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            @for (
-              seriesProfile of profile()!.profiles;
-              track seriesProfile.driverId
-            ) {
-              <label
-                class="inline-flex items-center gap-2 rounded-md border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  [checked]="
-                    selectedDriverIds().includes(seriesProfile.driverId)
-                  "
-                  (change)="toggleDriverSelection(seriesProfile.driverId)"
-                />
-                <span
-                  >#{{ seriesProfile.driverNumber }} -
-                  {{ seriesProfile.seriesName }}</span
-                >
-              </label>
-            }
+        <!-- Stats Cards -->
+        @if (statsToShow()) {
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <app-card>
+              <div class="text-center">
+                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {{ statsToShow()?.reportsFiledCount || 0 }}
+                </p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                  Reports Filed
+                </p>
+              </div>
+            </app-card>
+            <app-card>
+              <div class="text-center">
+                <p class="text-3xl font-bold text-amber-600">
+                  {{ statsToShow()?.reportsAgainstCount || 0 }}
+                </p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                  Reports Against
+                </p>
+              </div>
+            </app-card>
+            <app-card>
+              <div class="text-center">
+                <p class="text-3xl font-bold text-blue-600">
+                  {{ statsToShow()?.pendingReports || 0 }}
+                </p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                  Pending
+                </p>
+              </div>
+            </app-card>
+            <app-card>
+              <div class="text-center">
+                <p class="text-3xl font-bold text-green-600">
+                  {{ statsToShow()?.finalizedReports || 0 }}
+                </p>
+                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                  Finalized
+                </p>
+              </div>
+            </app-card>
           </div>
+        }
+
+        <!-- Information Card -->
+        <app-card title="Information">
+          <dl class="grid sm:grid-cols-2 gap-4">
+            @if (isDriverMode()) {
+              <div>
+                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                  Driver Number
+                </dt>
+                <dd class="font-medium text-gray-900 dark:text-gray-100">
+                  #{{ driver()?.driverNumber }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                  Full Name
+                </dt>
+                <dd class="font-medium text-gray-900 dark:text-gray-100">
+                  {{ driver()?.driverName }}
+                </dd>
+              </div>
+            }
+            <div>
+              <dt class="text-sm text-gray-500 dark:text-gray-400">
+                Discord Username
+              </dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">
+                {{
+                  isDriverMode()
+                    ? driver()?.username
+                    : profile()?.user?.discordUsername || "Not set"
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500 dark:text-gray-400">
+                Official Name
+              </dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">
+                {{
+                  isDriverMode()
+                    ? driver()?.officialName ?? driver()?.driverName
+                    : profile()?.user?.officialName
+                }}
+              </dd>
+            </div>
+            @if (isDriverMode()) {
+              @if (linkedUser()) {
+                <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Linked User
+                  </dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ linkedUser()?.name }}
+                  </dd>
+                </div>
+                @if (linkedUser()?.officialName) {
+                  <div>
+                    <dt class="text-sm text-gray-500 dark:text-gray-400">
+                      User Official Name
+                    </dt>
+                    <dd class="font-medium text-gray-900 dark:text-gray-100">
+                      {{ linkedUser()?.officialName }}
+                    </dd>
+                  </div>
+                }
+              }
+              @if (driver()?.externalId) {
+                <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    External ID
+                  </dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ driver()?.externalId }}
+                  </dd>
+                </div>
+              }
+            }
+          </dl>
         </app-card>
 
-        @if (canViewStaffNotes()) {
+        <!-- Staff Notes - User Mode Only -->
+        @if (!isDriverMode() && canViewStaffNotes()) {
           <app-card>
             <label class="label">Staff Notes</label>
             <textarea
@@ -119,26 +279,53 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
           </app-card>
         }
 
+        <!-- Visible Series Profiles - User Mode Only -->
+        @if (!isDriverMode()) {
+          <app-card>
+            <label class="label">Visible Series Profiles</label>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              @for (
+                seriesProfile of profile()!.profiles;
+                track seriesProfile.driverId
+              ) {
+                <label
+                  class="inline-flex items-center gap-2 rounded-md border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    [checked]="
+                      selectedDriverIds().includes(seriesProfile.driverId)
+                    "
+                    (change)="toggleDriverSelection(seriesProfile.driverId)"
+                  />
+                  <span
+                    >#{{ seriesProfile.driverNumber }} -
+                    {{ seriesProfile.seriesName }}</span
+                  >
+                </label>
+              }
+            </div>
+          </app-card>
+        }
+
+        <!-- Series Profile Cards -->
         <div class="space-y-4">
-          @for (
-            seriesProfile of visibleProfiles();
-            track seriesProfile.driverId
-          ) {
+          @for (profile of profilesToShow(); track profile.driverId) {
             <app-card>
               <div class="flex items-center justify-between gap-3">
                 <div>
                   <h3
                     class="text-lg font-semibold text-gray-900 dark:text-gray-100"
                   >
-                    {{ seriesProfile.seriesName }} - #{{
-                      seriesProfile.driverNumber
+                    {{ profile.seriesName || "No Series" }} - #{{
+                      profile.driverNumber
                     }}
                   </h3>
                   <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ seriesProfile.displayName || seriesProfile.driverName }}
+                    {{ profile.displayName || profile.driverName }}
                   </p>
                 </div>
-                @if (!seriesProfile.isActive) {
+                @if (profile.isActive === false) {
                   <app-badge variant="warning">Withdrawn</app-badge>
                 }
               </div>
@@ -149,23 +336,23 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                     Driver Class
                   </p>
                   @if (
-                    editingDriverClass()[seriesProfile.driverId] &&
+                    editingDriverClass()[profile.driverId] &&
                     canManageProfiles()
                   ) {
                     <div class="flex items-center gap-2">
                       <select
                         class="input flex-1"
                         [ngModel]="
-                          pendingDriverClass()[seriesProfile.driverId] || ''
+                          pendingDriverClass()[profile.driverId] || ''
                         "
                         (ngModelChange)="
-                          setPendingDriverClass(seriesProfile.driverId, $event)
+                          setPendingDriverClass(profile.driverId, $event)
                         "
                       >
                         <option value="">Select class</option>
                         @for (
                           driverClass of classOptionsBySeries()[
-                            seriesProfile.seriesId || ""
+                            profile.seriesId || ""
                           ];
                           track driverClass._id
                         ) {
@@ -178,7 +365,7 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                         variant="primary"
                         size="sm"
                         (onClick)="
-                          saveInlineDriverClass(seriesProfile.driverId)
+                          saveInlineDriverClass(profile.driverId)
                         "
                         >Save</app-button
                       >
@@ -186,19 +373,31 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                         variant="secondary"
                         size="sm"
                         (onClick)="
-                          cancelEditDriverClass(seriesProfile.driverId)
+                          cancelEditDriverClass(profile.driverId)
                         "
                         >Cancel</app-button
                       >
                     </div>
+                    @if (!isDriverMode()) {
+                      <textarea
+                        class="input w-full mt-2 border-red-300 dark:border-red-700"
+                        rows="3"
+                        [ngModel]="
+                          seriesData()[profile.seriesId]?.seriesPenaltyNotes ||
+                          ''
+                        "
+                        readonly
+                        placeholder="No series penalty notes configured for this series"
+                      ></textarea>
+                    }
                   } @else {
                     <p class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ seriesProfile.driverClassName || "No class" }}
+                      {{ profile.driverClassName || profile.driverClass || "No class" }}
                       @if (canManageProfiles()) {
                         <a
                           href="#"
                           (click)="
-                            toggleEditDriverClass(seriesProfile.driverId);
+                            toggleEditDriverClass(profile.driverId);
                             $event.preventDefault()
                           "
                           class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -213,7 +412,7 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                     License Points
                   </p>
                   @if (
-                    editingLicensePoints()[seriesProfile.driverId] &&
+                    editingLicensePoints()[profile.driverId] &&
                     canManageProfiles()
                   ) {
                     <div class="flex items-center gap-2">
@@ -222,12 +421,12 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                         class="input flex-1"
                         min="0"
                         [ngModel]="
-                          pendingLicensePoints()[seriesProfile.driverId] ??
-                          seriesProfile.accumulatedLicensePoints
+                          pendingLicensePoints()[profile.driverId] ||
+                          profile.accumulatedLicensePoints
                         "
                         (ngModelChange)="
                           setPendingLicensePoints(
-                            seriesProfile.driverId,
+                            profile.driverId,
                             $event
                           )
                         "
@@ -236,7 +435,7 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                         variant="primary"
                         size="sm"
                         (onClick)="
-                          saveInlineLicensePoints(seriesProfile.driverId)
+                          saveInlineLicensePoints(profile.driverId)
                         "
                         >Save</app-button
                       >
@@ -244,19 +443,19 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                         variant="secondary"
                         size="sm"
                         (onClick)="
-                          cancelEditLicensePoints(seriesProfile.driverId)
+                          cancelEditLicensePoints(profile.driverId)
                         "
                         >Cancel</app-button
                       >
                     </div>
                   } @else {
                     <p class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ seriesProfile.accumulatedLicensePoints || 0 }}
+                      {{ profile.accumulatedLicensePoints || 0 }}
                       @if (canManageProfiles()) {
                         <a
                           href="#"
                           (click)="
-                            toggleEditLicensePoints(seriesProfile.driverId);
+                            toggleEditLicensePoints(profile.driverId);
                             $event.preventDefault()
                           "
                           class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -271,7 +470,7 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                     Steam ID
                   </p>
                   <p class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ seriesProfile.steamId || "Not set" }}
+                    {{ profile.steamId || "Not set" }}
                   </p>
                 </div>
               </div>
@@ -280,14 +479,19 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
                 <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">
                   Penalty History
                 </h4>
-                @if (!seriesProfile.penalties.length) {
+                @if (
+                  isDriverMode()
+                    ? !stats()?.finalizedReports
+                    : !profile.penalties.length
+                ) {
                   <p class="text-sm text-gray-500 dark:text-gray-400">
-                    No finalized penalties found for this series profile.
+                    No finalized penalties found for this
+                    {{ isDriverMode() ? "driver" : "series profile" }}.
                   </p>
                 } @else {
                   <div class="space-y-2">
                     @for (
-                      penalty of seriesProfile.penalties;
+                      penalty of (isDriverMode() ? penaltyHistory() : profile.penalties);
                       track penalty.reportId
                     ) {
                       <a
@@ -323,22 +527,258 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
             </app-card>
           }
         </div>
+
+        <!-- Series Penalties - Driver Mode Only -->
+        @if (isDriverMode()) {
+          <app-card title="Series Penalties">
+            <div class="space-y-4">
+              @if (seriesOptions().length > 1) {
+                <div>
+                  <label class="label">Select Series</label>
+                  <app-select
+                    [options]="seriesOptions()"
+                    [(ngModel)]="selectedSeriesId"
+                    (ngModelChange)="loadPenalties()"
+                    placeholder="All Series"
+                  />
+                </div>
+              }
+
+              @if (penaltiesLoading()) {
+                <app-loading text="Loading penalties..." />
+              } @else if (filteredAndSortedSeriesPenalties().length > 0) {
+                <div class="flex items-center gap-4 mb-4">
+                  <div class="flex-1 max-w-md">
+                    <input
+                      type="text"
+                      class="input w-full"
+                      placeholder="Filter by any field..."
+                      [(ngModel)]="seriesFilterText"
+                    />
+                  </div>
+                </div>
+                @for (
+                  seriesGroup of filteredAndSortedSeriesPenalties();
+                  track seriesGroup.seriesId
+                ) {
+                  <div class="space-y-4">
+                    <div class="flex items-center gap-2 pt-4">
+                      <h3
+                        class="text-lg font-semibold text-gray-900 dark:text-gray-100"
+                      >
+                        {{ seriesGroup.seriesName }}
+                      </h3>
+                    </div>
+                    @if (getSeriesPenalties(seriesGroup.seriesId).length > 0) {
+                      <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                          <thead
+                            class="bg-gray-50 dark:bg-gray-800"
+                          >
+                            <tr class="text-left">
+                              <th
+                                class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
+                                (click)="
+                                  sortSeriesPenalties(
+                                    seriesGroup.seriesId,
+                                    'penaltyName'
+                                  )
+                                "
+                              >
+                                Penalty
+                                {{
+                                  getSortIcon(
+                                    "penaltyName",
+                                    getSeriesSortColumn(seriesGroup.seriesId),
+                                    getSeriesSortDirection(seriesGroup.seriesId)
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
+                                (click)="
+                                  sortSeriesPenalties(
+                                    seriesGroup.seriesId,
+                                    'threshold'
+                                  )
+                                "
+                              >
+                                Threshold
+                                {{
+                                  getSortIcon(
+                                    "threshold",
+                                    getSeriesSortColumn(seriesGroup.seriesId),
+                                    getSeriesSortDirection(seriesGroup.seriesId)
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
+                                (click)="
+                                  sortSeriesPenalties(
+                                    seriesGroup.seriesId,
+                                    'pointsAtAssignment'
+                                  )
+                                "
+                              >
+                                Points at Assignment
+                                {{
+                                  getSortIcon(
+                                    "pointsAtAssignment",
+                                    getSeriesSortColumn(seriesGroup.seriesId),
+                                    getSeriesSortDirection(seriesGroup.seriesId)
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
+                                (click)="
+                                  sortSeriesPenalties(
+                                    seriesGroup.seriesId,
+                                    'assignedAt'
+                                  )
+                                "
+                              >
+                                Assigned Date
+                                {{
+                                  getSortIcon(
+                                    "assignedAt",
+                                    getSeriesSortColumn(seriesGroup.seriesId),
+                                    getSeriesSortDirection(seriesGroup.seriesId)
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
+                                (click)="
+                                  sortSeriesPenalties(
+                                    seriesGroup.seriesId,
+                                    'isServed'
+                                  )
+                                "
+                              >
+                                Status
+                                {{
+                                  getSortIcon(
+                                    "isServed",
+                                    getSeriesSortColumn(seriesGroup.seriesId),
+                                    getSeriesSortDirection(seriesGroup.seriesId)
+                                  )
+                                }}
+                              </th>
+                              <th
+                                class="px-4 py-2 font-medium text-gray-500 align-middle leading-tight dark:text-gray-400"
+                              >
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody
+                            class="divide-y divide-gray-100 dark:divide-gray-800"
+                          >
+                            @for (
+                              penalty of getSeriesPenalties(seriesGroup.seriesId);
+                              track penalty._id
+                            ) {
+                              <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td
+                                  class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100"
+                                >
+                                  {{ penalty.penaltyName ?? "-" }}
+                                </td>
+                                <td
+                                  class="px-4 py-3 text-gray-600 dark:text-gray-300"
+                                >
+                                  {{ penalty.threshold ?? "-" }} pts
+                                </td>
+                                <td
+                                  class="px-4 py-3 text-gray-600 dark:text-gray-300"
+                                >
+                                  {{ penalty.pointsAtAssignment }} pts
+                                </td>
+                                <td
+                                  class="px-4 py-3 text-gray-600 dark:text-gray-300"
+                                >
+                                  {{ formatDate(penalty.assignedAt) }}
+                                </td>
+                                <td class="px-4 py-3">
+                                  @if (penalty.isServed) {
+                                    <app-badge variant="success"
+                                      >Served</app-badge
+                                    >
+                                  } @else {
+                                    <app-badge variant="danger">Active</app-badge>
+                                  }
+                                </td>
+                                <td class="px-4 py-3">
+                                  @if (!penalty.isServed && canMarkAsServed()) {
+                                    <app-button
+                                      variant="primary"
+                                      size="sm"
+                                      (onClick)="markAsServed(penalty._id)"
+                                    >
+                                      Mark as Served
+                                    </app-button>
+                                  } @else if (
+                                    penalty.isServed && penalty.servedByUserName
+                                  ) {
+                                    <span
+                                      class="text-sm text-gray-500 dark:text-gray-400"
+                                    >
+                                      By {{ penalty.servedByUserName }} on
+                                      {{ formatDate(penalty.servedAt!) }}
+                                    </span>
+                                  }
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    } @else {
+                      <p
+                        class="text-gray-500 text-center py-4 dark:text-gray-400"
+                      >
+                        No penalties for this series
+                      </p>
+                    }
+                  </div>
+                }
+              } @else if (selectedSeriesId || seriesOptions().length === 1) {
+                <p class="text-gray-500 text-center py-4 dark:text-gray-400">
+                  No series penalties assigned to this driver
+                </p>
+              } @else {
+                <p class="text-gray-500 text-center py-4 dark:text-gray-400">
+                  Select a series to view penalties
+                </p>
+              }
+            </div>
+          </app-card>
+        }
       }
     </div>
   `,
 })
 export class DriverUserDetailComponent implements OnInit {
-  @Input() userId!: string;
-
   private readonly convex = inject(ConvexService);
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
+
+  @Input() driverId?: string;
+  @Input() userId?: string;
+
+  private readonly _driverId = signal<string | undefined>(undefined);
+  private readonly _userId = signal<string | undefined>(undefined);
 
   loading = signal(true);
   profile = signal<any>(null);
   selectedDriverIds = signal<string[]>([]);
   staffNoteDraft = signal<string>("");
   savingStaffNote = signal(false);
+  seriesData = signal<Record<string, any>>({});
 
   classOptionsBySeries = signal<Record<string, any[]>>({});
   classSelection = signal<Record<string, string>>({});
@@ -348,6 +788,35 @@ export class DriverUserDetailComponent implements OnInit {
   editingDriverClass = signal<Record<string, boolean>>({});
   editingLicensePoints = signal<Record<string, boolean>>({});
   pendingDriverClass = signal<Record<string, string>>({});
+
+  readonly isDriverMode = computed(() =>
+    !!this._driverId() && !this._userId()
+  );
+
+  // Driver Mode signals
+  driver = signal<any>(null);
+  linkedUser = signal<any>(null);
+  stats = signal<any>(null);
+  penalties = signal<DriverSeriesPenaltyDetails[]>([]);
+  penaltyHistory = signal<any[]>([]);
+  penaltiesLoading = signal(false);
+  selectedSeriesId = "";
+  series = signal<any[]>([]);
+  driverClassOptions = signal<any[]>([]);
+  allUsers = signal<any[]>([]);
+  seriesFilterText = signal("");
+  seriesSortColumn = signal<Record<string, keyof SeriesPenaltyRow>>({});
+  seriesSortDirection = signal<Record<string, "asc" | "desc">>({});
+  private seriesFilterSubject = new Subject<string>();
+  private unsubscribes: (() => void)[] = [];
+
+  private seriesFilterEffect = effect(
+    () => {
+      const filterText = this.seriesFilterText();
+      this.seriesFilterSubject.next(filterText);
+    },
+    { allowSignalWrites: true },
+  );
 
   visibleProfiles = computed(() => {
     const current = this.profile();
@@ -359,8 +828,120 @@ export class DriverUserDetailComponent implements OnInit {
     );
   });
 
+  profilesToShow = computed(() => {
+    if (this.isDriverMode()) {
+      const drv = this.driver();
+      return drv ? [{ ...drv, _isSingleDriver: true }] : [];
+    }
+    return this.visibleProfiles();
+  });
+
+  aggregatedStats = computed(() => {
+    const profiles = this.profile()?.profiles || [];
+    return {
+      reportsFiledCount: profiles.reduce(
+        (sum: number, p: any) => sum + (p.reportsFiledCount || 0),
+        0
+      ),
+      reportsAgainstCount: profiles.reduce(
+        (sum: number, p: any) => sum + (p.reportsAgainstCount || 0),
+        0
+      ),
+      pendingReports: profiles.reduce(
+        (sum: number, p: any) => sum + (p.pendingReports || 0),
+        0
+      ),
+      finalizedReports: profiles.reduce(
+        (sum: number, p: any) => sum + (p.finalizedReports || 0),
+        0
+      ),
+    };
+  });
+
+  statsToShow = computed(() => {
+    return this.isDriverMode() ? this.stats() : this.aggregatedStats();
+  });
+
+  groupedPenalties = computed((): SeriesPenaltyGroup[] => {
+    const penalties = this.penalties();
+    const grouped: Record<string, SeriesPenaltyGroup> = {};
+
+    for (const penalty of penalties) {
+      const seriesId = penalty.seriesId as string;
+      const seriesName = penalty.seriesName ?? "Unknown Series";
+
+      if (!grouped[seriesId]) {
+        grouped[seriesId] = {
+          seriesId,
+          seriesName,
+          penalties: [],
+        };
+      }
+
+      grouped[seriesId].penalties.push({
+        _id: penalty._id as string,
+        penaltyName: penalty.penaltyName,
+        penaltyDescription: penalty.penaltyDescription,
+        threshold: penalty.threshold,
+        pointsAtAssignment: penalty.pointsAtAssignment,
+        assignedAt: penalty.assignedAt,
+        isServed: penalty.isServed,
+        servedAt: penalty.servedAt,
+        servedByUserName: penalty.servedByUserName,
+      });
+    }
+
+    return Object.values(grouped);
+  });
+
+  filteredAndSortedSeriesPenalties = computed(() => {
+    let groups = this.groupedPenalties();
+
+    if (this.selectedSeriesId) {
+      groups = groups.filter((g) => g.seriesId === this.selectedSeriesId);
+    }
+
+    if (this.seriesFilterText()) {
+      const filter = this.seriesFilterText().toLowerCase();
+
+      groups = groups.map((group) => ({
+        ...group,
+        penalties: group.penalties.filter((penalty) => {
+          const penaltyName = penalty.penaltyName?.toLowerCase() ?? "";
+          const penaltyDescription =
+            penalty.penaltyDescription?.toLowerCase() ?? "";
+          const threshold = penalty.threshold?.toString() ?? "";
+          const points = penalty.pointsAtAssignment?.toString() ?? "";
+          const assignedDate = new Date(penalty.assignedAt)
+            .toLocaleDateString()
+            .toLowerCase();
+          const status = penalty.isServed ? "served" : "active";
+
+          return (
+            penaltyName.includes(filter) ||
+            penaltyDescription.includes(filter) ||
+            threshold.includes(filter) ||
+            points.includes(filter) ||
+            assignedDate.includes(filter) ||
+            status.includes(filter)
+          );
+        }),
+      }));
+    }
+
+    return groups;
+  });
+
   ngOnInit(): void {
-    void this.load();
+    this.setupFilterDebounce();
+    this.route.params.subscribe((params) => {
+      if (params["userId"]) {
+        this._userId.set(params["userId"]);
+      } else if (params["id"]) {
+        this._driverId.set(params["id"]);
+      }
+      void this.load();
+    });
   }
 
   canManageProfiles(): boolean {
@@ -397,35 +978,91 @@ export class DriverUserDetailComponent implements OnInit {
   }
 
   async load(): Promise<void> {
-    if (!this.userId) {
+    if (!this._driverId() && !this._userId()) {
       this.loading.set(false);
       return;
     }
 
     this.loading.set(true);
     try {
-      const profile = await this.convex.query(
-        this.convex.api.drivers.getUserProfile,
-        {
-          userId: this.userId as any,
-          currentUserId: this.authService.getUserId() ?? undefined,
-        },
-      );
-      this.profile.set(profile);
-      this.staffNoteDraft.set(profile?.user?.note || "");
-
-      if (profile?.profiles?.length) {
-        const defaultDriverIds = profile.profiles
-          .slice(0, 2)
-          .map((p: any) => p.driverId);
-        this.selectedDriverIds.set(defaultDriverIds);
-        await this.loadClassOptions(profile.profiles);
+      if (this.isDriverMode()) {
+        await this.loadDriverMode();
+      } else if (this._userId()) {
+        await this.loadUserMode();
       }
     } catch (error) {
-      console.error("Failed to load user driver profile:", error);
-      this.toast.error("Failed to load user profile");
+      console.error("Failed to load data:", error);
+      this.toast.error("Failed to load data");
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async loadDriverMode(): Promise<void> {
+    if (!this._driverId()) return;
+
+    const driver = await this.convex.query(
+      this.convex.api.drivers.getByIdWithUser,
+      { driverId: this._driverId() as any }
+    );
+
+    this.driver.set(driver);
+    this.linkedUser.set(driver.linkedUser);
+
+    const stats = await this.convex.query(
+      this.convex.api.drivers.getDriverStats,
+      { driverId: this._driverId() as any }
+    );
+    this.stats.set(stats);
+
+    if (driver.championshipId) {
+      const classes = await this.convex.query(
+        this.convex.api.drivers.getDriverClassesBySeries,
+        { seriesId: driver.championshipId as any }
+      );
+      this.classOptionsBySeries.set({ [driver.championshipId]: classes || [] });
+    } else {
+      this.classOptionsBySeries.set({});
+    }
+
+    if (this.authService.hasMinimumRole("event_manager")) {
+      const users = await this.convex.query(this.convex.api.users.list, {});
+      this.allUsers.set(users || []);
+    }
+
+    const history = await this.convex.query(
+      this.convex.api.drivers.getPenaltyHistory,
+      {
+        driverId: this._driverId() as any,
+        championshipId: driver.championshipId ?? undefined,
+      }
+    );
+    this.penaltyHistory.set(history || []);
+
+    await this.loadSeries();
+    await this.loadPenalties();
+  }
+
+  private async loadUserMode(): Promise<void> {
+    if (!this._userId()) return;
+
+    const profile = await this.convex.query(
+      this.convex.api.drivers.getUserProfile,
+      {
+        userId: this._userId() as any,
+        currentUserId: this.authService.getUserId() ?? undefined,
+      }
+    );
+    this.profile.set(profile);
+    this.staffNoteDraft.set(profile?.user?.note || "");
+
+    if (profile?.profiles?.length) {
+      const defaultDriverIds = profile.profiles
+        .slice(0, 2)
+        .map((p: any) => p.driverId);
+      this.selectedDriverIds.set(defaultDriverIds);
+      await this.loadClassOptions(profile.profiles);
+      await this.loadSeriesDataForProfiles(profile.profiles);
     }
   }
 
@@ -442,7 +1079,7 @@ export class DriverUserDetailComponent implements OnInit {
           },
         );
         return [seriesId, options || []] as const;
-      }),
+      })
     );
 
     const map: Record<string, any[]> = {};
@@ -450,6 +1087,92 @@ export class DriverUserDetailComponent implements OnInit {
       map[String(seriesId)] = options;
     }
     this.classOptionsBySeries.set(map);
+  }
+
+  private async loadSeriesDataForProfiles(
+    seriesProfiles: any[]
+  ): Promise<void> {
+    const uniqueSeriesIds = [
+      ...new Set(seriesProfiles.map((p) => p.seriesId).filter(Boolean)),
+    ];
+
+    const map: Record<string, any> = {};
+    for (const seriesId of uniqueSeriesIds) {
+      try {
+        const series = await this.convex.query(this.convex.api.series.getById, {
+          id: seriesId as any,
+        });
+        if (series) {
+          map[String(seriesId)] = series;
+        }
+      } catch (error) {
+        console.error(`Failed to load series data for ${seriesId}:`, error);
+      }
+    }
+    this.seriesData.set(map);
+  }
+
+  private async loadSeries(): Promise<void> {
+    const seriesQuery = this.convex.createReactiveQuery(
+      this.convex.api.series.listActive,
+      {}
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
+
+    const checkSeries = setInterval(() => {
+      const data = seriesQuery.data();
+      if (data) {
+        this.series.set(data);
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkSeries));
+  }
+
+  async loadPenalties(): Promise<void> {
+    this.penaltiesLoading.set(true);
+    try {
+      const data = await this.convex.query(
+        this.convex.api.driverSeriesPenalties.getDriverPenaltyDetails,
+        {
+          driverId: this._driverId() as any,
+          seriesId: this.selectedSeriesId
+            ? (this.selectedSeriesId as any)
+            : undefined,
+        }
+      );
+      this.penalties.set(data || []);
+    } catch (error: any) {
+      console.error("Failed to load penalties:", error);
+      this.penalties.set([]);
+    } finally {
+      this.penaltiesLoading.set(false);
+    }
+  }
+
+  async markAsServed(penaltyId: string): Promise<void> {
+    try {
+      const userId = this.authService.getUserId();
+      if (!userId) {
+        console.error("User not authenticated");
+        return;
+      }
+
+      await this.convex.mutation(
+        this.convex.api.driverSeriesPenalties.markAsServed,
+        {
+          id: penaltyId as any,
+          servedBy: userId,
+        }
+      );
+
+      await this.loadPenalties();
+    } catch (error: any) {
+      console.error("Failed to mark penalty as served:", error);
+    }
+  }
+
+  canMarkAsServed(): boolean {
+    return this.authService.hasMinimumRole("head_steward");
   }
 
   toggleDriverSelection(driverId: string): void {
@@ -533,7 +1256,7 @@ export class DriverUserDetailComponent implements OnInit {
           driverId: driverId as any,
           newPoints: points,
           userId: currentUserId,
-        },
+        }
       );
       this.toast.success("License points updated");
       await this.load();
@@ -548,14 +1271,29 @@ export class DriverUserDetailComponent implements OnInit {
   }
 
   toggleEditDriverClass(driverId: string): void {
-    const profile = this.visibleProfiles().find(
-      (p: any) => p.driverId === driverId,
-    );
-    if (profile) {
-      this.pendingDriverClass.update((state) => ({
-        ...state,
-        [driverId]: profile.driverClass || "",
-      }));
+    if (this.isDriverMode()) {
+      const driver = this.driver();
+      if (driver) {
+        const currentClassName = driver.driverClass || "";
+        const currentClass = this.classOptionsBySeries()[
+          driver.championshipId || ""
+        ]?.find((c: any) => c.displayName === currentClassName);
+        const currentClassId = currentClass?._id || "";
+        this.pendingDriverClass.update((state) => ({
+          ...state,
+          [driverId]: currentClassId,
+        }));
+      }
+    } else {
+      const profile = this.visibleProfiles().find(
+        (p: any) => p.driverId === driverId,
+      );
+      if (profile) {
+        this.pendingDriverClass.update((state) => ({
+          ...state,
+          [driverId]: profile.driverClass || "",
+        }));
+      }
     }
     this.editingDriverClass.update((state) => ({
       ...state,
@@ -564,14 +1302,24 @@ export class DriverUserDetailComponent implements OnInit {
   }
 
   toggleEditLicensePoints(driverId: string): void {
-    const profile = this.visibleProfiles().find(
-      (p: any) => p.driverId === driverId,
-    );
-    if (profile) {
-      this.pendingLicensePoints.update((state) => ({
-        ...state,
-        [driverId]: profile.accumulatedLicensePoints || 0,
-      }));
+    if (this.isDriverMode()) {
+      const driver = this.driver();
+      if (driver) {
+        this.pendingLicensePoints.update((state) => ({
+          ...state,
+          [driverId]: driver.accumulatedLicensePoints || 0,
+        }));
+      }
+    } else {
+      const profile = this.visibleProfiles().find(
+        (p: any) => p.driverId === driverId,
+      );
+      if (profile) {
+        this.pendingLicensePoints.update((state) => ({
+          ...state,
+          [driverId]: profile.accumulatedLicensePoints || 0,
+        }));
+      }
     }
     this.editingLicensePoints.update((state) => ({
       ...state,
@@ -650,7 +1398,7 @@ export class DriverUserDetailComponent implements OnInit {
           driverId: driverId as any,
           newPoints: points,
           userId: currentUserId,
-        },
+        }
       );
 
       this.toast.success("License points updated");
@@ -670,5 +1418,99 @@ export class DriverUserDetailComponent implements OnInit {
       ...state,
       [driverId]: classId,
     }));
+  }
+
+  seriesOptions = computed(() => {
+    return [
+      { value: "", label: "All Series" },
+      ...this.series().map((s: any) => ({
+        value: s._id,
+        label: s.name,
+      })),
+    ];
+  });
+
+  private setupFilterDebounce(): void {
+    this.seriesFilterSubject
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {});
+  }
+
+  getSeriesPenalties(seriesId: string): SeriesPenaltyRow[] {
+    const group = this.filteredAndSortedSeriesPenalties().find(
+      (g) => g.seriesId === seriesId
+    );
+    if (!group) return [];
+
+    const column = this.seriesSortColumn()[seriesId] as keyof SeriesPenaltyRow | undefined;
+    const direction = this.seriesSortDirection()[seriesId];
+
+    if (!column) return group.penalties;
+
+    return [...group.penalties].sort((a, b) => {
+      const aVal = a[column] ?? "";
+      const bVal = b[column] ?? "";
+
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return direction === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return direction === "asc" ? aVal - bVal : bVal - aVal;
+      }
+
+      if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+        return direction === "asc"
+          ? (aVal ? 1 : 0) - (bVal ? 1 : 0)
+          : (bVal ? 1 : 0) - (aVal ? 1 : 0);
+      }
+
+      return 0;
+    });
+  }
+
+  getSeriesSortColumn(seriesId: string): keyof SeriesPenaltyRow | "" {
+    return this.seriesSortColumn()[seriesId] ?? "";
+  }
+
+  getSeriesSortDirection(seriesId: string): "asc" | "desc" {
+    return this.seriesSortDirection()[seriesId] ?? "asc";
+  }
+
+  sortSeriesPenalties(seriesId: string, column: keyof SeriesPenaltyRow): void {
+    const currentSortColumn = this.seriesSortColumn();
+    const currentSortDirection = this.seriesSortDirection();
+
+    const newDirection =
+      currentSortColumn[seriesId] === column
+        ? currentSortDirection[seriesId] === "asc"
+          ? "desc"
+          : "asc"
+        : "asc";
+
+    untracked(() => {
+      this.seriesSortColumn.update((state) => ({
+        ...state,
+        [seriesId]: column,
+      }));
+
+      this.seriesSortDirection.update((state) => ({
+        ...state,
+        [seriesId]: newDirection,
+      }));
+    });
+  }
+
+  getSortIcon(column: string, activeColumn: string, direction: string): string {
+    if (column !== activeColumn) return "→";
+    return direction === "asc" ? "↑" : "↓";
+  }
+
+  getClassOptions(championshipId: any): any[] {
+    if (!championshipId) return [];
+    const options = this.classOptionsBySeries()[championshipId];
+    return options || [];
   }
 }

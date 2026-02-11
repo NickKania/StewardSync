@@ -17,10 +17,14 @@ export const list = query({
           review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
         ]);
 
-        const linkedReviewWithReviewer = linkedReview ? {
-          ...linkedReview,
-          reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
-        } : null;
+        const linkedReviewWithReviewer = linkedReview
+          ? {
+              ...linkedReview,
+              reviewer: linkedReview.userId
+                ? await ctx.db.get(linkedReview.userId)
+                : null,
+            }
+          : null;
 
         return {
           ...review,
@@ -28,7 +32,7 @@ export const list = query({
           report,
           linkedReview: linkedReviewWithReviewer,
         };
-      })
+      }),
     );
 
     return populatedReviews;
@@ -50,17 +54,21 @@ export const getByReport = query({
           review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
         ]);
 
-        const linkedReviewWithReviewer = linkedReview ? {
-          ...linkedReview,
-          reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
-        } : null;
+        const linkedReviewWithReviewer = linkedReview
+          ? {
+              ...linkedReview,
+              reviewer: linkedReview.userId
+                ? await ctx.db.get(linkedReview.userId)
+                : null,
+            }
+          : null;
 
         return {
           ...review,
           reviewer: user,
           linkedReview: linkedReviewWithReviewer,
         };
-      })
+      }),
     );
 
     return populatedReviews;
@@ -83,7 +91,7 @@ export const getByUser = query({
           ...review,
           report,
         };
-      })
+      }),
     );
 
     return populatedReviews;
@@ -102,10 +110,14 @@ export const getById = query({
       review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
     ]);
 
-    const linkedReviewWithReviewer = linkedReview ? {
-      ...linkedReview,
-      reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
-    } : null;
+    const linkedReviewWithReviewer = linkedReview
+      ? {
+          ...linkedReview,
+          reviewer: linkedReview.userId
+            ? await ctx.db.get(linkedReview.userId)
+            : null,
+        }
+      : null;
 
     return {
       ...review,
@@ -143,7 +155,11 @@ export const create = mutation({
     }
 
     // Check if primary steward has driver conflict
-    const primaryConflict = await checkUserDriverConflict(ctx, args.userId, report);
+    const primaryConflict = await checkUserDriverConflict(
+      ctx,
+      args.userId,
+      report,
+    );
     if (primaryConflict.hasConflict) {
       const getConflictTypeText = (type: string) => {
         if (type === "reporting_user") return "reporting user";
@@ -151,13 +167,17 @@ export const create = mutation({
         return "reported driver";
       };
       return failure(
-        `You cannot review this report because you are involved as the ${getConflictTypeText(primaryConflict.conflictType!)}${primaryConflict.driverName ? ` (${primaryConflict.driverName})` : ""}.`
+        `You cannot review this report because you are involved as the ${getConflictTypeText(primaryConflict.conflictType!)}${primaryConflict.driverName ? ` (${primaryConflict.driverName})` : ""}.`,
       );
     }
 
     // Check if second steward has driver conflict
     if (args.secondStewardId) {
-      const secondConflict = await checkUserDriverConflict(ctx, args.secondStewardId, report);
+      const secondConflict = await checkUserDriverConflict(
+        ctx,
+        args.secondStewardId,
+        report,
+      );
       if (secondConflict.hasConflict) {
         const secondSteward = await ctx.db.get(args.secondStewardId);
         const getConflictTypeText = (type: string) => {
@@ -166,7 +186,7 @@ export const create = mutation({
           return "reported driver";
         };
         return failure(
-          `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${getConflictTypeText(secondConflict.conflictType!)}${secondConflict.driverName ? ` (${secondConflict.driverName})` : ""}.`
+          `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${getConflictTypeText(secondConflict.conflictType!)}${secondConflict.driverName ? ` (${secondConflict.driverName})` : ""}.`,
         );
       }
     }
@@ -191,8 +211,20 @@ export const create = mutation({
         .first();
 
       if (existingSecondReview) {
-        return failure("Second steward has already submitted a review for this report");
+        return failure(
+          "Second steward has already submitted a review for this report",
+        );
       }
+    }
+
+    // Validate that adjustedReason is provided when isAdjusted is true
+    if (
+      args.isAdjusted &&
+      (!args.adjustedReason || args.adjustedReason.trim() === "")
+    ) {
+      return failure(
+        "Adjusted reason is required when the incident is marked as adjusted",
+      );
     }
 
     const now = Date.now();
@@ -241,7 +273,9 @@ export const create = mutation({
       await ctx.db.patch(primaryReviewId, { linkedReviewId: secondReviewId });
 
       if (args.videoTimestamp) {
-        await ctx.db.patch(args.reportId, { videoTimestamp: args.videoTimestamp });
+        await ctx.db.patch(args.reportId, {
+          videoTimestamp: args.videoTimestamp,
+        });
       }
 
       await maybeMarkReviewed();
@@ -253,7 +287,9 @@ export const create = mutation({
     const reviewId = await ctx.db.insert("reviews", reviewData);
 
     if (args.videoTimestamp) {
-      await ctx.db.patch(args.reportId, { videoTimestamp: args.videoTimestamp });
+      await ctx.db.patch(args.reportId, {
+        videoTimestamp: args.videoTimestamp,
+      });
     }
 
     await maybeMarkReviewed();
@@ -292,8 +328,30 @@ export const update = mutation({
       throw new UserFacingError("Cannot update review for a finalized report");
     }
 
+    // Validate that adjustedReason is provided when isAdjusted is true
+    if (
+      updates.isAdjusted === true &&
+      (!updates.adjustedReason || updates.adjustedReason.trim() === "")
+    ) {
+      throw new UserFacingError(
+        "Adjusted reason is required when the incident is marked as adjusted",
+      );
+    }
+
+    // Check if trying to clear adjustedReason on an adjusted review
+    if (
+      review.isAdjusted &&
+      !updates.isAdjusted &&
+      updates.adjustedReason !== undefined &&
+      updates.adjustedReason.trim() === ""
+    ) {
+      throw new UserFacingError(
+        "Cannot clear adjusted reason for an adjusted incident",
+      );
+    }
+
     const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined)
+      Object.entries(updates).filter(([_, v]) => v !== undefined),
     );
 
     await ctx.db.patch(reviewId, {
@@ -320,9 +378,7 @@ export const updateWithSecondSteward = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { reviewId, secondStewardId, ...updates } = args;
-
-    const review = await ctx.db.get(reviewId);
+    const review = await ctx.db.get(args.reviewId);
     if (!review) {
       throw new Error("Review not found");
     }
@@ -333,43 +389,54 @@ export const updateWithSecondSteward = mutation({
     }
 
     if (report.isFinalized) {
-      throw new UserFacingError("Cannot update review for a finalized report");
+      return failure("Cannot update a review for a finalized report");
     }
 
+    // Check if second steward has driver conflict
     const secondConflict = await checkUserDriverConflict(
       ctx,
-      secondStewardId,
+      args.secondStewardId,
       report,
     );
     if (secondConflict.hasConflict) {
-      const secondSteward = await ctx.db.get(secondStewardId);
+      const secondSteward = await ctx.db.get(args.secondStewardId);
       const getConflictTypeText = (type: string) => {
         if (type === "reporting_user") return "reporting user";
         if (type === "reporting_driver") return "reporting driver";
         return "reported driver";
       };
-      throw new UserFacingError(
+      return failure(
         `${secondSteward?.name || "The second steward"} cannot review this report because they are involved as the ${getConflictTypeText(secondConflict.conflictType!)}${secondConflict.driverName ? ` (${secondConflict.driverName})` : ""}.`,
       );
     }
 
-    const baseUpdates = {
-      incidentDescription: updates.incidentDescription,
-      reviewNotes: updates.reviewNotes,
-      candidateForStandardization: updates.candidateForStandardization,
-      recommendedPenalty: updates.recommendedPenalty,
-      atFaultDriverId: updates.atFaultDriverId,
-      videoTimestamp: updates.videoTimestamp,
-      isSelfReport: updates.isSelfReport,
-      isAdjusted: updates.isAdjusted,
-      adjustedReason: updates.adjustedReason,
+    // Validate that adjustedReason is provided when isAdjusted is true
+    if (
+      args.isAdjusted &&
+      (!args.adjustedReason || args.adjustedReason.trim() === "")
+    ) {
+      return failure(
+        "Adjusted reason is required when the incident is marked as adjusted",
+      );
+    }
+
+    const updates = {
+      incidentDescription: args.incidentDescription,
+      reviewNotes: args.reviewNotes,
+      candidateForStandardization: args.candidateForStandardization,
+      recommendedPenalty: args.recommendedPenalty,
+      atFaultDriverId: args.atFaultDriverId,
+      videoTimestamp: args.videoTimestamp,
+      isSelfReport: args.isSelfReport,
+      isAdjusted: args.isAdjusted,
+      adjustedReason: args.adjustedReason,
     };
 
     const cleanUpdates = Object.fromEntries(
-      Object.entries(baseUpdates).filter(([_, v]) => v !== undefined),
+      Object.entries(updates).filter(([_, v]) => v !== undefined),
     );
 
-    await ctx.db.patch(reviewId, {
+    await ctx.db.patch(args.reviewId, {
       ...cleanUpdates,
       updatedAt: Date.now(),
     });
@@ -379,10 +446,10 @@ export const updateWithSecondSteward = mutation({
       const linkedReview = await ctx.db.get(linkedReviewId);
       if (linkedReview) {
         await ctx.db.patch(linkedReviewId, {
-          userId: secondStewardId,
+          userId: args.secondStewardId,
           updatedAt: Date.now(),
         });
-        return reviewId;
+        return args.reviewId;
       }
       linkedReviewId = null;
     }
@@ -390,23 +457,23 @@ export const updateWithSecondSteward = mutation({
     const existingSecondReview = await ctx.db
       .query("reviews")
       .withIndex("by_report", (q) => q.eq("reportId", review.reportId))
-      .filter((q) => q.eq(q.field("userId"), secondStewardId))
+      .filter((q) => q.eq(q.field("userId"), args.secondStewardId))
       .first();
 
     if (existingSecondReview) {
       await ctx.db.patch(existingSecondReview._id, {
-        linkedReviewId: reviewId,
+        linkedReviewId: args.reviewId,
         updatedAt: Date.now(),
       });
-      await ctx.db.patch(reviewId, {
+      await ctx.db.patch(args.reviewId, {
         linkedReviewId: existingSecondReview._id,
         updatedAt: Date.now(),
       });
-      return reviewId;
+      return args.reviewId;
     }
 
     const secondReviewId = await ctx.db.insert("reviews", {
-      userId: secondStewardId,
+      userId: args.secondStewardId,
       reportId: review.reportId,
       incidentDescription:
         updates.incidentDescription ?? review.incidentDescription,
@@ -418,15 +485,15 @@ export const updateWithSecondSteward = mutation({
       isSelfReport: updates.isSelfReport,
       isAdjusted: updates.isAdjusted,
       adjustedReason: updates.adjustedReason,
-      linkedReviewId: reviewId,
+      linkedReviewId: args.reviewId,
       reviewDate: review.reviewDate ?? Date.now(),
       createdAt: review.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     });
 
-    await ctx.db.patch(reviewId, { linkedReviewId: secondReviewId });
+    await ctx.db.patch(args.reviewId, { linkedReviewId: secondReviewId });
 
-    return reviewId;
+    return args.reviewId;
   },
 });
 
@@ -543,10 +610,14 @@ export const search = query({
           review.linkedReviewId ? ctx.db.get(review.linkedReviewId) : null,
         ]);
 
-        const linkedReviewWithReviewer = linkedReview ? {
-          ...linkedReview,
-          reviewer: linkedReview.userId ? await ctx.db.get(linkedReview.userId) : null,
-        } : null;
+        const linkedReviewWithReviewer = linkedReview
+          ? {
+              ...linkedReview,
+              reviewer: linkedReview.userId
+                ? await ctx.db.get(linkedReview.userId)
+                : null,
+            }
+          : null;
 
         return {
           ...review,
@@ -554,20 +625,20 @@ export const search = query({
           report,
           linkedReview: linkedReviewWithReviewer,
         };
-      })
+      }),
     );
 
     let filteredReviews = populatedReviews;
 
     if (args.searchQuery) {
       const query = args.searchQuery.toLowerCase();
-      filteredReviews = filteredReviews.filter(
-        (review) => {
-          const descriptionMatch = review.incidentDescription?.toLowerCase().includes(query) || false;
-          const notesMatch = review.reviewNotes?.toLowerCase().includes(query) || false;
-          return descriptionMatch || notesMatch;
-        }
-      );
+      filteredReviews = filteredReviews.filter((review) => {
+        const descriptionMatch =
+          review.incidentDescription?.toLowerCase().includes(query) || false;
+        const notesMatch =
+          review.reviewNotes?.toLowerCase().includes(query) || false;
+        return descriptionMatch || notesMatch;
+      });
     }
 
     if (args.seriesId) {
@@ -577,13 +648,13 @@ export const search = query({
           if (!report) return false;
           const event = await ctx.db.get(report.eventId);
           return event?.seriesId === args.seriesId;
-        })
+        }),
       ).then((results) => filteredReviews.filter((_, i) => results[i]));
     }
 
     if (args.userId) {
       filteredReviews = filteredReviews.filter(
-        (review) => review.userId === args.userId
+        (review) => review.userId === args.userId,
       );
     }
 
@@ -597,29 +668,38 @@ export const search = query({
 
     if (args.startDate) {
       filteredReviews = filteredReviews.filter(
-        (review) => review.createdAt >= args.startDate!
+        (review) => review.createdAt >= args.startDate!,
       );
     }
 
     if (args.endDate) {
       filteredReviews = filteredReviews.filter(
-        (review) => review.createdAt <= args.endDate!
+        (review) => review.createdAt <= args.endDate!,
       );
     }
 
-    const paginatedReviews = filteredReviews.slice(args.offset, args.offset + args.limit);
+    const paginatedReviews = filteredReviews.slice(
+      args.offset,
+      args.offset + args.limit,
+    );
 
     const reviewsWithFullDetails = await Promise.all(
       paginatedReviews.map(async (review) => {
-        const event = review.report ? await ctx.db.get(review.report.eventId) : null;
+        const event = review.report
+          ? await ctx.db.get(review.report.eventId)
+          : null;
         const series = event ? await ctx.db.get(event.seriesId) : null;
-        const race = review.report ? await ctx.db.get(review.report.raceId) : null;
-        const atFaultDriver = review.report && review.report.atFaultDriverId 
-          ? await ctx.db.get(review.report.atFaultDriverId) 
+        const race = review.report
+          ? await ctx.db.get(review.report.raceId)
           : null;
-        const reportingDriver = review.report && review.report.reportingDriverId 
-          ? await ctx.db.get(review.report.reportingDriverId) 
-          : null;
+        const atFaultDriver =
+          review.report && review.report.atFaultDriverId
+            ? await ctx.db.get(review.report.atFaultDriverId)
+            : null;
+        const reportingDriver =
+          review.report && review.report.reportingDriverId
+            ? await ctx.db.get(review.report.reportingDriverId)
+            : null;
 
         return {
           ...review,
@@ -629,7 +709,7 @@ export const search = query({
           atFaultDriver,
           reportingDriver,
         };
-      })
+      }),
     );
 
     return reviewsWithFullDetails;
@@ -653,7 +733,7 @@ export const searchCount = query({
       reviews = reviews.filter(
         (review) =>
           review.incidentDescription.toLowerCase().includes(query) ||
-          review.reviewNotes.toLowerCase().includes(query)
+          review.reviewNotes.toLowerCase().includes(query),
       );
     }
 
@@ -663,7 +743,7 @@ export const searchCount = query({
           const report = await ctx.db.get(review.reportId);
           const event = report ? await ctx.db.get(report.eventId) : null;
           return event?.seriesId === args.seriesId;
-        })
+        }),
       ).then((results) => reviews.filter((_, i) => results[i]));
     }
 

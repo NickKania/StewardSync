@@ -150,7 +150,7 @@ export const routes: Routes = [
   {
     path: "drivers",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ["head_steward", "event_manager", "league_manager"] },
+    data: { roles: ["steward", "head_steward", "event_manager", "league_manager"] },
     children: [
       {
         path: "",
@@ -169,9 +169,9 @@ export const routes: Routes = [
       {
         path: ":id",
         loadComponent: () =>
-          import("@features/drivers/driver-detail/driver-detail.component").then(
-            (m) => m.DriverDetailComponent,
-          ),
+          import(
+            "@features/drivers/driver-user-detail/driver-user-detail.component"
+          ).then((m) => m.DriverUserDetailComponent),
       },
     ],
   },

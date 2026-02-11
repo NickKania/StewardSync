@@ -578,7 +578,7 @@ import { Id } from "@convex/_generated/dataModel";
               <div>
                 <label
                   class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
-                  >Reporting Opens At (optional)</label
+                  >Reporting Opens At (optional) - {{ timezoneDisplay() }}</label
                 >
                 <div class="flex gap-2">
                   <input
@@ -652,6 +652,18 @@ import { Id } from "@convex/_generated/dataModel";
                   When unchecked, this series will not appear in any series
                   dropdowns throughout the application.
                 </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                  >Series Penalty Notes (optional)</label
+                >
+                <textarea
+                  class="input w-full"
+                  rows="3"
+                  [(ngModel)]="seriesForm.seriesPenaltyNotes"
+                  placeholder="Add notes to display when changing driver classes in this series..."
+                ></textarea>
               </div>
               <div class="flex gap-2 justify-end">
                 <app-button variant="secondary" (click)="closeSeriesModal()"
@@ -1096,6 +1108,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     reportingCloseDuration: 0,
     isReportingLocked: false,
     isActive: true,
+    seriesPenaltyNotes: "",
   };
 
   penaltyForm = {
@@ -1147,6 +1160,15 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   selectedClasses = computed(() =>
     this.selectedDriverClasses().filter((opt) => opt.selected),
   );
+
+  timezoneDisplay = computed(() => {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const offset = new Date().getTimezoneOffset();
+    const offsetHours = Math.abs(Math.floor(offset / 60));
+    const offsetMinutes = Math.abs(offset % 60);
+    const sign = offset <= 0 ? '+' : '-';
+    return `${timeZone} (UTC${sign}${offsetHours.toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')})`;
+  });
 
   private unsubscribes: (() => void)[] = [];
   importing = signal(false);
@@ -1241,6 +1263,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       reportingCloseDuration: series.reportingCloseDuration || 0,
       isReportingLocked: series.isReportingLocked || false,
       isActive: series.isActive !== false,
+      seriesPenaltyNotes: series.seriesPenaltyNotes || "",
     };
     this.showSeriesModal = true;
   }
@@ -1261,6 +1284,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           this.seriesForm.reportingCloseDuration || undefined,
         isReportingLocked: this.seriesForm.isReportingLocked,
         isActive: this.seriesForm.isActive,
+        seriesPenaltyNotes: this.seriesForm.seriesPenaltyNotes || undefined,
       });
     } else {
       await this.convex.mutation(this.convex.api.series.create, {
@@ -1272,6 +1296,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           this.seriesForm.reportingCloseDuration || undefined,
         isReportingLocked: this.seriesForm.isReportingLocked,
         isActive: this.seriesForm.isActive,
+        seriesPenaltyNotes: this.seriesForm.seriesPenaltyNotes || undefined,
       });
     }
     this.closeSeriesModal();
@@ -1304,6 +1329,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       reportingCloseDuration: 0,
       isReportingLocked: false,
       isActive: true,
+      seriesPenaltyNotes: "",
     };
   }
 

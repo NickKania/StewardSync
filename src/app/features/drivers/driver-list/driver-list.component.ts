@@ -7,6 +7,7 @@ import { Series } from '@core/models/series.model';
 import { CardComponent } from '@shared/components/card/card.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
+import { TruncateTextComponent } from '@shared/components/truncate-text/truncate-text.component';
 
 @Component({
   selector: 'app-driver-list',
@@ -18,6 +19,7 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
     CardComponent,
     BadgeComponent,
     LoadingComponent,
+    TruncateTextComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -138,16 +140,13 @@ import { LoadingComponent } from '@shared/components/loading/loading.component';
                       <span class="font-bold text-primary-700 dark:text-primary-100">{{ driver.driverNumber }}</span>
                     </div>
                     <div class="min-w-0">
-                      <p class="font-semibold text-gray-900 dark:text-gray-100 truncate">{{ driver.displayName || driver.driverName }}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
-                        {{ driver.driverClass?.displayName || driver.driverClass || 'No class' }}
-                      </p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        LP: {{ driver.accumulatedLicensePoints || 0 }}
-                        @if (driver.linkedUser?.name) {
-                          <span> - User: {{ driver.linkedUser?.name }}</span>
-                        }
-                      </p>
+                      <app-truncate-text [text]="driver.displayName || driver.driverName"
+                        class="font-semibold text-gray-900 dark:text-gray-100" />
+                      <app-truncate-text [text]="driver.driverClass?.displayName || driver.driverClass || 'No class'"
+                        class="text-sm text-gray-500 dark:text-gray-400" />
+                      <app-truncate-text
+                        [text]="'LP: ' + (driver.accumulatedLicensePoints || 0) + (driver.linkedUser?.name ? ' - User: ' + driver.linkedUser.name : '')"
+                        class="text-xs text-gray-500 dark:text-gray-400" />
                     </div>
                     @if (!driver.isActive) {
                       <app-badge variant="warning" size="sm">Withdrawn</app-badge>
