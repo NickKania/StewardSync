@@ -128,12 +128,12 @@ interface SeriesPenaltyGroup {
         </div>
 
         <!-- Stats Cards -->
-        @if (isDriverMode() && stats()) {
+        @if (statsToShow()) {
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <app-card>
               <div class="text-center">
                 <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                  {{ stats()?.reportsFiledCount || 0 }}
+                  {{ statsToShow()?.reportsFiledCount || 0 }}
                 </p>
                 <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
                   Reports Filed
@@ -143,7 +143,7 @@ interface SeriesPenaltyGroup {
             <app-card>
               <div class="text-center">
                 <p class="text-3xl font-bold text-amber-600">
-                  {{ stats()?.reportsAgainstCount || 0 }}
+                  {{ statsToShow()?.reportsAgainstCount || 0 }}
                 </p>
                 <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
                   Reports Against
@@ -153,7 +153,7 @@ interface SeriesPenaltyGroup {
             <app-card>
               <div class="text-center">
                 <p class="text-3xl font-bold text-blue-600">
-                  {{ stats()?.pendingReports || 0 }}
+                  {{ statsToShow()?.pendingReports || 0 }}
                 </p>
                 <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
                   Pending
@@ -163,50 +163,7 @@ interface SeriesPenaltyGroup {
             <app-card>
               <div class="text-center">
                 <p class="text-3xl font-bold text-green-600">
-                  {{ stats()?.finalizedReports || 0 }}
-                </p>
-                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
-                  Finalized
-                </p>
-              </div>
-            </app-card>
-          </div>
-        } @else if (!isDriverMode() && aggregatedStats()) {
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <app-card>
-              <div class="text-center">
-                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                  {{ aggregatedStats().reportsFiledCount || 0 }}
-                </p>
-                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
-                  Reports Filed
-                </p>
-              </div>
-            </app-card>
-            <app-card>
-              <div class="text-center">
-                <p class="text-3xl font-bold text-amber-600">
-                  {{ aggregatedStats().reportsAgainstCount || 0 }}
-                </p>
-                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
-                  Reports Against
-                </p>
-              </div>
-            </app-card>
-            <app-card>
-              <div class="text-center">
-                <p class="text-3xl font-bold text-blue-600">
-                  {{ aggregatedStats().pendingReports || 0 }}
-                </p>
-                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
-                  Pending
-                </p>
-              </div>
-            </app-card>
-            <app-card>
-              <div class="text-center">
-                <p class="text-3xl font-bold text-green-600">
-                  {{ aggregatedStats().finalizedReports || 0 }}
+                  {{ statsToShow()?.finalizedReports || 0 }}
                 </p>
                 <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
                   Finalized
@@ -236,24 +193,32 @@ interface SeriesPenaltyGroup {
                   {{ driver()?.driverName }}
                 </dd>
               </div>
-              <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
-                  Discord Username
-                </dt>
-                <dd class="font-medium text-gray-900 dark:text-gray-100">
-                  <div class="flex items-center gap-2">
-                    <span>{{ driver()?.username || "Not set" }}</span>
-                  </div>
-                </dd>
-              </div>
-              <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
-                  Official Name
-                </dt>
-                <dd class="font-medium text-gray-900 dark:text-gray-100">
-                  {{ driver()?.officialName ?? driver()?.driverName }}
-                </dd>
-              </div>
+            }
+            <div>
+              <dt class="text-sm text-gray-500 dark:text-gray-400">
+                Discord Username
+              </dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">
+                {{
+                  isDriverMode()
+                    ? driver()?.username
+                    : profile()?.user?.discordUsername || "Not set"
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-sm text-gray-500 dark:text-gray-400">
+                Official Name
+              </dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">
+                {{
+                  isDriverMode()
+                    ? driver()?.officialName ?? driver()?.driverName
+                    : profile()?.user?.officialName
+                }}
+              </dd>
+            </div>
+            @if (isDriverMode()) {
               @if (linkedUser()) {
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
@@ -281,27 +246,6 @@ interface SeriesPenaltyGroup {
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
                     {{ driver()?.externalId }}
-                  </dd>
-                </div>
-              }
-            } @else {
-              @if (profile()?.user?.discordUsername) {
-                <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">
-                    Discord Username
-                  </dt>
-                  <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ profile()?.user?.discordUsername }}
-                  </dd>
-                </div>
-              }
-              @if (profile()?.user?.officialName) {
-                <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">
-                    Official Name
-                  </dt>
-                  <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ profile()?.user?.officialName }}
                   </dd>
                 </div>
               }
@@ -366,22 +310,22 @@ interface SeriesPenaltyGroup {
 
         <!-- Series Profile Cards -->
         <div class="space-y-4">
-          @if (isDriverMode()) {
+          @for (profile of profilesToShow(); track profile.driverId) {
             <app-card>
               <div class="flex items-center justify-between gap-3">
                 <div>
                   <h3
                     class="text-lg font-semibold text-gray-900 dark:text-gray-100"
                   >
-                    {{ driver()?.seriesName || "No Series" }} - #{{
-                      driver()?.driverNumber
+                    {{ profile.seriesName || "No Series" }} - #{{
+                      profile.driverNumber
                     }}
                   </h3>
                   <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ driver()?.displayName || driver()?.driverName }}
+                    {{ profile.displayName || profile.driverName }}
                   </p>
                 </div>
-                @if (driver()?.isActive === false) {
+                @if (profile.isActive === false) {
                   <app-badge variant="warning">Withdrawn</app-badge>
                 }
               </div>
@@ -392,22 +336,24 @@ interface SeriesPenaltyGroup {
                     Driver Class
                   </p>
                   @if (
-                    editingDriverClass()[driver()?._id] &&
+                    editingDriverClass()[profile.driverId] &&
                     canManageProfiles()
                   ) {
                     <div class="flex items-center gap-2">
                       <select
                         class="input flex-1"
                         [ngModel]="
-                          pendingDriverClass()[driver()?._id] || ''
+                          pendingDriverClass()[profile.driverId] || ''
                         "
                         (ngModelChange)="
-                          setPendingDriverClass(driver()?._id, $event)
+                          setPendingDriverClass(profile.driverId, $event)
                         "
                       >
                         <option value="">Select class</option>
                         @for (
-                          driverClass of getClassOptions(driver()?.championshipId);
+                          driverClass of classOptionsBySeries()[
+                            profile.seriesId || ""
+                          ];
                           track driverClass._id
                         ) {
                           <option [value]="driverClass._id">
@@ -419,7 +365,7 @@ interface SeriesPenaltyGroup {
                         variant="primary"
                         size="sm"
                         (onClick)="
-                          saveInlineDriverClass(driver()?._id)
+                          saveInlineDriverClass(profile.driverId)
                         "
                         >Save</app-button
                       >
@@ -427,19 +373,31 @@ interface SeriesPenaltyGroup {
                         variant="secondary"
                         size="sm"
                         (onClick)="
-                          cancelEditDriverClass(driver()?._id)
+                          cancelEditDriverClass(profile.driverId)
                         "
                         >Cancel</app-button
                       >
                     </div>
+                    @if (!isDriverMode()) {
+                      <textarea
+                        class="input w-full mt-2 border-red-300 dark:border-red-700"
+                        rows="3"
+                        [ngModel]="
+                          seriesData()[profile.seriesId]?.seriesPenaltyNotes ||
+                          ''
+                        "
+                        readonly
+                        placeholder="No series penalty notes configured for this series"
+                      ></textarea>
+                    }
                   } @else {
                     <p class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ driver()?.driverClass || "No class" }}
+                      {{ profile.driverClassName || profile.driverClass || "No class" }}
                       @if (canManageProfiles()) {
                         <a
                           href="#"
                           (click)="
-                            toggleEditDriverClass(driver()?._id);
+                            toggleEditDriverClass(profile.driverId);
                             $event.preventDefault()
                           "
                           class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -454,7 +412,7 @@ interface SeriesPenaltyGroup {
                     License Points
                   </p>
                   @if (
-                    editingLicensePoints()[driver()?._id] &&
+                    editingLicensePoints()[profile.driverId] &&
                     canManageProfiles()
                   ) {
                     <div class="flex items-center gap-2">
@@ -463,12 +421,12 @@ interface SeriesPenaltyGroup {
                         class="input flex-1"
                         min="0"
                         [ngModel]="
-                          pendingLicensePoints()[driver()?._id] ||
-                          driver()?.accumulatedLicensePoints
+                          pendingLicensePoints()[profile.driverId] ||
+                          profile.accumulatedLicensePoints
                         "
                         (ngModelChange)="
                           setPendingLicensePoints(
-                            driver()?._id,
+                            profile.driverId,
                             $event
                           )
                         "
@@ -477,7 +435,7 @@ interface SeriesPenaltyGroup {
                         variant="primary"
                         size="sm"
                         (onClick)="
-                          saveInlineLicensePoints(driver()?._id)
+                          saveInlineLicensePoints(profile.driverId)
                         "
                         >Save</app-button
                       >
@@ -485,19 +443,19 @@ interface SeriesPenaltyGroup {
                         variant="secondary"
                         size="sm"
                         (onClick)="
-                          cancelEditLicensePoints(driver()?._id)
+                          cancelEditLicensePoints(profile.driverId)
                         "
                         >Cancel</app-button
                       >
                     </div>
                   } @else {
                     <p class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ driver()?.accumulatedLicensePoints || 0 }}
+                      {{ profile.accumulatedLicensePoints || 0 }}
                       @if (canManageProfiles()) {
                         <a
                           href="#"
                           (click)="
-                            toggleEditLicensePoints(driver()?._id);
+                            toggleEditLicensePoints(profile.driverId);
                             $event.preventDefault()
                           "
                           class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -512,56 +470,32 @@ interface SeriesPenaltyGroup {
                     Steam ID
                   </p>
                   <p class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ driver()?.steamId || "Not set" }}
+                    {{ profile.steamId || "Not set" }}
                   </p>
                 </div>
               </div>
-
-              <!-- Series Driver Management for Event Manager -->
-              @if (canManageProfiles()) {
-                <div class="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
-                  <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">
-                    Series Driver Management
-                  </h4>
-                  <div class="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <label class="label">Driver Class</label>
-                      <p class="font-medium text-gray-900 dark:text-gray-100">
-                        {{ driver()?.driverClass || "No class" }}
-                      </p>
-                    </div>
-                    <div>
-                      <label class="label">License Points</label>
-                      <p class="font-medium text-gray-900 dark:text-gray-100">
-                        {{ driver()?.accumulatedLicensePoints || 0 }}
-                      </p>
-                    </div>
-                    <div>
-                      <label class="label">Associated User</label>
-                      <p class="font-medium text-gray-900 dark:text-gray-100">
-                        {{ linkedUser()?.name || "No linked user" }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              }
 
               <div class="mt-5">
                 <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">
                   Penalty History
                 </h4>
-                @if (!stats()?.finalizedReports) {
+                @if (
+                  isDriverMode()
+                    ? !stats()?.finalizedReports
+                    : !profile.penalties.length
+                ) {
                   <p class="text-sm text-gray-500 dark:text-gray-400">
-                    No finalized penalties found for this driver.
+                    No finalized penalties found for this
+                    {{ isDriverMode() ? "driver" : "series profile" }}.
                   </p>
                 } @else {
                   <div class="space-y-2">
                     @for (
-                      history of penaltyHistory();
-                      track history.reportId
+                      penalty of (isDriverMode() ? penaltyHistory() : profile.penalties);
+                      track penalty.reportId
                     ) {
                       <a
-                        [routerLink]="['/reports', history.reportId]"
+                        [routerLink]="['/reports', penalty.reportId]"
                         class="block rounded-md border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:hover:bg-gray-800/60"
                       >
                         <div class="flex items-center justify-between gap-3">
@@ -569,20 +503,20 @@ interface SeriesPenaltyGroup {
                             <p
                               class="text-sm font-medium text-gray-900 dark:text-gray-100"
                             >
-                              {{ history.penaltyName || "No penalty" }} ({{
-                                history.licensePoints
+                              {{ penalty.penaltyName || "No penalty" }} ({{
+                                penalty.licensePoints
                               }}
                               LP)
                             </p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">
-                              {{ history.eventName }} - Event
-                              {{ history.eventNumber }} / Race
-                              {{ history.raceNumber || "-" }}
+                              {{ penalty.eventName }} - Event
+                              {{ penalty.eventNumber }} / Race
+                              {{ penalty.raceNumber || "-" }}
                             </p>
                           </div>
                           <span
                             class="text-xs text-gray-500 dark:text-gray-400"
-                            >{{ formatDate(history.finalizedAt) }}</span
+                            >{{ formatDate(penalty.finalizedAt) }}</span
                           >
                         </div>
                       </a>
@@ -591,219 +525,6 @@ interface SeriesPenaltyGroup {
                 }
               </div>
             </app-card>
-          } @else {
-            @for (
-              seriesProfile of visibleProfiles();
-              track seriesProfile.driverId
-            ) {
-              <app-card>
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <h3
-                      class="text-lg font-semibold text-gray-900 dark:text-gray-100"
-                    >
-                      {{ seriesProfile.seriesName }} - #{{
-                        seriesProfile.driverNumber
-                      }}
-                    </h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ seriesProfile.displayName || seriesProfile.driverName }}
-                    </p>
-                  </div>
-                  @if (!seriesProfile.isActive) {
-                    <app-badge variant="warning">Withdrawn</app-badge>
-                  }
-                </div>
-
-                <div class="grid md:grid-cols-3 gap-4 mt-4">
-                  <div>
-                    <p class="text-xs uppercase text-gray-500 dark:text-gray-400">
-                      Driver Class
-                    </p>
-                    @if (
-                      editingDriverClass()[seriesProfile.driverId] &&
-                      canManageProfiles()
-                    ) {
-                      <div class="flex items-center gap-2">
-                        <select
-                          class="input flex-1"
-                          [ngModel]="
-                            pendingDriverClass()[seriesProfile.driverId] || ''
-                          "
-                          (ngModelChange)="
-                            setPendingDriverClass(seriesProfile.driverId, $event)
-                          "
-                        >
-                          <option value="">Select class</option>
-                          @for (
-                            driverClass of classOptionsBySeries()[
-                              seriesProfile.seriesId || ""
-                            ];
-                            track driverClass._id
-                          ) {
-                            <option [value]="driverClass._id">
-                              {{ driverClass.displayName }}
-                            </option>
-                          }
-                        </select>
-                        <app-button
-                          variant="primary"
-                          size="sm"
-                          (onClick)="
-                            saveInlineDriverClass(seriesProfile.driverId)
-                          "
-                          >Save</app-button
-                        >
-                        <app-button
-                          variant="secondary"
-                          size="sm"
-                          (onClick)="
-                            cancelEditDriverClass(seriesProfile.driverId)
-                          "
-                          >Cancel</app-button
-                        >
-                      </div>
-                      <textarea
-                        class="input w-full mt-2 border-red-300 dark:border-red-700"
-                        rows="3"
-                        [ngModel]="
-                          seriesData()[seriesProfile.seriesId]?.seriesPenaltyNotes ||
-                          ''
-                        "
-                        readonly
-                        placeholder="No series penalty notes configured for this series"
-                      ></textarea>
-                    } @else {
-                      <p class="font-medium text-gray-900 dark:text-gray-100">
-                        {{ seriesProfile.driverClassName || "No class" }}
-                        @if (canManageProfiles()) {
-                          <a
-                            href="#"
-                            (click)="
-                              toggleEditDriverClass(seriesProfile.driverId);
-                              $event.preventDefault()
-                            "
-                            class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                            >Edit</a
-                          >
-                        }
-                      </p>
-                    }
-                  </div>
-                  <div>
-                    <p class="text-xs uppercase text-gray-500 dark:text-gray-400">
-                      License Points
-                    </p>
-                    @if (
-                      editingLicensePoints()[seriesProfile.driverId] &&
-                      canManageProfiles()
-                    ) {
-                      <div class="flex items-center gap-2">
-                        <input
-                          type="number"
-                          class="input flex-1"
-                          min="0"
-                          [ngModel]="
-                            pendingLicensePoints()[seriesProfile.driverId] ||
-                            seriesProfile.accumulatedLicensePoints
-                          "
-                          (ngModelChange)="
-                            setPendingLicensePoints(
-                              seriesProfile.driverId,
-                              $event
-                            )
-                          "
-                        />
-                        <app-button
-                          variant="primary"
-                          size="sm"
-                          (onClick)="
-                            saveInlineLicensePoints(seriesProfile.driverId)
-                          "
-                          >Save</app-button
-                        >
-                        <app-button
-                          variant="secondary"
-                          size="sm"
-                          (onClick)="
-                            cancelEditLicensePoints(seriesProfile.driverId)
-                          "
-                          >Cancel</app-button
-                        >
-                      </div>
-                    } @else {
-                      <p class="font-medium text-gray-900 dark:text-gray-100">
-                        {{ seriesProfile.accumulatedLicensePoints || 0 }}
-                        @if (canManageProfiles()) {
-                          <a
-                            href="#"
-                            (click)="
-                              toggleEditLicensePoints(seriesProfile.driverId);
-                              $event.preventDefault()
-                            "
-                            class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                            >Edit</a
-                          >
-                        }
-                      </p>
-                    }
-                  </div>
-                  <div>
-                    <p class="text-xs uppercase text-gray-500 dark:text-gray-400">
-                      Steam ID
-                    </p>
-                    <p class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ seriesProfile.steamId || "Not set" }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="mt-5">
-                  <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    Penalty History
-                  </h4>
-                  @if (!seriesProfile.penalties.length) {
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      No finalized penalties found for this series profile.
-                    </p>
-                  } @else {
-                    <div class="space-y-2">
-                      @for (
-                        penalty of seriesProfile.penalties;
-                        track penalty.reportId
-                      ) {
-                        <a
-                          [routerLink]="['/reports', penalty.reportId]"
-                          class="block rounded-md border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:hover:bg-gray-800/60"
-                        >
-                          <div class="flex items-center justify-between gap-3">
-                            <div>
-                              <p
-                                class="text-sm font-medium text-gray-900 dark:text-gray-100"
-                              >
-                                {{ penalty.penaltyName || "No penalty" }} ({{
-                                  penalty.licensePoints
-                                }}
-                                LP)
-                              </p>
-                              <p class="text-xs text-gray-500 dark:text-gray-400">
-                                {{ penalty.eventName }} - Event
-                                {{ penalty.eventNumber }} / Race
-                                {{ penalty.raceNumber || "-" }}
-                              </p>
-                            </div>
-                            <span
-                              class="text-xs text-gray-500 dark:text-gray-400"
-                              >{{ formatDate(penalty.finalizedAt) }}</span
-                            >
-                          </div>
-                        </a>
-                      }
-                    </div>
-                  }
-                </div>
-              </app-card>
-            }
           }
         </div>
 
@@ -1107,6 +828,14 @@ export class DriverUserDetailComponent implements OnInit {
     );
   });
 
+  profilesToShow = computed(() => {
+    if (this.isDriverMode()) {
+      const drv = this.driver();
+      return drv ? [{ ...drv, _isSingleDriver: true }] : [];
+    }
+    return this.visibleProfiles();
+  });
+
   aggregatedStats = computed(() => {
     const profiles = this.profile()?.profiles || [];
     return {
@@ -1127,6 +856,10 @@ export class DriverUserDetailComponent implements OnInit {
         0
       ),
     };
+  });
+
+  statsToShow = computed(() => {
+    return this.isDriverMode() ? this.stats() : this.aggregatedStats();
   });
 
   groupedPenalties = computed((): SeriesPenaltyGroup[] => {

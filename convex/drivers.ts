@@ -95,9 +95,15 @@ export const getByIdWithUser = query({
       }
     }
 
+    let series = null;
+    if (driver.championshipId) {
+      series = await ctx.db.get(driver.championshipId);
+    }
+
     return {
       ...driver,
       linkedUser,
+      seriesName: series?.name ?? "No Series",
       displayName: getDriverDisplayName(driver, linkedUser ? { officialName: linkedUser.officialName } : undefined),
     };
   },

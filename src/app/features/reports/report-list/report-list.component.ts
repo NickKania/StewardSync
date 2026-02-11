@@ -281,11 +281,11 @@ export class ReportListComponent implements OnInit, OnDestroy {
   });
 
   raceOptions = computed<SelectOption[]>(() => {
-    let filteredRaces = this.races();
-
-    if (this.selectedEvent) {
-      filteredRaces = filteredRaces.filter((r) => r.eventId === this.selectedEvent);
+    if (!this.selectedEvent) {
+      return [{ value: "", label: "Select an event first" }];
     }
+
+    let filteredRaces = this.races().filter((r) => r.eventId === this.selectedEvent);
 
     return [
       { value: "", label: "All races" },
