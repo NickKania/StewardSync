@@ -19,7 +19,7 @@ export class BadgeComponent {
   @Input() size: BadgeSize = 'md';
 
   getBadgeClasses(): string {
-    const base = 'inline-block font-medium rounded-full align-middle leading-tight';
+    const base = 'inline-block font-medium rounded-full align-middle leading-tight text-center';
 
     const variants: Record<BadgeVariant, string> = {
       default: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',

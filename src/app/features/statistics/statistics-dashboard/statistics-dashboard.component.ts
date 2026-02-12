@@ -123,7 +123,7 @@ interface RaceTimePenaltySummary {
 
         <!-- Export Mode: Show Header -->
         @if (isExportMode()) {
-          <div class="export-header">
+          <div class="export-header bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
               @if (activeTab() === "event_rundown") {
                 Event Rundown
@@ -137,7 +137,7 @@ interface RaceTimePenaltySummary {
         }
 
         <!-- Content Area -->
-        <div [class]="isExportMode() ? 'export-body' : 'space-y-6'">
+        <div [class]="isExportMode() ? 'export-body bg-gray-50 dark:bg-gray-900' : 'space-y-6'">
           @if (activeTab() === "event_rundown") {
             <div class="space-y-6">
               <app-card>
@@ -202,7 +202,7 @@ interface RaceTimePenaltySummary {
                       </div>
                     }
 
-                    <div #eventRundownExportContainer class="export-container">
+                    <div #eventRundownExportContainer class="export-container bg-white dark:bg-gray-900">
                       @if (isExportMode() && selectedEventDetails()) {
                         <div
                           class="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700"
@@ -655,9 +655,9 @@ interface RaceTimePenaltySummary {
                     }
 
                     @if (filteredAndSortedSeriesPoints().length > 0) {
-                      <div
+                        <div
                         #seriesOverviewExportContainer
-                        class="export-container"
+                        class="export-container bg-white dark:bg-gray-900"
                       >
                         @if (isExportMode() && selectedSeriesName()) {
                           <div
@@ -938,7 +938,7 @@ interface RaceTimePenaltySummary {
                         </div>
                       }
 
-                      <div #timePenaltySummaryExportContainer class="export-container">
+                      <div #timePenaltySummaryExportContainer class="export-container bg-white dark:bg-gray-900">
                         @if (isExportMode() && timePenaltyEventId) {
                           <div
                             class="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700"
@@ -1135,26 +1135,11 @@ interface RaceTimePenaltySummary {
     </div>
   `,
   styles: `
-    :host.export-mode .export-content {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 9999;
-      background: white;
-      display: flex;
-      flex-direction: column;
-      overflow: auto;
-    }
-
     :host.export-mode .export-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 1rem;
-      border-bottom: 1px solid #e5e7eb;
-      background: #f9fafb;
       flex-shrink: 0;
     }
 
@@ -1171,10 +1156,6 @@ interface RaceTimePenaltySummary {
       :host.export-mode .export-header app-button {
         display: none;
       }
-    }
-
-    .export-container {
-      background: white;
     }
 
     :host.export-mode .export-container {

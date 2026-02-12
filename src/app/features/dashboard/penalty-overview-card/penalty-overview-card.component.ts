@@ -78,7 +78,7 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
                 <div class="p-4">
                   <div class="overflow-x-auto">
                     <table class="w-full">
-                      <thead>
+                      <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr
                           class="text-left text-sm text-gray-500 border-b border-gray-200 dark:text-gray-400 dark:border-gray-700"
                         >

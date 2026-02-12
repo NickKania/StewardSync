@@ -23,7 +23,7 @@ import { ButtonComponent } from '../button/button.component';
             </app-button>
           </div>
         </div>
-        <div class="flex-1 overflow-auto p-6">
+        <div class="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-900">
           <div class="max-w-7xl mx-auto">
             <!-- Content will be positioned here via CSS -->
           </div>
