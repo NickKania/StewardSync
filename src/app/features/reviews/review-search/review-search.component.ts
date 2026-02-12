@@ -191,7 +191,7 @@ interface FilterState {
                 @for (result of results(); track result._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-3 py-4">
-                      <app-truncate-text [text]="result.reviewer?.name || 'Unknown'"
+                      <app-truncate-text [text]="result.reviewer?.officialName || result.reviewer?.name || 'Unknown'"
                         class="font-medium text-gray-900 dark:text-gray-100" />
                     </td>
                     <td class="px-3 py-4">
@@ -303,7 +303,7 @@ export class ReviewSearchComponent {
 
   userOptions = computed(() => [
     { label: 'All Reviewers', value: '' },
-    ...this.usersList().map((u) => ({ label: u.name, value: u._id })),
+    ...this.usersList().map((u) => ({ label: u.officialName || u.name, value: u._id })),
   ]);
 
   hasActiveFilters = computed(() => {

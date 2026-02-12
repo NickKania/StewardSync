@@ -213,7 +213,7 @@ import { User } from "@app/core/models";
                   <!-- Adjusted reason (conditionally shown) -->
                   @if (form.get("isAdjusted")?.value) {
                     <div>
-                      <label class="label">Adjusted Reason</label>
+                      <label class="label">Adjusted Reason *</label>
                       <textarea
                         formControlName="adjustedReason"
                         class="input min-h-[80px]"

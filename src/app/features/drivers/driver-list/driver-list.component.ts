@@ -1,16 +1,23 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { ConvexService } from '@core/services/convex.service';
-import { Series } from '@core/models/series.model';
-import { CardComponent } from '@shared/components/card/card.component';
-import { BadgeComponent } from '@shared/components/badge/badge.component';
-import { LoadingComponent } from '@shared/components/loading/loading.component';
-import { TruncateTextComponent } from '@shared/components/truncate-text/truncate-text.component';
+import {
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormsModule } from "@angular/forms";
+import { RouterLink } from "@angular/router";
+import { ConvexService } from "@core/services/convex.service";
+import { Series } from "@core/models/series.model";
+import { CardComponent } from "@shared/components/card/card.component";
+import { BadgeComponent } from "@shared/components/badge/badge.component";
+import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { TruncateTextComponent } from "@shared/components/truncate-text/truncate-text.component";
 
 @Component({
-  selector: 'app-driver-list',
+  selector: "app-driver-list",
   standalone: true,
   imports: [
     CommonModule,
@@ -24,9 +31,12 @@ import { TruncateTextComponent } from '@shared/components/truncate-text/truncate
   template: `
     <div class="space-y-6">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Drivers</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          Drivers
+        </h1>
         <p class="text-gray-500 mt-1 dark:text-gray-400">
-          Select a series to manage series drivers, or view grouped user profiles.
+          Select a series to manage series drivers, or view grouped user
+          profiles.
         </p>
       </div>
 
@@ -72,7 +82,9 @@ import { TruncateTextComponent } from '@shared/components/truncate-text/truncate
         </div>
 
         @if (selectedSeriesId()) {
-          <label class="mt-3 inline-flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-300">
+          <label
+            class="mt-3 inline-flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-300"
+          >
             <input
               type="checkbox"
               [ngModel]="showInactive()"
@@ -88,7 +100,9 @@ import { TruncateTextComponent } from '@shared/components/truncate-text/truncate
       } @else if (!selectedSeriesId()) {
         @if (filteredUserGroups().length === 0) {
           <app-card>
-            <p class="text-center py-10 text-gray-500 dark:text-gray-400">No linked users found.</p>
+            <p class="text-center py-10 text-gray-500 dark:text-gray-400">
+              No linked users found.
+            </p>
           </app-card>
         } @else {
           <div class="space-y-4">
@@ -97,22 +111,37 @@ import { TruncateTextComponent } from '@shared/components/truncate-text/truncate
                 <app-card [hover]="true">
                   <div class="flex items-start justify-between gap-3">
                     <div>
-                      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ group.userName }}</h3>
-                      @if (group.discordUsername) {
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ group.discordUsername }}</p>
+                      <h3
+                        class="text-lg font-semibold text-gray-900 dark:text-gray-100"
+                      >
+                        {{ group.officialName || group.userName }}
+                      </h3>
+                      @if (
+                        group.userName &&
+                        group.discordUsername &&
+                        group.userName !== group.discordUsername
+                      ) {
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                          {{ group.userName }}
+                        </p>
                       }
                     </div>
-                    <app-badge variant="info">{{ group.drivers.length }} series profile(s)</app-badge>
+                    <app-badge variant="info"
+                      >{{ group.drivers.length }} series profile(s)</app-badge
+                    >
                   </div>
 
                   <div class="grid md:grid-cols-2 gap-2 mt-4">
                     @for (driver of group.drivers; track driver._id) {
-                      <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                      <div
+                        class="rounded-lg border border-gray-200 dark:border-gray-700 p-3"
+                      >
                         <p class="font-medium text-gray-900 dark:text-gray-100">
-                          #{{ driver.driverNumber }} - {{ driver.seriesName || 'No Series' }}
+                          #{{ driver.driverNumber }} -
+                          {{ driver.seriesName || "No Series" }}
                         </p>
                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ driver.driverClassName || 'No class' }}
+                          {{ driver.driverClassName || "No class" }}
                           @if (!driver.isActive) {
                             <span> - Withdrawn</span>
                           }
@@ -128,7 +157,9 @@ import { TruncateTextComponent } from '@shared/components/truncate-text/truncate
       } @else {
         @if (filteredSeriesDrivers().length === 0) {
           <app-card>
-            <p class="text-center py-10 text-gray-500 dark:text-gray-400">No drivers found for this series.</p>
+            <p class="text-center py-10 text-gray-500 dark:text-gray-400">
+              No drivers found for this series.
+            </p>
           </app-card>
         } @else {
           <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -136,20 +167,42 @@ import { TruncateTextComponent } from '@shared/components/truncate-text/truncate
               <a [routerLink]="['/drivers', driver._id]" class="block">
                 <app-card [hover]="true">
                   <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                      <span class="font-bold text-primary-700 dark:text-primary-100">{{ driver.driverNumber }}</span>
+                    <div
+                      class="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center"
+                    >
+                      <span
+                        class="font-bold text-primary-700 dark:text-primary-100"
+                        >{{ driver.driverNumber }}</span
+                      >
                     </div>
                     <div class="min-w-0">
-                      <app-truncate-text [text]="driver.displayName || driver.driverName"
-                        class="font-semibold text-gray-900 dark:text-gray-100" />
-                      <app-truncate-text [text]="driver.driverClass?.displayName || driver.driverClass || 'No class'"
-                        class="text-sm text-gray-500 dark:text-gray-400" />
                       <app-truncate-text
-                        [text]="'LP: ' + (driver.accumulatedLicensePoints || 0) + (driver.linkedUser?.name ? ' - User: ' + driver.linkedUser.name : '')"
-                        class="text-xs text-gray-500 dark:text-gray-400" />
+                        [text]="driver.displayName || driver.driverName"
+                        class="font-semibold text-gray-900 dark:text-gray-100"
+                      />
+                      <app-truncate-text
+                        [text]="
+                          driver.driverClass?.displayName ||
+                          driver.driverClass ||
+                          'No class'
+                        "
+                        class="text-sm text-gray-500 dark:text-gray-400"
+                      />
+                      <app-truncate-text
+                        [text]="
+                          'LP: ' +
+                          (driver.accumulatedLicensePoints || 0) +
+                          (driver.linkedUser?.name
+                            ? ' - User: ' + driver.linkedUser.name
+                            : '')
+                        "
+                        class="text-xs text-gray-500 dark:text-gray-400"
+                      />
                     </div>
                     @if (!driver.isActive) {
-                      <app-badge variant="warning" size="sm">Withdrawn</app-badge>
+                      <app-badge variant="warning" size="sm"
+                        >Withdrawn</app-badge
+                      >
                     }
                   </div>
                 </app-card>
@@ -169,9 +222,9 @@ export class DriverListComponent implements OnInit, OnDestroy {
   userGroups = signal<any[]>([]);
   seriesDrivers = signal<any[]>([]);
 
-  searchTerm = signal('');
-  selectedSeriesId = signal('');
-  selectedClassName = signal('');
+  searchTerm = signal("");
+  selectedSeriesId = signal("");
+  selectedClassName = signal("");
   showInactive = signal(false);
 
   filteredSeriesDrivers = signal<any[]>([]);
@@ -194,11 +247,11 @@ export class DriverListComponent implements OnInit, OnDestroy {
       if (group.discordUsername?.toLowerCase().includes(term)) return true;
 
       return group.drivers.some((driver: any) => {
-        const driverClass = (driver.driverClassName || '').toLowerCase();
-        const seriesName = (driver.seriesName || '').toLowerCase();
+        const driverClass = (driver.driverClassName || "").toLowerCase();
+        const seriesName = (driver.seriesName || "").toLowerCase();
         return (
           String(driver.driverNumber).includes(term) ||
-          (driver.driverName || '').toLowerCase().includes(term) ||
+          (driver.driverName || "").toLowerCase().includes(term) ||
           driverClass.includes(term) ||
           seriesName.includes(term)
         );
@@ -224,15 +277,15 @@ export class DriverListComponent implements OnInit, OnDestroy {
       this.series.set(series || []);
       this.userGroups.set(userGroups || []);
     } catch (error) {
-      console.error('Failed to load drivers page:', error);
+      console.error("Failed to load drivers page:", error);
     } finally {
       this.loading.set(false);
     }
   }
 
   async onSeriesChange(seriesId: string): Promise<void> {
-    this.selectedSeriesId.set(seriesId || '');
-    this.selectedClassName.set('');
+    this.selectedSeriesId.set(seriesId || "");
+    this.selectedClassName.set("");
 
     if (!seriesId) {
       this.seriesDrivers.set([]);
@@ -242,13 +295,16 @@ export class DriverListComponent implements OnInit, OnDestroy {
 
     this.loading.set(true);
     try {
-      const drivers = await this.convex.query(this.convex.api.drivers.getByChampionship, {
-        championshipId: seriesId as any,
-      });
+      const drivers = await this.convex.query(
+        this.convex.api.drivers.getByChampionship,
+        {
+          championshipId: seriesId as any,
+        },
+      );
       this.seriesDrivers.set(drivers || []);
       this.filterSeriesDrivers();
     } catch (error) {
-      console.error('Failed to load series drivers:', error);
+      console.error("Failed to load series drivers:", error);
       this.seriesDrivers.set([]);
       this.filteredSeriesDrivers.set([]);
     } finally {
@@ -257,14 +313,14 @@ export class DriverListComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange(value: string): void {
-    this.searchTerm.set(value || '');
+    this.searchTerm.set(value || "");
     if (this.selectedSeriesId()) {
       this.filterSeriesDrivers();
     }
   }
 
   onClassChange(value: string): void {
-    this.selectedClassName.set(value || '');
+    this.selectedClassName.set(value || "");
     this.filterSeriesDrivers();
   }
 
@@ -278,17 +334,22 @@ export class DriverListComponent implements OnInit, OnDestroy {
 
     if (this.selectedClassName()) {
       rows = rows.filter((driver) => {
-        const className = driver.driverClass?.displayName || driver.driverClass || '';
+        const className =
+          driver.driverClass?.displayName || driver.driverClass || "";
         return className === this.selectedClassName();
       });
     }
 
     if (term) {
       rows = rows.filter((driver) => {
-        const className = (driver.driverClass?.displayName || driver.driverClass || '').toLowerCase();
-        const linkedUser = (driver.linkedUser?.name || '').toLowerCase();
+        const className = (
+          driver.driverClass?.displayName ||
+          driver.driverClass ||
+          ""
+        ).toLowerCase();
+        const linkedUser = (driver.linkedUser?.name || "").toLowerCase();
         return (
-          (driver.driverName || '').toLowerCase().includes(term) ||
+          (driver.driverName || "").toLowerCase().includes(term) ||
           String(driver.driverNumber).includes(term) ||
           className.includes(term) ||
           linkedUser.includes(term)

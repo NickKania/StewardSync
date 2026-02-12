@@ -381,12 +381,15 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                @for (report of sortedReviewedReports(); track report._id) {
+                @for (
+                  report of sortedReviewedReports();
+                  track report.reportId
+                ) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td
                       class="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400"
                     >
-                      {{ report._id }}
+                      {{ report.reportId }}
                     </td>
                     <td class="px-6 py-4">
                       <p class="font-medium text-gray-900 dark:text-gray-100">
@@ -582,7 +585,7 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
   private getSortValue(report: any, column: string): any {
     switch (column) {
       case "ticketId":
-        return report._id;
+        return report.reportId;
       case "atFaultDriver":
         return (
           (

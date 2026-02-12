@@ -117,27 +117,53 @@ import { Id } from "@convex/_generated/dataModel";
                 *appHasRole="['event_manager', 'league_manager']"
                 class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
               >
-                <label
-                  class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
-                >
-                  Edit Event Date
-                </label>
-                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div class="sm:w-56">
-                    <input
-                      type="date"
-                      class="input w-full"
-                      [ngModel]="dateDraft()"
-                      (ngModelChange)="dateDraft.set($event)"
-                    />
+                <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+                  <div class="flex-1">
+                    <label
+                      class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                    >
+                      Edit Event Date
+                    </label>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div class="sm:w-56">
+                        <input
+                          type="date"
+                          class="input w-full"
+                          [ngModel]="dateDraft()"
+                          (ngModelChange)="dateDraft.set($event)"
+                        />
+                      </div>
+                      <app-button
+                        [disabled]="isSaveDateDisabled()"
+                        [loading]="isSavingDate()"
+                        (click)="saveEventDate()"
+                      >
+                        Save Date
+                      </app-button>
+                    </div>
                   </div>
-                  <app-button
-                    [disabled]="isSaveDateDisabled()"
-                    [loading]="isSavingDate()"
-                    (click)="saveEventDate()"
-                  >
-                    Save Date
-                  </app-button>
+                  <div>
+                    <app-button
+                      variant="secondary"
+                      [loading]="isExporting()"
+                      (click)="exportResults()"
+                    >
+                      <svg
+                        class="w-4 h-4 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        ></path>
+                      </svg>
+                      Export Results
+                    </app-button>
+                  </div>
                 </div>
               </div>
             </app-card>
@@ -317,6 +343,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   loading = signal(true);
   dateDraft = signal("");
   isSavingDate = signal(false);
+  isExporting = signal(false);
   showAddRaceModal = false;
   raceForm = {
     raceNumber: 0,
@@ -518,5 +545,100 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
     if (Number.isNaN(parsedDate.getTime())) return null;
     return parsedDate.getTime();
+  }
+
+  async exportResults(): Promise<void> {
+    const currentEvent = this.event();
+    if (!currentEvent) return;
+
+    this.isExporting.set(true);
+    try {
+      const exportData = await this.convex.query(
+        this.convex.api.reports.getEventExportData,
+        { eventId: currentEvent._id },
+      );
+
+      if (!exportData || exportData.length === 0) {
+        this.toast.error("No finalized or reviewed reports found to export");
+        return;
+      }
+
+      const headers = [
+        "Car Number",
+        "Driver Name",
+        "Driver Split",
+        "Ticket Number",
+        "Lap",
+        "Turn",
+        "Final Incident Description",
+        "Adjusted",
+        "Self Reported",
+        "Time Penalty (s)",
+        "License Points",
+        "Stewards",
+        "Finalized By",
+        "Adjustment Reason",
+      ];
+
+      const rows = exportData.map((row: any) => [
+        row.carNumber ?? "",
+        row.driverName ?? "",
+        row.driverClass ?? "",
+        row.ticketNumber ?? "",
+        row.lap ?? "",
+        row.turn ?? "",
+        row.incidentDescription ?? "",
+        row.isAdjusted ? "true" : "false",
+        row.isSelfReport ? "true" : "false",
+        row.timePenaltySeconds ?? 0,
+        row.licensePoints ?? 0,
+        row.stewardNames ?? "",
+        row.finalizedByName ?? "",
+        row.adjustedReason ?? "",
+      ]);
+
+      const csvContent = this.generateCSV(headers, rows);
+
+      const eventDate = new Date(currentEvent.eventDate);
+      const dateStr = eventDate.toISOString().split("T")[0];
+      const trackName = (currentEvent.trackName || "unknown")
+        .replace(/[^a-zA-Z0-9]/g, "_")
+        .toLowerCase();
+      const filename = `stewardsync_results_${trackName}_${dateStr}.csv`;
+
+      this.downloadCSV(csvContent, filename);
+      this.toast.success("Export completed successfully");
+    } catch (error: any) {
+      console.error("Export failed:", error);
+      this.toast.error(error?.message || "Failed to export results");
+    } finally {
+      this.isExporting.set(false);
+    }
+  }
+
+  private generateCSV(headers: string[], rows: any[][]): string {
+    const escapeField = (field: any): string => {
+      if (field === null || field === undefined) return "";
+      const str = String(field);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headerLine = headers.map(escapeField).join(",");
+    const dataLines = rows.map((row) => row.map(escapeField).join(","));
+
+    return [headerLine, ...dataLines].join("\n");
+  }
+
+  private downloadCSV(content: string, filename: string): void {
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 }

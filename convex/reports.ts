@@ -1197,6 +1197,163 @@ export const getDriverIndividualPenalties = query({
 });
 
 // Debug queries
+export const getEventExportData = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      return [];
+    }
+
+    const reports = await ctx.db
+      .query("reports")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    const exportRows = await Promise.all(
+      reports.map(async (report) => {
+        if (report.status !== "finalized" && report.status !== "reviewed") {
+          return null;
+        }
+
+        let review: any = null;
+        const reviews = await ctx.db
+          .query("reviews")
+          .withIndex("by_report", (q) => q.eq("reportId", report._id))
+          .collect();
+
+        if (reviews.length > 0) {
+          review = reviews.reduce((latest, current) => {
+            const latestDate = latest.reviewDate || latest.createdAt || 0;
+            const currentDate = current.reviewDate || current.createdAt || 0;
+            return currentDate > latestDate ? current : latest;
+          });
+        }
+
+        if (report.status === "reviewed" && !review?.recommendedPenalty) {
+          return null;
+        }
+
+        const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
+        const atFaultDriver = await ctx.db.get(atFaultDriverId);
+
+        if (
+          atFaultDriver &&
+          (!atFaultDriver.championshipId ||
+            atFaultDriver.championshipId !== event.seriesId)
+        ) {
+          return null;
+        }
+
+        let userOfficialName: string | undefined;
+        if (atFaultDriver?.userId) {
+          const user = await ctx.db.get(atFaultDriver.userId);
+          userOfficialName = user?.officialName;
+        }
+        const displayName = atFaultDriver
+          ? (userOfficialName ||
+              atFaultDriver.officialName ||
+              atFaultDriver.driverName)
+          : null;
+
+        let driverClassDisplayName: string | null = null;
+        if (atFaultDriver?.driverClassId) {
+          const driverClass = await ctx.db.get(atFaultDriver.driverClassId);
+          driverClassDisplayName = driverClass?.displayName ?? null;
+        }
+
+        let incidentDescription: string;
+        if (report.status === "finalized") {
+          incidentDescription = report.finalDecision ?? "";
+        } else {
+          incidentDescription = review?.incidentDescription ?? "";
+        }
+
+        let appliedPenalty: any = null;
+        if (report.status === "finalized" && report.appliedPenalty) {
+          appliedPenalty = await ctx.db.get(report.appliedPenalty as any);
+        } else if (report.status === "reviewed" && review?.recommendedPenalty) {
+          appliedPenalty = await ctx.db.get(review.recommendedPenalty as any);
+        }
+
+        const lapNumber = parseInt(report.lap || "0", 10);
+        const isLap1 = !isNaN(lapNumber) && lapNumber === 1;
+
+        let timePenaltySeconds = 0;
+        let licensePoints: number | null = null;
+
+        if (appliedPenalty) {
+          const baseTimePenalty = isLap1
+            ? (appliedPenalty.timePenaltyLap1 ?? appliedPenalty.timePenalty ?? 0)
+            : (appliedPenalty.timePenalty ?? 0);
+          const selfReportReduction = appliedPenalty.selfReportReduction ?? 0;
+          timePenaltySeconds =
+            appliedPenalty && report.isSelfReport
+              ? Math.max(0, baseTimePenalty - selfReportReduction)
+              : baseTimePenalty;
+          licensePoints = appliedPenalty.licensePoints ?? null;
+        }
+
+        const stewardNames: string[] = [];
+        for (const r of reviews) {
+          const reviewer = await ctx.db.get(r.userId);
+          if (reviewer?.name) {
+            stewardNames.push(reviewer.name);
+          }
+        }
+
+        let finalizedByName: string | null = null;
+        if (report.finalizedBy) {
+          const finalizedByUser = await ctx.db.get(report.finalizedBy);
+          finalizedByName = finalizedByUser?.name ?? null;
+        }
+
+        const isAdjusted = review?.isAdjusted ?? false;
+        const adjustedReason = isAdjusted ? (review?.adjustedReason ?? "") : "";
+
+        return {
+          carNumber: atFaultDriver?.driverNumber ?? null,
+          driverName: displayName,
+          driverClass: driverClassDisplayName,
+          ticketNumber: report.reportId ?? null,
+          lap: report.lap ?? null,
+          turn: report.turn ?? null,
+          incidentDescription,
+          isAdjusted,
+          isSelfReport: report.isSelfReport ?? false,
+          timePenaltySeconds,
+          licensePoints,
+          stewardNames: stewardNames.join("; "),
+          finalizedByName,
+          adjustedReason,
+          raceId: report.raceId,
+        };
+      }),
+    );
+
+    const validRows = exportRows.filter((row) => row !== null);
+
+    const races = await ctx.db
+      .query("races")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    const raceMap = new Map(races.map((r) => [r._id.toString(), r.raceNumber]));
+
+    validRows.sort((a, b) => {
+      const raceNumA = raceMap.get(a!.raceId.toString()) ?? 0;
+      const raceNumB = raceMap.get(b!.raceId.toString()) ?? 0;
+      if (raceNumA !== raceNumB) return raceNumA - raceNumB;
+      return (a!.ticketNumber ?? 0) - (b!.ticketNumber ?? 0);
+    });
+
+    return validRows.map((row) => {
+      const { raceId, ...rest } = row!;
+      return rest;
+    });
+  },
+});
+
 export const debugReportState = query({
   args: { reportId: v.id("reports") },
   handler: async (ctx, args) => {

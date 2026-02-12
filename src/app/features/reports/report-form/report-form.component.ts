@@ -386,12 +386,9 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
-    const closeTime = new Date(
-      openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000,
-    );
     const now = new Date();
 
-    return now >= openTime && now <= closeTime;
+    return now >= openTime;
   });
 
   reportingStatusMessage = computed(() => {
@@ -416,18 +413,12 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
-    const closeTime = new Date(
-      openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000,
-    );
     const now = new Date();
 
     if (now < openTime) {
       return `Reporting opens at ${openTime.toLocaleString()}`;
-    } else if (now > closeTime) {
-      return `Reporting is closed (closed at ${closeTime.toLocaleString()})`;
-    } else {
-      return `Reporting open until ${closeTime.toLocaleString()}`;
     }
+    return "";
   });
 
   private unsubscribes: (() => void)[] = [];
