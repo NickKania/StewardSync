@@ -374,6 +374,19 @@ import { SelectOption } from "@shared/components/select/select.component";
                   </div>
 
                   <div>
+                    <label class="label">Related Ticket Number</label>
+                    <input
+                      type="text"
+                      formControlName="reportId"
+                      class="input"
+                      placeholder="e.g., ticket number"
+                    />
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                      Optional: Related ticket number
+                    </p>
+                  </div>
+
+                  <div>
                     <app-search-select
                       formControlName="secondStewardId"
                       label="Second Steward (Optional)"
@@ -646,6 +659,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       isAdjusted: [false],
       candidateForStandardization: [false],
       adjustedReason: [""],
+      relatedReportId: [""],
       createAnother: [false],
     });
   }
@@ -824,7 +838,9 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       this.sourceReportNumber.set(null);
       this.sourceReport.set(null);
       this.prefillApplied.set(false);
-      this.toast.warning("Could not load source report. The reference has been cleared.");
+      this.toast.warning(
+        "Could not load source report. The reference has been cleared.",
+      );
     }
   }
 
@@ -939,12 +955,12 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       const savedEventId = localStorage.getItem("selectedEventId");
       const savedRaceId = localStorage.getItem("selectedRaceId");
 
-    if (savedEventId) {
-      this.form.patchValue({ eventId: savedEventId });
-      this.eventId.set(savedEventId);
-      this.loadRaces(savedEventId);
-      this.pendingPenaltyEventId.set(savedEventId);
-    }
+      if (savedEventId) {
+        this.form.patchValue({ eventId: savedEventId });
+        this.eventId.set(savedEventId);
+        this.loadRaces(savedEventId);
+        this.pendingPenaltyEventId.set(savedEventId);
+      }
 
       if (savedRaceId) {
         this.form.patchValue({ raceId: savedRaceId });
@@ -1193,7 +1209,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
             formValue.isAdjusted && formValue.adjustedReason
               ? formValue.adjustedReason
               : undefined,
-          reportNumber: this.sourceReportNumber() ?? undefined,
+          reportNumber: formValue.reportId || undefined,
         },
       );
 
@@ -1243,6 +1259,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       isAdjusted: false,
       candidateForStandardization: false,
       adjustedReason: "",
+      reportId: "",
       createAnother: true,
     });
 

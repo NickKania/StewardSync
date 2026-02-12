@@ -195,26 +195,11 @@ export const assignPenaltiesForSeries = internalMutation({
         )
         .collect();
 
-      const assignedThresholds: any[] = [];
-      for (const dsp of existingDriverSeriesPenalties) {
-        const linkedReview = dsp.raceBanReviewId
-          ? await ctx.db.get(dsp.raceBanReviewId)
-          : await ctx.db
-              .query("raceBanReviews")
-              .withIndex("by_driver_series_penalty", (q) =>
-                q.eq("driverSeriesPenaltyId", dsp._id),
-              )
-              .first();
-        const thresholdDoc = await ctx.db.get(dsp.seriesPenaltyThresholdId);
-        const requiresReview =
-          dsp.requiresReview ?? thresholdDoc?.requiresReview ?? false;
-        const stillActive =
-          !dsp.isServed ||
-          (requiresReview && linkedReview?.status !== "completed");
-        if (stillActive) {
-          assignedThresholds.push(dsp.seriesPenaltyThresholdId);
-        }
-      }
+      const assignedThresholdIds = new Set(
+        existingDriverSeriesPenalties.map(
+          (dsp) => dsp.seriesPenaltyThresholdId
+        )
+      );
 
       for (const seriesPenalty of seriesPenalties) {
         const thresholds = await ctx.db
@@ -266,7 +251,7 @@ export const assignPenaltiesForSeries = internalMutation({
           }
 
           if (appliesToDriver && totalPoints >= threshold.threshold) {
-            if (assignedThresholds.includes(threshold._id)) {
+            if (assignedThresholdIds.has(threshold._id)) {
               existingPenalties.push({
                 driverId: driver._id,
                 driverName: driver.driverName,
