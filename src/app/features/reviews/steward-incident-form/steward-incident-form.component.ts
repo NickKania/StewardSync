@@ -350,7 +350,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                   <!-- Adjusted reason (conditionally shown) -->
                   @if (form.get("isAdjusted")?.value) {
                     <div>
-                      <label class="label">Adjusted Reason</label>
+                      <label class="label">Adjusted Reason *</label>
                       <textarea
                         formControlName="adjustedReason"
                         class="input min-h-[80px]"
@@ -371,6 +371,19 @@ import { SelectOption } from "@shared/components/select/select.component";
                       class="input"
                       placeholder="e.g., 1:23:45 or Lap 15, T3 Entry"
                     />
+                  </div>
+
+                  <div>
+                    <label class="label">Related Ticket Number</label>
+                    <input
+                      type="text"
+                      formControlName="reportId"
+                      class="input"
+                      placeholder="e.g., ticket number"
+                    />
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                      Optional: Related ticket number
+                    </p>
                   </div>
 
                   <div>
@@ -427,7 +440,9 @@ import { SelectOption } from "@shared/components/select/select.component";
             <app-card title="Reporter Information">
               <dl class="space-y-4">
                 <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">Reporter</dt>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Reporter
+                  </dt>
                   <div class="flex items-center gap-2">
                     <dd class="font-medium text-gray-900 dark:text-gray-100">
                       {{ currentUser()?.name }}
@@ -495,6 +510,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   sourceReportNumber = signal<number | null>(null);
   sourceReport = signal<any>(null);
   prefillApplied = signal(false);
+  pendingPenaltyEventId = signal<string | null>(null);
 
   driverOptions = computed(() => {
     return this.drivers().map((driver) => ({
@@ -558,7 +574,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
         })
         .map((steward) => ({
           value: steward._id,
-          label: `${steward.name} (${steward.role?.name || "Unknown"})`,
+          label: `${steward.officialName || steward.name} (${steward.role?.name || "Unknown"})`,
         })),
     ];
   });
@@ -585,12 +601,9 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
-    const closeTime = new Date(
-      openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000,
-    );
     const now = new Date();
 
-    return now >= openTime && now <= closeTime;
+    return now >= openTime;
   });
 
   reportingStatusMessage = computed(() => {
@@ -615,18 +628,12 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     const openTime = new Date(eventDate);
     openTime.setUTCHours(hours, minutes, 0, 0);
 
-    const closeTime = new Date(
-      openTime.getTime() + series.reportingCloseDuration * 60 * 60 * 1000,
-    );
     const now = new Date();
 
     if (now < openTime) {
       return `Reporting opens at ${openTime.toLocaleString()}`;
-    } else if (now > closeTime) {
-      return `Reporting is closed (closed at ${closeTime.toLocaleString()})`;
-    } else {
-      return `Reporting open until ${closeTime.toLocaleString()}`;
     }
+    return "";
   });
 
   private unsubscribes: (() => void)[] = [];
@@ -652,6 +659,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       isAdjusted: [false],
       candidateForStandardization: [false],
       adjustedReason: [""],
+      reportId: [""],
       createAnother: [false],
     });
   }
@@ -751,6 +759,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       if (data) {
         this.events.set(data);
         this.tryPrefillFromSourceReport();
+        this.tryLoadPendingPenalties();
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkEvents));
@@ -761,9 +770,8 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   }
 
   private loadSourceReportFromQuery(): void {
-    const sourceReportId = this.route.snapshot.queryParamMap.get(
-      "sourceReportId",
-    );
+    const sourceReportId =
+      this.route.snapshot.queryParamMap.get("sourceReportId");
     if (!sourceReportId) {
       this.loadSavedSourceReport();
       return;
@@ -816,11 +824,23 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       if (typeof report?.reportId === "number") {
         this.sourceReportNumber.set(report.reportId);
         if (this.form.get("createAnother")?.value) {
-          localStorage.setItem("sourceReportNumber", report.reportId.toString());
+          localStorage.setItem(
+            "sourceReportNumber",
+            report.reportId.toString(),
+          );
         }
       }
     } catch (error) {
       console.error("Failed to load source report ticket number:", error);
+      localStorage.removeItem("sourceReportId");
+      localStorage.removeItem("sourceReportNumber");
+      this.sourceReportId.set(null);
+      this.sourceReportNumber.set(null);
+      this.sourceReport.set(null);
+      this.prefillApplied.set(false);
+      this.toast.warning(
+        "Could not load source report. The reference has been cleared.",
+      );
     }
   }
 
@@ -885,6 +905,19 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     this.prefillApplied.set(true);
   }
 
+  private tryLoadPendingPenalties(): void {
+    const pendingEventId = this.pendingPenaltyEventId();
+    if (!pendingEventId) {
+      return;
+    }
+
+    const event = this.events().find((e) => e._id === pendingEventId);
+    if (event?.seriesId) {
+      this.loadPenalties(pendingEventId);
+      this.pendingPenaltyEventId.set(null);
+    }
+  }
+
   private loadStewards(): void {
     const stewardsQuery = this.convex.createReactiveQuery(
       this.convex.api.users.listStewards,
@@ -926,6 +959,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
         this.form.patchValue({ eventId: savedEventId });
         this.eventId.set(savedEventId);
         this.loadRaces(savedEventId);
+        this.pendingPenaltyEventId.set(savedEventId);
       }
 
       if (savedRaceId) {
@@ -1150,6 +1184,19 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       const formValue = this.form.value;
       const lap = String(formValue.lap ?? "").trim();
       const turn = String(formValue.turn ?? "").trim();
+      const ticketNumberInput = String(formValue.reportId ?? "").trim();
+      let reportNumber: number | undefined;
+
+      if (ticketNumberInput) {
+        const parsedTicketNumber = Number(ticketNumberInput);
+        if (!Number.isInteger(parsedTicketNumber) || parsedTicketNumber <= 0) {
+          this.toast.error(
+            "Ticket number must be a positive whole number when provided",
+          );
+          return;
+        }
+        reportNumber = parsedTicketNumber;
+      }
 
       const result = await this.convex.mutation(
         this.convex.api.reports.createBySteward,
@@ -1175,7 +1222,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
             formValue.isAdjusted && formValue.adjustedReason
               ? formValue.adjustedReason
               : undefined,
-          reportNumber: this.sourceReportNumber() ?? undefined,
+          reportNumber,
         },
       );
 
@@ -1225,6 +1272,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       isAdjusted: false,
       candidateForStandardization: false,
       adjustedReason: "",
+      reportId: "",
       createAnother: true,
     });
 

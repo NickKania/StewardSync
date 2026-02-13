@@ -84,20 +84,37 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
               @if (!report()?.isFinalized) {
                 <a [routerLink]="['/reviews', report()?._id]">
                   <app-button variant="primary">
-                    <svg
-                      class="w-4 h-4 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                      ></path>
-                    </svg>
-                    Review
+                    @if (hasUserReviewed()) {
+                      <svg
+                        class="w-4 h-4 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        ></path>
+                      </svg>
+                      Edit Review
+                    } @else {
+                      <svg
+                        class="w-4 h-4 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                        ></path>
+                      </svg>
+                      Review
+                    }
                   </app-button>
                 </a>
               }
@@ -307,7 +324,10 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                             <div class="flex items-center justify-between mb-1">
                               <span
                                 class="font-medium text-gray-900 dark:text-gray-100"
-                                >{{ adjustedReview.reviewer?.name }}</span
+                                >{{
+                                  adjustedReview.reviewer?.officialName ||
+                                    adjustedReview.reviewer?.name
+                                }}</span
                               >
                             </div>
                             <p class="text-sm text-amber-800">
@@ -354,15 +374,25 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                               <p
                                 class="font-medium text-gray-900 dark:text-gray-100"
                               >
-                                {{ review.reviewer?.name }} &
-                                {{ review.linkedReview.reviewer?.name }}
+                                {{
+                                  review.reviewer?.officialName ||
+                                    review.reviewer?.name
+                                }}
+                                &
+                                {{
+                                  review.linkedReview.reviewer?.officialName ||
+                                    review.linkedReview.reviewer?.name
+                                }}
                               </p>
                             </div>
                           } @else {
                             <p
                               class="font-medium text-gray-900 dark:text-gray-100"
                             >
-                              {{ review.reviewer?.name }}
+                              {{
+                                review.reviewer?.officialName ||
+                                  review.reviewer?.name
+                              }}
                             </p>
                           }
                           <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -561,6 +591,15 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
   report = signal<any>(null);
   loading = signal(true);
   showEditDecisionModal = signal(false);
+
+  hasUserReviewed = computed(() => {
+    const reportData = this.report();
+    const currentUserId = this.authService.getUserId();
+    if (!reportData?.reviews || !currentUserId) return false;
+    return reportData.reviews.some(
+      (review: any) => String(review.userId) === String(currentUserId),
+    );
+  });
 
   private unsubscribes: (() => void)[] = [];
 

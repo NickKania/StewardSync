@@ -210,13 +210,49 @@ interface SeriesPenaltyGroup {
               <dt class="text-sm text-gray-500 dark:text-gray-400">
                 Official Name
               </dt>
-              <dd class="font-medium text-gray-900 dark:text-gray-100">
-                {{
-                  isDriverMode()
-                    ? driver()?.officialName ?? driver()?.driverName
-                    : profile()?.user?.officialName
-                }}
-              </dd>
+              @if (editingOfficialName() && canManageProfiles()) {
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    class="input flex-1"
+                    [ngModel]="pendingOfficialName()"
+                    (ngModelChange)="setPendingOfficialName($event)"
+                    placeholder="Enter official name"
+                  />
+                  <app-button
+                    variant="primary"
+                    size="sm"
+                    [loading]="savingOfficialName()"
+                    (onClick)="saveInlineOfficialName()"
+                    >Save</app-button
+                  >
+                  <app-button
+                    variant="secondary"
+                    size="sm"
+                    (onClick)="cancelEditOfficialName()"
+                    >Cancel</app-button
+                  >
+                    </div>
+                  } @else {
+                <dd class="font-medium text-gray-900 dark:text-gray-100">
+                  {{
+                    isDriverMode()
+                      ? driver()?.officialName ?? driver()?.driverName
+                      : profile()?.user?.officialName || "Not set"
+                  }}
+                  @if (canManageProfiles()) {
+                    <a
+                      href="#"
+                      (click)="
+                        toggleEditOfficialName();
+                        $event.preventDefault()
+                      "
+                      class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >Edit</a
+                    >
+                  }
+                </dd>
+              }
             </div>
             @if (isDriverMode()) {
               @if (linkedUser()) {
@@ -378,18 +414,6 @@ interface SeriesPenaltyGroup {
                         >Cancel</app-button
                       >
                     </div>
-                    @if (!isDriverMode()) {
-                      <textarea
-                        class="input w-full mt-2 border-red-300 dark:border-red-700"
-                        rows="3"
-                        [ngModel]="
-                          seriesData()[profile.seriesId]?.seriesPenaltyNotes ||
-                          ''
-                        "
-                        readonly
-                        placeholder="No series penalty notes configured for this series"
-                      ></textarea>
-                    }
                   } @else {
                     <p class="font-medium text-gray-900 dark:text-gray-100">
                       {{ profile.driverClassName || profile.driverClass || "No class" }}
@@ -463,6 +487,21 @@ interface SeriesPenaltyGroup {
                         >
                       }
                     </p>
+                  }
+                  @if (
+                    !isDriverMode() &&
+                    (editingDriverClass()[profile.driverId] ||
+                      editingLicensePoints()[profile.driverId])
+                  ) {
+                    <textarea
+                      class="input w-full mt-2 border-red-300 dark:border-red-700"
+                      rows="3"
+                      [ngModel]="
+                        seriesData()[profile.seriesId]?.seriesPenaltyNotes || ''
+                      "
+                      readonly
+                      placeholder="No series penalty notes configured for this series"
+                    ></textarea>
                   }
                 </div>
                 <div>
@@ -788,6 +827,9 @@ export class DriverUserDetailComponent implements OnInit {
   editingDriverClass = signal<Record<string, boolean>>({});
   editingLicensePoints = signal<Record<string, boolean>>({});
   pendingDriverClass = signal<Record<string, string>>({});
+  editingOfficialName = signal(false);
+  pendingOfficialName = signal("");
+  savingOfficialName = signal(false);
 
   readonly isDriverMode = computed(() =>
     !!this._driverId() && !this._userId()
@@ -1349,6 +1391,60 @@ export class DriverUserDetailComponent implements OnInit {
       delete newState[driverId];
       return newState;
     });
+  }
+
+  toggleEditOfficialName(): void {
+    if (this.isDriverMode()) {
+      const linkedUser = this.linkedUser();
+      this.pendingOfficialName.set(linkedUser?.officialName || "");
+    } else {
+      this.pendingOfficialName.set(this.profile()?.user?.officialName || "");
+    }
+    this.editingOfficialName.set(true);
+  }
+
+  cancelEditOfficialName(): void {
+    this.editingOfficialName.set(false);
+    this.pendingOfficialName.set("");
+  }
+
+  setPendingOfficialName(value: string): void {
+    this.pendingOfficialName.set(value);
+  }
+
+  async saveInlineOfficialName(): Promise<void> {
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId) return;
+
+    let targetUserId: string | undefined;
+    if (this.isDriverMode()) {
+      targetUserId = this.linkedUser()?._id;
+    } else {
+      targetUserId = this._userId();
+    }
+
+    if (!targetUserId) {
+      this.toast.error("No linked user found");
+      return;
+    }
+
+    this.savingOfficialName.set(true);
+    try {
+      await this.convex.mutation(this.convex.api.users.updateOfficialName, {
+        userId: targetUserId as any,
+        officialName: this.pendingOfficialName(),
+        currentUserId,
+      });
+
+      this.toast.success("Official name updated");
+      this.editingOfficialName.set(false);
+      await this.load();
+    } catch (error: any) {
+      console.error("Failed to update official name:", error);
+      this.toast.error(error?.message || "Failed to update official name");
+    } finally {
+      this.savingOfficialName.set(false);
+    }
   }
 
   async saveInlineDriverClass(driverId: string): Promise<void> {

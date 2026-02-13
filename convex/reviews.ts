@@ -87,9 +87,13 @@ export const getByUser = query({
     const populatedReviews = await Promise.all(
       reviews.map(async (review) => {
         const report = await ctx.db.get(review.reportId);
+        const recommendedPenaltyObj = review.recommendedPenalty
+          ? await ctx.db.get(review.recommendedPenalty as any)
+          : null;
         return {
           ...review,
           report,
+          recommendedPenaltyObj,
         };
       }),
     );
