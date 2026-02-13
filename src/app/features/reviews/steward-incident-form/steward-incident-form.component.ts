@@ -659,7 +659,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       isAdjusted: [false],
       candidateForStandardization: [false],
       adjustedReason: [""],
-      relatedReportId: [""],
+      reportId: [""],
       createAnother: [false],
     });
   }
@@ -1184,6 +1184,19 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       const formValue = this.form.value;
       const lap = String(formValue.lap ?? "").trim();
       const turn = String(formValue.turn ?? "").trim();
+      const ticketNumberInput = String(formValue.reportId ?? "").trim();
+      let reportNumber: number | undefined;
+
+      if (ticketNumberInput) {
+        const parsedTicketNumber = Number(ticketNumberInput);
+        if (!Number.isInteger(parsedTicketNumber) || parsedTicketNumber <= 0) {
+          this.toast.error(
+            "Ticket number must be a positive whole number when provided",
+          );
+          return;
+        }
+        reportNumber = parsedTicketNumber;
+      }
 
       const result = await this.convex.mutation(
         this.convex.api.reports.createBySteward,
@@ -1209,7 +1222,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
             formValue.isAdjusted && formValue.adjustedReason
               ? formValue.adjustedReason
               : undefined,
-          reportNumber: formValue.reportId || undefined,
+          reportNumber,
         },
       );
 

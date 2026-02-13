@@ -44,7 +44,25 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
             Reports pending your review
           </p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
+          <a routerLink="/reviews/my-reviews">
+            <app-button variant="secondary">
+              <svg
+                class="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                ></path>
+              </svg>
+              My Reviews
+            </app-button>
+          </a>
           @if (canSearchReviews()) {
             <a routerLink="/reviews/search">
               <app-button variant="secondary">
@@ -423,12 +441,22 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                       <app-badge variant="info">Reviewed</app-badge>
                     </td>
                     <td class="px-6 py-4">
-                      <a
-                        [routerLink]="['/reports', report._id]"
-                        class="text-primary-600 hover:text-primary-700 font-medium text-sm"
-                      >
-                        View
-                      </a>
+                      <div class="flex gap-3">
+                        @if (hasUserReviewed(report)) {
+                          <a
+                            [routerLink]="['/reviews', report._id]"
+                            class="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                          >
+                            Edit Review
+                          </a>
+                        }
+                        <a
+                          [routerLink]="['/reports', report._id]"
+                          class="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                        >
+                          View
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 }
@@ -536,13 +564,15 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
   }
 
   reviewActionLabel(report: any): string {
-    return this.isReportingUser(report) ? "Edit" : "Review";
+    return this.hasUserReviewed(report) ? "Edit Review" : "Review";
   }
 
-  private isReportingUser(report: any): boolean {
+  hasUserReviewed(report: any): boolean {
     const currentUserId = this.authService.getUserId();
-    if (!currentUserId) return false;
-    return String(report?.reportingUserId) === String(currentUserId);
+    if (!currentUserId || !report?.reviews) return false;
+    return report.reviews.some(
+      (review: any) => String(review.userId) === String(currentUserId),
+    );
   }
 
   sortPending(column: string): void {

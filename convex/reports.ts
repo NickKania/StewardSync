@@ -791,14 +791,6 @@ export const createBySteward = mutation({
       }
     }
 
-    let reportNumber = args.reportNumber;
-
-    if (typeof reportNumber !== "number") {
-      // Generate next reportId using sharded counter
-      await reportCounter.inc(ctx, "reportId");
-      reportNumber = await reportCounter.count(ctx, "reportId");
-    }
-
     const reportId = await ctx.db.insert("reports", {
       reportingUserId: args.reportingUserId,
       reportedDriverId: args.reportedDriverId,
@@ -811,7 +803,7 @@ export const createBySteward = mutation({
       reportDate: now,
       status: "pending",
       isFinalized: false,
-      reportId: reportNumber,
+      reportId: args.reportNumber,
       isSelfReport: args.isSelfReport,
       isStewardReported: true,
       createdAt: now,

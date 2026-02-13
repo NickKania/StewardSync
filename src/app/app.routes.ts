@@ -118,6 +118,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: "my-reviews",
+        loadComponent: () =>
+          import("@features/reviews/my-reviews/my-reviews.component").then(
+            (m) => m.MyReviewsComponent,
+          ),
+      },
+      {
         path: ":reportId",
         loadComponent: () =>
           import("@features/reviews/review-form/review-form.component").then(

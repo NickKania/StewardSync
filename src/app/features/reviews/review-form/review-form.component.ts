@@ -301,15 +301,6 @@ import { User } from "@app/core/models";
                     >
                       {{ primaryActionLabel() }}
                     </app-button>
-                    <app-button
-                      type="button"
-                      variant="primary"
-                      [loading]="submitting()"
-                      [disabled]="form.invalid || submitting()"
-                      (onClick)="onSubmitAndCreateIncident()"
-                    >
-                      {{ secondaryActionLabel() }}
-                    </app-button>
                   </div>
                 </div>
               </app-card>
@@ -503,11 +494,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   secondStewardUnsubscribe: (() => void) | null = null;
   primaryActionLabel = computed(() =>
     this.isReportingUser() ? "Save Changes" : "Submit Review",
-  );
-  secondaryActionLabel = computed(() =>
-    this.isReportingUser()
-      ? "Save Changes and Create Related Incident"
-      : "Submit Review and Create Subsequent Incident",
   );
 
   availableStewards = computed(() => {
@@ -856,13 +842,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
   async onSubmit(): Promise<void> {
     await this.submitReview({ redirectTo: "/reviews" });
-  }
-
-  async onSubmitAndCreateIncident(): Promise<void> {
-    await this.submitReview({
-      redirectTo: "/reviews/steward-incident",
-      queryParams: { sourceReportId: this.reportId },
-    });
   }
 
   private async submitReview(options: {
