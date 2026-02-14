@@ -445,7 +445,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                   </dt>
                   <div class="flex items-center gap-2">
                     <dd class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ currentUser()?.name }}
+                      {{ currentUser()?.officialName || currentUser()?.name }}
                     </dd>
                     <app-badge variant="info" size="sm">Steward</app-badge>
                   </div>

@@ -654,7 +654,8 @@ export const getDashboardPenaltyGroups = query({
           _id: dsp._id,
           seriesId: dsp.seriesId,
           seriesName: series?.name ?? "Unknown Series",
-          driverName: driver?.driverName ?? "Unknown Driver",
+          driverName:
+            driverUser?.officialName || driver?.driverName || "Unknown Driver",
           discordUsername: driverUser?.discordUsername ?? null,
           driverNumber: driver?.driverNumber ?? null,
           driverClass: driverClass?.displayName ?? null,

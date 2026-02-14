@@ -317,12 +317,12 @@ import { User } from "@app/core/models";
                           <p
                             class="font-medium text-gray-900 dark:text-gray-100"
                           >
-                            {{ review.reviewer?.name }}
+                            {{ review.reviewer?.officialName || review.reviewer?.name }}
                           </p>
                           @if (review.linkedReview) {
                             <p class="text-xs text-gray-500 dark:text-gray-400">
                               Joint review with
-                              {{ review.linkedReview.reviewer?.name }}
+                              {{ review.linkedReview.reviewer?.officialName || review.linkedReview.reviewer?.name }}
                             </p>
                           }
                           <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -384,7 +384,7 @@ import { User } from "@app/core/models";
                     Reported By
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ report()?.reportingUser?.name || "Unknown User" }}
+                    {{ report()?.reportingUser?.officialName || report()?.reportingUser?.name || "Unknown User" }}
                   </dd>
                   @if (report()?.isStewardReported) {
                     <dd class="text-sm text-gray-500 dark:text-gray-400">
