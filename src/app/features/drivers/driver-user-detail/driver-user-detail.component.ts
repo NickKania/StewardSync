@@ -255,26 +255,49 @@ interface SeriesPenaltyGroup {
               }
             </div>
             @if (isDriverMode()) {
-              @if (linkedUser()) {
-                <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">
-                    Linked User
-                  </dt>
-                  <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ linkedUser()?.name }}
-                  </dd>
-                </div>
-                @if (linkedUser()?.officialName) {
-                  <div>
-                    <dt class="text-sm text-gray-500 dark:text-gray-400">
-                      User Official Name
-                    </dt>
-                    <dd class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ linkedUser()?.officialName }}
-                    </dd>
+              <div>
+                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                  Linked User
+                </dt>
+                @if (editingLinkedUser() && canManageProfiles()) {
+                  <div class="flex items-center gap-2">
+                    <select
+                      class="input flex-1"
+                      [ngModel]="pendingLinkedUserId()"
+                      (ngModelChange)="setPendingLinkedUserId($event)"
+                    >
+                      @for (option of userOptions(); track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                    <app-button
+                      variant="primary"
+                      size="sm"
+                      [loading]="savingLinkedUser()"
+                      (onClick)="saveInlineLinkedUser()"
+                      >Save</app-button
+                    >
+                    <app-button
+                      variant="secondary"
+                      size="sm"
+                      (onClick)="cancelEditLinkedUser()"
+                      >Cancel</app-button
+                    >
                   </div>
+                } @else {
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ linkedUser()?.officialName || linkedUser()?.name || "Not linked" }}
+                    @if (canManageProfiles()) {
+                      <a
+                        href="#"
+                        (click)="toggleEditLinkedUser(); $event.preventDefault()"
+                        class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        >Edit</a
+                      >
+                    }
+                  </dd>
                 }
-              }
+              </div>
               @if (driver()?.externalId) {
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
@@ -830,6 +853,9 @@ export class DriverUserDetailComponent implements OnInit {
   editingOfficialName = signal(false);
   pendingOfficialName = signal("");
   savingOfficialName = signal(false);
+  editingLinkedUser = signal(false);
+  pendingLinkedUserId = signal("");
+  savingLinkedUser = signal(false);
 
   readonly isDriverMode = computed(() =>
     !!this._driverId() && !this._userId()
@@ -1447,6 +1473,49 @@ export class DriverUserDetailComponent implements OnInit {
     }
   }
 
+  toggleEditLinkedUser(): void {
+    const linkedUser = this.linkedUser();
+    this.pendingLinkedUserId.set(linkedUser?._id || "");
+    this.editingLinkedUser.set(true);
+  }
+
+  cancelEditLinkedUser(): void {
+    this.editingLinkedUser.set(false);
+    this.pendingLinkedUserId.set("");
+  }
+
+  setPendingLinkedUserId(value: string): void {
+    this.pendingLinkedUserId.set(value);
+  }
+
+  async saveInlineLinkedUser(): Promise<void> {
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId) return;
+
+    const driverId = this._driverId();
+    if (!driverId) return;
+
+    const newUserId = this.pendingLinkedUserId();
+
+    this.savingLinkedUser.set(true);
+    try {
+      await this.convex.mutation(this.convex.api.drivers.updateUserAssociation, {
+        driverId: driverId as any,
+        newUserId: newUserId ? (newUserId as any) : undefined,
+        userId: currentUserId,
+      });
+
+      this.toast.success("Linked user updated");
+      this.editingLinkedUser.set(false);
+      await this.load();
+    } catch (error: any) {
+      console.error("Failed to update linked user:", error);
+      this.toast.error(error?.message || "Failed to update linked user");
+    } finally {
+      this.savingLinkedUser.set(false);
+    }
+  }
+
   async saveInlineDriverClass(driverId: string): Promise<void> {
     const currentUserId = this.authService.getUserId();
     if (!currentUserId) return;
@@ -1522,6 +1591,17 @@ export class DriverUserDetailComponent implements OnInit {
       ...this.series().map((s: any) => ({
         value: s._id,
         label: s.name,
+      })),
+    ];
+  });
+
+  userOptions = computed(() => {
+    const users = this.allUsers();
+    return [
+      { value: "", label: "No user linked" },
+      ...users.map((u: any) => ({
+        value: u._id,
+        label: u.officialName || u.name,
       })),
     ];
   });
