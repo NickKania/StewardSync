@@ -774,7 +774,9 @@ export const getEventTimePenaltySummary = query({
           }
         }
 
-        const driverPenalties = Array.from(driverPenaltyMap.values());
+        const driverPenalties = Array.from(driverPenaltyMap.values()).filter(
+          (driver) => driver.totalTimePenaltySeconds > 0,
+        );
 
         driverPenalties.sort((a, b) => a.driverName.localeCompare(b.driverName));
 

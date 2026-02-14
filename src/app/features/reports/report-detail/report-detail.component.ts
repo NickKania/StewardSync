@@ -345,7 +345,9 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                     <div class="text-sm text-gray-500 dark:text-gray-400">
                       Edited by
                       {{
-                        report()?.editedByUser?.name ||
+                        report()?.editedByUser?.officialName ||
+                          report()?.editedByUser?.name ||
+                          report()?.finalizedByUser?.officialName ||
                           report()?.finalizedByUser?.name ||
                           "Unknown User"
                       }}

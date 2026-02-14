@@ -255,6 +255,12 @@ export const listPendingRequests = query({
           ctx.db.get(request.seriesPenaltyThresholdId),
         ]);
 
+        const driverUser = driver?.userId
+          ? await ctx.db.get(driver.userId)
+          : null;
+        const driverName =
+          driverUser?.officialName || driver?.driverName || "Unknown Driver";
+
         return {
           _id: request._id,
           driverSeriesPenaltyId: request.driverSeriesPenaltyId,
@@ -263,7 +269,7 @@ export const listPendingRequests = query({
           selectedMeetingStartAt: request.selectedMeetingStartAt ?? null,
           selectedMeetingEndAt: request.selectedMeetingEndAt ?? null,
           availabilityCount: request.availabilityWindows.length,
-          driverName: driver?.driverName ?? "Unknown Driver",
+          driverName,
           driverNumber: driver?.driverNumber ?? null,
           penaltyName: seriesPenalty?.penaltyName ?? "Unknown Penalty",
           threshold: threshold?.threshold ?? null,
@@ -329,11 +335,17 @@ export const listOutstandingRequirements = query({
             ? "scheduled"
             : "open";
 
+        const driverUser = driver?.userId
+          ? await ctx.db.get(driver.userId)
+          : null;
+        const driverName =
+          driverUser?.officialName || driver.driverName || "Unknown Driver";
+
         return {
           driverSeriesPenaltyId: penalty._id,
           reviewRequestId: linkedRequest?._id ?? null,
           seriesName: series.name,
-          driverName: driver.driverName,
+          driverName,
           driverNumber: driver.driverNumber,
           penaltyName: seriesPenalty.penaltyName,
           threshold: threshold.threshold,

@@ -752,7 +752,7 @@ export const updateDriverClass = mutation({
 export const updateUserAssociation = mutation({
   args: {
     driverId: v.id("drivers"),
-    newUserId: v.id("users"),
+    newUserId: v.optional(v.id("users")),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
@@ -780,7 +780,7 @@ export const updateUserAssociation = mutation({
       }
     }
 
-    if (driver.steamId) {
+    if (driver.steamId && args.newUserId) {
       await ctx.db.insert("steamUserMappings", {
         steamId: driver.steamId,
         userId: args.newUserId,
@@ -790,7 +790,7 @@ export const updateUserAssociation = mutation({
     }
 
     await ctx.db.patch(args.driverId, {
-      userId: args.newUserId,
+      userId: args.newUserId ?? undefined,
     });
 
     return args.driverId;
