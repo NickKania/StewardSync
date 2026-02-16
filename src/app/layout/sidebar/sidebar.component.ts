@@ -1,10 +1,11 @@
 import { Component, inject, computed, OnDestroy } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { RouterLink, RouterLinkActive } from "@angular/router";
+import { Router, RouterLink, RouterLinkActive, NavigationStart } from "@angular/router";
 import { AuthService } from "@core/services/auth.service";
 import { HasRoleDirective } from "@shared/directives/has-role.directive";
 import { SidebarStateService } from "@core/services/sidebar-state.service";
 import { ConvexService } from "@core/services/convex.service";
+import { Subscription } from "rxjs";
 
 interface NavItem {
   label: string;
@@ -21,14 +22,14 @@ interface NavItem {
     <!-- Mobile overlay -->
     @if (sidebarStateService.isMobileOpen()) {
       <div
-        class="fixed inset-0 bg-black/50 z-30 lg:hidden dark:bg-black/70"
+        class="fixed inset-0 bg-black/50 z-30 lg:hidden dark:bg-black/70 pointer-events-auto"
         (click)="sidebarStateService.closeMobile()"
       ></div>
     }
 
     <!-- Sidebar -->
     <aside
-      class="fixed top-16 left-0 bottom-0 bg-white border-r border-gray-200 z-20 transition-all duration-200 ease-in-out dark:bg-gray-900 dark:border-gray-700 overflow-hidden"
+      class="fixed top-16 left-0 bottom-0 bg-white border-r border-gray-200 z-40 transition-all duration-200 ease-in-out dark:bg-gray-900 dark:border-gray-700 overflow-hidden pointer-events-none"
       [class.w-0]="!sidebarStateService.isMobileOpen()"
       [class.w-64]="sidebarStateService.isMobileOpen()"
       [class.lg:w-0]="sidebarStateService.isEffectivelyCollapsed()"
@@ -39,6 +40,10 @@ interface NavItem {
         sidebarStateService.isEffectivelyCollapsed()
       "
       [class.lg:translate-x-0]="!sidebarStateService.isEffectivelyCollapsed()"
+      [class.pointer-events-auto]="sidebarStateService.isMobileOpen()"
+      [class.lg:pointer-events-auto]="!sidebarStateService.isEffectivelyCollapsed()"
+      [class.border-r-0]="!sidebarStateService.isMobileOpen()"
+      [class.lg:border-r-0]="sidebarStateService.isEffectivelyCollapsed()"
     >
       <nav class="p-4 space-y-1">
         @for (item of navItems; track item.path) {
@@ -51,7 +56,6 @@ interface NavItem {
               [class.justify-center]="
                 sidebarStateService.isEffectivelyCollapsed()
               "
-              (click)="sidebarStateService.closeMobile()"
             >
               <span [innerHTML]="item.icon" class="flex-shrink-0"></span>
               @if (!sidebarStateService.isEffectivelyCollapsed()) {
@@ -84,7 +88,18 @@ interface NavItem {
 export class SidebarComponent implements OnDestroy {
   private authService = inject(AuthService);
   private convex = inject(ConvexService);
+  private router = inject(Router);
   readonly sidebarStateService = inject(SidebarStateService);
+
+  private routerSubscription: Subscription;
+
+  constructor() {
+    this.routerSubscription = this.router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        this.sidebarStateService.closeMobile();
+      }
+    });
+  }
 
   private pendingReviewQuery = this.convex.createReactiveQuery(
     this.convex.api.reports.getPendingForReview,
@@ -171,6 +186,7 @@ export class SidebarComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.pendingReviewQuery.unsubscribe();
     this.finalizeQueueQuery.unsubscribe();
+    this.routerSubscription.unsubscribe();
   }
 
   hasAnyRole(roles: string[]): boolean {
