@@ -9,3 +9,5 @@ export * from './badge/badge.component';
 export * from './loading/loading.component';
 export * from './toggle/toggle.component';
 export * from './tabs/tabs.component';
+export * from './responsive-table/responsive-table.component';
+export * from './stats-grid/stats-grid.component';

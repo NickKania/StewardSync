@@ -32,7 +32,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
       <!-- Series filter -->
       <app-card>
         <div class="flex gap-4">
-          <div class="w-48">
+          <div class="w-full sm:w-48">
             <select class="input" [(ngModel)]="selectedSeries">
               <option value="">All series</option>
               @for (s of series(); track s._id) {

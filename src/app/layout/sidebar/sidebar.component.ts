@@ -1,10 +1,11 @@
 import { Component, inject, computed, OnDestroy, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { RouterLink, RouterLinkActive } from "@angular/router";
+import { Router, RouterLink, RouterLinkActive, NavigationStart } from "@angular/router";
 import { AuthService } from "@core/services/auth.service";
 import { HasRoleDirective } from "@shared/directives/has-role.directive";
 import { SidebarStateService } from "@core/services/sidebar-state.service";
 import { ConvexService } from "@core/services/convex.service";
+import { Subscription } from "rxjs";
 import { ChangelogFlyoutComponent } from "@shared/components/changelog-flyout/changelog-flyout.component";
 
 interface NavItem {
@@ -33,24 +34,15 @@ interface ChangelogRelease {
     <!-- Mobile overlay -->
     @if (sidebarStateService.isMobileOpen()) {
       <div
-        class="fixed inset-0 bg-black/50 z-30 lg:hidden dark:bg-black/70"
+        class="fixed inset-0 bg-black/50 z-30 lg:hidden dark:bg-black/70 pointer-events-auto"
         (click)="sidebarStateService.closeMobile()"
       ></div>
     }
 
     <!-- Sidebar -->
     <aside
-      class="fixed top-16 left-0 bottom-0 bg-white border-r border-gray-200 z-20 transition-all duration-200 ease-in-out dark:bg-gray-900 dark:border-gray-700 overflow-hidden"
-      [class.w-0]="!sidebarStateService.isMobileOpen()"
-      [class.w-64]="sidebarStateService.isMobileOpen()"
-      [class.lg:w-0]="sidebarStateService.isEffectivelyCollapsed()"
-      [class.lg:w-64]="!sidebarStateService.isEffectivelyCollapsed()"
-      [class.-translate-x-full]="!sidebarStateService.isMobileOpen()"
-      [class.translate-x-0]="sidebarStateService.isMobileOpen()"
-      [class.lg:-translate-x-full]="
-        sidebarStateService.isEffectivelyCollapsed()
-      "
-      [class.lg:translate-x-0]="!sidebarStateService.isEffectivelyCollapsed()"
+      class="fixed top-16 left-0 bottom-0 bg-white border-r border-gray-200 z-40 transition-all duration-200 ease-in-out dark:bg-gray-900 dark:border-gray-700 overflow-hidden pointer-events-none"
+      [ngClass]="sidebarClasses()"
     >
       <nav class="p-4 space-y-1">
         @for (item of navItems; track item.path) {
@@ -60,19 +52,21 @@ interface ChangelogRelease {
               routerLinkActive="bg-primary-50 text-primary-700 border-primary-500 dark:bg-primary-900/30 dark:text-primary-200 dark:border-primary-400"
               [routerLinkActiveOptions]="{ exact: true }"
               class="flex w-full items-center gap-3 px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border-l-2 border-transparent dark:text-gray-200 dark:hover:bg-gray-800"
-              [class.justify-center]="
-                sidebarStateService.isEffectivelyCollapsed()
-              "
-              (click)="sidebarStateService.closeMobile()"
+              [class.justify-center]="!isTextVisible()"
             >
               <span [innerHTML]="item.icon" class="flex-shrink-0"></span>
-              @if (!sidebarStateService.isEffectivelyCollapsed()) {
-                <span class="flex-1 font-medium">{{ item.label }}</span>
-                @if (getBadgeCount(item) > 0) {
-                  <span [ngClass]="getBadgeClass(item)">{{
-                    getBadgeCount(item)
-                  }}</span>
-                }
+              <span
+                class="flex-1 font-medium"
+                [class.opacity-0]="!isTextVisible()"
+                [class.opacity-100]="isTextVisible()"
+                [class.w-0]="!isTextVisible()"
+                [class.overflow-hidden]="!isTextVisible()"
+                [class.whitespace-nowrap]="!isTextVisible()"
+              >{{ item.label }}</span>
+              @if (getBadgeCount(item) > 0 && isTextVisible()) {
+                <span [ngClass]="getBadgeClass(item)">{{
+                  getBadgeCount(item)
+                }}</span>
               }
             </a>
           }
@@ -80,7 +74,7 @@ interface ChangelogRelease {
       </nav>
 
       <!-- Bottom section -->
-      @if (!sidebarStateService.isEffectivelyCollapsed()) {
+      @if (isTextVisible()) {
         <div
           class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700"
         >
@@ -107,7 +101,44 @@ interface ChangelogRelease {
 export class SidebarComponent implements OnDestroy, OnInit {
   private authService = inject(AuthService);
   private convex = inject(ConvexService);
+  private router = inject(Router);
   readonly sidebarStateService = inject(SidebarStateService);
+
+  private routerSubscription: Subscription;
+
+  readonly isTextVisible = computed(
+    () =>
+      this.sidebarStateService.isMobileOpen() ||
+      !this.sidebarStateService.isEffectivelyCollapsed()
+  );
+
+  readonly sidebarClasses = computed(() => {
+    const isMobileOpen = this.sidebarStateService.isMobileOpen();
+    const isCollapsed = this.sidebarStateService.isEffectivelyCollapsed();
+
+    return {
+      "w-0": !isMobileOpen,
+      "w-64": isMobileOpen,
+      "lg:w-0": isCollapsed,
+      "lg:w-64": !isCollapsed,
+      "-translate-x-full": !isMobileOpen,
+      "translate-x-0": isMobileOpen,
+      "lg:-translate-x-full": isCollapsed,
+      "lg:translate-x-0": !isCollapsed,
+      "pointer-events-auto": isMobileOpen,
+      "lg:pointer-events-auto": !isCollapsed,
+      "border-r-0": !isMobileOpen,
+      "lg:border-r-0": isCollapsed,
+    };
+  });
+
+  constructor() {
+    this.routerSubscription = this.router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        this.sidebarStateService.closeMobile();
+      }
+    });
+  }
 
   private pendingReviewQuery = this.convex.createReactiveQuery(
     this.convex.api.reports.getPendingForReview,
@@ -196,6 +227,7 @@ export class SidebarComponent implements OnDestroy, OnInit {
   ngOnDestroy(): void {
     this.pendingReviewQuery.unsubscribe();
     this.finalizeQueueQuery.unsubscribe();
+    this.routerSubscription.unsubscribe();
   }
 
   ngOnInit(): void {

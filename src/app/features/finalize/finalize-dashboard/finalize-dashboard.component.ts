@@ -32,29 +32,29 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
       </div>
 
       <!-- Stats -->
-      <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-blue-600">
+            <p class="text-2xl sm:text-3xl font-bold text-blue-600">
               {{ reports().length }}
             </p>
-            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Ready to Finalize</p>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">Ready to Finalize</p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-green-600">
+            <p class="text-2xl sm:text-3xl font-bold text-green-600">
               {{ stats()?.finalized || 0 }}
             </p>
-            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Finalized</p>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">Finalized</p>
           </div>
         </app-card>
-        <app-card>
+        <app-card class="col-span-2 sm:col-span-1">
           <div class="text-center">
-            <p class="text-3xl font-bold text-red-600">
+            <p class="text-2xl sm:text-3xl font-bold text-red-600">
               {{ stats()?.rejected || 0 }}
             </p>
-            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Rejected</p>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">Rejected</p>
           </div>
         </app-card>
       </div>
@@ -66,7 +66,8 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
             <app-loading text="Loading reports..." />
           </div>
         } @else if (reports().length > 0) {
-          <div class="overflow-x-auto">
+          <!-- Desktop table -->
+          <div class="hidden md:block overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
@@ -125,6 +126,46 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                 }
               </tbody>
             </table>
+          </div>
+
+          <!-- Mobile card view -->
+          <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            @for (report of reports(); track report._id) {
+              <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium text-gray-900 dark:text-gray-100">
+                      {{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
+                      #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                    </p>
+                  </div>
+                  <app-badge variant="info" size="sm">
+                    {{ report.reviewCount || 0 }} reviews
+                  </app-badge>
+                </div>
+                <div class="space-y-1 text-sm mb-3">
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Turn</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.turn }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Filed</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.reportDate | timeAgo }}</span>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
+                  {{ report.description }}
+                </p>
+                <a [routerLink]="['/finalize', report._id]">
+                  <app-button variant="success" size="sm" class="w-full">
+                    Finalize
+                  </app-button>
+                </a>
+              </div>
+            }
           </div>
         } @else {
           <div class="text-center py-12">

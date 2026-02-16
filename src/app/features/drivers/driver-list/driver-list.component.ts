@@ -41,8 +41,8 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
       </div>
 
       <app-card>
-        <div class="grid md:grid-cols-4 gap-4">
-          <div class="md:col-span-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div class="sm:col-span-2 lg:col-span-2">
             <input
               type="text"
               class="input"
@@ -54,7 +54,7 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
 
           <div>
             <select
-              class="input"
+              class="input w-full"
               [ngModel]="selectedSeriesId()"
               (ngModelChange)="onSeriesChange($event)"
             >
@@ -68,7 +68,7 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
           @if (selectedSeriesId()) {
             <div>
               <select
-                class="input"
+                class="input w-full"
                 [ngModel]="selectedClassName()"
                 (ngModelChange)="onClassChange($event)"
               >
@@ -162,7 +162,7 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
             </p>
           </app-card>
         } @else {
-          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             @for (driver of filteredSeriesDrivers(); track driver._id) {
               <a [routerLink]="['/drivers', driver._id]" class="block">
                 <app-card [hover]="true">
