@@ -244,6 +244,18 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                 <div class="space-y-4 mt-4">
                   <div>
                     <dt class="text-sm text-gray-500 dark:text-gray-400">
+                      Finalized By
+                    </dt>
+                    <dd class="font-medium text-gray-900 dark:text-gray-100">
+                      {{
+                        report()?.finalizedByUser?.officialName ||
+                          report()?.finalizedByUser?.name ||
+                          "Unknown"
+                      }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-sm text-gray-500 dark:text-gray-400">
                       Decision
                     </dt>
                     <dd class="font-medium text-gray-900 dark:text-gray-100">
@@ -295,7 +307,13 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                     </div>
                   }
                   @if (report()?.officialNotes) {
-                    <div>
+                    <div
+                      *appHasRole="[
+                        'steward',
+                        'head_steward',
+                        'league_manager',
+                      ]"
+                    >
                       <dt class="text-sm text-gray-500 dark:text-gray-400">
                         Official Notes
                       </dt>
@@ -407,7 +425,13 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                           </app-badge>
                         }
                       </div>
-                      <div *appHasRole="['steward', 'head_steward', 'league_manager']">
+                      <div
+                        *appHasRole="[
+                          'steward',
+                          'head_steward',
+                          'league_manager',
+                        ]"
+                      >
                         <p class="text-gray-700 text-sm dark:text-gray-300">
                           {{ review.reviewNotes }}
                         </p>

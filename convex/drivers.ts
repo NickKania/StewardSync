@@ -848,6 +848,20 @@ export const listAggregatedByUser = query({
   },
 });
 
+export const getSeriesIdsForUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const drivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    return drivers
+      .filter((d) => d.championshipId)
+      .map((d) => d.championshipId);
+  },
+});
+
 // Debug queries
 export const getUserDriverLinks = query({
   args: { userId: v.id("users") },

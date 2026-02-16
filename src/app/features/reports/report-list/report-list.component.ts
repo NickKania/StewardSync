@@ -122,7 +122,6 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                     <th class="px-6 py-3 font-medium">Reporting Driver</th>
                   }
                   <th class="px-6 py-3 font-medium">Event</th>
-                  <th class="px-6 py-3 font-medium">Turn</th>
                   <th class="px-6 py-3 font-medium">Date</th>
                   <th class="px-6 py-3 font-medium">Status</th>
                   <th class="px-6 py-3 font-medium"></th>
@@ -179,9 +178,6 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                       <p class="text-sm text-gray-500 dark:text-gray-400">
                         Race {{ report.race?.raceNumber }}
                       </p>
-                    </td>
-                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100">
-                      {{ report.turn }}
                     </td>
                     <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
                       {{ report.reportDate | dateFormat: "PP" }}
@@ -299,6 +295,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
   events = signal<any[]>([]);
   races = signal<any[]>([]);
   activeSeries = signal<any[]>([]);
+  userSeriesIds = signal<string[]>([]);
   loading = signal(true);
 
   selectedStatus = "";
@@ -441,6 +438,26 @@ export class ReportListComponent implements OnInit, OnDestroy {
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkRaces));
 
+    // Load user's series memberships if they're a driver
+    if (this.authService.userRole() === "driver") {
+      const currentUserId = this.authService.getUserId();
+      if (currentUserId) {
+        const userSeriesQuery = this.convex.createReactiveQuery(
+          this.convex.api.drivers.getSeriesIdsForUser,
+          { userId: currentUserId },
+        );
+        this.unsubscribes.push(userSeriesQuery.unsubscribe);
+
+        const checkUserSeries = setInterval(() => {
+          const data = userSeriesQuery.data();
+          if (data) {
+            this.userSeriesIds.set(data.map((id: any) => id.toString()));
+          }
+        }, 100);
+        this.unsubscribes.push(() => clearInterval(checkUserSeries));
+      }
+    }
+
     // Read query parameters and apply initial filters
     this.route.queryParams.subscribe((params) => {
       if (params["event"]) {
@@ -467,13 +484,24 @@ export class ReportListComponent implements OnInit, OnDestroy {
   filterReports(): void {
     let filtered = [...this.reports()];
 
-    // Filter by role: drivers can see their own reports AND all finalized reports
+    // Filter by role: drivers can see their own reports AND finalized reports from their series
     const userRole = this.authService.userRole();
     if (userRole === "driver") {
       const currentUserId = this.authService.getUserId();
-      filtered = filtered.filter(
-        (r) => r.reportingUserId === currentUserId || r.status === "finalized",
-      );
+      const userSeries = this.userSeriesIds();
+
+      filtered = filtered.filter((r) => {
+        // Own submitted reports
+        if (r.reportingUserId === currentUserId) return true;
+
+        // Finalized reports only from driver's series
+        if (r.status === "finalized") {
+          const event = this.events().find((e) => e._id === r.eventId);
+          return event && userSeries.includes(event.seriesId.toString());
+        }
+
+        return false;
+      });
     }
 
     // Filter by series

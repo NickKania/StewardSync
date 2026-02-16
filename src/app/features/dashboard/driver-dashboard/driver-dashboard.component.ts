@@ -108,9 +108,23 @@ import { Id } from "@convex/_generated/dataModel";
                       track penalty._id
                     ) {
                       <div
-                        class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/20"
+                        class="rounded-lg border p-4"
+                        [ngClass]="{
+                          'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20':
+                            !penalty.raceBanReviewId,
+                          'border-yellow-200 bg-yellow-50 dark:border-yellow-900/40 dark:bg-yellow-950/20':
+                            penalty.raceBanReviewId,
+                        }"
                       >
-                        <p class="text-sm text-red-800 dark:text-red-200">
+                        <p
+                          class="text-sm"
+                          [ngClass]="{
+                            'text-red-800 dark:text-red-200':
+                              !penalty.raceBanReviewId,
+                            'text-yellow-800 dark:text-yellow-200':
+                              penalty.raceBanReviewId,
+                          }"
+                        >
                           You have recieved a penalty ({{
                             penalty.penaltyName
                           }}) which required meeting with a head steward, please
@@ -118,7 +132,13 @@ import { Id } from "@convex/_generated/dataModel";
                         </p>
                         <a
                           [routerLink]="['/race-reviews/request', penalty._id]"
-                          class="mt-2 inline-flex text-sm font-medium text-red-700 hover:text-red-900 dark:text-red-200 dark:hover:text-red-100"
+                          class="mt-2 inline-flex text-sm font-medium"
+                          [ngClass]="{
+                            'text-red-700 hover:text-red-900 dark:text-red-200 dark:hover:text-red-100':
+                              !penalty.raceBanReviewId,
+                            'text-yellow-700 hover:text-yellow-900 dark:text-yellow-200 dark:hover:text-yellow-100':
+                              penalty.raceBanReviewId,
+                          }"
                         >
                           {{
                             penalty.raceBanReviewId
