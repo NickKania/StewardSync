@@ -97,11 +97,6 @@ import { appRuntimeConfig } from "@core/config/runtime-config";
             </button>
           </div>
 
-          <!-- Footer -->
-          <p class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
-            By signing in, you agree to our terms of service and privacy policy.
-          </p>
-
           <!-- Dev Mode Link -->
           @if (showDevLogin) {
             <div class="mt-4 text-center">
@@ -148,7 +143,9 @@ export class LoginComponent {
       await this.authService.loginWithDiscord();
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to sign in with Discord";
+        error instanceof Error
+          ? error.message
+          : "Failed to sign in with Discord";
       this.toastService.error(errorMessage);
       console.error("Discord login error:", error);
     } finally {

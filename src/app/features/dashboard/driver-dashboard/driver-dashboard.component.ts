@@ -48,15 +48,9 @@ import { Id } from "@convex/_generated/dataModel";
               Driver Profiles Not Found
             </h2>
             <p class="text-gray-500 dark:text-gray-400 mb-4">
-              We couldn't find any driver profiles linked to your Discord account.
-              Please contact an administrator to link your account.
+              We couldn't find any driver profiles linked to your Discord
+              account. Please contact an league admin to link your account.
             </p>
-            <a
-              href="mailto:admin@stewardsync.com"
-              class="text-primary-600 hover:text-primary-700 font-medium dark:text-primary-400 dark:hover:text-primary-300"
-            >
-              Contact an Admin
-            </a>
           </div>
         </app-card>
       } @else {
@@ -117,8 +111,9 @@ import { Id } from "@convex/_generated/dataModel";
                         class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/20"
                       >
                         <p class="text-sm text-red-800 dark:text-red-200">
-                          You have recieved a penalty ({{ penalty.penaltyName }})
-                          which required meeting with a head steward, please
+                          You have recieved a penalty ({{
+                            penalty.penaltyName
+                          }}) which required meeting with a head steward, please
                           submit a request here.
                         </p>
                         <a
@@ -186,7 +181,9 @@ import { Id } from "@convex/_generated/dataModel";
                             </td>
                             <td class="py-3 text-gray-500 dark:text-gray-400">
                               @if (penalty.isServed) {
-                                @if (penalty.status === "served_pending_review") {
+                                @if (
+                                  penalty.status === "served_pending_review"
+                                ) {
                                   Served - review pending
                                 } @else {
                                   Served
@@ -200,7 +197,9 @@ import { Id } from "@convex/_generated/dataModel";
                               }
                             </td>
                             <td class="py-3">
-                              <app-badge [variant]="getPenaltyStatusVariant(penalty)">
+                              <app-badge
+                                [variant]="getPenaltyStatusVariant(penalty)"
+                              >
                                 {{ getPenaltyStatusLabel(penalty) }}
                               </app-badge>
                             </td>
@@ -252,7 +251,7 @@ import { Id } from "@convex/_generated/dataModel";
                             <td
                               class="py-3 font-medium text-gray-900 dark:text-gray-100"
                             >
-                              {{ penalty.reportId || '-' }}
+                              {{ penalty.reportId || "-" }}
                             </td>
                             <td
                               class="py-3 font-medium text-gray-900 dark:text-gray-100"
@@ -285,8 +284,11 @@ import { Id } from "@convex/_generated/dataModel";
                               {{ penalty.appliedPenalty?.timePenalty }}s
                             </td>
                             <td class="py-3">
-                              <app-truncate-text [text]="penalty.finalDecision" maxW="max-w-xs"
-                                class="text-sm text-gray-600 dark:text-gray-400" />
+                              <app-truncate-text
+                                [text]="penalty.finalDecision"
+                                maxW="max-w-xs"
+                                class="text-sm text-gray-600 dark:text-gray-400"
+                              />
                             </td>
                             <td class="py-3 text-gray-500 dark:text-gray-400">
                               {{ penalty.finalizedAt | dateFormat: "PPP" }}
@@ -352,10 +354,9 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     const seriesNameMap = new Map<string, string>();
     await Promise.all(
       seriesIds.map(async (seriesId) => {
-        const series = await this.convex.query(
-          this.convex.api.series.getById,
-          { id: seriesId },
-        );
+        const series = await this.convex.query(this.convex.api.series.getById, {
+          id: seriesId,
+        });
 
         if (series) {
           seriesNameMap.set(seriesId as string, series.name);
@@ -366,14 +367,14 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     const groupsMap = new Map<string, any>();
     linkedDrivers.forEach((driver) => {
       const seriesId = driver.championshipId ?? null;
-      const key = seriesId ? seriesId.toString() : 'unknown';
+      const key = seriesId ? seriesId.toString() : "unknown";
       if (!groupsMap.has(key)) {
         groupsMap.set(key, {
           seriesKey: key,
           seriesId,
           seriesName: seriesId
-            ? seriesNameMap.get(seriesId as string) || 'Unknown Series'
-            : 'Unknown Series',
+            ? seriesNameMap.get(seriesId as string) || "Unknown Series"
+            : "Unknown Series",
           driverIds: [],
           loadingSeriesPenalties: true,
           loadingIndividualPenalties: true,
@@ -420,14 +421,12 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
           ),
         ),
       );
-      const penalties = penaltiesByDriver
-        .flat()
-        .sort((a, b) => {
-          if ((a.threshold ?? 0) !== (b.threshold ?? 0)) {
-            return (b.threshold ?? 0) - (a.threshold ?? 0);
-          }
-          return b.assignedAt - a.assignedAt;
-        });
+      const penalties = penaltiesByDriver.flat().sort((a, b) => {
+        if ((a.threshold ?? 0) !== (b.threshold ?? 0)) {
+          return (b.threshold ?? 0) - (a.threshold ?? 0);
+        }
+        return b.assignedAt - a.assignedAt;
+      });
 
       this.updateSeriesGroup(group.seriesKey, {
         seriesPenalties: penalties,
@@ -440,7 +439,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         loadingSeriesPenalties: false,
       });
     } catch (error) {
-      console.error('Failed to load series penalties:', error);
+      console.error("Failed to load series penalties:", error);
       this.updateSeriesGroup(group.seriesKey, {
         seriesPenalties: [],
         pendingReviewPenalties: [],
@@ -453,9 +452,12 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     try {
       const penaltiesByDriver = await Promise.all(
         group.driverIds.map((driverId: Id<"drivers">) =>
-          this.convex.query(this.convex.api.reports.getDriverIndividualPenalties, {
-            driverId,
-          }),
+          this.convex.query(
+            this.convex.api.reports.getDriverIndividualPenalties,
+            {
+              driverId,
+            },
+          ),
         ),
       );
 
@@ -471,7 +473,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         loadingIndividualPenalties: false,
       });
     } catch (error) {
-      console.error('Failed to load individual penalties:', error);
+      console.error("Failed to load individual penalties:", error);
       this.updateSeriesGroup(group.seriesKey, {
         individualPenalties: [],
         loadingIndividualPenalties: false,
