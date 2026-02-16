@@ -131,23 +131,6 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 }
               </div>
 
-              <!-- Reported Driver -->
-              <div>
-                <app-search-select
-                  formControlName="reportedDriverId"
-                  label="Opposing Driver"
-                  [options]="driverOptions()"
-                  [error]="
-                    form.get('reportedDriverId')?.invalid &&
-                    form.get('reportedDriverId')?.touched
-                      ? 'Reported driver is required'
-                      : ''
-                  "
-                  placeholder="Search drivers by name or number..."
-                  [required]="true"
-                />
-              </div>
-
               <!-- Event -->
               <div>
                 <label class="label">Event *</label>
@@ -233,6 +216,23 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 @if (form.get("turn")?.invalid && form.get("turn")?.touched) {
                   <p class="mt-1 text-sm text-red-600">Turn is required</p>
                 }
+              </div>
+
+              <!-- Reported Driver -->
+              <div>
+                <app-search-select
+                  formControlName="reportedDriverId"
+                  label="Opposing Driver"
+                  [options]="driverOptions()"
+                  [error]="
+                    form.get('reportedDriverId')?.invalid &&
+                    form.get('reportedDriverId')?.touched
+                      ? 'Reported driver is required'
+                      : ''
+                  "
+                  placeholder="Search drivers by name or number..."
+                  [required]="true"
+                />
               </div>
 
               <!-- Description -->

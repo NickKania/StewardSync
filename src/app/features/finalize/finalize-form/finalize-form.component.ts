@@ -214,6 +214,9 @@ import { User } from "@app/core/models";
                       placeholder="Additional notes for the official record..."
                       rows="4"
                     ></textarea>
+                    <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                      Not public facing - internal use only
+                    </p>
                   </div>
                 </div>
 
@@ -621,7 +624,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           }
 
           if (latestReview?.isAdjusted !== undefined) {
-            this.updateAdjustedReasonValidation(Boolean(latestReview.isAdjusted));
+            this.updateAdjustedReasonValidation(
+              Boolean(latestReview.isAdjusted),
+            );
           }
 
           // Pre-select atFaultDriverId from latest review or reportedDriver
@@ -771,7 +776,10 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         { driverId: atFaultDriverId as any },
       );
 
-      if (atFaultDriver?.userId && String(atFaultDriver.userId) === String(userId)) {
+      if (
+        atFaultDriver?.userId &&
+        String(atFaultDriver.userId) === String(userId)
+      ) {
         this.toast.error(
           "You cannot finalize a report where you are the at-fault driver",
         );

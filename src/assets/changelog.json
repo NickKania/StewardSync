@@ -1,0 +1,25 @@
+{
+  "releases": [
+    {
+      "version": "1.0.0",
+      "date": "2026-02-15",
+      "changes": [
+        "Initial release of StewardSync.",
+        "Driver incident reporting flow with event and race context.",
+        "Steward review queue and review submission workflow.",
+        "Finalization tools for head stewards and event managers.",
+        "Role-based access control across dashboards and admin screens."
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-02-16",
+      "changes": [
+        "Changelog",
+        "Filter reports list based on a driver's active series'",
+        "Rough mobile support",
+        "Add 'Finalized By' to report detail view"
+      ]
+    }
+  ]
+}

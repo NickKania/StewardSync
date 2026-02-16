@@ -1,10 +1,11 @@
-import { Component, inject, computed, OnDestroy } from "@angular/core";
+import { Component, inject, computed, OnDestroy, OnInit, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink, RouterLinkActive } from "@angular/router";
 import { AuthService } from "@core/services/auth.service";
 import { HasRoleDirective } from "@shared/directives/has-role.directive";
 import { SidebarStateService } from "@core/services/sidebar-state.service";
 import { ConvexService } from "@core/services/convex.service";
+import { ChangelogFlyoutComponent } from "@shared/components/changelog-flyout/changelog-flyout.component";
 
 interface NavItem {
   label: string;
@@ -13,10 +14,21 @@ interface NavItem {
   roles?: string[];
 }
 
+interface ChangelogRelease {
+  version: string;
+  date: string;
+}
+
 @Component({
   selector: "app-sidebar",
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, HasRoleDirective],
+  imports: [
+    CommonModule,
+    RouterLink,
+    RouterLinkActive,
+    HasRoleDirective,
+    ChangelogFlyoutComponent,
+  ],
   template: `
     <!-- Mobile overlay -->
     @if (sidebarStateService.isMobileOpen()) {
@@ -73,15 +85,26 @@ interface NavItem {
           class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700"
         >
           <div class="text-xs text-gray-500 dark:text-gray-400">
-            <p>StewardSync v1.0.0</p>
+            <a
+              href="#"
+              class="underline decoration-dotted underline-offset-2 hover:text-primary-600 dark:hover:text-primary-300 transition-colors"
+              (click)="openChangelog(); $event.preventDefault()"
+            >
+              StewardSync v{{ appVersion() }}
+            </a>
             <p class="mt-1">Racing Incident Review System</p>
           </div>
         </div>
       }
     </aside>
+
+    <app-changelog-flyout
+      [isOpen]="isChangelogOpen()"
+      (closeRequested)="closeChangelog()"
+    />
   `,
 })
-export class SidebarComponent implements OnDestroy {
+export class SidebarComponent implements OnDestroy, OnInit {
   private authService = inject(AuthService);
   private convex = inject(ConvexService);
   readonly sidebarStateService = inject(SidebarStateService);
@@ -101,6 +124,8 @@ export class SidebarComponent implements OnDestroy {
   readonly finalizeQueueCount = computed(
     () => this.finalizeQueueQuery.data()?.length ?? 0,
   );
+  readonly isChangelogOpen = signal(false);
+  readonly appVersion = signal("1.0.0");
 
   navItems: NavItem[] = [
     {
@@ -173,6 +198,10 @@ export class SidebarComponent implements OnDestroy {
     this.finalizeQueueQuery.unsubscribe();
   }
 
+  ngOnInit(): void {
+    void this.loadLatestVersion();
+  }
+
   hasAnyRole(roles: string[]): boolean {
     return this.authService.hasRole(...(roles as any[]));
   }
@@ -189,5 +218,70 @@ export class SidebarComponent implements OnDestroy {
 
   getBadgeClass(_item: NavItem): string {
     return "badge-rejected";
+  }
+
+  openChangelog(): void {
+    this.isChangelogOpen.set(true);
+  }
+
+  closeChangelog(): void {
+    this.isChangelogOpen.set(false);
+  }
+
+  private async loadLatestVersion(): Promise<void> {
+    try {
+      const changelogUrl = new URL("assets/changelog.json", document.baseURI)
+        .toString();
+      const response = await fetch(changelogUrl);
+      if (!response.ok) {
+        return;
+      }
+
+      const payload: unknown = await response.json();
+      const releases = this.parseReleases(payload);
+      if (!releases || releases.length === 0) {
+        return;
+      }
+
+      const latestRelease = [...releases].sort((a, b) =>
+        b.date.localeCompare(a.date),
+      )[0];
+      if (latestRelease) {
+        this.appVersion.set(latestRelease.version);
+      }
+    } catch (error) {
+      console.error("Failed to load sidebar app version from changelog:", error);
+    }
+  }
+
+  private parseReleases(value: unknown): ChangelogRelease[] | null {
+    if (!value || typeof value !== "object" || !("releases" in value)) {
+      return null;
+    }
+
+    const rawReleases = (value as { releases: unknown }).releases;
+    if (!Array.isArray(rawReleases)) {
+      return null;
+    }
+
+    const releases: ChangelogRelease[] = [];
+    for (const release of rawReleases) {
+      if (!release || typeof release !== "object") {
+        return null;
+      }
+
+      const entry = release as {
+        version?: unknown;
+        date?: unknown;
+      };
+
+      if (typeof entry.version !== "string" || typeof entry.date !== "string") {
+        return null;
+      }
+
+      releases.push({ version: entry.version, date: entry.date });
+    }
+
+    return releases;
   }
 }
