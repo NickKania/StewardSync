@@ -105,43 +105,43 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
       </div>
 
       <!-- Stats -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-amber-600">
+            <p class="text-2xl sm:text-3xl font-bold text-amber-600">
               {{ pendingReports().length }}
             </p>
-            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
               Pending Review
             </p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <p class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
               {{ reviewStats()?.total || 0 }}
             </p>
-            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
               Your Total Reviews
             </p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-green-600">
+            <p class="text-2xl sm:text-3xl font-bold text-green-600">
               {{ reviewStats()?.today || 0 }}
             </p>
-            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
               Reviewed Today
             </p>
           </div>
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-blue-600">
+            <p class="text-2xl sm:text-3xl font-bold text-blue-600">
               {{ reviewedReports().length }}
             </p>
-            <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
               Ready to Finalize
             </p>
           </div>
@@ -155,7 +155,8 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
             <app-loading text="Loading reports..." />
           </div>
         } @else if (pendingReports().length > 0) {
-          <div class="overflow-x-auto">
+          <!-- Desktop table -->
+          <div class="hidden md:block overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
@@ -299,6 +300,56 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
               </tbody>
             </table>
           </div>
+
+          <!-- Mobile card view -->
+          <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            @for (report of sortedPendingReports(); track report._id) {
+              <a
+                [routerLink]="['/reviews', report._id]"
+                class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {{ report.reportId }}
+                    </p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">
+                      {{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
+                      #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                    </p>
+                  </div>
+                  <app-badge
+                    [variant]="report.reviewCount > 0 ? 'info' : 'default'"
+                    size="sm"
+                  >
+                    {{ report.reviewCount || 0 }}
+                  </app-badge>
+                </div>
+                <div class="space-y-1 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Event</span>
+                    <span class="text-gray-900 dark:text-gray-100 text-right">
+                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Turn</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.turn }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Filed</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.reportDate | timeAgo }}</span>
+                  </div>
+                </div>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                  {{ report.description }}
+                </p>
+                <p class="mt-2 text-sm text-primary-600 font-medium">
+                  {{ reviewActionLabel(report) }} →
+                </p>
+              </a>
+            }
+          </div>
         } @else {
           <div class="text-center py-12">
             <svg
@@ -331,7 +382,8 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
           subtitle="These reports have been reviewed and await final decision"
           [noPadding]="true"
         >
-          <div class="overflow-x-auto">
+          <!-- Desktop table -->
+          <div class="hidden md:block overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
@@ -462,6 +514,58 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                 }
               </tbody>
             </table>
+          </div>
+
+          <!-- Mobile card view -->
+          <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            @for (report of sortedReviewedReports(); track report.reportId) {
+              <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <div class="flex items-start justify-between gap-3 mb-2">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {{ report.reportId }}
+                    </p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">
+                      {{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
+                      #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                    </p>
+                  </div>
+                  <app-badge variant="info" size="sm">Reviewed</app-badge>
+                </div>
+                <div class="space-y-1 text-sm mb-3">
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Event</span>
+                    <span class="text-gray-900 dark:text-gray-100 text-right">
+                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Turn</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.turn }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Reviews</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.reviewCount || 0 }}</span>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  @if (hasUserReviewed(report)) {
+                    <a
+                      [routerLink]="['/reviews', report._id]"
+                      class="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                    >
+                      Edit Review
+                    </a>
+                  }
+                  <a
+                    [routerLink]="['/reports', report._id]"
+                    class="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                  >
+                    View →
+                  </a>
+                </div>
+              </div>
+            }
           </div>
         </app-card>
       }

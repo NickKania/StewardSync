@@ -129,43 +129,43 @@ interface SeriesPenaltyGroup {
 
         <!-- Stats Cards -->
         @if (statsToShow()) {
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <app-card>
               <div class="text-center">
-                <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                <p class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {{ statsToShow()?.reportsFiledCount || 0 }}
                 </p>
-                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
                   Reports Filed
                 </p>
               </div>
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-3xl font-bold text-amber-600">
+                <p class="text-2xl sm:text-3xl font-bold text-amber-600">
                   {{ statsToShow()?.reportsAgainstCount || 0 }}
                 </p>
-                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
                   Reports Against
                 </p>
               </div>
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-3xl font-bold text-blue-600">
+                <p class="text-2xl sm:text-3xl font-bold text-blue-600">
                   {{ statsToShow()?.pendingReports || 0 }}
                 </p>
-                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
                   Pending
                 </p>
               </div>
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-3xl font-bold text-green-600">
+                <p class="text-2xl sm:text-3xl font-bold text-green-600">
                   {{ statsToShow()?.finalizedReports || 0 }}
                 </p>
-                <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
                   Finalized
                 </p>
               </div>

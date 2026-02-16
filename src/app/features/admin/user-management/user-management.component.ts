@@ -39,7 +39,8 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
             <app-loading text="Loading users..." />
           </div>
         } @else if (users().length > 0) {
-          <div class="overflow-x-auto">
+          <!-- Desktop table -->
+          <div class="hidden md:block overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
@@ -92,6 +93,49 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
               </tbody>
             </table>
           </div>
+
+          <!-- Mobile card view -->
+          <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            @for (user of users(); track user._id) {
+              <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-3 min-w-0 flex-1">
+                    @if (user.avatarUrl) {
+                      <img
+                        [src]="user.avatarUrl"
+                        [alt]="user.name"
+                        class="w-10 h-10 rounded-full shrink-0"
+                      />
+                    } @else {
+                      <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                        <span class="font-medium text-primary-700">
+                          {{ user.name.charAt(0).toUpperCase() }}
+                        </span>
+                      </div>
+                    }
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ user.name }}</p>
+                      <div class="flex items-center gap-2 mt-1">
+                        <app-badge [variant]="getRoleVariant(user.role?.name)" size="sm">
+                          {{ user.role?.displayName }}
+                        </app-badge>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                          Joined {{ user.createdAt | dateFormat:'PP' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <app-button
+                    variant="ghost"
+                    size="sm"
+                    (onClick)="openEditModal(user)"
+                  >
+                    Edit
+                  </app-button>
+                </div>
+              </div>
+            }
+          </div>
         } @else {
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">No users found</p>
@@ -104,6 +148,8 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
     <app-modal
       [isOpen]="showEditModal"
       title="Edit User"
+      size="md"
+      [fullscreenOnMobile]="true"
       (close)="closeEditModal()"
     >
       @if (selectedUser) {

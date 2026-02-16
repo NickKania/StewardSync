@@ -72,43 +72,35 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 
       <!-- Filters -->
       <app-card>
-        <div class="flex flex-wrap gap-4">
-          <div class="w-48">
-            <app-select
-              label="Series"
-              [options]="seriesOptions()"
-              [(ngModel)]="selectedSeries"
-              (ngModelChange)="onSeriesChange()"
-              placeholder="All series"
-            />
-          </div>
-          <div class="w-48">
-            <app-select
-              label="Status"
-              [options]="statusOptions"
-              [(ngModel)]="selectedStatus"
-              (ngModelChange)="filterReports()"
-              placeholder="All statuses"
-            />
-          </div>
-          <div class="w-48">
-            <app-select
-              label="Event"
-              [options]="eventOptions()"
-              [(ngModel)]="selectedEvent"
-              (ngModelChange)="onEventChange()"
-              placeholder="All events"
-            />
-          </div>
-          <div class="w-48">
-            <app-select
-              label="Race"
-              [options]="raceOptions()"
-              [(ngModel)]="selectedRace"
-              (ngModelChange)="filterReports()"
-              placeholder="All races"
-            />
-          </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <app-select
+            label="Series"
+            [options]="seriesOptions()"
+            [(ngModel)]="selectedSeries"
+            (ngModelChange)="onSeriesChange()"
+            placeholder="All series"
+          />
+          <app-select
+            label="Status"
+            [options]="statusOptions"
+            [(ngModel)]="selectedStatus"
+            (ngModelChange)="filterReports()"
+            placeholder="All statuses"
+          />
+          <app-select
+            label="Event"
+            [options]="eventOptions()"
+            [(ngModel)]="selectedEvent"
+            (ngModelChange)="onEventChange()"
+            placeholder="All events"
+          />
+          <app-select
+            label="Race"
+            [options]="raceOptions()"
+            [(ngModel)]="selectedRace"
+            (ngModelChange)="filterReports()"
+            placeholder="All races"
+          />
         </div>
       </app-card>
 
@@ -119,7 +111,8 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
             <app-loading text="Loading reports..." />
           </div>
         } @else if (filteredReports().length > 0) {
-          <div class="overflow-x-auto">
+          <!-- Desktop table view -->
+          <div class="hidden md:block overflow-x-auto">
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
@@ -210,6 +203,60 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                 }
               </tbody>
             </table>
+          </div>
+
+          <!-- Mobile card view -->
+          <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            @for (report of filteredReports(); track report._id) {
+              <a
+                [routerLink]="['/reports', report._id]"
+                class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <div class="flex items-start justify-between gap-3 mb-2">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {{ report.reportId || "-" }}
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ report.reportDate | dateFormat: "PP" }}
+                    </p>
+                  </div>
+                  <app-badge [variant]="getStatusVariant(report.status)" size="sm">
+                    {{ formatReportStatus(report.status) }}
+                  </app-badge>
+                </div>
+                <div class="space-y-1 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">At Fault</span>
+                    <span class="text-gray-900 dark:text-gray-100 font-medium">
+                      {{ report.atFaultDriver?.displayName || report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
+                      #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Event</span>
+                    <span class="text-gray-900 dark:text-gray-100">
+                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Turn</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.turn }}</span>
+                  </div>
+                  @if (canViewReportingUser() && report.reportingUser) {
+                    <div class="flex justify-between items-center">
+                      <span class="text-gray-500 dark:text-gray-400">Reported by</span>
+                      <span class="text-gray-900 dark:text-gray-100 flex items-center gap-1">
+                        {{ report.reportingUser?.officialName || report.reportingUser?.name || "Unknown" }}
+                        @if (report.isStewardReported) {
+                          <app-badge variant="info" size="sm">Steward</app-badge>
+                        }
+                      </span>
+                    </div>
+                  }
+                </div>
+              </a>
+            }
           </div>
         } @else {
           <div class="text-center py-12">
