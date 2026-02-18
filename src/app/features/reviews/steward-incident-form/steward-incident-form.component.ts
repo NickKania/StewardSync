@@ -199,7 +199,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                   <div>
                     <label class="label">Lap Number *</label>
                     <input
-                      type="number"
+                      type="text"
                       formControlName="lap"
                       class="input"
                       [class.input-error]="
@@ -216,7 +216,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                   <div>
                     <label class="label">Turn Number *</label>
                     <input
-                      type="number"
+                      type="text"
                       formControlName="turn"
                       class="input"
                       [class.input-error]="
