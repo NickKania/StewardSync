@@ -186,7 +186,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
               <div>
                 <label class="label">Lap Number *</label>
                 <input
-                  type="number"
+                  type="text"
                   formControlName="lap"
                   class="input"
                   [class.input-error]="
@@ -204,7 +204,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
               <div>
                 <label class="label">Turn Number *</label>
                 <input
-                  type="number"
+                  type="text"
                   formControlName="turn"
                   class="input"
                   [class.input-error]="
