@@ -22,6 +22,7 @@ export interface Report {
   finalDecision?: string;
   appliedPenalty?: string;
   atFaultDriverId?: Id<'drivers'>;
+  isNoDriverAtFault?: boolean;
   officialNotes?: string;
   finalizedBy?: Id<'users'>;
   finalizedAt?: number;

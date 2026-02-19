@@ -84,6 +84,14 @@ export const getEventRundown = query({
               }
             }
 
+            const isNoDriverAtFault =
+              report.status === "reviewed"
+                ? Boolean(review?.isNoDriverAtFault)
+                : Boolean(report.isNoDriverAtFault);
+            if (isNoDriverAtFault) {
+              return null;
+            }
+
             const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
             const reportedDriver = await ctx.db.get(atFaultDriverId);
 
@@ -343,6 +351,10 @@ export const getSeriesLicensePoints = query({
       const finalizedReports = reports.filter((r) => r.status === "finalized");
 
       for (const report of finalizedReports) {
+        if (report.isNoDriverAtFault) {
+          continue;
+        }
+
         let penalty: any = null;
         if (report.appliedPenalty) {
           penalty = await ctx.db.get(report.appliedPenalty as any);
@@ -421,6 +433,10 @@ export const getSeriesLicensePointsWithPenalties = query({
       const finalizedReports = reports.filter((r) => r.status === "finalized");
 
       for (const report of finalizedReports) {
+        if (report.isNoDriverAtFault) {
+          continue;
+        }
+
         let penalty: any = null;
         if (report.appliedPenalty) {
           penalty = await ctx.db.get(report.appliedPenalty as any);
@@ -708,6 +724,10 @@ export const getEventTimePenaltySummary = query({
         }>();
 
         for (const report of finalizedReports) {
+          if (report.isNoDriverAtFault) {
+            continue;
+          }
+
           const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
           const reportedDriver = await ctx.db.get(atFaultDriverId);
 

@@ -91,6 +91,7 @@ export interface Penalty {
   selfReportReduction?: number;
   timePenaltyLap1: number;
   licensePoints: number;
+  allowNoDriverAtFault?: boolean;
   createdAt: number;
   series?: Series;
 }

@@ -320,6 +320,14 @@ import { User } from "@app/core/models";
               <dl class="space-y-4">
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Ticket Number
+                  </dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ report()?.reportId || "N/A" }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
                     Reported Driver
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
@@ -433,6 +441,7 @@ import { User } from "@app/core/models";
 })
 export class FinalizeFormComponent implements OnInit, OnDestroy {
   @Input() reportId!: string;
+  readonly NO_DRIVER_OPTION_VALUE = "__NO_DRIVER__";
 
   private fb = inject(FormBuilder);
   private convex = inject(ConvexService);
@@ -443,15 +452,34 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   form: FormGroup;
   report = signal<any>(null);
   availablePenalties = signal<Penalty[]>([]);
+  selectedAppliedPenaltyId = signal<string>("");
   drivers = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
 
   driverOptions = computed(() => {
-    return this.drivers().map((driver) => ({
+    const options = this.drivers().map((driver) => ({
       value: String(driver._id),
       label: `${driver.driverName} (#${driver.driverNumber})`,
     }));
+    if (this.selectedPenaltyAllowsNoDriver()) {
+      return [
+        { value: this.NO_DRIVER_OPTION_VALUE, label: "No Driver" },
+        ...options,
+      ];
+    }
+    return options;
+  });
+  selectedPenaltyAllowsNoDriver = computed(() => {
+    const selectedPenaltyId = this.selectedAppliedPenaltyId();
+    if (!selectedPenaltyId) {
+      return false;
+    }
+
+    const selectedPenalty = this.availablePenalties().find(
+      (penalty) => String(penalty._id) === String(selectedPenaltyId),
+    );
+    return Boolean(selectedPenalty?.allowNoDriverAtFault);
   });
 
   showRejectModal = false;
@@ -499,6 +527,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     this.form.get("isAdjusted")?.valueChanges.subscribe((isAdjusted) => {
       this.updateAdjustedReasonValidation(isAdjusted);
     });
+    this.form
+      .get("appliedPenalty")
+      ?.valueChanges.subscribe((penaltyId: string) => {
+        this.onAppliedPenaltyChange(penaltyId);
+      });
   }
 
   private updateAdjustedReasonValidation(isAdjusted: boolean): void {
@@ -631,8 +664,12 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
           // Pre-select atFaultDriverId from latest review or reportedDriver
           if (atFaultDriverControl && atFaultDriverControl.pristine) {
-            const defaultDriver =
-              latestReview?.atFaultDriverId || data?.reportedDriverId;
+            const defaultDriver = latestReview?.isNoDriverAtFault
+              ? this.NO_DRIVER_OPTION_VALUE
+              : latestReview?.atFaultDriverId ||
+                (data?.isNoDriverAtFault
+                  ? this.NO_DRIVER_OPTION_VALUE
+                  : data?.reportedDriverId);
             if (defaultDriver) {
               atFaultDriverControl.setValue(String(defaultDriver));
             }
@@ -679,6 +716,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       const data = penaltiesQuery.data();
       if (data !== undefined) {
         this.availablePenalties.set(data);
+        this.enforceAtFaultDriverSelection();
 
         // Pre-select applied penalty from latest review when penalties are loaded
         const report = this.report();
@@ -710,6 +748,32 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkPenalties));
+  }
+
+  private onAppliedPenaltyChange(penaltyId: string): void {
+    this.selectedAppliedPenaltyId.set(String(penaltyId || ""));
+    this.enforceAtFaultDriverSelection();
+  }
+
+  private enforceAtFaultDriverSelection(): void {
+    const atFaultDriverControl = this.form.get("atFaultDriverId");
+    if (!atFaultDriverControl) {
+      return;
+    }
+    if (this.availablePenalties().length === 0) {
+      return;
+    }
+
+    const isNoDriverSelected =
+      atFaultDriverControl.value === this.NO_DRIVER_OPTION_VALUE;
+    if (!isNoDriverSelected || this.selectedPenaltyAllowsNoDriver()) {
+      return;
+    }
+
+    const reportedDriverId = this.report()?.reportedDriverId;
+    atFaultDriverControl.setValue(
+      reportedDriverId ? String(reportedDriverId) : "",
+    );
   }
 
   penaltyRecommendations(): {
@@ -769,8 +833,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     }
 
     const atFaultDriverId = this.form.get("atFaultDriverId")?.value;
+    const isNoDriverAtFault = atFaultDriverId === this.NO_DRIVER_OPTION_VALUE;
 
-    if (atFaultDriverId) {
+    if (atFaultDriverId && !isNoDriverAtFault) {
       const atFaultDriver = await this.convex.query(
         this.convex.api.drivers.getById,
         { driverId: atFaultDriverId as any },
@@ -802,6 +867,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
     try {
       const formValue = this.form.value;
+      const isNoDriverAtFault =
+        formValue.atFaultDriverId === this.NO_DRIVER_OPTION_VALUE;
 
       if (reportData?.reviews && reportData.reviews.length > 0) {
         const latestReview = reportData.reviews.reduce(
@@ -833,7 +900,10 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           userId,
           finalDecision: formValue.incidentDescription,
           appliedPenalty: formValue.appliedPenalty,
-          atFaultDriverId: formValue.atFaultDriverId || undefined,
+          atFaultDriverId: isNoDriverAtFault
+            ? undefined
+            : formValue.atFaultDriverId || undefined,
+          isNoDriverAtFault,
           officialNotes: formValue.officialNotes || "",
           isSelfReport: formValue.isSelfReport || false,
           isAdjusted: formValue.isAdjusted || false,

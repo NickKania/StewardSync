@@ -79,6 +79,7 @@ export default defineSchema({
     selfReportReduction: v.optional(v.number()),
     timePenaltyLap1: v.number(),
     licensePoints: v.number(),
+    allowNoDriverAtFault: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_series", ["seriesId"]),
 
@@ -206,6 +207,7 @@ export default defineSchema({
     finalDecision: v.optional(v.string()),
     appliedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     officialNotes: v.optional(v.string()),
     finalizedBy: v.optional(v.id("users")),
     finalizedAt: v.optional(v.number()),
@@ -236,6 +238,7 @@ export default defineSchema({
     candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     videoTimestamp: v.optional(v.string()),
     linkedReviewId: v.optional(v.id("reviews")),
     isSelfReport: v.optional(v.boolean()),

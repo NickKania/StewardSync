@@ -163,6 +163,11 @@ import { User } from "@app/core/models";
                     <label class="label">At Fault Driver</label>
                     <select formControlName="atFaultDriverId" class="input">
                       <option value="">Select driver</option>
+                      @if (selectedPenaltyAllowsNoDriver()) {
+                        <option [value]="NO_DRIVER_OPTION_VALUE">
+                          No Driver
+                        </option>
+                      }
                       @for (driver of drivers(); track driver._id) {
                         <option [value]="driver._id">
                           {{ driver.driverName }} ({{ driver.driverNumber }})
@@ -480,6 +485,7 @@ import { User } from "@app/core/models";
 })
 export class ReviewFormComponent implements OnInit, OnDestroy {
   @Input() reportId!: string;
+  readonly NO_DRIVER_OPTION_VALUE = "__NO_DRIVER__";
 
   private fb = inject(FormBuilder);
   private convex = inject(ConvexService);
@@ -492,6 +498,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   currentUserReview = signal<any>(null);
   isReportingUser = signal(false);
   availablePenalties = signal<Penalty[]>([]);
+  selectedRecommendedPenaltyId = signal<string>("");
   existingReviews = signal<any[]>([]);
   stewards = signal<any[]>([]);
   drivers = signal<any[]>([]);
@@ -503,6 +510,17 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   primaryActionLabel = computed(() =>
     this.isReportingUser() ? "Save Changes" : "Submit Review",
   );
+  selectedPenaltyAllowsNoDriver = computed(() => {
+    const selectedPenaltyId = this.selectedRecommendedPenaltyId();
+    if (!selectedPenaltyId) {
+      return false;
+    }
+
+    const selectedPenalty = this.availablePenalties().find(
+      (penalty) => String(penalty._id) === String(selectedPenaltyId),
+    );
+    return Boolean(selectedPenalty?.allowNoDriverAtFault);
+  });
 
   availableStewards = computed(() => {
     const currentUserId = this.authService.getUserId();
@@ -573,6 +591,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     this.form.get("isAdjusted")?.valueChanges.subscribe((isAdjusted) => {
       this.updateAdjustedReasonValidation(isAdjusted);
     });
+    this.form
+      .get("recommendedPenalty")
+      ?.valueChanges.subscribe((penaltyId: string) => {
+        this.onRecommendedPenaltyChange(penaltyId);
+      });
   }
 
   ngOnInit(): void {
@@ -664,8 +687,9 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
           const atFaultDriverControl = this.form.get("atFaultDriverId");
           if (atFaultDriverControl && atFaultDriverControl.pristine) {
-            const atFaultDriverValue =
-              currentUserReview?.atFaultDriverId ?? data.reportedDriverId;
+            const atFaultDriverValue = currentUserReview?.isNoDriverAtFault
+              ? this.NO_DRIVER_OPTION_VALUE
+              : currentUserReview?.atFaultDriverId ?? data.reportedDriverId;
             if (atFaultDriverValue) {
               atFaultDriverControl.setValue(atFaultDriverValue);
             }
@@ -733,9 +757,36 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       const data = penaltiesQuery.data();
       if (data !== undefined) {
         this.availablePenalties.set(data);
+        this.enforceAtFaultDriverSelection();
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkPenalties));
+  }
+
+  private onRecommendedPenaltyChange(penaltyId: string): void {
+    this.selectedRecommendedPenaltyId.set(String(penaltyId || ""));
+    this.enforceAtFaultDriverSelection();
+  }
+
+  private enforceAtFaultDriverSelection(): void {
+    const atFaultDriverControl = this.form.get("atFaultDriverId");
+    if (!atFaultDriverControl) {
+      return;
+    }
+    if (this.availablePenalties().length === 0) {
+      return;
+    }
+
+    const isNoDriverSelected =
+      atFaultDriverControl.value === this.NO_DRIVER_OPTION_VALUE;
+    if (!isNoDriverSelected || this.selectedPenaltyAllowsNoDriver()) {
+      return;
+    }
+
+    const reportedDriverId = this.report()?.reportedDriverId;
+    atFaultDriverControl.setValue(
+      reportedDriverId ? String(reportedDriverId) : "",
+    );
   }
 
   private loadStewards(): void {
@@ -870,6 +921,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       }
 
       const formValue = this.form.value;
+      const isNoDriverAtFault =
+        formValue.atFaultDriverId === this.NO_DRIVER_OPTION_VALUE;
       const currentUserReview = this.currentUserReview();
       const useUpdate = this.isReportingUser() && Boolean(currentUserReview);
 
@@ -878,7 +931,10 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         incidentDescription: formValue.incidentDescription,
         reviewNotes: formValue.reviewNotes,
         recommendedPenalty: formValue.recommendedPenalty || undefined,
-        atFaultDriverId: formValue.atFaultDriverId || undefined,
+        atFaultDriverId: isNoDriverAtFault
+          ? undefined
+          : formValue.atFaultDriverId || undefined,
+        isNoDriverAtFault,
         videoTimestamp: formValue.videoTimestamp || undefined,
         isSelfReport: formValue.isSelfReport || false,
         isAdjusted: formValue.isAdjusted || false,
@@ -909,7 +965,10 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
             incidentDescription: formValue.incidentDescription,
             reviewNotes: formValue.reviewNotes,
             recommendedPenalty: formValue.recommendedPenalty || undefined,
-            atFaultDriverId: formValue.atFaultDriverId || undefined,
+            atFaultDriverId: isNoDriverAtFault
+              ? undefined
+              : formValue.atFaultDriverId || undefined,
+            isNoDriverAtFault,
             videoTimestamp: formValue.videoTimestamp || undefined,
             secondStewardId: formValue.secondStewardId || undefined,
             isSelfReport: formValue.isSelfReport || false,

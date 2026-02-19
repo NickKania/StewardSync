@@ -468,6 +468,7 @@ export const finalize = mutation({
     finalDecision: v.string(),
     appliedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     officialNotes: v.string(),
     isSelfReport: v.optional(v.boolean()),
   },
@@ -499,8 +500,10 @@ export const finalize = mutation({
     }
 
     const now = Date.now();
-    const effectiveAtFaultDriverId =
-      args.atFaultDriverId ?? report.reportedDriverId;
+    const isNoDriverAtFault = args.isNoDriverAtFault ?? false;
+    const effectiveAtFaultDriverId = isNoDriverAtFault
+      ? undefined
+      : args.atFaultDriverId ?? report.reportedDriverId;
 
     let appliedPenaltyDoc: any = null;
     if (args.appliedPenalty) {
@@ -513,6 +516,7 @@ export const finalize = mutation({
       finalDecision: args.finalDecision,
       appliedPenalty: args.appliedPenalty,
       atFaultDriverId: effectiveAtFaultDriverId,
+      isNoDriverAtFault,
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
       finalizedBy: args.userId,
@@ -559,6 +563,10 @@ export const finalize = mutation({
         );
 
         for (const finalizedReport of finalizedReports) {
+          if (finalizedReport.isNoDriverAtFault) {
+            continue;
+          }
+
           let penalty: any = null;
           if (finalizedReport.appliedPenalty) {
             penalty = await ctx.db.get(finalizedReport.appliedPenalty as any);
@@ -677,6 +685,7 @@ export const updateFinalizedDecision = mutation({
     finalDecision: v.string(),
     appliedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     officialNotes: v.string(),
     isSelfReport: v.optional(v.boolean()),
   },
@@ -698,7 +707,10 @@ export const updateFinalizedDecision = mutation({
     await ctx.db.patch(args.reportId, {
       finalDecision: args.finalDecision,
       appliedPenalty: args.appliedPenalty,
-      atFaultDriverId: args.atFaultDriverId,
+      atFaultDriverId: args.isNoDriverAtFault
+        ? undefined
+        : args.atFaultDriverId,
+      isNoDriverAtFault: args.isNoDriverAtFault ?? false,
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
       isEdited: true,
@@ -724,6 +736,7 @@ export const createBySteward = mutation({
     reviewNotes: v.optional(v.string()),
     recommendedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
     isSelfReport: v.optional(v.boolean()),
@@ -826,7 +839,10 @@ export const createBySteward = mutation({
       incidentDescription: args.incidentDescription,
       reviewNotes: args.reviewNotes || "",
       recommendedPenalty: args.recommendedPenalty,
-      atFaultDriverId: args.atFaultDriverId,
+      atFaultDriverId: args.isNoDriverAtFault
+        ? undefined
+        : args.atFaultDriverId,
+      isNoDriverAtFault: args.isNoDriverAtFault ?? false,
       videoTimestamp: args.videoTimestamp,
       isSelfReport: args.isSelfReport,
       isAdjusted: args.isAdjusted,
@@ -945,6 +961,10 @@ export const getDashboardStats = query({
 export const getPreviousWeekEventStatus = query({
   args: {},
   handler: async (ctx) => {
+    const endOfToday = new Date();
+    endOfToday.setUTCHours(23, 59, 59, 999);
+    const latestAllowedEventDate = endOfToday.getTime();
+
     const seriesList = await ctx.db.query("series").collect();
     const activeSeries = seriesList.filter(
       (series) => series.isActive !== false,
@@ -972,11 +992,19 @@ export const getPreviousWeekEventStatus = query({
       if (!activeSeriesIds.has(seriesId)) {
         continue;
       }
-      if (!latestEventBySeries.has(seriesId)) {
+
+      if (event.eventDate > latestAllowedEventDate) {
+        continue;
+      }
+
+      const currentLatest = latestEventBySeries.get(seriesId);
+      if (
+        !currentLatest ||
+        event.eventDate > currentLatest.eventDate ||
+        (event.eventDate === currentLatest.eventDate &&
+          event.createdAt > currentLatest.createdAt)
+      ) {
         latestEventBySeries.set(seriesId, event);
-        if (latestEventBySeries.size === activeSeriesIds.size) {
-          break;
-        }
       }
     }
 
@@ -1223,6 +1251,15 @@ export const getEventExportData = query({
         }
 
         if (report.status === "reviewed" && !review?.recommendedPenalty) {
+          return null;
+        }
+
+        const isNoDriverAtFault =
+          report.status === "reviewed"
+            ? Boolean(review?.isNoDriverAtFault)
+            : Boolean(report.isNoDriverAtFault);
+
+        if (isNoDriverAtFault) {
           return null;
         }
 

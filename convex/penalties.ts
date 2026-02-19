@@ -44,6 +44,7 @@ export const create = mutation({
     selfReportReduction: v.optional(v.number()),
     timePenaltyLap1: v.optional(v.number()),
     licensePoints: v.number(),
+    allowNoDriverAtFault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const series = await ctx.db.get(args.seriesId);
@@ -58,6 +59,7 @@ export const create = mutation({
       selfReportReduction: args.selfReportReduction ?? 0,
       timePenaltyLap1: args.timePenaltyLap1 ?? args.timePenalty,
       licensePoints: args.licensePoints,
+      allowNoDriverAtFault: args.allowNoDriverAtFault ?? false,
       createdAt: Date.now(),
     });
 
@@ -73,6 +75,7 @@ export const update = mutation({
     selfReportReduction: v.optional(v.number()),
     timePenaltyLap1: v.optional(v.number()),
     licensePoints: v.number(),
+    allowNoDriverAtFault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -82,6 +85,9 @@ export const update = mutation({
       timePenalty: updates.timePenalty,
       selfReportReduction: updates.selfReportReduction ?? 0,
       licensePoints: updates.licensePoints,
+      ...(updates.allowNoDriverAtFault !== undefined && {
+        allowNoDriverAtFault: updates.allowNoDriverAtFault,
+      }),
       ...(updates.timePenaltyLap1 !== undefined && { timePenaltyLap1: updates.timePenaltyLap1 }),
     };
 

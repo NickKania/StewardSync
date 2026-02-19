@@ -29,7 +29,7 @@ export const list = query({
     const events = await ctx.db
       .query("events")
       .withIndex("by_date")
-      .order("desc")
+      .order("asc")
       .collect();
 
     // Filter out events from inactive series and populate series information
@@ -170,8 +170,8 @@ export const importOrUpdateEvent = mutation({
     // Check if event with same seriesId and eventNumber exists
     const existing = await ctx.db
       .query("events")
-      .withIndex("by_series_and_number", (q) => 
-        q.eq("seriesId", args.seriesId).eq("eventNumber", args.eventNumber)
+      .withIndex("by_series_and_number", (q) =>
+        q.eq("seriesId", args.seriesId).eq("eventNumber", args.eventNumber),
       )
       .first();
 
@@ -216,7 +216,7 @@ export const importOrUpdateEvent = mutation({
         }
       }
 
-      return { action: 'updated', eventId: existing._id };
+      return { action: "updated", eventId: existing._id };
     } else {
       // Create new event
       const eventId = await ctx.db.insert("events", {
@@ -226,7 +226,7 @@ export const importOrUpdateEvent = mutation({
         eventDate: args.eventDate,
         createdAt: Date.now(),
       });
-      return { action: 'created', eventId };
+      return { action: "created", eventId };
     }
   },
 });
@@ -234,7 +234,7 @@ export const importOrUpdateEvent = mutation({
 // Helper function to avoid circular type inference in Convex
 async function runGetSeriesByIdWithSimgridLink(
   ctx: any,
-  args: { id: Id<"series"> }
+  args: { id: Id<"series"> },
 ) {
   return ctx.runQuery("series:getByIdWithSimgridLink", args);
 }
@@ -276,8 +276,9 @@ export const importFromSimGrid = action({
     let created = 0;
     let skipped = 0;
 
-    const sortedRaces = races.sort((a: any, b: any) =>
-      new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+    const sortedRaces = races.sort(
+      (a: any, b: any) =>
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
     );
 
     for (let i = 0; i < sortedRaces.length; i++) {
@@ -285,7 +286,8 @@ export const importFromSimGrid = action({
       const eventDate = new Date(race.starts_at).getTime();
       if (isNaN(eventDate)) continue;
 
-      const trackName = race.track?.name || race.display_name || "Unknown Track";
+      const trackName =
+        race.track?.name || race.display_name || "Unknown Track";
 
       const result = await runImportOrUpdateEvent(ctx, {
         seriesId: args.seriesId,
@@ -294,7 +296,7 @@ export const importFromSimGrid = action({
         eventDate,
       });
 
-      if (result.action === 'created') {
+      if (result.action === "created") {
         created++;
       } else {
         skipped++;

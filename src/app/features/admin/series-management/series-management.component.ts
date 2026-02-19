@@ -289,6 +289,12 @@ import { Id } from "@convex/_generated/dataModel";
                                 penalty.licensePoints
                               }}</span>
                             </div>
+                            <div class="flex justify-between">
+                              <span>Allows No Driver:</span>
+                              <span class="font-medium">{{
+                                penalty.allowNoDriverAtFault ? "Yes" : "No"
+                              }}</span>
+                            </div>
                           </div>
                         </div>
                       }
@@ -758,6 +764,24 @@ import { Id } from "@convex/_generated/dataModel";
                   placeholder="e.g., 2"
                 />
               </div>
+              <div>
+                <label class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="penaltyForm.allowNoDriverAtFault"
+                    class="rounded border-gray-300 dark:border-gray-700"
+                  />
+                  <span
+                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Allow "No Driver" At Fault
+                  </span>
+                </label>
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                  When enabled, stewards can select "No Driver" as the
+                  at-fault driver for this penalty.
+                </p>
+              </div>
               <div class="flex gap-2 justify-end">
                 <app-button variant="secondary" (click)="closePenaltyModal()"
                   >Cancel</app-button
@@ -1118,6 +1142,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     selfReportReduction: 0,
     timePenaltyLap1: 0,
     licensePoints: 0,
+    allowNoDriverAtFault: false,
   };
 
   seriesPenaltyForm = {
@@ -1367,6 +1392,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       selfReportReduction: penalty.selfReportReduction ?? 0,
       timePenaltyLap1: penalty.timePenaltyLap1,
       licensePoints: penalty.licensePoints,
+      allowNoDriverAtFault: penalty.allowNoDriverAtFault ?? false,
     };
     this.showPenaltyModal = true;
   }
@@ -1380,6 +1406,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         selfReportReduction: this.penaltyForm.selfReportReduction,
         timePenaltyLap1: this.penaltyForm.timePenaltyLap1,
         licensePoints: this.penaltyForm.licensePoints,
+        allowNoDriverAtFault: this.penaltyForm.allowNoDriverAtFault,
       });
     } else {
       if (!this.penaltyForm.seriesId) return;
@@ -1390,6 +1417,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         selfReportReduction: this.penaltyForm.selfReportReduction,
         timePenaltyLap1: this.penaltyForm.timePenaltyLap1,
         licensePoints: this.penaltyForm.licensePoints,
+        allowNoDriverAtFault: this.penaltyForm.allowNoDriverAtFault,
       });
     }
     this.closePenaltyModal();
@@ -1413,6 +1441,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       selfReportReduction: 0,
       timePenaltyLap1: 0,
       licensePoints: 0,
+      allowNoDriverAtFault: false,
     };
   }
 

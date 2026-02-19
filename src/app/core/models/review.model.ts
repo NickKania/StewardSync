@@ -13,6 +13,8 @@ export interface Review {
   reviewNotes: string;
   candidateForStandardization?: boolean;
   recommendedPenalty?: PenaltyType;
+  atFaultDriverId?: Id<'drivers'>;
+  isNoDriverAtFault?: boolean;
   videoTimestamp?: string;
   isSelfReport?: boolean;
   createdAt: number;
@@ -29,6 +31,8 @@ export interface CreateReviewDto {
   reviewNotes: string;
   candidateForStandardization?: boolean;
   recommendedPenalty?: PenaltyType;
+  atFaultDriverId?: Id<'drivers'>;
+  isNoDriverAtFault?: boolean;
   videoTimestamp?: string;
   isSelfReport?: boolean;
 }
@@ -39,6 +43,8 @@ export interface UpdateReviewDto {
   reviewNotes?: string;
   candidateForStandardization?: boolean;
   recommendedPenalty?: PenaltyType;
+  atFaultDriverId?: Id<'drivers'>;
+  isNoDriverAtFault?: boolean;
   videoTimestamp?: string;
 }
 
