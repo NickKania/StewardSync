@@ -578,6 +578,14 @@ interface RaceTimePenaltySummary {
                             [items]="legendItems()"
                             [title]="legendItems().length > 0 ? 'Legend' : ''"
                           />
+                          @if (hideNoDriverAtFaultWithoutTicket()) {
+                            <p
+                              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+                            >
+                              Incidents with no at-fault driver and no ticket
+                              are hidden
+                            </p>
+                          }
                         </div>
                       }
 
@@ -589,6 +597,14 @@ interface RaceTimePenaltySummary {
                             [items]="legendItems()"
                             [title]="legendItems().length > 0 ? 'Legend' : ''"
                           />
+                          @if (hideNoDriverAtFaultWithoutTicket()) {
+                            <p
+                              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+                            >
+                              Incidents with no at-fault driver and no ticket
+                              are hidden
+                            </p>
+                          }
                         </div>
                       }
                     </div>
