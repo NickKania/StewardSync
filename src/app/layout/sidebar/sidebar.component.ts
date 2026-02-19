@@ -1,6 +1,18 @@
-import { Component, inject, computed, OnDestroy, OnInit, signal } from "@angular/core";
+import {
+  Component,
+  inject,
+  computed,
+  OnDestroy,
+  OnInit,
+  signal,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { Router, RouterLink, RouterLinkActive, NavigationStart } from "@angular/router";
+import {
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  NavigationStart,
+} from "@angular/router";
 import { AuthService } from "@core/services/auth.service";
 import { HasRoleDirective } from "@shared/directives/has-role.directive";
 import { SidebarStateService } from "@core/services/sidebar-state.service";
@@ -64,15 +76,18 @@ interface ChangelogRelease {
                 [class.w-0]="!isTextVisible()"
                 [class.overflow-hidden]="!isTextVisible()"
                 [class.whitespace-nowrap]="!isTextVisible()"
-              >{{ item.label }}</span>
+                >{{ item.label }}</span
+              >
               @if (item.path === "/reviews" && isTextVisible()) {
                 <div class="flex items-center gap-1">
-                  <app-badge variant="warning" size="sm">
+                  <app-badge variant="danger" size="sm">
                     {{ pendingReviewCount() }}
                   </app-badge>
-                  <app-badge variant="info" size="sm">
-                    {{ finalizeQueueCount() }}
-                  </app-badge>
+                  @if (canViewFinalization()) {
+                    <app-badge variant="info" size="sm">
+                      {{ finalizeQueueCount() }}
+                    </app-badge>
+                  }
                 </div>
               }
             </a>
@@ -116,7 +131,7 @@ export class SidebarComponent implements OnDestroy, OnInit {
   readonly isTextVisible = computed(
     () =>
       this.sidebarStateService.isMobileOpen() ||
-      !this.sidebarStateService.isEffectivelyCollapsed()
+      !this.sidebarStateService.isEffectivelyCollapsed(),
   );
 
   readonly sidebarClasses = computed(() => {
@@ -233,6 +248,10 @@ export class SidebarComponent implements OnDestroy, OnInit {
     return this.authService.hasRole(...(roles as any[]));
   }
 
+  canViewFinalization(): boolean {
+    return this.authService.hasRole("head_steward", "league_manager");
+  }
+
   openChangelog(): void {
     this.isChangelogOpen.set(true);
   }
@@ -243,8 +262,10 @@ export class SidebarComponent implements OnDestroy, OnInit {
 
   private async loadLatestVersion(): Promise<void> {
     try {
-      const changelogUrl = new URL("assets/changelog.json", document.baseURI)
-        .toString();
+      const changelogUrl = new URL(
+        "assets/changelog.json",
+        document.baseURI,
+      ).toString();
       const response = await fetch(changelogUrl);
       if (!response.ok) {
         return;
@@ -263,7 +284,10 @@ export class SidebarComponent implements OnDestroy, OnInit {
         this.appVersion.set(latestRelease.version);
       }
     } catch (error) {
-      console.error("Failed to load sidebar app version from changelog:", error);
+      console.error(
+        "Failed to load sidebar app version from changelog:",
+        error,
+      );
     }
   }
 
