@@ -69,6 +69,10 @@ export default defineSchema({
     isReportingLocked: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
     seriesPenaltyNotes: v.optional(v.string()),
+    scheduledImportTime: v.optional(v.string()),
+    scheduledImportDays: v.optional(v.array(v.number())),
+    scheduledImportJobId: v.optional(v.id("_scheduled_functions")),
+    isScheduledImportActive: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_name", ["name"]),
 

@@ -11,7 +11,21 @@ export interface Series {
   isReportingLocked?: boolean;
   isActive?: boolean;
   seriesPenaltyNotes?: string;
+  scheduledImportTime?: string;
+  scheduledImportDays?: number[];
+  scheduledImportJobId?: Id<'_scheduled_functions'>;
+  isScheduledImportActive?: boolean;
   createdAt: number;
+}
+
+export interface ScheduledImportStatus {
+  isScheduledImportActive: boolean;
+  scheduledImportTime?: string;
+  scheduledImportDays: number[];
+  nextRun: number | null;
+  seriesStartDate: number | null;
+  seriesEndDate: number | null;
+  hasEvents: boolean;
 }
 
 export interface SeriesPenalty {

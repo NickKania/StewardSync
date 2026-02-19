@@ -56,6 +56,17 @@ export const getById = query({
   },
 });
 
+export const getBySeriesId = query({
+  args: { seriesId: v.id("series") },
+  handler: async (ctx, args) => {
+    const events = await ctx.db
+      .query("events")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
+      .collect();
+    return events;
+  },
+});
+
 export const getWithRaces = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {

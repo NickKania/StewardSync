@@ -22,6 +22,7 @@ import {
   Penalty,
   SeriesPenalty,
   SeriesPenaltyThreshold,
+  ScheduledImportStatus,
 } from "@core/models/series.model";
 import { DriverClass } from "@core/models/driver.model";
 import { Id } from "@convex/_generated/dataModel";
@@ -457,70 +458,180 @@ import { Id } from "@convex/_generated/dataModel";
                   }
                 </div>
 
-                <!-- Driver Classes Management -->
-                <div class="border-t pt-4 dark:border-gray-700">
-                  <div class="flex items-center justify-between mb-3">
-                    <h4
-                      class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      Driver Classes
-                    </h4>
-                    <app-button
-                      variant="secondary"
-                      size="sm"
-                      (click)="loadDriverClassesForManagement(s._id)"
-                    >
-                      <svg
-                        class="w-4 h-4 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        ></path>
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        ></path>
-                      </svg>
-                      Manage Classes
-                    </app-button>
-                  </div>
+                 <!-- Driver Classes Management -->
+                 <div class="border-t pt-4 dark:border-gray-700">
+                   <div class="flex items-center justify-between mb-3">
+                     <h4
+                       class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                     >
+                       Driver Classes
+                     </h4>
+                     <app-button
+                       variant="secondary"
+                       size="sm"
+                       (click)="loadDriverClassesForManagement(s._id)"
+                     >
+                       <svg
+                         class="w-4 h-4 mr-1"
+                         fill="none"
+                         stroke="currentColor"
+                         viewBox="0 0 24 24"
+                       >
+                         <path
+                           stroke-linecap="round"
+                           stroke-linejoin="round"
+                           stroke-width="2"
+                           d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                         ></path>
+                         <path
+                           stroke-linecap="round"
+                           stroke-linejoin="round"
+                           stroke-width="2"
+                           d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                         ></path>
+                       </svg>
+                       Manage Classes
+                     </app-button>
+                   </div>
 
-                  @if (getDriverClassesBySeries(s._id).length > 0) {
-                    <div
-                      class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"
-                    >
-                      @for (
-                        driverClass of getDriverClassesBySeries(s._id);
-                        track driverClass._id
-                      ) {
-                        <div
-                          class="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm"
-                        >
-                          <span class="text-gray-700 dark:text-gray-300">{{
-                            driverClass.displayName
-                          }}</span>
-                          <span class="text-xs text-gray-500 dark:text-gray-400"
-                            >({{ driverClass.driversCount }} drivers)</span
-                          >
-                        </div>
-                      }
-                    </div>
-                  } @else {
-                    <p
-                      class="text-sm text-gray-500 text-center py-4 dark:text-gray-400"
-                    >
-                      No driver classes found
-                    </p>
-                  }
-                </div>
+                   @if (getDriverClassesBySeries(s._id).length > 0) {
+                     <div
+                       class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"
+                     >
+                       @for (
+                         driverClass of getDriverClassesBySeries(s._id);
+                         track driverClass._id
+                       ) {
+                         <div
+                           class="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm"
+                         >
+                           <span class="text-gray-700 dark:text-gray-300">{{
+                             driverClass.displayName
+                           }}</span>
+                           <span class="text-xs text-gray-500 dark:text-gray-400"
+                             >({{ driverClass.driversCount }} drivers)</span
+                           >
+                         </div>
+                       }
+                     </div>
+                   } @else {
+                     <p
+                       class="text-sm text-gray-500 text-center py-4 dark:text-gray-400"
+                     >
+                       No driver classes found
+                     </p>
+                   }
+                 </div>
+
+                 <!-- Scheduled Import -->
+                 @if (s.simgridLink) {
+                   <div class="border-t pt-4 dark:border-gray-700">
+                     <div class="flex items-center justify-between mb-3">
+                       <h4
+                         class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                       >
+                         Scheduled Import
+                       </h4>
+                       @if (getScheduledImportStatus(s._id); as status) {
+                         @if (status.isScheduledImportActive) {
+                           <app-button
+                             variant="danger"
+                             size="sm"
+                             (click)="cancelScheduledImport(s._id)"
+                           >
+                             Cancel Schedule
+                           </app-button>
+                         } @else if (status.hasEvents) {
+                           <app-button
+                             variant="secondary"
+                             size="sm"
+                             (click)="openScheduleModal(s._id)"
+                           >
+                             <svg
+                               class="w-4 h-4 mr-1"
+                               fill="none"
+                               stroke="currentColor"
+                               viewBox="0 0 24 24"
+                             >
+                               <path
+                                 stroke-linecap="round"
+                                 stroke-linejoin="round"
+                                 stroke-width="2"
+                                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                               ></path>
+                             </svg>
+                             Schedule Import
+                           </app-button>
+                         }
+                       }
+                     </div>
+
+                     @if (getScheduledImportStatus(s._id); as status) {
+                       @if (!status.hasEvents) {
+                         <p
+                           class="text-sm text-gray-500 text-center py-2 dark:text-gray-400"
+                         >
+                           Import events first to enable scheduled imports
+                         </p>
+                       } @else if (status.isScheduledImportActive) {
+                         <div
+                           class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3"
+                         >
+                           <div class="flex items-center gap-2 mb-2">
+                             <svg
+                               class="w-4 h-4 text-green-600 dark:text-green-400"
+                               fill="none"
+                               stroke="currentColor"
+                               viewBox="0 0 24 24"
+                             >
+                               <path
+                                 stroke-linecap="round"
+                                 stroke-linejoin="round"
+                                 stroke-width="2"
+                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                               ></path>
+                             </svg>
+                             <span
+                               class="text-sm font-medium text-green-800 dark:text-green-200"
+                               >Active</span
+                             >
+                           </div>
+                           <div
+                             class="text-xs text-gray-600 dark:text-gray-400 space-y-1"
+                           >
+                             <div class="flex justify-between">
+                               <span>Next run:</span>
+                               <span class="font-medium text-gray-900 dark:text-gray-100">{{
+                                 formatNextRun(status.nextRun)
+                               }}</span>
+                             </div>
+                             <div class="flex justify-between">
+                               <span>Days:</span>
+                               <span class="font-medium text-gray-900 dark:text-gray-100">{{
+                                 formatDaysOfWeek(status.scheduledImportDays)
+                               }}</span>
+                             </div>
+                             <div class="flex justify-between">
+                               <span>Series range:</span>
+                               <span class="font-medium text-gray-900 dark:text-gray-100">{{
+                                 formatSeriesDateRange(
+                                   status.seriesStartDate,
+                                   status.seriesEndDate
+                                 )
+                               }}</span>
+                             </div>
+                           </div>
+                         </div>
+                       } @else {
+                         <p
+                           class="text-sm text-gray-500 text-center py-2 dark:text-gray-400"
+                         >
+                           No scheduled import configured
+                         </p>
+                       }
+                     }
+                   </div>
+                 }
               </div>
             </app-card>
           }
@@ -1098,6 +1209,119 @@ import { Id } from "@convex/_generated/dataModel";
                 >Close</app-button
               >
             </div>
+           </div>
+         </div>
+       }
+
+      <!-- Schedule Import Modal -->
+      @if (showScheduleModal) {
+        <div
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <div
+            class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4"
+          >
+            <div
+              class="p-6 border-b dark:border-gray-700 flex justify-between items-center"
+            >
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Schedule Driver Import
+              </h3>
+            </div>
+
+            <div class="p-6 space-y-4">
+              @if (scheduleForm.seriesId; as seriesId) {
+                @if (getScheduledImportStatus(seriesId); as status) {
+                  <div
+                    class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 text-sm"
+                  >
+                    <div class="text-gray-600 dark:text-gray-400">
+                      Series range:
+                      <span class="font-medium text-gray-900 dark:text-gray-100">{{
+                        formatSeriesDateRange(
+                          status.seriesStartDate,
+                          status.seriesEndDate
+                        )
+                      }}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                      Imports will run weekly between these dates
+                    </p>
+                  </div>
+                }
+              }
+
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                >
+                  Time ({{ timezoneDisplay() }})
+                </label>
+                <input
+                  type="time"
+                  class="input w-full"
+                  [(ngModel)]="scheduleForm.scheduledImportTime"
+                />
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                  Import will run at this time on selected days
+                </p>
+              </div>
+
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300"
+                >
+                  Days of Week
+                </label>
+                <div class="flex flex-wrap gap-2">
+                  @for (day of DAYS_OF_WEEK; track day.value) {
+                    <button
+                      type="button"
+                      (click)="toggleDay(day.value)"
+                      class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                      [class.bg-primary-600]="isDaySelected(day.value)"
+                      [class.text-white]="isDaySelected(day.value)"
+                      [class.bg-gray-100]="!isDaySelected(day.value)"
+                      [class.text-gray-700]="!isDaySelected(day.value)"
+                      [class.dark:bg-gray-700]="!isDaySelected(day.value)"
+                      [class.dark:text-gray-300]="!isDaySelected(day.value)"
+                      [class.hover:bg-primary-700]="isDaySelected(day.value)"
+                      [class.hover:bg-gray-200]="!isDaySelected(day.value)"
+                      [class.dark:hover:bg-gray-600]="!isDaySelected(day.value)"
+                    >
+                      {{ day.label }}
+                    </button>
+                  }
+                </div>
+                @if (scheduleForm.scheduledImportDays.length > 0) {
+                  <p class="text-xs text-gray-500 mt-2 dark:text-gray-400">
+                    Selected: {{ formatDaysOfWeek(scheduleForm.scheduledImportDays) }}
+                  </p>
+                }
+              </div>
+            </div>
+
+            <div
+              class="p-6 border-t dark:border-gray-700 flex gap-2 justify-end"
+            >
+              <app-button variant="secondary" (click)="closeScheduleModal()"
+                >Cancel</app-button
+              >
+              <app-button
+                (click)="saveScheduledImport()"
+                [disabled]="
+                  scheduleSaving() ||
+                  scheduleForm.scheduledImportDays.length === 0 ||
+                  !scheduleForm.scheduledImportTime
+                "
+              >
+                @if (scheduleSaving()) {
+                  Saving...
+                } @else {
+                  Schedule Import
+                }
+              </app-button>
+            </div>
           </div>
         </div>
       }
@@ -1199,6 +1423,25 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   importing = signal(false);
   importResult = signal<{ created: number; skipped: number } | null>(null);
 
+  scheduledImportStatuses = signal<Map<Id<"series">, ScheduledImportStatus>>(new Map());
+  showScheduleModal = false;
+  scheduleForm = {
+    seriesId: null as Id<"series"> | null,
+    scheduledImportTime: "",
+    scheduledImportDays: [] as number[],
+  };
+  scheduleSaving = signal(false);
+
+  DAYS_OF_WEEK = [
+    { value: 0, label: "Sun", fullLabel: "Sunday" },
+    { value: 1, label: "Mon", fullLabel: "Monday" },
+    { value: 2, label: "Tue", fullLabel: "Tuesday" },
+    { value: 3, label: "Wed", fullLabel: "Wednesday" },
+    { value: 4, label: "Thu", fullLabel: "Thursday" },
+    { value: 5, label: "Fri", fullLabel: "Friday" },
+    { value: 6, label: "Sat", fullLabel: "Saturday" },
+  ];
+
   ngOnInit(): void {
     this.loadSeries();
     this.loadPenalties();
@@ -1222,13 +1465,33 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         this.series.set(data);
         this.loading.set(false);
 
-        // Subscribe to driver classes for each series
         data.forEach((s: Series) => {
           this.subscribeToDriverClassesForSeries(s._id);
+          this.subscribeToScheduledImportStatus(s._id);
         });
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkSeries));
+  }
+
+  private subscribeToScheduledImportStatus(seriesId: Id<"series">): void {
+    const query = this.convex.createReactiveQuery(
+      (this.convex.api as any).scheduledImports.getScheduleStatus,
+      { seriesId },
+    );
+    this.unsubscribes.push(query.unsubscribe);
+
+    const checkData = setInterval(() => {
+      const data = query.data();
+      if (data !== undefined) {
+        this.scheduledImportStatuses.update((map) => {
+          const newMap = new Map(map);
+          newMap.set(seriesId, data);
+          return newMap;
+        });
+      }
+    }, 100);
+    this.unsubscribes.push(() => clearInterval(checkData));
   }
 
   private loadPenalties(): void {
@@ -1745,6 +2008,116 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     }
 
     return null;
+  }
+
+  getScheduledImportStatus(seriesId: Id<"series">): ScheduledImportStatus | undefined {
+    return this.scheduledImportStatuses().get(seriesId);
+  }
+
+  formatNextRun(timestamp: number | null): string {
+    if (!timestamp) return "Not scheduled";
+    const date = new Date(timestamp);
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  formatSeriesDateRange(startDate: number | null, endDate: number | null): string {
+    if (!startDate || !endDate) return "No events";
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+    return `${start.toLocaleDateString("en-US", options)} - ${end.toLocaleDateString("en-US", options)}`;
+  }
+
+  formatDaysOfWeek(days: number[]): string {
+    if (days.length === 0) return "None";
+    if (days.length === 7) return "Every day";
+    return days
+      .sort((a, b) => a - b)
+      .map((d) => this.DAYS_OF_WEEK[d].label)
+      .join(", ");
+  }
+
+  isDaySelected(day: number): boolean {
+    return this.scheduleForm.scheduledImportDays.includes(day);
+  }
+
+  toggleDay(day: number): void {
+    const index = this.scheduleForm.scheduledImportDays.indexOf(day);
+    if (index === -1) {
+      this.scheduleForm.scheduledImportDays.push(day);
+    } else {
+      this.scheduleForm.scheduledImportDays.splice(index, 1);
+    }
+  }
+
+  openScheduleModal(seriesId: Id<"series">): void {
+    const status = this.getScheduledImportStatus(seriesId);
+    const series = this.series().find((s) => s._id === seriesId);
+    
+    this.scheduleForm = {
+      seriesId,
+      scheduledImportTime: status?.scheduledImportTime
+        ? this.utcToLocalTime(status.scheduledImportTime)
+        : "09:00",
+      scheduledImportDays: status?.scheduledImportDays ?? [],
+    };
+    this.showScheduleModal = true;
+  }
+
+  closeScheduleModal(): void {
+    this.showScheduleModal = false;
+    this.scheduleForm = {
+      seriesId: null,
+      scheduledImportTime: "",
+      scheduledImportDays: [],
+    };
+  }
+
+  async saveScheduledImport(): Promise<void> {
+    if (!this.scheduleForm.seriesId) return;
+    
+    this.scheduleSaving.set(true);
+    
+    try {
+      const utcTime = this.localToUtcTime(this.scheduleForm.scheduledImportTime);
+      
+      await this.convex.mutation(
+        (this.convex.api as any).scheduledImports.scheduleImport,
+        {
+          seriesId: this.scheduleForm.seriesId,
+          scheduledImportTime: utcTime,
+          scheduledImportDays: this.scheduleForm.scheduledImportDays,
+        },
+      );
+      
+      this.closeScheduleModal();
+    } catch (error: any) {
+      alert(`Failed to schedule import: ${error.message}`);
+    } finally {
+      this.scheduleSaving.set(false);
+    }
+  }
+
+  async cancelScheduledImport(seriesId: Id<"series">): Promise<void> {
+    if (!confirm("Are you sure you want to cancel the scheduled import?")) {
+      return;
+    }
+    
+    try {
+      await this.convex.mutation(
+        (this.convex.api as any).scheduledImports.cancelScheduledImport,
+        { seriesId },
+      );
+    } catch (error: any) {
+      alert(`Failed to cancel scheduled import: ${error.message}`);
+    }
   }
 
   // Driver Class Management Methods
