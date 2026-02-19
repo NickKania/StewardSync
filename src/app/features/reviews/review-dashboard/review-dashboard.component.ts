@@ -186,6 +186,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                       )
                     }}
                   </th>
+                  <th class="px-6 py-3 font-medium">Reporting User</th>
                   <th
                     class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
                     (click)="sortPending('event')"
@@ -260,11 +261,20 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                       </p>
                     </td>
                     <td class="px-6 py-4">
+                      <p class="font-medium text-gray-900 dark:text-gray-100">
+                        {{
+                          report.reportingUser?.officialName ||
+                            report.reportingUser?.name ||
+                            "-"
+                        }}
+                      </p>
+                    </td>
+                    <td class="px-6 py-4">
                       <p class="text-gray-900 dark:text-gray-100">
                         {{ report.event?.trackName }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Race {{ report.race?.raceNumber }}
+                        {{ getSessionName(report.race) }}
                       </p>
                     </td>
                     <td class="px-6 py-4">
@@ -337,10 +347,22 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                 </div>
                 <div class="space-y-1 text-sm">
                   <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400"
+                      >Reporting Official</span
+                    >
+                    <span class="text-gray-900 dark:text-gray-100 text-right">
+                      {{
+                        report.reportingUser?.officialName ||
+                          report.reportingUser?.name ||
+                          "-"
+                      }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Event</span>
                     <span class="text-gray-900 dark:text-gray-100 text-right">
-                      {{ report.event?.trackName }} - Race
-                      {{ report.race?.raceNumber }}
+                      {{ report.event?.trackName }} -
+                      {{ getSessionName(report.race) }}
                     </span>
                   </div>
                   <div class="flex justify-between">
@@ -497,7 +519,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                         {{ report.event?.trackName }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Race {{ report.race?.raceNumber }}, Turn
+                        {{ getSessionName(report.race) }}, Turn
                         {{ report.turn }}
                       </p>
                     </td>
@@ -561,8 +583,8 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Event</span>
                     <span class="text-gray-900 dark:text-gray-100 text-right">
-                      {{ report.event?.trackName }} - Race
-                      {{ report.race?.raceNumber }}
+                      {{ report.event?.trackName }} -
+                      {{ getSessionName(report.race) }}
                     </span>
                   </div>
                   <div class="flex justify-between">
@@ -759,7 +781,7 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
           )?.driverName?.toLowerCase() || ""
         );
       case "event":
-        return `${report.event?.trackName || ""} ${report.race?.raceNumber || ""}`;
+        return `${report.event?.trackName || ""} ${this.getSessionName(report.race)}`;
       case "incident":
         return report.turn;
       case "filed":
@@ -780,5 +802,13 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
   ): string {
     if (column !== currentSortColumn) return "";
     return direction === "asc" ? " ↑" : " ↓";
+  }
+
+  getSessionName(
+    race: { sessionName?: string; raceNumber?: number } | null | undefined,
+  ): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

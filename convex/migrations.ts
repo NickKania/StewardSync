@@ -1079,3 +1079,62 @@ export const reconcileDriversV2Consistency = mutation({
     };
   },
 });
+
+/**
+ * Backfill `races.sessionName` from existing `raceNumber` values.
+ *
+ * Safe in-place migration:
+ * - preserves all existing documents and IDs
+ * - only patches rows missing a valid `sessionName`
+ */
+export const backfillRaceSessions = mutation({
+  args: {
+    dryRun: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun ?? true;
+    const races = await ctx.db.query("races").collect();
+
+    let scanned = 0;
+    let wouldUpdate = 0;
+    let updated = 0;
+    const changes: Array<{
+      raceId: Id<"races">;
+      fromSessionName: string | null;
+      toSessionName: string;
+    }> = [];
+
+    for (const race of races) {
+      scanned++;
+
+      const currentSessionName =
+        typeof race.sessionName === "string" ? race.sessionName.trim() : "";
+      if (currentSessionName) {
+        continue;
+      }
+
+      const toSessionName =
+        typeof race.raceNumber === "number" ? `Race ${race.raceNumber}` : "Session";
+
+      wouldUpdate++;
+      changes.push({
+        raceId: race._id,
+        fromSessionName: race.sessionName ?? null,
+        toSessionName,
+      });
+
+      if (!dryRun) {
+        await ctx.db.patch(race._id, { sessionName: toSessionName });
+        updated++;
+      }
+    }
+
+    return {
+      dryRun,
+      scanned,
+      wouldUpdate,
+      updated,
+      changes,
+    };
+  },
+});

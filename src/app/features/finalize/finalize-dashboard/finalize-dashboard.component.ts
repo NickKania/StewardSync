@@ -99,7 +99,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                     <td class="px-6 py-4">
                       <p class="text-gray-900 dark:text-gray-100">{{ report.event?.trackName }}</p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Race {{ report.race?.raceNumber }}
+                        {{ getSessionName(report.race) }}
                       </p>
                     </td>
                     <td class="px-6 py-4">
@@ -139,7 +139,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                       #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
                     </p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                      {{ report.event?.trackName }} - {{ getSessionName(report.race) }}
                     </p>
                   </div>
                   <app-badge variant="info" size="sm">
@@ -240,5 +240,11 @@ export class FinalizeDashboardComponent implements OnInit, OnDestroy {
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkStats));
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

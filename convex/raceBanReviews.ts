@@ -444,6 +444,11 @@ export const getById = query({
             eventName: event.trackName,
             eventNumber: event.eventNumber,
             raceNumber: race?.raceNumber ?? null,
+            sessionName:
+              race?.sessionName?.trim() ||
+              (typeof race?.raceNumber === "number"
+                ? `Race ${race.raceNumber}`
+                : "Session"),
             appliedPenaltyName: (appliedPenalty as any)?.name ?? null,
             finalDecision: report.finalDecision ?? "",
             finalizedAt: report.finalizedAt ?? report.updatedAt ?? report.createdAt,

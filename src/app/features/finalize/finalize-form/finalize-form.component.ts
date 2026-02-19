@@ -62,8 +62,7 @@ import { User } from "@app/core/models";
               Finalize Report
             </h1>
             <p class="text-gray-500 mt-1 dark:text-gray-400">
-              {{ report()?.event?.trackName }} - Race
-              {{ report()?.race?.raceNumber }}
+              {{ report()?.event?.trackName }} - {{ getSessionName(report()?.race) }}
             </p>
           </div>
           <a [routerLink]="['/reports', report()?._id]">
@@ -985,6 +984,12 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
   cancel(): void {
     this.router.navigate(["/finalize"]);
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }
 

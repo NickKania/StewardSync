@@ -359,11 +359,11 @@ export const create = mutation({
 
     if (!reportedDriver) throw new Error("Reported driver not found");
     if (!event) throw new Error("Event not found");
-    if (!race) throw new Error("Race not found");
+    if (!race) throw new Error("Session not found");
 
     // Validate race belongs to event
     if (race.eventId !== args.eventId) {
-      throw new Error("Race does not belong to the selected event");
+      throw new Error("Session does not belong to the selected event");
     }
 
     // Check if series is locked

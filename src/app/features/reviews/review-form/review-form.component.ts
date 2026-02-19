@@ -63,8 +63,8 @@ import { User } from "@app/core/models";
               Review Incident
             </h1>
             <p class="text-gray-500 mt-1 dark:text-gray-400">
-              {{ report()?.event?.trackName }} - Race
-              {{ report()?.race?.raceNumber }}
+              {{ report()?.event?.trackName }} -
+              {{ getSessionName(report()?.race) }}
             </p>
           </div>
           <a [routerLink]="['/reports', report()?._id]">
@@ -322,12 +322,18 @@ import { User } from "@app/core/models";
                           <p
                             class="font-medium text-gray-900 dark:text-gray-100"
                           >
-                            {{ review.reviewer?.officialName || review.reviewer?.name }}
+                            {{
+                              review.reviewer?.officialName ||
+                                review.reviewer?.name
+                            }}
                           </p>
                           @if (review.linkedReview) {
                             <p class="text-xs text-gray-500 dark:text-gray-400">
                               Joint review with
-                              {{ review.linkedReview.reviewer?.officialName || review.linkedReview.reviewer?.name }}
+                              {{
+                                review.linkedReview.reviewer?.officialName ||
+                                  review.linkedReview.reviewer?.name
+                              }}
                             </p>
                           }
                           <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -397,7 +403,11 @@ import { User } from "@app/core/models";
                     Reported By
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ report()?.reportingUser?.officialName || report()?.reportingUser?.name || "Unknown User" }}
+                    {{
+                      report()?.reportingUser?.officialName ||
+                        report()?.reportingUser?.name ||
+                        "Unknown User"
+                    }}
                   </dd>
                   @if (report()?.isStewardReported) {
                     <dd class="text-sm text-gray-500 dark:text-gray-400">
@@ -566,7 +576,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         })
         .map((steward: User) => ({
           value: steward._id,
-          label: `${steward.officialName ?? steward.name} (${steward.role?.name || "Unknown"})`,
+          label: `${steward.officialName ?? steward.name} (${steward.role?.displayName || "Unknown"})`,
         })),
     ];
   });
@@ -689,7 +699,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           if (atFaultDriverControl && atFaultDriverControl.pristine) {
             const atFaultDriverValue = currentUserReview?.isNoDriverAtFault
               ? this.NO_DRIVER_OPTION_VALUE
-              : currentUserReview?.atFaultDriverId ?? data.reportedDriverId;
+              : (currentUserReview?.atFaultDriverId ?? data.reportedDriverId);
             if (atFaultDriverValue) {
               atFaultDriverControl.setValue(atFaultDriverValue);
             }
@@ -1076,5 +1086,13 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
   cancel(): void {
     this.router.navigate(["/reviews"]);
+  }
+
+  getSessionName(
+    race: { sessionName?: string; raceNumber?: number } | null | undefined,
+  ): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

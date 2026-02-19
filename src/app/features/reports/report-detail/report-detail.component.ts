@@ -142,10 +142,10 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
-                    Race & Location
+                    Session & Location
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    Race {{ report()?.race?.raceNumber }}, Lap
+                    {{ getSessionName(report()?.race) }}, Lap
                     {{ report()?.lap }}, Turn {{ report()?.turn }}
                   </dd>
                 </div>
@@ -728,5 +728,11 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
 
   openEditDecisionModal(): void {
     this.showEditDecisionModal.set(true);
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

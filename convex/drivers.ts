@@ -247,6 +247,11 @@ export const getPenaltyHistory = query({
           eventName: event.trackName,
           eventNumber: event.eventNumber,
           raceNumber: race?.raceNumber ?? null,
+          sessionName:
+            race?.sessionName?.trim() ||
+            (typeof race?.raceNumber === "number"
+              ? `Race ${race.raceNumber}`
+              : "Session"),
           seriesId: event.seriesId,
           penaltyId: report.appliedPenalty ?? null,
           penaltyName: (appliedPenalty as any)?.name ?? null,
@@ -328,6 +333,11 @@ export const getUserProfile = query({
                 eventName: event.trackName,
                 eventNumber: event.eventNumber,
                 raceNumber: race?.raceNumber ?? null,
+                sessionName:
+                  race?.sessionName?.trim() ||
+                  (typeof race?.raceNumber === "number"
+                    ? `Race ${race.raceNumber}`
+                    : "Session"),
                 penaltyName: (penalty as any)?.name ?? null,
                 licensePoints: (penalty as any)?.licensePoints ?? 0,
                 finalizedAt: report.finalizedAt ?? report.updatedAt ?? report.createdAt,

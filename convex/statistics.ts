@@ -34,6 +34,20 @@ interface RaceTimePenaltySummary {
   driverPenalties: DriverTimePenaltyRow[];
 }
 
+function resolveSessionName(race: { sessionName?: string; raceNumber?: number }): string {
+  const explicit = race.sessionName?.trim();
+  if (explicit) return explicit;
+  if (typeof race.raceNumber === "number") return `Race ${race.raceNumber}`;
+  return "Session";
+}
+
+function raceSortValue(race: { raceNumber?: number; sessionName?: string }): number {
+  if (typeof race.raceNumber === "number" && Number.isFinite(race.raceNumber)) {
+    return race.raceNumber;
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
 export const getEventRundown = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
@@ -47,7 +61,7 @@ export const getEventRundown = query({
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
 
-    races.sort((a, b) => a.raceNumber - b.raceNumber);
+    races.sort((a, b) => raceSortValue(a) - raceSortValue(b));
 
     const rundown = await Promise.all(
       races.map(async (race) => {
@@ -204,8 +218,8 @@ export const getEventRundown = query({
 
         return {
           raceId: race._id,
-          raceNumber: race.raceNumber,
-          raceName: `Race ${race.raceNumber}`,
+          raceNumber: raceSortValue(race),
+          raceName: resolveSessionName(race),
           reports: validRows as EventRundownRow[],
         };
       }),
@@ -702,7 +716,7 @@ export const getEventTimePenaltySummary = query({
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
 
-    races.sort((a, b) => a.raceNumber - b.raceNumber);
+    races.sort((a, b) => raceSortValue(a) - raceSortValue(b));
 
     const timePenaltySummary = await Promise.all(
       races.map(async (race) => {
@@ -802,8 +816,8 @@ export const getEventTimePenaltySummary = query({
 
         return {
           raceId: race._id,
-          raceNumber: race.raceNumber,
-          raceName: `Race ${race.raceNumber}`,
+          raceNumber: raceSortValue(race),
+          raceName: resolveSessionName(race),
           driverPenalties,
         };
       }),

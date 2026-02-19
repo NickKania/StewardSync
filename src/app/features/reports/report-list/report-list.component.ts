@@ -95,11 +95,11 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
             placeholder="All events"
           />
           <app-select
-            label="Race"
+            label="Session"
             [options]="raceOptions()"
             [(ngModel)]="selectedRace"
             (ngModelChange)="filterReports()"
-            placeholder="All races"
+            placeholder="All sessions"
           />
         </div>
       </app-card>
@@ -176,7 +176,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                         {{ report.event?.trackName }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Race {{ report.race?.raceNumber }}
+                        {{ getSessionName(report.race) }}
                       </p>
                     </td>
                     <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
@@ -232,7 +232,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Event</span>
                     <span class="text-gray-900 dark:text-gray-100">
-                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                      {{ report.event?.trackName }} - {{ getSessionName(report.race) }}
                     </span>
                   </div>
                   <div class="flex justify-between">
@@ -357,10 +357,10 @@ export class ReportListComponent implements OnInit, OnDestroy {
     );
 
     return [
-      { value: "", label: "All races" },
+      { value: "", label: "All sessions" },
       ...filteredRaces.map((r: any) => ({
         value: r._id,
-        label: `Race ${r.raceNumber}`,
+        label: this.getSessionName(r),
       })),
     ];
   });
@@ -545,5 +545,11 @@ export class ReportListComponent implements OnInit, OnDestroy {
       default:
         return "info";
     }
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

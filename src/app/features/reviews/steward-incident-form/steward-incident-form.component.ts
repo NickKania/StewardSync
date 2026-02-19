@@ -172,7 +172,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                   </div>
 
                   <div>
-                    <label class="label">Race *</label>
+                    <label class="label">Session *</label>
                     <select
                       formControlName="raceId"
                       class="input"
@@ -182,17 +182,17 @@ import { SelectOption } from "@shared/components/select/select.component";
                       "
                       [disabled]="!form.get('eventId')?.value"
                     >
-                      <option value="">Select race</option>
+                      <option value="">Select session</option>
                       @for (race of races(); track race._id) {
                         <option [value]="race._id">
-                          Race {{ race.raceNumber }}
+                          {{ getSessionName(race) }}
                         </option>
                       }
                     </select>
                     @if (
                       form.get("raceId")?.invalid && form.get("raceId")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">Race is required</p>
+                      <p class="mt-1 text-sm text-red-600">Session is required</p>
                     }
                   </div>
 
@@ -1332,5 +1332,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
     this.form.markAsPristine();
     this.form.markAsUntouched();
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number }): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

@@ -572,8 +572,7 @@ interface SeriesPenaltyGroup {
                             </p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">
                               {{ penalty.eventName }} - Event
-                              {{ penalty.eventNumber }} / Race
-                              {{ penalty.raceNumber || "-" }}
+                              {{ penalty.eventNumber }} / {{ penalty.sessionName || (penalty.raceNumber ? ("Race " + penalty.raceNumber) : "Session") }}
                             </p>
                           </div>
                           <span

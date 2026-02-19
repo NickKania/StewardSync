@@ -97,6 +97,7 @@ export default defineSchema({
   races: defineTable({
     eventId: v.id("events"),
     raceNumber: v.number(),
+    sessionName: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_event", ["eventId"]),
 

@@ -69,7 +69,23 @@ export const getWithRaces = query({
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
 
-    return { ...event, series, races };
+    const racesWithSessionNames = races
+      .map((race) => ({
+        ...race,
+        sessionName:
+          race.sessionName?.trim() ||
+          (typeof race.raceNumber === "number"
+            ? `Race ${race.raceNumber}`
+            : "Session"),
+      }))
+      .sort((a, b) => {
+        const left = a.raceNumber ?? Number.MAX_SAFE_INTEGER;
+        const right = b.raceNumber ?? Number.MAX_SAFE_INTEGER;
+        if (left !== right) return left - right;
+        return a.sessionName.localeCompare(b.sessionName);
+      });
+
+    return { ...event, series, races: racesWithSessionNames };
   },
 });
 

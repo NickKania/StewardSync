@@ -1,6 +1,6 @@
 import { Id } from '@convex/_generated/dataModel';
 import { Driver } from './driver.model';
-import { Event, Race } from './event.model';
+import { Event, Session } from './event.model';
 
 export type ReportStatus = 'pending' | 'reviewed' | 'finalized' | 'rejected';
 
@@ -37,7 +37,7 @@ export interface Report {
   reportingDriver?: Driver;
   reportedDriver?: Driver;
   event?: Event;
-  race?: Race;
+  race?: Session;
   atFaultDriver?: Driver;
   finalizedByUser?: any;
   editedByUser?: any;
