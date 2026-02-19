@@ -48,6 +48,7 @@ interface EventRundownRow {
   incidentDescription: string;
   adjustedReason?: string;
   penaltyName: string | null;
+  penaltyAllowsNoDriverAtFault: boolean;
   timePenaltySeconds: number;
   licensePoints: number | null;
   isSelfReport: boolean;
@@ -199,6 +200,16 @@ interface RaceTimePenaltySummary {
                             [(ngModel)]="eventFilterText"
                           />
                         </div>
+                        <label
+                          class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          <input
+                            type="checkbox"
+                            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+                            [(ngModel)]="hideNoDriverAtFaultWithoutTicket"
+                          />
+                          Hide no-driver-at-fault-eligible penalties without ticket #
+                        </label>
                       </div>
                     }
 
@@ -1262,6 +1273,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   );
 
   eventFilterText = signal("");
+  hideNoDriverAtFaultWithoutTicket = signal(false);
   eventSortColumn = signal<Record<number, keyof EventRundownRow>>({});
   eventSortDirection = signal<Record<number, "asc" | "desc">>({});
 
@@ -1385,6 +1397,16 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   filteredAndSortedRaces = computed(() => {
     let races = this.eventRundown();
+
+    if (this.hideNoDriverAtFaultWithoutTicket()) {
+      races = races.map((race) => ({
+        ...race,
+        reports: race.reports.filter((row) => {
+          const hasTicketNumber = row.reportId !== null && row.reportId !== undefined;
+          return !(row.penaltyAllowsNoDriverAtFault && !hasTicketNumber);
+        }),
+      }));
+    }
 
     if (this.eventFilterText()) {
       const filter = this.eventFilterText().toLowerCase();

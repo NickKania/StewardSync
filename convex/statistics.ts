@@ -13,6 +13,7 @@ interface EventRundownRow {
   incidentDescription: string;
   adjustedReason?: string;
   penaltyName: string | null;
+  penaltyAllowsNoDriverAtFault: boolean;
   timePenaltySeconds: number;
   licensePoints: number | null;
   isSelfReport: boolean;
@@ -206,6 +207,10 @@ export const getEventRundown = query({
               incidentDescription,
               adjustedReason: review?.isAdjusted ? review.adjustedReason : undefined,
               penaltyName,
+              penaltyAllowsNoDriverAtFault:
+                report.status === "finalized"
+                  ? Boolean(appliedPenalty?.allowNoDriverAtFault)
+                  : Boolean(recommendedPenaltyObj?.allowNoDriverAtFault),
               timePenaltySeconds,
               licensePoints,
               isSelfReport: report.isSelfReport ?? false,

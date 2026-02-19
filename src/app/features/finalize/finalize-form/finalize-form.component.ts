@@ -392,7 +392,11 @@ import { User } from "@app/core/models";
         <app-card>
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">Report not found</p>
-            <a routerLink="/finalize" class="mt-4 inline-block">
+            <a
+              [routerLink]="['/reviews']"
+              [queryParams]="{ tab: 'finalization' }"
+              class="mt-4 inline-block"
+            >
               <app-button variant="primary">Back to Finalization</app-button>
             </a>
           </div>
@@ -974,7 +978,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
       this.toast.success("Report rejected");
       this.showRejectModal = false;
-      this.router.navigate(["/finalize"]);
+      this.router.navigate(["/reviews"], {
+        queryParams: { tab: "finalization" },
+      });
     } catch (error: any) {
       this.toast.error(error.message || "Failed to reject report");
     } finally {
@@ -983,7 +989,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(["/finalize"]);
+    this.router.navigate(["/reviews"], {
+      queryParams: { tab: "finalization" },
+    });
   }
 
   getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
