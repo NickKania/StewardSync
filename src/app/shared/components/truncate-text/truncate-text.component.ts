@@ -6,7 +6,12 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="relative inline-block w-full" (mouseenter)="onMouseEnter()" (mouseleave)="onMouseLeave()">
+    <div
+      class="relative inline-block w-full"
+      [class.z-[2147483647]]="showTooltip()"
+      (mouseenter)="onMouseEnter()"
+      (mouseleave)="onMouseLeave()"
+    >
       <span #textElement class="block truncate overflow-hidden" [class]="maxW()">{{ text() }}</span>
       <div *ngIf="showTooltip()" [ngClass]="getTooltipClasses()">
         {{ tooltipText() || text() }}
@@ -67,7 +72,7 @@ export class TruncateTextComponent implements AfterViewInit {
 
   getTooltipClasses(): string {
     const pos = this.tooltipPosition();
-    const base = 'absolute z-[9999] px-3 py-2 rounded-lg text-sm bg-gray-900 text-white dark:bg-white dark:text-gray-900';
+    const base = 'absolute z-[2147483647] px-3 py-2 rounded-lg text-sm bg-gray-900 text-white dark:bg-white dark:text-gray-900';
     const position = pos === 'top' ? 'bottom-full left-1/2 -translate-x-1/2 mb-2' : 'top-full left-1/2 -translate-x-1/2 mt-2';
     return `${base} ${position}`;
   }

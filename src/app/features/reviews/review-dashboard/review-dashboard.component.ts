@@ -118,7 +118,9 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <p
+              class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100"
+            >
               {{ reviewStats()?.total || 0 }}
             </p>
             <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
@@ -176,7 +178,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                     class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
                     (click)="sortPending('atFaultDriver')"
                   >
-                    At Fault Driver{{
+                    Reported/At Fault Driver{{
                       getSortArrow(
                         "atFaultDriver",
                         pendingSortColumn(),
@@ -267,7 +269,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                     </td>
                     <td class="px-6 py-4">
                       <p class="text-gray-900 dark:text-gray-100">
-                        Turn {{ report.turn }}
+                        Lap {{ report.lap }}/Turn {{ report.turn }}
                       </p>
                       <app-truncate-text
                         [text]="report.description"
@@ -310,12 +312,20 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
               >
                 <div class="flex items-start justify-between gap-3 mb-3">
                   <div class="min-w-0 flex-1">
-                    <p class="font-mono text-xs text-gray-500 dark:text-gray-400">
+                    <p
+                      class="font-mono text-xs text-gray-500 dark:text-gray-400"
+                    >
                       {{ report.reportId }}
                     </p>
                     <p class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
-                      #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                      {{
+                        report.atFaultDriver?.driverName ||
+                          report.reportedDriver?.driverName
+                      }}
+                      #{{
+                        report.atFaultDriver?.driverNumber ||
+                          report.reportedDriver?.driverNumber
+                      }}
                     </p>
                   </div>
                   <app-badge
@@ -329,19 +339,26 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Event</span>
                     <span class="text-gray-900 dark:text-gray-100 text-right">
-                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                      {{ report.event?.trackName }} - Race
+                      {{ report.race?.raceNumber }}
                     </span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Turn</span>
-                    <span class="text-gray-900 dark:text-gray-100">{{ report.turn }}</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{
+                      report.turn
+                    }}</span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Filed</span>
-                    <span class="text-gray-900 dark:text-gray-100">{{ report.reportDate | timeAgo }}</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{
+                      report.reportDate | timeAgo
+                    }}</span>
                   </div>
                 </div>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                <p
+                  class="mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2"
+                >
                   {{ report.description }}
                 </p>
                 <p class="mt-2 text-sm text-primary-600 font-medium">
@@ -522,12 +539,20 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
               <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
                 <div class="flex items-start justify-between gap-3 mb-2">
                   <div class="min-w-0 flex-1">
-                    <p class="font-mono text-xs text-gray-500 dark:text-gray-400">
+                    <p
+                      class="font-mono text-xs text-gray-500 dark:text-gray-400"
+                    >
                       {{ report.reportId }}
                     </p>
                     <p class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
-                      #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                      {{
+                        report.atFaultDriver?.driverName ||
+                          report.reportedDriver?.driverName
+                      }}
+                      #{{
+                        report.atFaultDriver?.driverNumber ||
+                          report.reportedDriver?.driverNumber
+                      }}
                     </p>
                   </div>
                   <app-badge variant="info" size="sm">Reviewed</app-badge>
@@ -536,16 +561,23 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Event</span>
                     <span class="text-gray-900 dark:text-gray-100 text-right">
-                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                      {{ report.event?.trackName }} - Race
+                      {{ report.race?.raceNumber }}
                     </span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Turn</span>
-                    <span class="text-gray-900 dark:text-gray-100">{{ report.turn }}</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{
+                      report.turn
+                    }}</span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">Reviews</span>
-                    <span class="text-gray-900 dark:text-gray-100">{{ report.reviewCount || 0 }}</span>
+                    <span class="text-gray-500 dark:text-gray-400"
+                      >Reviews</span
+                    >
+                    <span class="text-gray-900 dark:text-gray-100">{{
+                      report.reviewCount || 0
+                    }}</span>
                   </div>
                 </div>
                 <div class="flex gap-3">

@@ -370,6 +370,14 @@ import { User } from "@app/core/models";
               <dl class="space-y-4">
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Ticket Number
+                  </dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ report()?.reportId || "N/A" }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
                     Reported Driver
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
