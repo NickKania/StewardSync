@@ -490,6 +490,8 @@ export const finalize = mutation({
     isNoDriverAtFault: v.optional(v.boolean()),
     officialNotes: v.string(),
     isSelfReport: v.optional(v.boolean()),
+    isAdjusted: v.optional(v.boolean()),
+    adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const report = await ctx.db.get(args.reportId);
@@ -707,6 +709,8 @@ export const updateFinalizedDecision = mutation({
     isNoDriverAtFault: v.optional(v.boolean()),
     officialNotes: v.string(),
     isSelfReport: v.optional(v.boolean()),
+    isAdjusted: v.optional(v.boolean()),
+    adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const report = await ctx.db.get(args.reportId);
