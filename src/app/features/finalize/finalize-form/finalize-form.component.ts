@@ -668,7 +668,12 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           }
 
           // Pre-select atFaultDriverId from latest review or reportedDriver
-          if (atFaultDriverControl && atFaultDriverControl.pristine) {
+          // only when the field is still empty to avoid overriding user edits
+          if (
+            atFaultDriverControl &&
+            atFaultDriverControl.pristine &&
+            !atFaultDriverControl.value
+          ) {
             const defaultDriver = latestReview?.isNoDriverAtFault
               ? this.NO_DRIVER_OPTION_VALUE
               : latestReview?.atFaultDriverId ||

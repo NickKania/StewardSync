@@ -421,6 +421,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     reportId: v.id("reports"),
+    eventId: v.optional(v.id("events")),
+    raceId: v.optional(v.id("races")),
     lap: v.optional(v.string()),
     turn: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -436,6 +438,26 @@ export const update = mutation({
 
     if (report.isFinalized) {
       throw new UserFacingError("Cannot edit a finalized report");
+    }
+
+    const nextEventId = updates.eventId ?? report.eventId;
+    const nextRaceId = updates.raceId ?? report.raceId;
+
+    if (updates.eventId !== undefined) {
+      const event = await ctx.db.get(nextEventId);
+      if (!event) {
+        throw new UserFacingError("Event not found");
+      }
+    }
+
+    if (updates.raceId !== undefined || updates.eventId !== undefined) {
+      const race = await ctx.db.get(nextRaceId);
+      if (!race) {
+        throw new UserFacingError("Session not found");
+      }
+      if (race.eventId !== nextEventId) {
+        throw new UserFacingError("Selected session does not belong to event");
+      }
     }
 
     const cleanUpdates = Object.fromEntries(

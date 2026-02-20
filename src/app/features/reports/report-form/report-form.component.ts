@@ -684,6 +684,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       if (this.isEdit && this.id) {
         await this.convex.mutation(this.convex.api.reports.update, {
           reportId: this.id as any,
+          eventId: formValue.eventId,
+          raceId: formValue.raceId,
           lap,
           turn,
           description: formValue.description,
