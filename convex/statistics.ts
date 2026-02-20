@@ -107,7 +107,10 @@ export const getEventRundown = query({
               return null;
             }
 
-            const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
+            const atFaultDriverId = report.atFaultDriverId;
+            if (!atFaultDriverId) {
+              return null;
+            }
             const reportedDriver = await ctx.db.get(atFaultDriverId);
 
             // Skip reports where the driver doesn't belong to this event's series
@@ -275,7 +278,10 @@ export const debugEventRundownDriverMismatches = query({
           continue;
         }
 
-        const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
+        const atFaultDriverId = report.atFaultDriverId;
+        if (!atFaultDriverId) {
+          continue;
+        }
         const driver = await ctx.db.get(atFaultDriverId);
 
         if (!driver) {
@@ -380,12 +386,14 @@ export const getSeriesLicensePoints = query({
         }
 
         const points = penalty?.licensePoints ?? 0;
-        const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
+        const atFaultDriverId = report.atFaultDriverId;
+        if (!atFaultDriverId) {
+          continue;
+        }
+        const driverId = atFaultDriverId.toString();
 
         // Verify the driver belongs to this series before accumulating points
-        const driver = await ctx.db.get(
-          report.atFaultDriverId || report.reportedDriverId,
-        );
+        const driver = await ctx.db.get(atFaultDriverId);
 
         // Only accumulate points if the driver's championship matches the current series
         if (driver && driver.championshipId === args.seriesId) {
@@ -462,12 +470,14 @@ export const getSeriesLicensePointsWithPenalties = query({
         }
 
         const points = penalty?.licensePoints ?? 0;
-        const driverId = report.atFaultDriverId?.toString() || report.reportedDriverId.toString();
+        const atFaultDriverId = report.atFaultDriverId;
+        if (!atFaultDriverId) {
+          continue;
+        }
+        const driverId = atFaultDriverId.toString();
 
         // Verify the driver belongs to this series before accumulating points
-        const driver = await ctx.db.get(
-          report.atFaultDriverId || report.reportedDriverId,
-        );
+        const driver = await ctx.db.get(atFaultDriverId);
 
         // Only accumulate points if the driver's championship matches the current series
         if (driver && driver.championshipId === args.seriesId) {
@@ -747,7 +757,10 @@ export const getEventTimePenaltySummary = query({
             continue;
           }
 
-          const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
+          const atFaultDriverId = report.atFaultDriverId;
+          if (!atFaultDriverId) {
+            continue;
+          }
           const reportedDriver = await ctx.db.get(atFaultDriverId);
 
           if (
