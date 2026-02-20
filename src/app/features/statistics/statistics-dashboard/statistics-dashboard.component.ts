@@ -73,6 +73,16 @@ interface DriverPointsRow {
   seriesPenalties?: any[];
 }
 
+interface SeriesPenaltyDefinition {
+  _id: string;
+  penaltyName: string;
+  thresholds?: Array<{
+    _id: string;
+    threshold: number;
+    driverClassObjects?: Array<{ displayName?: string }>;
+  }>;
+}
+
 interface DriverTimePenaltyRow {
   driverId: string;
   carNumber: number;
@@ -866,8 +876,12 @@ interface RaceTimePenaltySummary {
                             class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700"
                           >
                             <app-legend
-                              [items]="legendItems()"
-                              [title]="legendItems().length > 0 ? 'Legend' : ''"
+                              [items]="seriesOverviewLegendItems()"
+                              [title]="
+                                seriesOverviewLegendItems().length > 0
+                                  ? 'Legend'
+                                  : ''
+                              "
                             />
                           </div>
                         }
@@ -1341,6 +1355,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   seriesFilterText = signal("");
   seriesSortColumn = signal<keyof DriverPointsRow | "">("");
   seriesSortDirection = signal<"asc" | "desc">("asc");
+  seriesPenaltyDefinitions = signal<SeriesPenaltyDefinition[]>([]);
 
   timePenaltyFilterText = signal("");
   timePenaltySortColumn = signal<Record<number, keyof DriverTimePenaltyRow>>(
@@ -1380,6 +1395,63 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     } else {
       return [];
     }
+  });
+
+  seriesOverviewLegendItems = computed<LegendItem[]>(() => {
+    if (this.activeTab() !== "series_overview") {
+      return [];
+    }
+
+    const baseItems: LegendItem[] = [
+      {
+        label: "🟢 Name (Xpts)",
+        description: "Series penalty served",
+      },
+      {
+        label: "🔴 Name (Xpts)",
+        description: "Series penalty not yet served",
+      },
+      {
+        label: "(Xpts)",
+        description: "License points threshold for this penalty",
+      },
+    ];
+
+    const dynamicItems: LegendItem[] = this.seriesPenaltyDefinitions()
+      .flatMap((penalty) =>
+        (penalty.thresholds ?? []).map((threshold) => {
+          const classNames = (threshold.driverClassObjects ?? [])
+            .map((driverClass) => driverClass.displayName)
+            .filter((name): name is string => Boolean(name))
+            .sort((a, b) => a.localeCompare(b));
+
+          const classText =
+            classNames.length > 0 ? ` [${classNames.join(", ")}]` : "";
+
+          return {
+            label: `${penalty.penaltyName} (${threshold.threshold}pts)`,
+            description: `${classText}`,
+          };
+        }),
+      )
+      .sort((a, b) => {
+        const thresholdA = Number.parseInt(
+          a.label.match(/\((\d+)pts\)/)?.[1] ?? "0",
+          10,
+        );
+        const thresholdB = Number.parseInt(
+          b.label.match(/\((\d+)pts\)/)?.[1] ?? "0",
+          10,
+        );
+
+        if (thresholdA !== thresholdB) {
+          return thresholdA - thresholdB;
+        }
+
+        return a.label.localeCompare(b.label);
+      });
+
+    return [...baseItems, ...dynamicItems];
   });
 
   eventOptions = computed(() => {
@@ -1981,16 +2053,23 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   async loadSeriesPoints(): Promise<void> {
     if (!this.selectedSeriesId) {
       this.seriesPoints.set([]);
+      this.seriesPenaltyDefinitions.set([]);
       this.updateQueryParams({ series: undefined });
       return;
     }
 
     try {
-      const data = await this.convex.query(
-        this.convex.api.statistics.getSeriesLicensePointsWithPenalties,
-        { seriesId: this.selectedSeriesId as any },
-      );
+      const [data, seriesPenalties] = await Promise.all([
+        this.convex.query(
+          this.convex.api.statistics.getSeriesLicensePointsWithPenalties,
+          { seriesId: this.selectedSeriesId as any },
+        ),
+        this.convex.query(this.convex.api.seriesPenalties.listBySeries, {
+          seriesId: this.selectedSeriesId as any,
+        }),
+      ]);
       this.seriesPoints.set(data || []);
+      this.seriesPenaltyDefinitions.set((seriesPenalties as any[]) || []);
       this.updateQueryParams({
         series: this.selectedSeriesId,
         event: undefined,
@@ -1998,6 +2077,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     } catch (error: any) {
       console.error("Failed to load series points:", error);
       this.seriesPoints.set([]);
+      this.seriesPenaltyDefinitions.set([]);
     }
   }
 
