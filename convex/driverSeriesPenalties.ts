@@ -706,6 +706,17 @@ export const getDashboardPenaltyGroups = query({
 
       const seriesEvents = await getSeriesEvents(seriesId);
       const upcomingEvents = seriesEvents.filter((event) => event.eventDate >= now);
+      const uniqueUpcomingEvents: any[] = [];
+      const seenEventNumbers = new Set<number>();
+      for (const event of upcomingEvents) {
+        if (typeof event.eventNumber === "number") {
+          if (seenEventNumbers.has(event.eventNumber)) {
+            continue;
+          }
+          seenEventNumbers.add(event.eventNumber);
+        }
+        uniqueUpcomingEvents.push(event);
+      }
 
       const unservedBySeverity = penalties
         .filter((penalty) => !penalty.isServed)
@@ -720,7 +731,7 @@ export const getDashboardPenaltyGroups = query({
         });
 
       unservedBySeverity.forEach((penalty, index) => {
-        penalty.expectedServeDate = upcomingEvents[index]?.eventDate ?? null;
+        penalty.expectedServeDate = uniqueUpcomingEvents[index]?.eventDate ?? null;
       });
     }
 
