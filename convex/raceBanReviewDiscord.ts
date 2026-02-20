@@ -11,6 +11,7 @@ import {
 } from "discord.js";
 
 const GET_MEETING_CONTEXT_FN = "raceBanReviews:getMeetingNotificationContext" as any;
+const GET_THREAD_CLOSE_CONTEXT_FN = "raceBanReviews:getMeetingThreadCloseContext" as any;
 const RECORD_MEETING_THREAD_RESULT_FN =
   "raceBanReviews:recordMeetingThreadNotificationResult" as any;
 const RECORD_MEETING_REMINDER_RESULT_FN =
@@ -29,6 +30,12 @@ type MeetingNotificationContext = {
   driverLabel: string;
   seriesName: string;
   penaltyName: string;
+};
+
+type MeetingThreadCloseContext = {
+  reviewId: string;
+  meetingThreadId: string | null;
+  status: "open" | "scheduled" | "completed";
 };
 
 const stepError = (
@@ -149,74 +156,62 @@ const createMeetingThread = async (
     schedulerDiscordId: context.schedulerDiscordId,
   });
 
-  if (parentChannel.type === ChannelType.GuildForum) {
-    const post = await parentChannel.threads
-      .create({
-        name: threadName,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
-        message: {
-          content: openingMessage,
-        },
-        reason: "Race review meeting scheduled",
-      })
-      .catch((error) => {
-        throw stepError("create_forum_post", error, {
-          parentChannelId,
-          threadName,
-          reviewId: context.reviewId,
-        });
-      });
-    return post;
+  if (parentChannel.type !== ChannelType.GuildText) {
+    throw stepError(
+      "invalid_parent_channel_type",
+      new Error(
+        "DISCORD_RACE_REVIEW_CHANNEL_ID must reference a Discord text channel that supports private threads.",
+      ),
+      {
+        parentChannelId,
+        parentChannelType: parentChannel.type,
+        reviewId: context.reviewId,
+      },
+    );
   }
 
-  if (parentChannel.type === ChannelType.GuildText) {
-    const thread = await parentChannel.threads
-      .create({
-        name: threadName,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
-        type: ChannelType.PrivateThread,
-        invitable: false,
-        reason: "Race review meeting scheduled",
-      })
-      .catch((error) => {
-        throw stepError("create_private_thread", error, {
-          parentChannelId,
-          threadName,
-          reviewId: context.reviewId,
-        });
-      });
-
-    if (!context.requesterDiscordId || !context.schedulerDiscordId) {
-      throw new Error(
-        "Both requester and scheduler Discord IDs are required to create a private thread.",
-      );
-    }
-
-    await thread.members.add(context.requesterDiscordId).catch((error) => {
-      throw stepError("add_requester_to_thread", error, {
-        threadId: thread.id,
-        requesterDiscordId: context.requesterDiscordId,
+  const thread = await parentChannel.threads
+    .create({
+      name: threadName,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneDay,
+      type: ChannelType.PrivateThread,
+      invitable: false,
+      reason: "Race review meeting scheduled",
+    })
+    .catch((error) => {
+      throw stepError("create_private_thread", error, {
+        parentChannelId,
+        threadName,
+        reviewId: context.reviewId,
       });
     });
-    if (context.schedulerDiscordId !== context.requesterDiscordId) {
-      await thread.members.add(context.schedulerDiscordId).catch((error) => {
-        throw stepError("add_scheduler_to_thread", error, {
-          threadId: thread.id,
-          schedulerDiscordId: context.schedulerDiscordId,
-        });
-      });
-    }
-    await thread.send({ content: openingMessage }).catch((error) => {
-      throw stepError("send_opening_message", error, {
-        threadId: thread.id,
-      });
-    });
-    return thread;
+
+  if (!context.requesterDiscordId || !context.schedulerDiscordId) {
+    throw new Error(
+      "Both requester and scheduler Discord IDs are required to create a private thread.",
+    );
   }
 
-  throw new Error(
-    "DISCORD_RACE_REVIEW_CHANNEL_ID must be a forum channel or text channel.",
-  );
+  await thread.members.add(context.requesterDiscordId).catch((error) => {
+    throw stepError("add_requester_to_thread", error, {
+      threadId: thread.id,
+      requesterDiscordId: context.requesterDiscordId,
+    });
+  });
+  if (context.schedulerDiscordId !== context.requesterDiscordId) {
+    await thread.members.add(context.schedulerDiscordId).catch((error) => {
+      throw stepError("add_scheduler_to_thread", error, {
+        threadId: thread.id,
+        schedulerDiscordId: context.schedulerDiscordId,
+      });
+    });
+  }
+  await thread.send({ content: openingMessage }).catch((error) => {
+    throw stepError("send_opening_message", error, {
+      threadId: thread.id,
+    });
+  });
+  return thread;
 };
 
 const ensureMeetingThread = async (
@@ -246,6 +241,17 @@ const loadContext = async (
     id,
   });
   if (!context || context.selectedMeetingStartAt !== expectedMeetingStartAt) {
+    return null;
+  }
+  return context;
+};
+
+const loadCloseContext = async (
+  ctx: any,
+  id: string,
+): Promise<MeetingThreadCloseContext | null> => {
+  const context = await ctx.runQuery(GET_THREAD_CLOSE_CONTEXT_FN, { id });
+  if (!context || context.status !== "completed") {
     return null;
   }
   return context;
@@ -318,6 +324,73 @@ export const createOrUpdateMeetingThreadPost = internalAction({
         error: message,
       });
 
+      return { sent: false, error: message };
+    }
+  },
+});
+
+export const closeMeetingThread = internalAction({
+  args: {
+    id: v.id("raceBanReviews"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      console.info("[RaceReviewDiscord] closeMeetingThread started.", {
+        reviewId: args.id,
+      });
+
+      const context = await loadCloseContext(ctx, args.id);
+      if (!context || !context.meetingThreadId) {
+        console.info("[RaceReviewDiscord] closeMeetingThread skipped.", {
+          reviewId: args.id,
+          reason: !context ? "missing_or_not_completed" : "missing_thread_id",
+        });
+        return { skipped: true };
+      }
+
+      const result = await withDiscordClient(async (client) => {
+        const thread = await fetchThreadIfAvailable(client, context.meetingThreadId);
+        if (!thread) {
+          return { skipped: true as const, reason: "thread_not_found" };
+        }
+
+        if (!thread.archived) {
+          await thread.setArchived(true, "Race review completed").catch((error) => {
+            throw stepError("archive_meeting_thread", error, {
+              reviewId: args.id,
+              threadId: context.meetingThreadId,
+            });
+          });
+        }
+
+        if (typeof thread.setLocked === "function" && !thread.locked) {
+          await thread.setLocked(true, "Race review completed").catch((error) => {
+            throw stepError("lock_meeting_thread", error, {
+              reviewId: args.id,
+              threadId: context.meetingThreadId,
+            });
+          });
+        }
+
+        return {
+          closed: true as const,
+          threadId: thread.id,
+          archived: true,
+          locked: true,
+        };
+      });
+
+      console.info("[RaceReviewDiscord] closeMeetingThread completed.", {
+        reviewId: args.id,
+        ...result,
+      });
+      return result;
+    } catch (error: unknown) {
+      const message = toErrorMessage(error, "Failed to close race review meeting thread.");
+      console.error("[RaceReviewDiscord] closeMeetingThread failed.", {
+        reviewId: args.id,
+        error: message,
+      });
       return { sent: false, error: message };
     }
   },
