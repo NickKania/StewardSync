@@ -40,7 +40,7 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
 interface EventRundownRow {
   reportId: string | number | null;
-  driverId: string;
+  driverId: string | null;
   carNumber: number | null;
   driverName: string | null;
   driverClass: string | null;

@@ -4,7 +4,7 @@ import { getDriverDisplayName } from "./lib/formatting";
 
 interface EventRundownRow {
   reportId: number | null;
-  driverId: string;
+  driverId: string | null;
   carNumber: number | null;
   driverName: string | null;
   driverClass: string | null;
@@ -108,10 +108,9 @@ export const getEventRundown = query({
             }
 
             const atFaultDriverId = report.atFaultDriverId;
-            if (!atFaultDriverId) {
-              return null;
-            }
-            const reportedDriver = await ctx.db.get(atFaultDriverId);
+            const reportedDriver = atFaultDriverId
+              ? await ctx.db.get(atFaultDriverId)
+              : null;
 
             // Skip reports where the driver doesn't belong to this event's series
             // This includes cases where:
@@ -201,7 +200,7 @@ export const getEventRundown = query({
 
             return {
               reportId: report.reportId || null,
-              driverId: atFaultDriverId,
+              driverId: atFaultDriverId ?? null,
               carNumber: reportedDriver?.driverNumber ?? null,
               driverName: displayName,
               driverClass: driverClassDisplayName,
