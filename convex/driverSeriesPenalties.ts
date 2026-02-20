@@ -656,6 +656,7 @@ export const getDashboardPenaltyGroups = query({
 
         return {
           _id: dsp._id,
+          driverId: dsp.driverId,
           seriesId: dsp.seriesId,
           seriesName: series?.name ?? "Unknown Series",
           driverName:
@@ -685,6 +686,44 @@ export const getDashboardPenaltyGroups = query({
     );
     const activePenalties = penaltiesWithDetails.filter(Boolean);
 
+    // Only one unserved penalty can be served per event for the same driver in a series.
+    // Assign expected dates by severity so the most severe penalties are served first.
+    const penaltiesByDriverInSeries = new Map<string, any[]>();
+    for (const penalty of activePenalties as any[]) {
+      const key = `${penalty.seriesId.toString()}:${penalty.driverId.toString()}`;
+      if (!penaltiesByDriverInSeries.has(key)) {
+        penaltiesByDriverInSeries.set(key, []);
+      }
+      penaltiesByDriverInSeries.get(key)!.push(penalty);
+    }
+
+    const now = Date.now();
+    for (const penalties of penaltiesByDriverInSeries.values()) {
+      const seriesId = penalties[0]?.seriesId;
+      if (!seriesId) {
+        continue;
+      }
+
+      const seriesEvents = await getSeriesEvents(seriesId);
+      const upcomingEvents = seriesEvents.filter((event) => event.eventDate >= now);
+
+      const unservedBySeverity = penalties
+        .filter((penalty) => !penalty.isServed)
+        .sort((a, b) => {
+          if (a.pointsAtAssignment !== b.pointsAtAssignment) {
+            return b.pointsAtAssignment - a.pointsAtAssignment;
+          }
+          if (a.threshold !== b.threshold) {
+            return (b.threshold ?? 0) - (a.threshold ?? 0);
+          }
+          return a.assignedAt - b.assignedAt;
+        });
+
+      unservedBySeverity.forEach((penalty, index) => {
+        penalty.expectedServeDate = upcomingEvents[index]?.eventDate ?? null;
+      });
+    }
+
     const grouped = new Map<
       string,
       { seriesId: any; seriesName: string; penalties: any[] }
@@ -708,7 +747,17 @@ export const getDashboardPenaltyGroups = query({
         if (a.status !== b.status) {
           return a.status === "active" ? -1 : 1;
         }
-        return b.assignedAt - a.assignedAt;
+        const driverNameSort = a.driverName.localeCompare(b.driverName);
+        if (driverNameSort !== 0) {
+          return driverNameSort;
+        }
+        if (a.pointsAtAssignment !== b.pointsAtAssignment) {
+          return b.pointsAtAssignment - a.pointsAtAssignment;
+        }
+        if (a.threshold !== b.threshold) {
+          return (b.threshold ?? 0) - (a.threshold ?? 0);
+        }
+        return a.assignedAt - b.assignedAt;
       });
     }
 
