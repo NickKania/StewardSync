@@ -260,6 +260,22 @@ export const getPendingForReview = query({
 export const getReadyForFinalization = query({
   args: {},
   handler: async (ctx) => {
+    const populateDriverWithClass = async (driverId: any) => {
+      if (!driverId) return null;
+      const driver = await ctx.db.get(driverId);
+      if (!driver) return null;
+
+      const driverClass = driver.driverClassId
+        ? await ctx.db.get(driver.driverClassId)
+        : null;
+
+      return {
+        ...driver,
+        driverClass: driverClass?.displayName ?? null,
+        driverClassObj: driverClass,
+      };
+    };
+
     const reports = await ctx.db
       .query("reports")
       .withIndex("by_status")
@@ -275,9 +291,9 @@ export const getReadyForFinalization = query({
         const reportingUser = report.reportingUserId
           ? await ctx.db.get(report.reportingUserId)
           : null;
-        const reportedDriver = report.reportedDriverId
-          ? await ctx.db.get(report.reportedDriverId)
-          : null;
+        const reportedDriver = await populateDriverWithClass(
+          report.reportedDriverId,
+        );
 
         const reviews = await ctx.db
           .query("reviews")
@@ -287,9 +303,7 @@ export const getReadyForFinalization = query({
         const reviewCount = reviews.length;
 
         // Get atFaultDriverId from latest review if not set on report
-        let atFaultDriver = report.atFaultDriverId
-          ? await ctx.db.get(report.atFaultDriverId)
-          : null;
+        let atFaultDriver = await populateDriverWithClass(report.atFaultDriverId);
 
         if (!atFaultDriver && reviews.length > 0) {
           const latestReview = reviews.reduce((latest, current) => {
@@ -299,7 +313,9 @@ export const getReadyForFinalization = query({
           });
 
           if (latestReview.atFaultDriverId) {
-            atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
+            atFaultDriver = await populateDriverWithClass(
+              latestReview.atFaultDriverId,
+            );
           }
         }
 
