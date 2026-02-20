@@ -1064,7 +1064,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
         this.convex.api.reports.reject,
         {
           reportId: this.reportId as any,
-          officialNotes: this.rejectionReason,
+          finalDecision: this.rejectionReason,
         },
       );
 

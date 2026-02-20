@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { checkUserDriverConflict } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
@@ -260,7 +261,9 @@ export const getPendingForReview = query({
 export const getReadyForFinalization = query({
   args: {},
   handler: async (ctx) => {
-    const populateDriverWithClass = async (driverId: any) => {
+    const populateDriverWithClass = async (
+      driverId: Id<"drivers"> | null | undefined,
+    ) => {
       if (!driverId) return null;
       const driver = await ctx.db.get(driverId);
       if (!driver) return null;
@@ -893,7 +896,7 @@ export const createBySteward = mutation({
 export const reject = mutation({
   args: {
     reportId: v.id("reports"),
-    officialNotes: v.string(),
+    finalDecision: v.string(),
   },
   handler: async (ctx, args) => {
     const report = await ctx.db.get(args.reportId);
@@ -908,7 +911,8 @@ export const reject = mutation({
     await ctx.db.patch(args.reportId, {
       status: "rejected",
       isFinalized: true,
-      officialNotes: args.officialNotes,
+      finalDecision: args.finalDecision,
+      officialNotes: "",
       updatedAt: Date.now(),
     });
 

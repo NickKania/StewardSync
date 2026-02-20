@@ -315,7 +315,7 @@ import { User } from "@app/core/models";
 
           <!-- Sidebar with report details -->
           <div class="space-y-6">
-            <app-card title="Incident Summary">
+            <app-card title="Incident Details">
               <dl class="space-y-4">
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
@@ -349,6 +349,7 @@ import { User } from "@app/core/models";
                     Location
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ getSessionName(report()?.race) }}, Lap {{ report()?.lap }},
                     Turn {{ report()?.turn }}
                   </dd>
                 </div>
@@ -966,7 +967,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         this.convex.api.reports.reject,
         {
           reportId: this.reportId as any,
-          officialNotes: this.rejectionReason,
+          finalDecision: this.rejectionReason,
         },
       );
 
