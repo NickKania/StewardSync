@@ -62,7 +62,8 @@ import { User } from "@app/core/models";
               Finalize Report
             </h1>
             <p class="text-gray-500 mt-1 dark:text-gray-400">
-              {{ report()?.event?.trackName }} - {{ getSessionName(report()?.race) }}
+              {{ report()?.event?.trackName }} -
+              {{ getSessionName(report()?.race) }}
             </p>
           </div>
           <a [routerLink]="['/reports', report()?._id]">
@@ -268,8 +269,8 @@ import { User } from "@app/core/models";
                               <p
                                 class="font-medium text-gray-900 dark:text-gray-100"
                               >
-                                {{ review.reviewer?.name }} &
-                                {{ review.linkedReview.reviewer?.name }}
+                                {{ review.reviewer?.officialName }} &
+                                {{ review.linkedReview.reviewer?.officialName }}
                               </p>
                             </div>
                           } @else {
@@ -349,8 +350,8 @@ import { User } from "@app/core/models";
                     Location
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ getSessionName(report()?.race) }}, Lap {{ report()?.lap }},
-                    Turn {{ report()?.turn }}
+                    {{ getSessionName(report()?.race) }}, Lap
+                    {{ report()?.lap }}, Turn {{ report()?.turn }}
                   </dd>
                 </div>
                 <div>
@@ -995,7 +996,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
+  getSessionName(
+    race: { sessionName?: string; raceNumber?: number } | null | undefined,
+  ): string {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
