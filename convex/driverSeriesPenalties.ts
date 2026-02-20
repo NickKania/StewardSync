@@ -110,6 +110,10 @@ export const checkAndAssignThresholds = mutation({
       const finalizedReports = reports.filter((r) => r.status === "finalized");
 
       for (const report of finalizedReports) {
+        if (report.isNoDriverAtFault) {
+          continue;
+        }
+
         let penalty: any = null;
         if (report.appliedPenalty) {
           penalty = await ctx.db.get(report.appliedPenalty as any);

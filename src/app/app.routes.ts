@@ -97,17 +97,20 @@ export const routes: Routes = [
       {
         path: "",
         loadComponent: () =>
-          import("@features/reviews/review-dashboard/review-dashboard.component").then(
-            (m) => m.ReviewDashboardComponent,
+          import("@features/reviews/review-workspace/review-workspace.component").then(
+            (m) => m.ReviewWorkspaceComponent,
           ),
       },
       {
         path: "search",
         canActivate: [roleGuard],
-        data: { roles: ["head_steward", "league_manager"] },
+        data: {
+          roles: ["head_steward", "league_manager"],
+          defaultTab: "search",
+        },
         loadComponent: () =>
-          import("@features/reviews/review-search/review-search.component").then(
-            (m) => m.ReviewSearchComponent,
+          import("@features/reviews/review-workspace/review-workspace.component").then(
+            (m) => m.ReviewWorkspaceComponent,
           ),
       },
       {
@@ -141,9 +144,10 @@ export const routes: Routes = [
       {
         path: "",
         loadComponent: () =>
-          import("@features/finalize/finalize-dashboard/finalize-dashboard.component").then(
-            (m) => m.FinalizeDashboardComponent,
+          import("@features/reviews/review-workspace/review-workspace.component").then(
+            (m) => m.ReviewWorkspaceComponent,
           ),
+        data: { defaultTab: "finalization" },
       },
       {
         path: ":reportId",

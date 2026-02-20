@@ -29,7 +29,7 @@ export const list = query({
     const events = await ctx.db
       .query("events")
       .withIndex("by_date")
-      .order("desc")
+      .order("asc")
       .collect();
 
     // Filter out events from inactive series and populate series information
@@ -56,6 +56,17 @@ export const getById = query({
   },
 });
 
+export const getBySeriesId = query({
+  args: { seriesId: v.id("series") },
+  handler: async (ctx, args) => {
+    const events = await ctx.db
+      .query("events")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
+      .collect();
+    return events;
+  },
+});
+
 export const getWithRaces = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
@@ -69,7 +80,23 @@ export const getWithRaces = query({
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
 
-    return { ...event, series, races };
+    const racesWithSessionNames = races
+      .map((race) => ({
+        ...race,
+        sessionName:
+          race.sessionName?.trim() ||
+          (typeof race.raceNumber === "number"
+            ? `Race ${race.raceNumber}`
+            : "Session"),
+      }))
+      .sort((a, b) => {
+        const left = a.raceNumber ?? Number.MAX_SAFE_INTEGER;
+        const right = b.raceNumber ?? Number.MAX_SAFE_INTEGER;
+        if (left !== right) return left - right;
+        return a.sessionName.localeCompare(b.sessionName);
+      });
+
+    return { ...event, series, races: racesWithSessionNames };
   },
 });
 
@@ -170,8 +197,8 @@ export const importOrUpdateEvent = mutation({
     // Check if event with same seriesId and eventNumber exists
     const existing = await ctx.db
       .query("events")
-      .withIndex("by_series_and_number", (q) => 
-        q.eq("seriesId", args.seriesId).eq("eventNumber", args.eventNumber)
+      .withIndex("by_series_and_number", (q) =>
+        q.eq("seriesId", args.seriesId).eq("eventNumber", args.eventNumber),
       )
       .first();
 
@@ -216,7 +243,7 @@ export const importOrUpdateEvent = mutation({
         }
       }
 
-      return { action: 'updated', eventId: existing._id };
+      return { action: "updated", eventId: existing._id };
     } else {
       // Create new event
       const eventId = await ctx.db.insert("events", {
@@ -226,7 +253,7 @@ export const importOrUpdateEvent = mutation({
         eventDate: args.eventDate,
         createdAt: Date.now(),
       });
-      return { action: 'created', eventId };
+      return { action: "created", eventId };
     }
   },
 });
@@ -234,7 +261,7 @@ export const importOrUpdateEvent = mutation({
 // Helper function to avoid circular type inference in Convex
 async function runGetSeriesByIdWithSimgridLink(
   ctx: any,
-  args: { id: Id<"series"> }
+  args: { id: Id<"series"> },
 ) {
   return ctx.runQuery("series:getByIdWithSimgridLink", args);
 }
@@ -276,8 +303,9 @@ export const importFromSimGrid = action({
     let created = 0;
     let skipped = 0;
 
-    const sortedRaces = races.sort((a: any, b: any) =>
-      new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+    const sortedRaces = races.sort(
+      (a: any, b: any) =>
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
     );
 
     for (let i = 0; i < sortedRaces.length; i++) {
@@ -285,7 +313,8 @@ export const importFromSimGrid = action({
       const eventDate = new Date(race.starts_at).getTime();
       if (isNaN(eventDate)) continue;
 
-      const trackName = race.track?.name || race.display_name || "Unknown Track";
+      const trackName =
+        race.track?.name || race.display_name || "Unknown Track";
 
       const result = await runImportOrUpdateEvent(ctx, {
         seriesId: args.seriesId,
@@ -294,7 +323,7 @@ export const importFromSimGrid = action({
         eventDate,
       });
 
-      if (result.action === 'created') {
+      if (result.action === "created") {
         created++;
       } else {
         skipped++;

@@ -169,6 +169,7 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
   @Input({ required: true }) report!: any;
   @Output() success = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();
+  readonly NO_DRIVER_OPTION_VALUE = "__NO_DRIVER__";
 
   private fb = inject(FormBuilder);
   private convex = inject(ConvexService);
@@ -177,15 +178,34 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
 
   form: FormGroup;
   availablePenalties = signal<Penalty[]>([]);
+  selectedAppliedPenaltyId = signal<string>("");
   drivers = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
 
   driverOptions = computed(() => {
-    return this.drivers().map((driver) => ({
+    const options = this.drivers().map((driver) => ({
       value: String(driver._id),
       label: `${driver.driverName} (#${driver.driverNumber})`,
     }));
+    if (this.selectedPenaltyAllowsNoDriver()) {
+      return [
+        { value: this.NO_DRIVER_OPTION_VALUE, label: "No Driver" },
+        ...options,
+      ];
+    }
+    return options;
+  });
+  selectedPenaltyAllowsNoDriver = computed(() => {
+    const selectedPenaltyId = this.selectedAppliedPenaltyId();
+    if (!selectedPenaltyId) {
+      return false;
+    }
+
+    const selectedPenalty = this.availablePenalties().find(
+      (penalty) => String(penalty._id) === String(selectedPenaltyId),
+    );
+    return Boolean(selectedPenalty?.allowNoDriverAtFault);
   });
 
   private unsubscribes: (() => void)[] = [];
@@ -198,6 +218,12 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
       officialNotes: ["", Validators.required],
       isSelfReport: [false],
     });
+
+    this.form
+      .get("appliedPenalty")
+      ?.valueChanges.subscribe((penaltyId: string) => {
+        this.onAppliedPenaltyChange(penaltyId);
+      });
   }
 
   ngOnInit(): void {
@@ -252,6 +278,7 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
       const data = penaltiesQuery.data();
       if (data !== undefined) {
         this.availablePenalties.set(data);
+        this.enforceAtFaultDriverSelection();
         this.initializeForm();
         clearInterval(checkPenalties);
       }
@@ -264,14 +291,43 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
       this.form.patchValue({
         finalDecision: this.report.finalDecision || "",
         appliedPenalty: this.report.appliedPenalty || "",
-        atFaultDriverId: this.report.atFaultDriverId
-          ? String(this.report.atFaultDriverId)
-          : "",
+        atFaultDriverId: this.report.isNoDriverAtFault
+          ? this.NO_DRIVER_OPTION_VALUE
+          : this.report.atFaultDriverId
+            ? String(this.report.atFaultDriverId)
+            : "",
         officialNotes: this.report.officialNotes || "",
         isSelfReport: this.report.isSelfReport || false,
       });
+      this.enforceAtFaultDriverSelection();
       this.loading.set(false);
     }
+  }
+
+  private onAppliedPenaltyChange(penaltyId: string): void {
+    this.selectedAppliedPenaltyId.set(String(penaltyId || ""));
+    this.enforceAtFaultDriverSelection();
+  }
+
+  private enforceAtFaultDriverSelection(): void {
+    const atFaultDriverControl = this.form.get("atFaultDriverId");
+    if (!atFaultDriverControl) {
+      return;
+    }
+    if (this.availablePenalties().length === 0) {
+      return;
+    }
+
+    const isNoDriverSelected =
+      atFaultDriverControl.value === this.NO_DRIVER_OPTION_VALUE;
+    if (!isNoDriverSelected || this.selectedPenaltyAllowsNoDriver()) {
+      return;
+    }
+
+    const reportedDriverId = this.report?.reportedDriverId;
+    atFaultDriverControl.setValue(
+      reportedDriverId ? String(reportedDriverId) : "",
+    );
   }
 
   async onSubmit(): Promise<void> {
@@ -289,6 +345,8 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
       }
 
       const formValue = this.form.value;
+      const isNoDriverAtFault =
+        formValue.atFaultDriverId === this.NO_DRIVER_OPTION_VALUE;
 
       const result = (await this.convex.mutation(
         this.convex.api.reports.updateFinalizedDecision,
@@ -297,7 +355,10 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
           userId,
           finalDecision: formValue.finalDecision,
           appliedPenalty: formValue.appliedPenalty,
-          atFaultDriverId: formValue.atFaultDriverId || undefined,
+          atFaultDriverId: isNoDriverAtFault
+            ? undefined
+            : formValue.atFaultDriverId || undefined,
+          isNoDriverAtFault,
           officialNotes: formValue.officialNotes,
           isSelfReport: formValue.isSelfReport || false,
         },

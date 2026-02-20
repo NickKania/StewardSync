@@ -20,6 +20,7 @@ import {
   SelectOption,
 } from "@shared/components/select/select.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { TabsComponent, Tab } from "@shared/components/tabs/tabs.component";
 import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 
 @Component({
@@ -34,6 +35,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
     BadgeComponent,
     SelectComponent,
     LoadingComponent,
+    TabsComponent,
     DateFormatPipe,
   ],
   template: `
@@ -70,6 +72,12 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
         </a>
       </div>
 
+      <app-tabs
+        [tabs]="visibleTabs()"
+        [activeTab]="activeTab()"
+        (activeTabChange)="selectTab($event)"
+      />
+
       <!-- Filters -->
       <app-card>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -95,11 +103,11 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
             placeholder="All events"
           />
           <app-select
-            label="Race"
+            label="Session"
             [options]="raceOptions()"
             [(ngModel)]="selectedRace"
             (ngModelChange)="filterReports()"
-            placeholder="All races"
+            placeholder="All sessions"
           />
         </div>
       </app-card>
@@ -176,7 +184,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                         {{ report.event?.trackName }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Race {{ report.race?.raceNumber }}
+                        {{ getSessionName(report.race) }}
                       </p>
                     </td>
                     <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
@@ -232,7 +240,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Event</span>
                     <span class="text-gray-900 dark:text-gray-100">
-                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                      {{ report.event?.trackName }} - {{ getSessionName(report.race) }}
                     </span>
                   </div>
                   <div class="flex justify-between">
@@ -285,10 +293,30 @@ export class ReportListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
   private route = inject(ActivatedRoute);
+  private readonly validTabs = ["my_reports", "finalized_reports", "all_reports"] as const;
 
   canViewReportingUser = computed(() =>
     this.authService.hasMinimumRole("steward"),
   );
+  canViewAllReportsTab = computed(() =>
+    this.authService.hasMinimumRole("steward"),
+  );
+
+  activeTab = signal<"my_reports" | "finalized_reports" | "all_reports">(
+    "my_reports",
+  );
+  visibleTabs = computed((): Tab[] => {
+    const tabs: Tab[] = [
+      { id: "my_reports", label: "My Reports" },
+      { id: "finalized_reports", label: "All Finalized Reports" },
+    ];
+
+    if (this.canViewAllReportsTab()) {
+      tabs.push({ id: "all_reports", label: "All Reports" });
+    }
+
+    return tabs;
+  });
 
   reports = signal<any[]>([]);
   filteredReports = signal<any[]>([]);
@@ -315,17 +343,17 @@ export class ReportListComponent implements OnInit, OnDestroy {
     this.activeSeries().map((s) => s._id.toString()),
   );
 
-  seriesOptions = computed<SelectOption[]>(() => {
+  seriesOptions(): SelectOption[] {
     return [
       { value: "", label: "All series" },
       ...this.activeSeries().map((s: any) => ({
-        value: s._id,
+        value: s._id.toString(),
         label: s.name,
       })),
     ];
-  });
+  }
 
-  eventOptions = computed<SelectOption[]>(() => {
+  eventOptions(): SelectOption[] {
     const activeIds = this.activeSeriesIds();
     let filteredEvents = this.events().filter((e) =>
       activeIds.includes(e.seriesId.toString()),
@@ -341,29 +369,34 @@ export class ReportListComponent implements OnInit, OnDestroy {
     return [
       { value: "", label: "All events" },
       ...filteredEvents.map((e: any) => ({
-        value: e._id,
+        value: e._id.toString(),
         label: `${e.trackName} (${e.series.name})`,
       })),
     ];
-  });
+  }
 
-  raceOptions = computed<SelectOption[]>(() => {
+  raceOptions(): SelectOption[] {
     if (!this.selectedEvent) {
       return [{ value: "", label: "Select an event first" }];
     }
 
     let filteredRaces = this.races().filter(
-      (r) => r.eventId === this.selectedEvent,
+      (r) => r.eventId?.toString() === this.selectedEvent.toString(),
     );
+    filteredRaces = [...filteredRaces].sort((a, b) => {
+      const aRaceNumber = typeof a.raceNumber === "number" ? a.raceNumber : Number.MAX_SAFE_INTEGER;
+      const bRaceNumber = typeof b.raceNumber === "number" ? b.raceNumber : Number.MAX_SAFE_INTEGER;
+      return aRaceNumber - bRaceNumber;
+    });
 
     return [
-      { value: "", label: "All races" },
+      { value: "", label: "All sessions" },
       ...filteredRaces.map((r: any) => ({
-        value: r._id,
-        label: `Race ${r.raceNumber}`,
+        value: r._id.toString(),
+        label: this.getSessionName(r),
       })),
     ];
-  });
+  }
 
   private unsubscribes: (() => void)[] = [];
 
@@ -404,6 +437,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
       const data = eventsQuery.data();
       if (data) {
         this.events.set(data);
+        this.filterReports();
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkEvents));
@@ -452,6 +486,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
           const data = userSeriesQuery.data();
           if (data) {
             this.userSeriesIds.set(data.map((id: any) => id.toString()));
+            this.filterReports();
           }
         }, 100);
         this.unsubscribes.push(() => clearInterval(checkUserSeries));
@@ -465,6 +500,9 @@ export class ReportListComponent implements OnInit, OnDestroy {
       }
       if (params["race"]) {
         this.selectedRace = params["race"];
+      }
+      if (params["tab"] && this.isValidTab(params["tab"])) {
+        this.selectTab(params["tab"]);
       }
       this.filterReports();
     });
@@ -484,31 +522,40 @@ export class ReportListComponent implements OnInit, OnDestroy {
   filterReports(): void {
     let filtered = [...this.reports()];
 
-    // Filter by role: drivers can see their own reports AND finalized reports from their series
+    // Base access: drivers can see their own reports and finalized reports in their series.
     const userRole = this.authService.userRole();
+    const currentUserId = this.authService.getUserId();
+    const userSeries = this.userSeriesIds();
     if (userRole === "driver") {
-      const currentUserId = this.authService.getUserId();
-      const userSeries = this.userSeriesIds();
+      filtered = filtered.filter((report) => {
+        if (report.reportingUserId === currentUserId) return true;
 
-      filtered = filtered.filter((r) => {
-        // Own submitted reports
-        if (r.reportingUserId === currentUserId) return true;
-
-        // Finalized reports only from driver's series
-        if (r.status === "finalized") {
-          const event = this.events().find((e) => e._id === r.eventId);
+        if (report.status === "finalized") {
+          const event = this.events().find(
+            (e) => e._id?.toString() === report.eventId?.toString(),
+          );
           return event && userSeries.includes(event.seriesId.toString());
         }
-
         return false;
       });
+    }
+
+    if (this.activeTab() === "my_reports") {
+      filtered = filtered.filter((report) => report.reportingUserId === currentUserId);
+    } else if (this.activeTab() === "finalized_reports") {
+      filtered = filtered.filter((report) => report.status === "finalized");
+    } else if (this.activeTab() === "all_reports" && !this.canViewAllReportsTab()) {
+      this.activeTab.set("my_reports");
+      filtered = filtered.filter((report) => report.reportingUserId === currentUserId);
     }
 
     // Filter by series
     if (this.selectedSeries) {
       filtered = filtered.filter((r) => {
-        const event = this.events().find((e) => e._id === r.eventId);
-        return event && event.seriesId === this.selectedSeries;
+        const event = this.events().find(
+          (e) => e._id?.toString() === r.eventId?.toString(),
+        );
+        return event && event.seriesId?.toString() === this.selectedSeries;
       });
     }
 
@@ -517,14 +564,39 @@ export class ReportListComponent implements OnInit, OnDestroy {
     }
 
     if (this.selectedEvent) {
-      filtered = filtered.filter((r) => r.eventId === this.selectedEvent);
+      filtered = filtered.filter(
+        (r) => r.eventId?.toString() === this.selectedEvent,
+      );
     }
 
     if (this.selectedRace) {
-      filtered = filtered.filter((r) => r.raceId === this.selectedRace);
+      filtered = filtered.filter(
+        (r) => r.raceId?.toString() === this.selectedRace,
+      );
     }
 
     this.filteredReports.set(filtered);
+  }
+
+  selectTab(tabId: string): void {
+    if (!this.isValidTab(tabId)) {
+      return;
+    }
+
+    if (tabId === "all_reports" && !this.canViewAllReportsTab()) {
+      return;
+    }
+
+    this.activeTab.set(tabId);
+    this.filterReports();
+  }
+
+  private isValidTab(
+    tabId: string,
+  ): tabId is "my_reports" | "finalized_reports" | "all_reports" {
+    return this.validTabs.includes(
+      tabId as "my_reports" | "finalized_reports" | "all_reports",
+    );
   }
 
   formatReportStatus(status: string | undefined): string {
@@ -545,5 +617,11 @@ export class ReportListComponent implements OnInit, OnDestroy {
       default:
         return "info";
     }
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

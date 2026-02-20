@@ -30,6 +30,7 @@ import type * as races from "../races.js";
 import type * as reportCounter from "../reportCounter.js";
 import type * as reports from "../reports.js";
 import type * as reviews from "../reviews.js";
+import type * as scheduledImports from "../scheduledImports.js";
 import type * as seed from "../seed.js";
 import type * as series from "../series.js";
 import type * as seriesPenalties from "../seriesPenalties.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   reportCounter: typeof reportCounter;
   reports: typeof reports;
   reviews: typeof reviews;
+  scheduledImports: typeof scheduledImports;
   seed: typeof seed;
   series: typeof series;
   seriesPenalties: typeof seriesPenalties;

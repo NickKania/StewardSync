@@ -220,7 +220,7 @@ interface SlotOption {
                 <thead class="bg-gray-50 dark:bg-gray-800">
                   <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
                     <th class="px-4 py-3 font-medium">Ticket #</th>
-                    <th class="px-4 py-3 font-medium">Event / Race</th>
+                    <th class="px-4 py-3 font-medium">Event / Session</th>
                     <th class="px-4 py-3 font-medium">Penalty</th>
                     <th class="px-4 py-3 font-medium">Date</th>
                     <th class="px-4 py-3 font-medium"></th>
@@ -233,7 +233,7 @@ interface SlotOption {
                         {{ report.reportId ?? "-" }}
                       </td>
                       <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
-                        {{ report.eventName }} - Race {{ report.raceNumber ?? "-" }}
+                        {{ report.eventName }} - {{ report.sessionName || (report.raceNumber ? ("Race " + report.raceNumber) : "Session") }}
                       </td>
                       <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
                         {{ report.appliedPenaltyName || "No Penalty" }}

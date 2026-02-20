@@ -124,7 +124,9 @@ import { Id } from "@convex/_generated/dataModel";
                     >
                       Edit Event Date
                     </label>
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div
+                      class="flex flex-col sm:flex-row sm:items-center gap-3"
+                    >
                       <div class="sm:w-56">
                         <input
                           type="date"
@@ -168,14 +170,14 @@ import { Id } from "@convex/_generated/dataModel";
               </div>
             </app-card>
 
-            <!-- Races -->
-            <app-card title="Races">
+            <!-- Sessions -->
+            <app-card title="Sessions">
               <div
                 *appHasRole="['event_manager', 'league_manager']"
                 class="flex items-center justify-between mb-3"
               >
                 <span class="text-sm text-gray-500 dark:text-gray-400"
-                  >Manage races for this event</span
+                  >Manage sessions for this event</span
                 >
                 <app-button
                   variant="secondary"
@@ -195,7 +197,7 @@ import { Id } from "@convex/_generated/dataModel";
                       d="M12 4v16m8-8H4"
                     ></path>
                   </svg>
-                  Add Race
+                  Add Session
                 </app-button>
               </div>
               @if (event()?.races?.length > 0) {
@@ -209,19 +211,21 @@ import { Id } from "@convex/_generated/dataModel";
                           class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center"
                         >
                           <span class="font-bold text-primary-700">{{
-                            race.raceNumber
+                            race.raceNumber === 0
+                              ? race.sessionName[0]
+                              : (race.raceNumber ?? "S")
                           }}</span>
                         </div>
                         <span
                           class="font-medium text-gray-900 dark:text-gray-100"
-                          >Race {{ race.raceNumber }}</span
+                          >{{ getSessionName(race) }}</span
                         >
                       </div>
                       <div class="flex items-center gap-2">
                         <button
                           (click)="removeRace(race._id)"
                           class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
-                          title="Delete race"
+                          title="Delete session"
                         >
                           <svg
                             class="w-4 h-4"
@@ -253,7 +257,7 @@ import { Id } from "@convex/_generated/dataModel";
                 </div>
               } @else {
                 <p class="text-gray-500 text-center py-4 dark:text-gray-400">
-                  No races scheduled
+                  No sessions scheduled
                 </p>
               }
             </app-card>
@@ -265,7 +269,7 @@ import { Id } from "@convex/_generated/dataModel";
               <div class="space-y-4">
                 <div class="flex items-center justify-between">
                   <span class="text-gray-500 dark:text-gray-400"
-                    >Total Races</span
+                    >Total Sessions</span
                   >
                   <span class="font-bold text-gray-900 dark:text-gray-100">{{
                     event()?.races?.length || 0
@@ -292,26 +296,25 @@ import { Id } from "@convex/_generated/dataModel";
         </app-card>
       }
 
-      <!-- Add Race Modal -->
+      <!-- Add Session Modal -->
       @if (showAddRaceModal) {
         <div
           *appHasRole="['event_manager', 'league_manager']"
           class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         >
           <div class="bg-white rounded-lg p-6 w-full max-w-md dark:bg-gray-900">
-            <h3 class="text-lg font-semibold mb-4">Add Race</h3>
+            <h3 class="text-lg font-semibold mb-4">Add Session</h3>
             <div class="space-y-4">
               <div>
                 <label
                   class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
-                  >Race Number</label
+                  >Session Name</label
                 >
                 <input
-                  type="number"
+                  type="text"
                   class="input w-full"
-                  [(ngModel)]="raceForm.raceNumber"
-                  min="1"
-                  placeholder="e.g., 1, 2, 3"
+                  [(ngModel)]="raceForm.sessionName"
+                  placeholder="e.g., Qualifying, Race 1, Race 2"
                 />
               </div>
               <div class="flex gap-2 justify-end">
@@ -320,9 +323,9 @@ import { Id } from "@convex/_generated/dataModel";
                 >
                 <app-button
                   (click)="addRace()"
-                  [disabled]="raceForm.raceNumber < 1"
+                  [disabled]="!raceForm.sessionName.trim()"
                 >
-                  Add Race
+                  Add Session
                 </app-button>
               </div>
             </div>
@@ -346,7 +349,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   isExporting = signal(false);
   showAddRaceModal = false;
   raceForm = {
-    raceNumber: 0,
+    sessionName: "",
   };
 
   private unsubscribes: (() => void)[] = [];
@@ -461,16 +464,24 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
   closeAddRaceModal(): void {
     this.showAddRaceModal = false;
-    this.raceForm.raceNumber = 0;
+    this.raceForm.sessionName = "";
   }
 
   async addRace(): Promise<void> {
-    if (this.raceForm.raceNumber < 1) return;
+    const sessionName = this.raceForm.sessionName.trim();
+    if (!sessionName) return;
+
+    const raceMatch = /^race\s+(\d+)$/i.exec(sessionName);
+    const parsedRaceNumber = raceMatch ? Number(raceMatch[1]) : undefined;
 
     try {
       await this.convex.mutation(this.convex.api.races.create, {
         eventId: this.event()?._id,
-        raceNumber: this.raceForm.raceNumber,
+        sessionName,
+        raceNumber:
+          parsedRaceNumber && Number.isFinite(parsedRaceNumber)
+            ? parsedRaceNumber
+            : undefined,
       });
 
       this.closeAddRaceModal();
@@ -478,7 +489,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
       await this.loadEvent();
     } catch (error: any) {
       alert(
-        `Failed to add race: ${this.extractUserFacingError(error.message)}`,
+        `Failed to add session: ${this.extractUserFacingError(error.message)}`,
       );
     }
   }
@@ -486,7 +497,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   async removeRace(raceId: Id<"races">): Promise<void> {
     if (
       !confirm(
-        "Are you sure you want to delete this race? This will fail if there are existing reports.",
+        "Are you sure you want to delete this session? This will fail if there are existing reports.",
       )
     ) {
       return;
@@ -497,7 +508,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
       await this.loadEvent();
     } catch (error: any) {
       alert(
-        `Failed to delete race: ${this.extractUserFacingError(error.message)}`,
+        `Failed to delete session: ${this.extractUserFacingError(error.message)}`,
       );
     }
   }
@@ -614,6 +625,12 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     } finally {
       this.isExporting.set(false);
     }
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number }): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 
   private generateCSV(headers: string[], rows: any[][]): string {

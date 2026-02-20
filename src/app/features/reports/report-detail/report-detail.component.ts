@@ -142,10 +142,10 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
-                    Race & Location
+                    Session & Location
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    Race {{ report()?.race?.raceNumber }}, Lap
+                    {{ getSessionName(report()?.race) }}, Lap
                     {{ report()?.lap }}, Turn {{ report()?.turn }}
                   </dd>
                 </div>
@@ -259,7 +259,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                       Decision
                     </dt>
                     <dd class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ report()?.finalDecision }}
+                      {{ getDecisionText(report()) }}
                     </dd>
                   </div>
                   <div>
@@ -306,7 +306,10 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                       </dd>
                     </div>
                   }
-                  @if (report()?.officialNotes) {
+                  @if (
+                    report()?.officialNotes &&
+                    !(report()?.status === "rejected" && !report()?.finalDecision)
+                  ) {
                     <div
                       *appHasRole="[
                         'steward',
@@ -728,5 +731,30 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
 
   openEditDecisionModal(): void {
     this.showEditDecisionModal.set(true);
+  }
+
+  getDecisionText(
+    report:
+      | {
+          finalDecision?: string;
+          officialNotes?: string;
+          status?: string;
+        }
+      | null
+      | undefined,
+  ): string {
+    if (report?.finalDecision?.trim()) return report.finalDecision.trim();
+    if (report?.status === "rejected" && report?.officialNotes?.trim()) {
+      return report.officialNotes.trim();
+    }
+    return "";
+  }
+
+  getSessionName(
+    race: { sessionName?: string; raceNumber?: number } | null | undefined,
+  ): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

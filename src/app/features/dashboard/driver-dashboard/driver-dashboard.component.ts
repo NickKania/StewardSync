@@ -250,7 +250,7 @@ import { Id } from "@convex/_generated/dataModel";
                         >
                           <th class="pb-3 font-medium">Ticket #</th>
                           <th class="pb-3 font-medium">Event</th>
-                          <th class="pb-3 font-medium">Race</th>
+                          <th class="pb-3 font-medium">Session</th>
                           <th class="pb-3 font-medium">Lap</th>
                           <th class="pb-3 font-medium">Turn</th>
                           <th class="pb-3 font-medium">Penalty</th>
@@ -279,7 +279,7 @@ import { Id } from "@convex/_generated/dataModel";
                               {{ penalty.event?.trackName }}
                             </td>
                             <td class="py-3 text-gray-700 dark:text-gray-300">
-                              {{ penalty.race?.raceNumber }}
+                              {{ penalty.race?.sessionName || (penalty.race?.raceNumber ? ("Race " + penalty.race?.raceNumber) : "Session") }}
                             </td>
                             <td class="py-3 text-gray-700 dark:text-gray-300">
                               {{ penalty.lap }}

@@ -185,9 +185,19 @@ export const seedSampleData = mutation({
           createdAt: Date.now(),
         });
 
-        // Add races to each event
-        await ctx.db.insert("races", { eventId, raceNumber: 1, createdAt: Date.now() });
-        await ctx.db.insert("races", { eventId, raceNumber: 2, createdAt: Date.now() });
+        // Add sessions to each event
+        await ctx.db.insert("races", {
+          eventId,
+          raceNumber: 1,
+          sessionName: "Race 1",
+          createdAt: Date.now(),
+        });
+        await ctx.db.insert("races", {
+          eventId,
+          raceNumber: 2,
+          sessionName: "Race 2",
+          createdAt: Date.now(),
+        });
       }
     }
 

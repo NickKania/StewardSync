@@ -13,6 +13,7 @@ interface EventRundownRow {
   incidentDescription: string;
   adjustedReason?: string;
   penaltyName: string | null;
+  penaltyAllowsNoDriverAtFault: boolean;
   timePenaltySeconds: number;
   licensePoints: number | null;
   isSelfReport: boolean;
@@ -34,6 +35,20 @@ interface RaceTimePenaltySummary {
   driverPenalties: DriverTimePenaltyRow[];
 }
 
+function resolveSessionName(race: { sessionName?: string; raceNumber?: number }): string {
+  const explicit = race.sessionName?.trim();
+  if (explicit) return explicit;
+  if (typeof race.raceNumber === "number") return `Race ${race.raceNumber}`;
+  return "Session";
+}
+
+function raceSortValue(race: { raceNumber?: number; sessionName?: string }): number {
+  if (typeof race.raceNumber === "number" && Number.isFinite(race.raceNumber)) {
+    return race.raceNumber;
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
 export const getEventRundown = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
@@ -47,7 +62,7 @@ export const getEventRundown = query({
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
 
-    races.sort((a, b) => a.raceNumber - b.raceNumber);
+    races.sort((a, b) => raceSortValue(a) - raceSortValue(b));
 
     const rundown = await Promise.all(
       races.map(async (race) => {
@@ -82,6 +97,14 @@ export const getEventRundown = query({
               if (!review?.recommendedPenalty) {
                 return null;
               }
+            }
+
+            const isNoDriverAtFault =
+              report.status === "reviewed"
+                ? Boolean(review?.isNoDriverAtFault)
+                : Boolean(report.isNoDriverAtFault);
+            if (isNoDriverAtFault) {
+              return null;
             }
 
             const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
@@ -184,6 +207,10 @@ export const getEventRundown = query({
               incidentDescription,
               adjustedReason: review?.isAdjusted ? review.adjustedReason : undefined,
               penaltyName,
+              penaltyAllowsNoDriverAtFault:
+                report.status === "finalized"
+                  ? Boolean(appliedPenalty?.allowNoDriverAtFault)
+                  : Boolean(recommendedPenaltyObj?.allowNoDriverAtFault),
               timePenaltySeconds,
               licensePoints,
               isSelfReport: report.isSelfReport ?? false,
@@ -196,8 +223,8 @@ export const getEventRundown = query({
 
         return {
           raceId: race._id,
-          raceNumber: race.raceNumber,
-          raceName: `Race ${race.raceNumber}`,
+          raceNumber: raceSortValue(race),
+          raceName: resolveSessionName(race),
           reports: validRows as EventRundownRow[],
         };
       }),
@@ -343,6 +370,10 @@ export const getSeriesLicensePoints = query({
       const finalizedReports = reports.filter((r) => r.status === "finalized");
 
       for (const report of finalizedReports) {
+        if (report.isNoDriverAtFault) {
+          continue;
+        }
+
         let penalty: any = null;
         if (report.appliedPenalty) {
           penalty = await ctx.db.get(report.appliedPenalty as any);
@@ -421,6 +452,10 @@ export const getSeriesLicensePointsWithPenalties = query({
       const finalizedReports = reports.filter((r) => r.status === "finalized");
 
       for (const report of finalizedReports) {
+        if (report.isNoDriverAtFault) {
+          continue;
+        }
+
         let penalty: any = null;
         if (report.appliedPenalty) {
           penalty = await ctx.db.get(report.appliedPenalty as any);
@@ -686,7 +721,7 @@ export const getEventTimePenaltySummary = query({
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
 
-    races.sort((a, b) => a.raceNumber - b.raceNumber);
+    races.sort((a, b) => raceSortValue(a) - raceSortValue(b));
 
     const timePenaltySummary = await Promise.all(
       races.map(async (race) => {
@@ -708,6 +743,10 @@ export const getEventTimePenaltySummary = query({
         }>();
 
         for (const report of finalizedReports) {
+          if (report.isNoDriverAtFault) {
+            continue;
+          }
+
           const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
           const reportedDriver = await ctx.db.get(atFaultDriverId);
 
@@ -782,8 +821,8 @@ export const getEventTimePenaltySummary = query({
 
         return {
           raceId: race._id,
-          raceNumber: race.raceNumber,
-          raceName: `Race ${race.raceNumber}`,
+          raceNumber: raceSortValue(race),
+          raceName: resolveSessionName(race),
           driverPenalties,
         };
       }),

@@ -201,7 +201,7 @@ interface FilterState {
                     <td class="px-3 py-4">
                       <app-truncate-text [text]="result.event?.trackName"
                         class="text-gray-900 dark:text-gray-100" />
-                      <p class="text-sm text-gray-500 dark:text-gray-400">Race {{ result.race?.raceNumber }}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">{{ getSessionName(result.race) }}</p>
                     </td>
                     <td class="px-3 py-4">
                       <app-truncate-text [text]="result.incidentDescription" maxW="max-w-xs"
@@ -459,5 +459,11 @@ export class ReviewSearchComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

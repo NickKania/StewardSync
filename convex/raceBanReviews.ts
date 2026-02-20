@@ -10,9 +10,11 @@ const STAFF_ROLES = new Set([
 ]);
 const REVIEW_MANAGER_ROLES = new Set(["head_steward", "league_manager"]);
 const ONE_HOUR_MS = 60 * 60 * 1000;
+const IMMEDIATE_REMINDER_DELAY_MS = 60 * 1000;
 const SEND_MEETING_REMINDER_FN = "raceBanReviewDiscord:sendMeetingReminder" as any;
 const CREATE_MEETING_THREAD_POST_FN =
   "raceBanReviewDiscord:createOrUpdateMeetingThreadPost" as any;
+const CLOSE_MEETING_THREAD_FN = "raceBanReviewDiscord:closeMeetingThread" as any;
 
 const normalizeAvailabilityWindows = (
   availabilityWindows: Array<{ startAt: number; endAt: number }>,
@@ -444,6 +446,11 @@ export const getById = query({
             eventName: event.trackName,
             eventNumber: event.eventNumber,
             raceNumber: race?.raceNumber ?? null,
+            sessionName:
+              race?.sessionName?.trim() ||
+              (typeof race?.raceNumber === "number"
+                ? `Race ${race.raceNumber}`
+                : "Session"),
             appliedPenaltyName: (appliedPenalty as any)?.name ?? null,
             finalDecision: report.finalDecision ?? "",
             finalizedAt: report.finalizedAt ?? report.updatedAt ?? report.createdAt,
@@ -584,10 +591,15 @@ export const scheduleMeeting = mutation({
       });
     }
 
+    await ctx.scheduler.runAfter(0, CREATE_MEETING_THREAD_POST_FN, {
+      id: args.id,
+      expectedMeetingStartAt: args.selectedMeetingStartAt,
+    });
+
     const reminderAt = args.selectedMeetingStartAt - ONE_HOUR_MS;
     const reminderJobId =
       reminderAt <= now
-        ? await ctx.scheduler.runAfter(0, SEND_MEETING_REMINDER_FN, {
+        ? await ctx.scheduler.runAfter(IMMEDIATE_REMINDER_DELAY_MS, SEND_MEETING_REMINDER_FN, {
             id: args.id,
             expectedMeetingStartAt: args.selectedMeetingStartAt,
           })
@@ -601,12 +613,25 @@ export const scheduleMeeting = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.scheduler.runAfter(0, CREATE_MEETING_THREAD_POST_FN, {
-      id: args.id,
-      expectedMeetingStartAt: args.selectedMeetingStartAt,
-    });
-
     return args.id;
+  },
+});
+
+export const getMeetingThreadCloseContext = internalQuery({
+  args: {
+    id: v.id("raceBanReviews"),
+  },
+  handler: async (ctx, args) => {
+    const request = await ctx.db.get(args.id);
+    if (!request) {
+      return null;
+    }
+
+    return {
+      reviewId: request._id,
+      meetingThreadId: request.meetingThreadId ?? null,
+      status: request.status,
+    };
   },
 });
 
@@ -646,6 +671,10 @@ export const markCompleted = mutation({
         raceBanReviewId: request._id,
       });
     }
+
+    await ctx.scheduler.runAfter(0, CLOSE_MEETING_THREAD_FN, {
+      id: args.id,
+    });
 
     return args.id;
   },

@@ -69,6 +69,10 @@ export default defineSchema({
     isReportingLocked: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
     seriesPenaltyNotes: v.optional(v.string()),
+    scheduledImportTime: v.optional(v.string()),
+    scheduledImportDays: v.optional(v.array(v.number())),
+    scheduledImportJobId: v.optional(v.id("_scheduled_functions")),
+    isScheduledImportActive: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_name", ["name"]),
 
@@ -79,6 +83,7 @@ export default defineSchema({
     selfReportReduction: v.optional(v.number()),
     timePenaltyLap1: v.number(),
     licensePoints: v.number(),
+    allowNoDriverAtFault: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_series", ["seriesId"]),
 
@@ -96,6 +101,7 @@ export default defineSchema({
   races: defineTable({
     eventId: v.id("events"),
     raceNumber: v.number(),
+    sessionName: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_event", ["eventId"]),
 
@@ -206,6 +212,7 @@ export default defineSchema({
     finalDecision: v.optional(v.string()),
     appliedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     officialNotes: v.optional(v.string()),
     finalizedBy: v.optional(v.id("users")),
     finalizedAt: v.optional(v.number()),
@@ -236,6 +243,7 @@ export default defineSchema({
     candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     videoTimestamp: v.optional(v.string()),
     linkedReviewId: v.optional(v.id("reviews")),
     isSelfReport: v.optional(v.boolean()),

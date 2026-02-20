@@ -19,6 +19,8 @@ The StewardSync application now reads environment variables directly from the sy
 - `PUBLIC_ENABLE_DEV_LOGIN`: Enable/disable the developer login page (`true`/`false`)
 - `DISCORD_CLIENT_ID`: Discord OAuth 2.0 client ID
 - `DISCORD_CLIENT_SECRET`: Discord OAuth 2.0 client secret
+- `DISCORD_BOT_TOKEN`: Discord bot token used for race ban review meeting notifications
+- `DISCORD_RACE_REVIEW_CHANNEL_ID`: Parent Discord **text channel** ID used to create private meeting threads
 
 ## Using with Docker
 
@@ -43,7 +45,11 @@ PUBLIC_CONVEX_URL=http://127.0.0.1:3210
 PUBLIC_ENABLE_DEV_LOGIN=true
 DISCORD_CLIENT_ID=your-discord-client-id
 DISCORD_CLIENT_SECRET=your-discord-client-secret
+DISCORD_BOT_TOKEN=your-discord-bot-token
+DISCORD_RACE_REVIEW_CHANNEL_ID=your-discord-text-channel-id
 ```
+
+`DISCORD_RACE_REVIEW_CHANNEL_ID` must point to a guild text channel that allows private thread creation. Forum channels are not supported for race ban review notifications.
 
 ## Angular Build Configurations
 
@@ -91,4 +97,5 @@ The application uses a hybrid approach:
 - Never commit `.env` files to version control
 - Use `.env.example` or `.env.docker.example` as templates
 - Keep `DISCORD_CLIENT_SECRET` secure
+- Keep `DISCORD_BOT_TOKEN` secure
 - Rotate secrets regularly

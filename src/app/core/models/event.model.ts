@@ -11,10 +11,13 @@ export interface Event {
   series?: Series;
 }
 
-export interface Race {
+export interface Session {
   _id: Id<'races'>;
   eventId: Id<'events'>;
-  raceNumber: number;
+  raceNumber?: number;
+  sessionName?: string;
   event?: Event;
   createdAt: number;
 }
+
+export type Race = Session;

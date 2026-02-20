@@ -141,6 +141,7 @@ export const create = mutation({
     candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
     isSelfReport: v.optional(v.boolean()),
@@ -232,6 +233,7 @@ export const create = mutation({
     }
 
     const now = Date.now();
+    const isNoDriverAtFault = args.isNoDriverAtFault ?? false;
 
     const reviewData = {
       userId: args.userId,
@@ -240,7 +242,8 @@ export const create = mutation({
       reviewNotes: args.reviewNotes,
       candidateForStandardization: args.candidateForStandardization,
       recommendedPenalty: args.recommendedPenalty,
-      atFaultDriverId: args.atFaultDriverId,
+      atFaultDriverId: isNoDriverAtFault ? undefined : args.atFaultDriverId,
+      isNoDriverAtFault,
       videoTimestamp: args.videoTimestamp,
       isSelfReport: args.isSelfReport,
       isAdjusted: args.isAdjusted,
@@ -310,6 +313,7 @@ export const update = mutation({
     candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     videoTimestamp: v.optional(v.string()),
     isSelfReport: v.optional(v.boolean()),
     isAdjusted: v.optional(v.boolean()),
@@ -356,7 +360,10 @@ export const update = mutation({
 
     const cleanUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, v]) => v !== undefined),
-    );
+    ) as Record<string, any>;
+    if (updates.isNoDriverAtFault === true) {
+      cleanUpdates["atFaultDriverId"] = undefined;
+    }
 
     await ctx.db.patch(reviewId, {
       ...cleanUpdates,
@@ -376,6 +383,7 @@ export const updateWithSecondSteward = mutation({
     candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     videoTimestamp: v.optional(v.string()),
     isSelfReport: v.optional(v.boolean()),
     isAdjusted: v.optional(v.boolean()),
@@ -429,7 +437,8 @@ export const updateWithSecondSteward = mutation({
       reviewNotes: args.reviewNotes,
       candidateForStandardization: args.candidateForStandardization,
       recommendedPenalty: args.recommendedPenalty,
-      atFaultDriverId: args.atFaultDriverId,
+      atFaultDriverId: args.isNoDriverAtFault ? undefined : args.atFaultDriverId,
+      isNoDriverAtFault: args.isNoDriverAtFault,
       videoTimestamp: args.videoTimestamp,
       isSelfReport: args.isSelfReport,
       isAdjusted: args.isAdjusted,
@@ -438,7 +447,10 @@ export const updateWithSecondSteward = mutation({
 
     const cleanUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, v]) => v !== undefined),
-    );
+    ) as Record<string, any>;
+    if (args.isNoDriverAtFault === true) {
+      cleanUpdates["atFaultDriverId"] = undefined;
+    }
 
     await ctx.db.patch(args.reviewId, {
       ...cleanUpdates,
@@ -485,6 +497,7 @@ export const updateWithSecondSteward = mutation({
       candidateForStandardization: updates.candidateForStandardization,
       recommendedPenalty: updates.recommendedPenalty,
       atFaultDriverId: updates.atFaultDriverId,
+      isNoDriverAtFault: updates.isNoDriverAtFault,
       videoTimestamp: updates.videoTimestamp,
       isSelfReport: updates.isSelfReport,
       isAdjusted: updates.isAdjusted,

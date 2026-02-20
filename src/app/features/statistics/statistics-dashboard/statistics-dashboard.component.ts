@@ -31,6 +31,7 @@ import {
   LegendComponent,
   LegendItem,
 } from "@shared/components/legend/legend.component";
+import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { RouterModule } from "@angular/router";
 import { ActivatedRoute, Router } from "@angular/router";
 import { effect, DestroyRef } from "@angular/core";
@@ -48,6 +49,7 @@ interface EventRundownRow {
   incidentDescription: string;
   adjustedReason?: string;
   penaltyName: string | null;
+  penaltyAllowsNoDriverAtFault: boolean;
   timePenaltySeconds: number;
   licensePoints: number | null;
   isSelfReport: boolean;
@@ -100,6 +102,7 @@ interface RaceTimePenaltySummary {
     SelectComponent,
     TabsComponent,
     LegendComponent,
+    ToggleComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -123,7 +126,9 @@ interface RaceTimePenaltySummary {
 
         <!-- Export Mode: Show Header -->
         @if (isExportMode()) {
-          <div class="export-header bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div
+            class="export-header bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+          >
             <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
               @if (activeTab() === "event_rundown") {
                 Event Rundown
@@ -137,7 +142,13 @@ interface RaceTimePenaltySummary {
         }
 
         <!-- Content Area -->
-        <div [class]="isExportMode() ? 'export-body bg-gray-50 dark:bg-gray-900' : 'space-y-6'">
+        <div
+          [class]="
+            isExportMode()
+              ? 'export-body bg-gray-50 dark:bg-gray-900'
+              : 'space-y-6'
+          "
+        >
           @if (activeTab() === "event_rundown") {
             <div class="space-y-6">
               <app-card>
@@ -199,10 +210,17 @@ interface RaceTimePenaltySummary {
                             [(ngModel)]="eventFilterText"
                           />
                         </div>
+                        <app-toggle
+                          [(ngModel)]="hideNoDriverAtFaultWithoutTicket"
+                          hint="Hide incidents without ticket and no at fault driver"
+                        ></app-toggle>
                       </div>
                     }
 
-                    <div #eventRundownExportContainer class="export-container bg-white dark:bg-gray-900">
+                    <div
+                      #eventRundownExportContainer
+                      class="export-container bg-white dark:bg-gray-900"
+                    >
                       @if (isExportMode() && selectedEventDetails()) {
                         <div
                           class="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700"
@@ -487,7 +505,9 @@ interface RaceTimePenaltySummary {
                                         class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                       >
                                         @if (row.penaltyName) {
-                                          <span class="text-gray-700 dark:text-gray-300">
+                                          <span
+                                            class="text-gray-700 dark:text-gray-300"
+                                          >
                                             {{ row.penaltyName }}
                                           </span>
                                         } @else {
@@ -550,7 +570,7 @@ interface RaceTimePenaltySummary {
                         </div>
                       }
 
-                      @if (!isExportMode() && activeTab() === 'event_rundown') {
+                      @if (!isExportMode() && activeTab() === "event_rundown") {
                         <div
                           class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700"
                         >
@@ -558,6 +578,14 @@ interface RaceTimePenaltySummary {
                             [items]="legendItems()"
                             [title]="legendItems().length > 0 ? 'Legend' : ''"
                           />
+                          @if (hideNoDriverAtFaultWithoutTicket()) {
+                            <p
+                              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+                            >
+                              Incidents with no at-fault driver and no ticket
+                              are hidden
+                            </p>
+                          }
                         </div>
                       }
 
@@ -569,6 +597,14 @@ interface RaceTimePenaltySummary {
                             [items]="legendItems()"
                             [title]="legendItems().length > 0 ? 'Legend' : ''"
                           />
+                          @if (hideNoDriverAtFaultWithoutTicket()) {
+                            <p
+                              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+                            >
+                              Incidents with no at-fault driver and no ticket
+                              are hidden
+                            </p>
+                          }
                         </div>
                       }
                     </div>
@@ -655,7 +691,7 @@ interface RaceTimePenaltySummary {
                     }
 
                     @if (filteredAndSortedSeriesPoints().length > 0) {
-                        <div
+                      <div
                         #seriesOverviewExportContainer
                         class="export-container bg-white dark:bg-gray-900"
                       >
@@ -905,7 +941,9 @@ interface RaceTimePenaltySummary {
                       <app-select
                         [options]="seriesOptions()"
                         [(ngModel)]="timePenaltySeriesId"
-                        (ngModelChange)="timePenaltyEventId = ''; loadTimePenaltySummary()"
+                        (ngModelChange)="
+                          timePenaltyEventId = ''; loadTimePenaltySummary()
+                        "
                         placeholder="Choose a series"
                       />
                     </div>
@@ -926,7 +964,9 @@ interface RaceTimePenaltySummary {
 
                     @if (timePenaltySummary().length > 0) {
                       @if (!isExportMode()) {
-                        <div class="flex items-center justify-between mb-4 gap-4">
+                        <div
+                          class="flex items-center justify-between mb-4 gap-4"
+                        >
                           <div class="flex-1 max-w-md">
                             <input
                               type="text"
@@ -938,7 +978,10 @@ interface RaceTimePenaltySummary {
                         </div>
                       }
 
-                      <div #timePenaltySummaryExportContainer class="export-container bg-white dark:bg-gray-900">
+                      <div
+                        #timePenaltySummaryExportContainer
+                        class="export-container bg-white dark:bg-gray-900"
+                      >
                         @if (isExportMode() && timePenaltyEventId) {
                           <div
                             class="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700"
@@ -954,7 +997,9 @@ interface RaceTimePenaltySummary {
                               <p
                                 class="text-lg font-semibold text-gray-800 dark:text-gray-200"
                               >
-                                Event {{ selectedTimePenaltyEvent()?.eventNumber }} - {{ selectedTimePenaltyEvent()?.trackName }}
+                                Event
+                                {{ selectedTimePenaltyEvent()?.eventNumber }} -
+                                {{ selectedTimePenaltyEvent()?.trackName }}
                               </p>
                             }
                           </div>
@@ -971,7 +1016,9 @@ interface RaceTimePenaltySummary {
                                 {{ race.raceName }}
                               </h3>
                             </div>
-                            @if (getRaceTimePenaltyDrivers(race.raceId).length > 0) {
+                            @if (
+                              getRaceTimePenaltyDrivers(race.raceId).length > 0
+                            ) {
                               <div #timePenaltyTable class="overflow-x-auto">
                                 <table
                                   class="w-full text-sm border border-gray-300 dark:border-gray-700"
@@ -992,9 +1039,13 @@ interface RaceTimePenaltySummary {
                                         Car #
                                         {{
                                           getSortIcon(
-                                            'carNumber',
-                                            getTimePenaltyRaceSortColumn(race.raceNumber),
-                                            getTimePenaltyRaceSortDirection(race.raceNumber)
+                                            "carNumber",
+                                            getTimePenaltyRaceSortColumn(
+                                              race.raceNumber
+                                            ),
+                                            getTimePenaltyRaceSortDirection(
+                                              race.raceNumber
+                                            )
                                           )
                                         }}
                                       </th>
@@ -1010,9 +1061,13 @@ interface RaceTimePenaltySummary {
                                         Driver
                                         {{
                                           getSortIcon(
-                                            'driverName',
-                                            getTimePenaltyRaceSortColumn(race.raceNumber),
-                                            getTimePenaltyRaceSortDirection(race.raceNumber)
+                                            "driverName",
+                                            getTimePenaltyRaceSortColumn(
+                                              race.raceNumber
+                                            ),
+                                            getTimePenaltyRaceSortDirection(
+                                              race.raceNumber
+                                            )
                                           )
                                         }}
                                       </th>
@@ -1028,9 +1083,13 @@ interface RaceTimePenaltySummary {
                                         Class
                                         {{
                                           getSortIcon(
-                                            'driverClass',
-                                            getTimePenaltyRaceSortColumn(race.raceNumber),
-                                            getTimePenaltyRaceSortDirection(race.raceNumber)
+                                            "driverClass",
+                                            getTimePenaltyRaceSortColumn(
+                                              race.raceNumber
+                                            ),
+                                            getTimePenaltyRaceSortDirection(
+                                              race.raceNumber
+                                            )
                                           )
                                         }}
                                       </th>
@@ -1046,9 +1105,13 @@ interface RaceTimePenaltySummary {
                                         Total Time Penalty
                                         {{
                                           getSortIcon(
-                                            'totalTimePenaltySeconds',
-                                            getTimePenaltyRaceSortColumn(race.raceNumber),
-                                            getTimePenaltyRaceSortDirection(race.raceNumber)
+                                            "totalTimePenaltySeconds",
+                                            getTimePenaltyRaceSortColumn(
+                                              race.raceNumber
+                                            ),
+                                            getTimePenaltyRaceSortDirection(
+                                              race.raceNumber
+                                            )
                                           )
                                         }}
                                       </th>
@@ -1058,7 +1121,9 @@ interface RaceTimePenaltySummary {
                                     class="divide-y divide-gray-100 dark:divide-gray-800"
                                   >
                                     @for (
-                                      row of getRaceTimePenaltyDrivers(race.raceId);
+                                      row of getRaceTimePenaltyDrivers(
+                                        race.raceId
+                                      );
                                       track row.driverId;
                                       let i = $index
                                     ) {
@@ -1072,7 +1137,10 @@ interface RaceTimePenaltySummary {
                                           class="w-[18%] border-r border-gray-300 px-3 py-2 font-medium text-left align-middle leading-tight text-xs dark:border-gray-700"
                                         >
                                           <a
-                                            [routerLink]="['/drivers', row.driverId]"
+                                            [routerLink]="[
+                                              '/drivers',
+                                              row.driverId,
+                                            ]"
                                             class="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                                           >
                                             {{ row.driverName }}
@@ -1086,7 +1154,9 @@ interface RaceTimePenaltySummary {
                                         <td
                                           class="w-[12%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                         >
-                                          @if (row.totalTimePenaltySeconds > 0) {
+                                          @if (
+                                            row.totalTimePenaltySeconds > 0
+                                          ) {
                                             <app-badge>
                                               {{ row.totalTimePenaltySeconds }}s
                                             </app-badge>
@@ -1181,7 +1251,9 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   seriesPoints = signal<DriverPointsRow[]>([]);
   timePenaltySummary = signal<RaceTimePenaltySummary[]>([]);
   loading = signal(true);
-  activeTab = signal<"event_rundown" | "series_overview" | "time_penalty_summary">("event_rundown");
+  activeTab = signal<
+    "event_rundown" | "series_overview" | "time_penalty_summary"
+  >("event_rundown");
   isExportMode = signal<boolean>(false);
 
   selectedEventId = "";
@@ -1262,6 +1334,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   );
 
   eventFilterText = signal("");
+  hideNoDriverAtFaultWithoutTicket = signal(false);
   eventSortColumn = signal<Record<number, keyof EventRundownRow>>({});
   eventSortDirection = signal<Record<number, "asc" | "desc">>({});
 
@@ -1270,7 +1343,9 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   seriesSortDirection = signal<"asc" | "desc">("asc");
 
   timePenaltyFilterText = signal("");
-  timePenaltySortColumn = signal<Record<number, keyof DriverTimePenaltyRow>>({});
+  timePenaltySortColumn = signal<Record<number, keyof DriverTimePenaltyRow>>(
+    {},
+  );
   timePenaltySortDirection = signal<Record<number, "asc" | "desc">>({});
 
   activeSeriesIds = computed(() => this.series().map((s) => s._id.toString()));
@@ -1336,8 +1411,8 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       return [{ value: "", label: "Choose a series first" }];
     }
 
-    const filteredEvents = this.events().filter((e) =>
-      e.seriesId.toString() === this.timePenaltySeriesId,
+    const filteredEvents = this.events().filter(
+      (e) => e.seriesId.toString() === this.timePenaltySeriesId,
     );
     return [
       { value: "", label: "Choose an event" },
@@ -1385,6 +1460,17 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   filteredAndSortedRaces = computed(() => {
     let races = this.eventRundown();
+
+    if (this.hideNoDriverAtFaultWithoutTicket()) {
+      races = races.map((race) => ({
+        ...race,
+        reports: race.reports.filter((row) => {
+          const hasTicketNumber =
+            row.reportId !== null && row.reportId !== undefined;
+          return !(row.penaltyAllowsNoDriverAtFault && !hasTicketNumber);
+        }),
+      }));
+    }
 
     if (this.eventFilterText()) {
       const filter = this.eventFilterText().toLowerCase();
@@ -1480,7 +1566,8 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
           const carNumber = row.carNumber?.toString() ?? "";
           const driverName = row.driverName?.toLowerCase() ?? "";
           const driverClass = row.driverClass?.toLowerCase() ?? "";
-          const totalTimePenalty = row.totalTimePenaltySeconds?.toString() ?? "";
+          const totalTimePenalty =
+            row.totalTimePenaltySeconds?.toString() ?? "";
 
           return (
             carNumber.includes(filter) ||
@@ -1548,7 +1635,9 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     return this.eventSortDirection()[raceNumber] ?? "asc";
   }
 
-  getTimePenaltyRaceSortColumn(raceNumber: number): keyof DriverTimePenaltyRow | "" {
+  getTimePenaltyRaceSortColumn(
+    raceNumber: number,
+  ): keyof DriverTimePenaltyRow | "" {
     return this.timePenaltySortColumn()[raceNumber] ?? "";
   }
 
@@ -1557,7 +1646,9 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   }
 
   getRaceTimePenaltyDrivers(raceId: string): DriverTimePenaltyRow[] {
-    const race = this.filteredAndSortedTimePenaltySummary().find((r) => r.raceId === raceId);
+    const race = this.filteredAndSortedTimePenaltySummary().find(
+      (r) => r.raceId === raceId,
+    );
     if (!race) return [];
 
     const raceNumber = race.raceNumber;
@@ -1585,9 +1676,15 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   }
 
   selectTab(tabId: string): void {
-    if (tabId === "event_rundown" || tabId === "series_overview" || tabId === "time_penalty_summary") {
+    if (
+      tabId === "event_rundown" ||
+      tabId === "series_overview" ||
+      tabId === "time_penalty_summary"
+    ) {
       untracked(() => {
-        this.activeTab.set(tabId as "event_rundown" | "series_overview" | "time_penalty_summary");
+        this.activeTab.set(
+          tabId as "event_rundown" | "series_overview" | "time_penalty_summary",
+        );
 
         if (tabId === "event_rundown") {
           this.eventFilterText.set(this.seriesFilterText());
@@ -1651,7 +1748,10 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  sortTimePenaltySummary(raceNumber: number, column: keyof DriverTimePenaltyRow): void {
+  sortTimePenaltySummary(
+    raceNumber: number,
+    column: keyof DriverTimePenaltyRow,
+  ): void {
     const currentSortColumn = this.timePenaltySortColumn();
     const currentSortDirection = this.timePenaltySortDirection();
 
@@ -1734,7 +1834,12 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       params["tab"] === "series_overview" ||
       params["tab"] === "time_penalty_summary"
     ) {
-      this.activeTab.set(params["tab"] as "event_rundown" | "series_overview" | "time_penalty_summary");
+      this.activeTab.set(
+        params["tab"] as
+          | "event_rundown"
+          | "series_overview"
+          | "time_penalty_summary",
+      );
     }
 
     if (params["event"]) {

@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { checkUserDriverConflict } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
@@ -260,6 +261,24 @@ export const getPendingForReview = query({
 export const getReadyForFinalization = query({
   args: {},
   handler: async (ctx) => {
+    const populateDriverWithClass = async (
+      driverId: Id<"drivers"> | null | undefined,
+    ) => {
+      if (!driverId) return null;
+      const driver = await ctx.db.get(driverId);
+      if (!driver) return null;
+
+      const driverClass = driver.driverClassId
+        ? await ctx.db.get(driver.driverClassId)
+        : null;
+
+      return {
+        ...driver,
+        driverClass: driverClass?.displayName ?? null,
+        driverClassObj: driverClass,
+      };
+    };
+
     const reports = await ctx.db
       .query("reports")
       .withIndex("by_status")
@@ -275,9 +294,9 @@ export const getReadyForFinalization = query({
         const reportingUser = report.reportingUserId
           ? await ctx.db.get(report.reportingUserId)
           : null;
-        const reportedDriver = report.reportedDriverId
-          ? await ctx.db.get(report.reportedDriverId)
-          : null;
+        const reportedDriver = await populateDriverWithClass(
+          report.reportedDriverId,
+        );
 
         const reviews = await ctx.db
           .query("reviews")
@@ -287,9 +306,7 @@ export const getReadyForFinalization = query({
         const reviewCount = reviews.length;
 
         // Get atFaultDriverId from latest review if not set on report
-        let atFaultDriver = report.atFaultDriverId
-          ? await ctx.db.get(report.atFaultDriverId)
-          : null;
+        let atFaultDriver = await populateDriverWithClass(report.atFaultDriverId);
 
         if (!atFaultDriver && reviews.length > 0) {
           const latestReview = reviews.reduce((latest, current) => {
@@ -299,7 +316,9 @@ export const getReadyForFinalization = query({
           });
 
           if (latestReview.atFaultDriverId) {
-            atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
+            atFaultDriver = await populateDriverWithClass(
+              latestReview.atFaultDriverId,
+            );
           }
         }
 
@@ -359,11 +378,11 @@ export const create = mutation({
 
     if (!reportedDriver) throw new Error("Reported driver not found");
     if (!event) throw new Error("Event not found");
-    if (!race) throw new Error("Race not found");
+    if (!race) throw new Error("Session not found");
 
     // Validate race belongs to event
     if (race.eventId !== args.eventId) {
-      throw new Error("Race does not belong to the selected event");
+      throw new Error("Session does not belong to the selected event");
     }
 
     // Check if series is locked
@@ -468,6 +487,7 @@ export const finalize = mutation({
     finalDecision: v.string(),
     appliedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     officialNotes: v.string(),
     isSelfReport: v.optional(v.boolean()),
   },
@@ -499,8 +519,10 @@ export const finalize = mutation({
     }
 
     const now = Date.now();
-    const effectiveAtFaultDriverId =
-      args.atFaultDriverId ?? report.reportedDriverId;
+    const isNoDriverAtFault = args.isNoDriverAtFault ?? false;
+    const effectiveAtFaultDriverId = isNoDriverAtFault
+      ? undefined
+      : args.atFaultDriverId ?? report.reportedDriverId;
 
     let appliedPenaltyDoc: any = null;
     if (args.appliedPenalty) {
@@ -513,6 +535,7 @@ export const finalize = mutation({
       finalDecision: args.finalDecision,
       appliedPenalty: args.appliedPenalty,
       atFaultDriverId: effectiveAtFaultDriverId,
+      isNoDriverAtFault,
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
       finalizedBy: args.userId,
@@ -559,6 +582,10 @@ export const finalize = mutation({
         );
 
         for (const finalizedReport of finalizedReports) {
+          if (finalizedReport.isNoDriverAtFault) {
+            continue;
+          }
+
           let penalty: any = null;
           if (finalizedReport.appliedPenalty) {
             penalty = await ctx.db.get(finalizedReport.appliedPenalty as any);
@@ -677,6 +704,7 @@ export const updateFinalizedDecision = mutation({
     finalDecision: v.string(),
     appliedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     officialNotes: v.string(),
     isSelfReport: v.optional(v.boolean()),
   },
@@ -698,7 +726,10 @@ export const updateFinalizedDecision = mutation({
     await ctx.db.patch(args.reportId, {
       finalDecision: args.finalDecision,
       appliedPenalty: args.appliedPenalty,
-      atFaultDriverId: args.atFaultDriverId,
+      atFaultDriverId: args.isNoDriverAtFault
+        ? undefined
+        : args.atFaultDriverId,
+      isNoDriverAtFault: args.isNoDriverAtFault ?? false,
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
       isEdited: true,
@@ -724,6 +755,7 @@ export const createBySteward = mutation({
     reviewNotes: v.optional(v.string()),
     recommendedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.optional(v.boolean()),
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
     isSelfReport: v.optional(v.boolean()),
@@ -826,7 +858,10 @@ export const createBySteward = mutation({
       incidentDescription: args.incidentDescription,
       reviewNotes: args.reviewNotes || "",
       recommendedPenalty: args.recommendedPenalty,
-      atFaultDriverId: args.atFaultDriverId,
+      atFaultDriverId: args.isNoDriverAtFault
+        ? undefined
+        : args.atFaultDriverId,
+      isNoDriverAtFault: args.isNoDriverAtFault ?? false,
       videoTimestamp: args.videoTimestamp,
       isSelfReport: args.isSelfReport,
       isAdjusted: args.isAdjusted,
@@ -861,7 +896,7 @@ export const createBySteward = mutation({
 export const reject = mutation({
   args: {
     reportId: v.id("reports"),
-    officialNotes: v.string(),
+    finalDecision: v.string(),
   },
   handler: async (ctx, args) => {
     const report = await ctx.db.get(args.reportId);
@@ -876,7 +911,8 @@ export const reject = mutation({
     await ctx.db.patch(args.reportId, {
       status: "rejected",
       isFinalized: true,
-      officialNotes: args.officialNotes,
+      finalDecision: args.finalDecision,
+      officialNotes: "",
       updatedAt: Date.now(),
     });
 
@@ -945,6 +981,10 @@ export const getDashboardStats = query({
 export const getPreviousWeekEventStatus = query({
   args: {},
   handler: async (ctx) => {
+    const endOfToday = new Date();
+    endOfToday.setUTCHours(23, 59, 59, 999);
+    const latestAllowedEventDate = endOfToday.getTime();
+
     const seriesList = await ctx.db.query("series").collect();
     const activeSeries = seriesList.filter(
       (series) => series.isActive !== false,
@@ -972,11 +1012,19 @@ export const getPreviousWeekEventStatus = query({
       if (!activeSeriesIds.has(seriesId)) {
         continue;
       }
-      if (!latestEventBySeries.has(seriesId)) {
+
+      if (event.eventDate > latestAllowedEventDate) {
+        continue;
+      }
+
+      const currentLatest = latestEventBySeries.get(seriesId);
+      if (
+        !currentLatest ||
+        event.eventDate > currentLatest.eventDate ||
+        (event.eventDate === currentLatest.eventDate &&
+          event.createdAt > currentLatest.createdAt)
+      ) {
         latestEventBySeries.set(seriesId, event);
-        if (latestEventBySeries.size === activeSeriesIds.size) {
-          break;
-        }
       }
     }
 
@@ -1223,6 +1271,15 @@ export const getEventExportData = query({
         }
 
         if (report.status === "reviewed" && !review?.recommendedPenalty) {
+          return null;
+        }
+
+        const isNoDriverAtFault =
+          report.status === "reviewed"
+            ? Boolean(review?.isNoDriverAtFault)
+            : Boolean(report.isNoDriverAtFault);
+
+        if (isNoDriverAtFault) {
           return null;
         }
 

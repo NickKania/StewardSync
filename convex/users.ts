@@ -71,7 +71,9 @@ export const listStewards = query({
     const users = await ctx.db.query("users").collect();
     const roles = await ctx.db.query("roles").collect();
     const stewardRoleIds = roles.filter(r =>
-      r.name === 'steward' || r.name === 'head_steward' || r.name === 'event_manager'
+      r.name === 'steward' ||
+      r.name === 'head_steward' ||
+      r.name === 'league_manager'
     ).map(r => r._id);
 
     const stewards = users.filter(user => stewardRoleIds.includes(user.roleId));

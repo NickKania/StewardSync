@@ -1,12 +1,25 @@
-import { Component, inject, computed, OnDestroy, OnInit, signal } from "@angular/core";
+import {
+  Component,
+  inject,
+  computed,
+  OnDestroy,
+  OnInit,
+  signal,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { Router, RouterLink, RouterLinkActive, NavigationStart } from "@angular/router";
+import {
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  NavigationStart,
+} from "@angular/router";
 import { AuthService } from "@core/services/auth.service";
 import { HasRoleDirective } from "@shared/directives/has-role.directive";
 import { SidebarStateService } from "@core/services/sidebar-state.service";
 import { ConvexService } from "@core/services/convex.service";
 import { Subscription } from "rxjs";
 import { ChangelogFlyoutComponent } from "@shared/components/changelog-flyout/changelog-flyout.component";
+import { BadgeComponent } from "@shared/components/badge/badge.component";
 
 interface NavItem {
   label: string;
@@ -29,6 +42,7 @@ interface ChangelogRelease {
     RouterLinkActive,
     HasRoleDirective,
     ChangelogFlyoutComponent,
+    BadgeComponent,
   ],
   template: `
     <!-- Mobile overlay -->
@@ -62,11 +76,19 @@ interface ChangelogRelease {
                 [class.w-0]="!isTextVisible()"
                 [class.overflow-hidden]="!isTextVisible()"
                 [class.whitespace-nowrap]="!isTextVisible()"
-              >{{ item.label }}</span>
-              @if (getBadgeCount(item) > 0 && isTextVisible()) {
-                <span [ngClass]="getBadgeClass(item)">{{
-                  getBadgeCount(item)
-                }}</span>
+                >{{ item.label }}</span
+              >
+              @if (item.path === "/reviews" && isTextVisible()) {
+                <div class="flex items-center gap-1">
+                  <app-badge variant="danger" size="sm">
+                    {{ pendingReviewCount() }}
+                  </app-badge>
+                  @if (canViewFinalization()) {
+                    <app-badge variant="info" size="sm">
+                      {{ finalizeQueueCount() }}
+                    </app-badge>
+                  }
+                </div>
               }
             </a>
           }
@@ -109,7 +131,7 @@ export class SidebarComponent implements OnDestroy, OnInit {
   readonly isTextVisible = computed(
     () =>
       this.sidebarStateService.isMobileOpen() ||
-      !this.sidebarStateService.isEffectivelyCollapsed()
+      !this.sidebarStateService.isEffectivelyCollapsed(),
   );
 
   readonly sidebarClasses = computed(() => {
@@ -182,22 +204,10 @@ export class SidebarComponent implements OnDestroy, OnInit {
       roles: ["steward", "head_steward", "event_manager", "league_manager"],
     },
     {
-      label: "Review Queue",
+      label: "Review",
       path: "/reviews",
       icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>',
       roles: ["steward", "head_steward", "league_manager"],
-    },
-    {
-      label: "Review Search",
-      path: "/reviews/search",
-      icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>',
-      roles: ["head_steward", "league_manager"],
-    },
-    {
-      label: "Finalization",
-      path: "/finalize",
-      icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
-      roles: ["head_steward", "league_manager"],
     },
     {
       label: "Drivers",
@@ -238,18 +248,8 @@ export class SidebarComponent implements OnDestroy, OnInit {
     return this.authService.hasRole(...(roles as any[]));
   }
 
-  getBadgeCount(item: NavItem): number {
-    if (item.path === "/reviews") {
-      return this.pendingReviewCount();
-    }
-    if (item.path === "/finalize") {
-      return this.finalizeQueueCount();
-    }
-    return 0;
-  }
-
-  getBadgeClass(_item: NavItem): string {
-    return "badge-rejected";
+  canViewFinalization(): boolean {
+    return this.authService.hasRole("head_steward", "league_manager");
   }
 
   openChangelog(): void {
@@ -262,8 +262,10 @@ export class SidebarComponent implements OnDestroy, OnInit {
 
   private async loadLatestVersion(): Promise<void> {
     try {
-      const changelogUrl = new URL("assets/changelog.json", document.baseURI)
-        .toString();
+      const changelogUrl = new URL(
+        "assets/changelog.json",
+        document.baseURI,
+      ).toString();
       const response = await fetch(changelogUrl);
       if (!response.ok) {
         return;
@@ -282,7 +284,10 @@ export class SidebarComponent implements OnDestroy, OnInit {
         this.appVersion.set(latestRelease.version);
       }
     } catch (error) {
-      console.error("Failed to load sidebar app version from changelog:", error);
+      console.error(
+        "Failed to load sidebar app version from changelog:",
+        error,
+      );
     }
   }
 

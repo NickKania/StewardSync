@@ -172,7 +172,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                   </div>
 
                   <div>
-                    <label class="label">Race *</label>
+                    <label class="label">Session *</label>
                     <select
                       formControlName="raceId"
                       class="input"
@@ -182,17 +182,17 @@ import { SelectOption } from "@shared/components/select/select.component";
                       "
                       [disabled]="!form.get('eventId')?.value"
                     >
-                      <option value="">Select race</option>
+                      <option value="">Select session</option>
                       @for (race of races(); track race._id) {
                         <option [value]="race._id">
-                          Race {{ race.raceNumber }}
+                          {{ getSessionName(race) }}
                         </option>
                       }
                     </select>
                     @if (
                       form.get("raceId")?.invalid && form.get("raceId")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">Race is required</p>
+                      <p class="mt-1 text-sm text-red-600">Session is required</p>
                     }
                   </div>
 
@@ -303,6 +303,11 @@ import { SelectOption } from "@shared/components/select/select.component";
                     <label class="label">At Fault Driver</label>
                     <select formControlName="atFaultDriverId" class="input">
                       <option value="">Select driver</option>
+                      @if (selectedPenaltyAllowsNoDriver()) {
+                        <option [value]="NO_DRIVER_OPTION_VALUE">
+                          No Driver
+                        </option>
+                      }
                       @for (driver of drivers(); track driver._id) {
                         <option [value]="driver._id">
                           {{ driver.driverName }} ({{ driver.driverNumber }})
@@ -484,6 +489,7 @@ import { SelectOption } from "@shared/components/select/select.component";
   `,
 })
 export class StewardIncidentFormComponent implements OnInit, OnDestroy {
+  readonly NO_DRIVER_OPTION_VALUE = "__NO_DRIVER__";
   private fb = inject(FormBuilder);
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
@@ -499,6 +505,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   stewards = signal<any[]>([]);
   series = signal<any[]>([]);
   availablePenalties = signal<Penalty[]>([]);
+  selectedRecommendedPenaltyId = signal<string>("");
   loading = signal(true);
   submitting = signal(false);
   secondStewardId = signal<string>("");
@@ -517,6 +524,17 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       value: driver._id,
       label: `#${driver.driverNumber} - ${driver.driverName}`,
     }));
+  });
+  selectedPenaltyAllowsNoDriver = computed(() => {
+    const selectedPenaltyId = this.selectedRecommendedPenaltyId();
+    if (!selectedPenaltyId) {
+      return false;
+    }
+
+    const selectedPenalty = this.availablePenalties().find(
+      (penalty) => String(penalty._id) === String(selectedPenaltyId),
+    );
+    return Boolean(selectedPenalty?.allowNoDriverAtFault);
   });
 
   filteredEvents = computed(() => {
@@ -679,6 +697,12 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       this.secondStewardId.set(value);
       this.saveStewardSelection(value);
     });
+
+    this.form
+      .get("recommendedPenalty")
+      ?.valueChanges.subscribe((penaltyId: string) => {
+        this.onRecommendedPenaltyChange(penaltyId);
+      });
 
     this.form.get("eventId")?.valueChanges.subscribe((value) => {
       this.eventId.set(value);
@@ -1138,10 +1162,35 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           { seriesId: event.seriesId as any },
         );
         this.availablePenalties.set(penalties || []);
+        this.enforceAtFaultDriverSelection();
       }
     } catch (error) {
       console.error("Failed to load penalties:", error);
     }
+  }
+
+  private onRecommendedPenaltyChange(penaltyId: string): void {
+    this.selectedRecommendedPenaltyId.set(String(penaltyId || ""));
+    this.enforceAtFaultDriverSelection();
+  }
+
+  private enforceAtFaultDriverSelection(): void {
+    const atFaultDriverControl = this.form.get("atFaultDriverId");
+    if (!atFaultDriverControl) {
+      return;
+    }
+    if (this.availablePenalties().length === 0) {
+      return;
+    }
+
+    const isNoDriverSelected =
+      atFaultDriverControl.value === this.NO_DRIVER_OPTION_VALUE;
+    if (!isNoDriverSelected || this.selectedPenaltyAllowsNoDriver()) {
+      return;
+    }
+
+    const reportedDriverId = this.form.get("reportedDriverId")?.value;
+    atFaultDriverControl.setValue(reportedDriverId || "");
   }
 
   private async loadEventDetails(eventId: string): Promise<void> {
@@ -1182,6 +1231,8 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       }
 
       const formValue = this.form.value;
+      const isNoDriverAtFault =
+        formValue.atFaultDriverId === this.NO_DRIVER_OPTION_VALUE;
       const lap = String(formValue.lap ?? "").trim();
       const turn = String(formValue.turn ?? "").trim();
       const ticketNumberInput = String(formValue.reportId ?? "").trim();
@@ -1211,7 +1262,10 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
           incidentDescription: formValue.incidentDescription,
           reviewNotes: formValue.reviewNotes || "",
           recommendedPenalty: formValue.recommendedPenalty,
-          atFaultDriverId: formValue.atFaultDriverId || undefined,
+          atFaultDriverId: isNoDriverAtFault
+            ? undefined
+            : formValue.atFaultDriverId || undefined,
+          isNoDriverAtFault,
           videoTimestamp: formValue.videoTimestamp || "",
           secondStewardId: formValue.secondStewardId || undefined,
           isSelfReport: formValue.isSelfReport || false,
@@ -1278,5 +1332,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
 
     this.form.markAsPristine();
     this.form.markAsUntouched();
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number }): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
   }
 }

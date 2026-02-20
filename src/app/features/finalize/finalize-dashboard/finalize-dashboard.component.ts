@@ -1,4 +1,11 @@
-import { Component, inject, OnInit, OnDestroy, signal } from "@angular/core";
+import {
+  Component,
+  computed,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
@@ -71,16 +78,54 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
-                  <th class="px-6 py-3 font-medium">At Fault Driver</th>
-                  <th class="px-6 py-3 font-medium">Event</th>
+                  <th
+                    class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                    (click)="sortReportsBy('atFaultDriver')"
+                  >
+                    At Fault Driver{{ getSortArrow("atFaultDriver") }}
+                  </th>
+                  <th
+                    class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                    (click)="sortReportsBy('driverClass')"
+                  >
+                    Driver Class{{ getSortArrow("driverClass") }}
+                  </th>
+                  <th
+                    class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                    (click)="sortReportsBy('event')"
+                  >
+                    Event{{ getSortArrow("event") }}
+                  </th>
+                  <th
+                    class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                    (click)="sortReportsBy('lap')"
+                  >
+                    Lap{{ getSortArrow("lap") }}
+                  </th>
+                  <th
+                    class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                    (click)="sortReportsBy('turn')"
+                  >
+                    Turn{{ getSortArrow("turn") }}
+                  </th>
                   <th class="px-6 py-3 font-medium">Incident</th>
-                  <th class="px-6 py-3 font-medium">Reviews</th>
-                  <th class="px-6 py-3 font-medium">Filed</th>
+                  <th
+                    class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                    (click)="sortReportsBy('reviews')"
+                  >
+                    Reviews{{ getSortArrow("reviews") }}
+                  </th>
+                  <th
+                    class="px-6 py-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                    (click)="sortReportsBy('filed')"
+                  >
+                    Filed{{ getSortArrow("filed") }}
+                  </th>
                   <th class="px-6 py-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                @for (report of reports(); track report._id) {
+                @for (report of sortedReports(); track report._id) {
                   <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td class="px-6 py-4">
                       <p class="font-medium text-gray-900 dark:text-gray-100">
@@ -96,16 +141,23 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                         }}
                       </p>
                     </td>
+                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100">
+                      {{ getDriverClass(report) || "-" }}
+                    </td>
                     <td class="px-6 py-4">
                       <p class="text-gray-900 dark:text-gray-100">{{ report.event?.trackName }}</p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Race {{ report.race?.raceNumber }}
+                        {{ getSessionName(report.race) }}
                       </p>
                     </td>
+                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100">
+                      {{ report.lap || "-" }}
+                    </td>
+                    <td class="px-6 py-4 text-gray-900 dark:text-gray-100">
+                      {{ report.turn || "-" }}
+                    </td>
                     <td class="px-6 py-4">
-                      <p class="text-gray-900 dark:text-gray-100">Turn {{ report.turn }}</p>
-                      <app-truncate-text [text]="report.description" maxW="max-w-xs"
-                        class="text-sm text-gray-500 dark:text-gray-400" />
+                      <app-truncate-text [text]="report.description" maxW="max-w-xs" class="text-sm text-gray-500 dark:text-gray-400" />
                     </td>
                     <td class="px-6 py-4">
                       <app-badge variant="info">
@@ -130,7 +182,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 
           <!-- Mobile card view -->
           <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-            @for (report of reports(); track report._id) {
+            @for (report of sortedReports(); track report._id) {
               <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
                 <div class="flex items-start justify-between gap-3 mb-3">
                   <div class="min-w-0 flex-1">
@@ -139,7 +191,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                       #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
                     </p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ report.event?.trackName }} - Race {{ report.race?.raceNumber }}
+                      {{ report.event?.trackName }} - {{ getSessionName(report.race) }}
                     </p>
                   </div>
                   <app-badge variant="info" size="sm">
@@ -148,8 +200,16 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                 </div>
                 <div class="space-y-1 text-sm mb-3">
                   <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Class</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ getDriverClass(report) || "-" }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">Lap</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.lap || "-" }}</span>
+                  </div>
+                  <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Turn</span>
-                    <span class="text-gray-900 dark:text-gray-100">{{ report.turn }}</span>
+                    <span class="text-gray-900 dark:text-gray-100">{{ report.turn || "-" }}</span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">Filed</span>
@@ -198,6 +258,16 @@ export class FinalizeDashboardComponent implements OnInit, OnDestroy {
   reports = signal<any[]>([]);
   stats = signal<any>(null);
   loading = signal(true);
+  sortColumn = signal<string | null>(null);
+  sortDirection = signal<"asc" | "desc">("asc");
+
+  sortedReports = computed(() => {
+    const reports = this.reports();
+    const column = this.sortColumn();
+    const direction = this.sortDirection();
+    if (!column) return reports;
+    return this.sortReportRows([...reports], column, direction);
+  });
 
   private unsubscribes: (() => void)[] = [];
 
@@ -240,5 +310,84 @@ export class FinalizeDashboardComponent implements OnInit, OnDestroy {
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkStats));
+  }
+
+  getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {
+    if (race?.sessionName?.trim()) return race.sessionName.trim();
+    if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
+    return "Session";
+  }
+
+  getDriverClass(report: any): string {
+    const atFaultClass =
+      report.atFaultDriver?.driverClassObj?.displayName ||
+      report.atFaultDriver?.driverClass?.displayName ||
+      report.atFaultDriver?.driverClass;
+    const reportedClass =
+      report.reportedDriver?.driverClassObj?.displayName ||
+      report.reportedDriver?.driverClass?.displayName ||
+      report.reportedDriver?.driverClass;
+    return atFaultClass || reportedClass || "";
+  }
+
+  sortReportsBy(column: string): void {
+    if (this.sortColumn() === column) {
+      this.sortDirection.set(this.sortDirection() === "asc" ? "desc" : "asc");
+      return;
+    }
+
+    this.sortColumn.set(column);
+    this.sortDirection.set("asc");
+  }
+
+  getSortArrow(column: string): string {
+    if (this.sortColumn() !== column) return "";
+    return this.sortDirection() === "asc" ? " ↑" : " ↓";
+  }
+
+  private sortReportRows(
+    reports: any[],
+    column: string,
+    direction: "asc" | "desc",
+  ): any[] {
+    return reports.sort((a, b) => {
+      const aVal = this.getSortValue(a, column);
+      const bVal = this.getSortValue(b, column);
+
+      let comparison = 0;
+      if (aVal < bVal) comparison = -1;
+      if (aVal > bVal) comparison = 1;
+
+      return direction === "asc" ? comparison : -comparison;
+    });
+  }
+
+  private getSortValue(report: any, column: string): number | string {
+    switch (column) {
+      case "atFaultDriver":
+        return (
+          (report.atFaultDriver?.driverName || report.reportedDriver?.driverName || "").toLowerCase()
+        );
+      case "driverClass":
+        return this.getDriverClass(report).toLowerCase();
+      case "event":
+        return `${report.event?.trackName || ""} ${this.getSessionName(report.race)}`.toLowerCase();
+      case "lap":
+        return this.getNumericOrTextValue(report.lap);
+      case "turn":
+        return this.getNumericOrTextValue(report.turn);
+      case "reviews":
+        return report.reviewCount || 0;
+      case "filed":
+        return report.reportDate || 0;
+      default:
+        return "";
+    }
+  }
+
+  private getNumericOrTextValue(value: unknown): number | string {
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber)) return asNumber;
+    return String(value ?? "").toLowerCase();
   }
 }
