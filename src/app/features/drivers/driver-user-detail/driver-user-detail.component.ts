@@ -65,11 +65,7 @@ interface SeriesPenaltyGroup {
       } @else if (!profile() && !driver()) {
         <app-card>
           <p class="text-center py-8 text-gray-500 dark:text-gray-400">
-            @if (isDriverMode()) {
-              Driver not found.
-            } @else {
-              User profile not found.
-            }
+            {{ detailNotFoundMessage() }}
           </p>
           <div class="text-center">
             <a routerLink="/drivers">
@@ -83,48 +79,42 @@ interface SeriesPenaltyGroup {
           class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
         >
           <div class="flex items-center gap-4">
-            @if (isDriverMode()) {
+            @if (detailAvatarNumber() !== null) {
               <div
                 class="w-20 h-20 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center"
               >
-                <span class="text-3xl font-bold text-primary-700 dark:text-primary-100">{{
-                  driver()?.driverNumber
-                }}</span>
-              </div>
-              <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {{ driver()?.displayName ?? driver()?.driverName }}
-                </h1>
-                @if (
-                  driver()?.displayName &&
-                  driver()?.displayName !== driver()?.driverName
-                ) {
-                  <p class="text-sm text-gray-600 dark:text-gray-300">
-                    {{ driver()?.driverName }}
-                  </p>
-                }
-              </div>
-            } @else {
-              <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {{ profile()?.user?.name }}
-                </h1>
-                @if (profile()?.user?.officialName) {
-                  <p class="text-gray-600 dark:text-gray-300">
-                    Official: {{ profile()?.user?.officialName }}
-                  </p>
-                }
-                @if (profile()?.user?.discordUsername) {
-                  <p class="text-gray-500 dark:text-gray-400">
-                    Discord: {{ profile()?.user?.discordUsername }}
-                  </p>
-                }
+                <span
+                  class="text-3xl font-bold text-primary-700 dark:text-primary-100"
+                  >{{ detailAvatarNumber() }}</span
+                >
               </div>
             }
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {{ detailTitle() }}
+              </h1>
+              @if (detailSubtitle()) {
+                <p class="text-sm text-gray-600 dark:text-gray-300">
+                  {{ detailSubtitle() }}
+                </p>
+              }
+              @if (detailMetaLine()) {
+                <p class="text-gray-500 dark:text-gray-400">
+                  {{ detailMetaLine() }}
+                </p>
+              }
+            </div>
           </div>
-          <a routerLink="/drivers">
-            <app-button variant="secondary">Back to Drivers</app-button>
-          </a>
+          <div class="flex gap-2">
+            <a routerLink="/drivers">
+              <app-button variant="secondary">Back to Drivers</app-button>
+            </a>
+            @if (linkedUser()) {
+              <a [routerLink]="['/drivers/user', linkedUser()._id]">
+                <app-button variant="primary">Go To User Profile</app-button>
+              </a>
+            }
+          </div>
         </div>
 
         <!-- Stats Cards -->
@@ -132,10 +122,14 @@ interface SeriesPenaltyGroup {
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <app-card>
               <div class="text-center">
-                <p class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
+                <p
+                  class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100"
+                >
                   {{ statsToShow()?.reportsFiledCount || 0 }}
                 </p>
-                <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
+                <p
+                  class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400"
+                >
                   Reports Filed
                 </p>
               </div>
@@ -145,7 +139,9 @@ interface SeriesPenaltyGroup {
                 <p class="text-2xl sm:text-3xl font-bold text-amber-600">
                   {{ statsToShow()?.reportsAgainstCount || 0 }}
                 </p>
-                <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
+                <p
+                  class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400"
+                >
                   Reports Against
                 </p>
               </div>
@@ -155,7 +151,9 @@ interface SeriesPenaltyGroup {
                 <p class="text-2xl sm:text-3xl font-bold text-blue-600">
                   {{ statsToShow()?.pendingReports || 0 }}
                 </p>
-                <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
+                <p
+                  class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400"
+                >
                   Pending
                 </p>
               </div>
@@ -165,7 +163,9 @@ interface SeriesPenaltyGroup {
                 <p class="text-2xl sm:text-3xl font-bold text-green-600">
                   {{ statsToShow()?.finalizedReports || 0 }}
                 </p>
-                <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
+                <p
+                  class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400"
+                >
                   Finalized
                 </p>
               </div>
@@ -176,21 +176,21 @@ interface SeriesPenaltyGroup {
         <!-- Information Card -->
         <app-card title="Information">
           <dl class="grid sm:grid-cols-2 gap-4">
-            @if (isDriverMode()) {
+            <div>
+              <dt class="text-sm text-gray-500 dark:text-gray-400">
+                Full Name
+              </dt>
+              <dd class="font-medium text-gray-900 dark:text-gray-100">
+                {{ detailFullName() }}
+              </dd>
+            </div>
+            @if (detailDriverNumber()) {
               <div>
                 <dt class="text-sm text-gray-500 dark:text-gray-400">
                   Driver Number
                 </dt>
                 <dd class="font-medium text-gray-900 dark:text-gray-100">
-                  #{{ driver()?.driverNumber }}
-                </dd>
-              </div>
-              <div>
-                <dt class="text-sm text-gray-500 dark:text-gray-400">
-                  Full Name
-                </dt>
-                <dd class="font-medium text-gray-900 dark:text-gray-100">
-                  {{ driver()?.driverName }}
+                  #{{ detailDriverNumber() }}
                 </dd>
               </div>
             }
@@ -199,11 +199,7 @@ interface SeriesPenaltyGroup {
                 Discord Username
               </dt>
               <dd class="font-medium text-gray-900 dark:text-gray-100">
-                {{
-                  isDriverMode()
-                    ? driver()?.username
-                    : profile()?.user?.discordUsername || "Not set"
-                }}
+                {{ detailDiscordUsername() }}
               </dd>
             </div>
             <div>
@@ -232,20 +228,15 @@ interface SeriesPenaltyGroup {
                     (onClick)="cancelEditOfficialName()"
                     >Cancel</app-button
                   >
-                    </div>
-                  } @else {
+                </div>
+              } @else {
                 <dd class="font-medium text-gray-900 dark:text-gray-100">
-                  {{
-                    isDriverMode()
-                      ? driver()?.officialName ?? driver()?.driverName
-                      : profile()?.user?.officialName || "Not set"
-                  }}
+                  {{ detailOfficialName() }}
                   @if (canManageProfiles()) {
                     <a
                       href="#"
                       (click)="
-                        toggleEditOfficialName();
-                        $event.preventDefault()
+                        toggleEditOfficialName(); $event.preventDefault()
                       "
                       class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                       >Edit</a
@@ -254,7 +245,7 @@ interface SeriesPenaltyGroup {
                 </dd>
               }
             </div>
-            @if (isDriverMode()) {
+            @if (showLinkedUserField()) {
               <div>
                 <dt class="text-sm text-gray-500 dark:text-gray-400">
                   Linked User
@@ -267,7 +258,9 @@ interface SeriesPenaltyGroup {
                       (ngModelChange)="setPendingLinkedUserId($event)"
                     >
                       @for (option of userOptions(); track option.value) {
-                        <option [value]="option.value">{{ option.label }}</option>
+                        <option [value]="option.value">
+                          {{ option.label }}
+                        </option>
                       }
                     </select>
                     <app-button
@@ -286,11 +279,17 @@ interface SeriesPenaltyGroup {
                   </div>
                 } @else {
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ linkedUser()?.officialName || linkedUser()?.name || "Not linked" }}
+                    {{
+                      linkedUser()?.officialName ||
+                        linkedUser()?.name ||
+                        "Not linked"
+                    }}
                     @if (canManageProfiles()) {
                       <a
                         href="#"
-                        (click)="toggleEditLinkedUser(); $event.preventDefault()"
+                        (click)="
+                          toggleEditLinkedUser(); $event.preventDefault()
+                        "
                         class="ml-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                         >Edit</a
                       >
@@ -298,22 +297,22 @@ interface SeriesPenaltyGroup {
                   </dd>
                 }
               </div>
-              @if (driver()?.externalId) {
-                <div>
-                  <dt class="text-sm text-gray-500 dark:text-gray-400">
-                    External ID
-                  </dt>
-                  <dd class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ driver()?.externalId }}
-                  </dd>
-                </div>
-              }
+            }
+            @if (detailExternalId()) {
+              <div>
+                <dt class="text-sm text-gray-500 dark:text-gray-400">
+                  External ID
+                </dt>
+                <dd class="font-medium text-gray-900 dark:text-gray-100">
+                  {{ detailExternalId() }}
+                </dd>
+              </div>
             }
           </dl>
         </app-card>
 
         <!-- Staff Notes - User Mode Only -->
-        @if (!isDriverMode() && canViewStaffNotes()) {
+        @if (showStaffNotesSection()) {
           <app-card>
             <label class="label">Staff Notes</label>
             <textarea
@@ -339,7 +338,7 @@ interface SeriesPenaltyGroup {
         }
 
         <!-- Visible Series Profiles - User Mode Only -->
-        @if (!isDriverMode()) {
+        @if (showVisibleSeriesProfilesSection()) {
           <app-card>
             <label class="label">Visible Series Profiles</label>
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -401,9 +400,7 @@ interface SeriesPenaltyGroup {
                     <div class="flex items-center gap-2">
                       <select
                         class="input flex-1"
-                        [ngModel]="
-                          pendingDriverClass()[profile.driverId] || ''
-                        "
+                        [ngModel]="pendingDriverClass()[profile.driverId] || ''"
                         (ngModelChange)="
                           setPendingDriverClass(profile.driverId, $event)
                         "
@@ -423,23 +420,23 @@ interface SeriesPenaltyGroup {
                       <app-button
                         variant="primary"
                         size="sm"
-                        (onClick)="
-                          saveInlineDriverClass(profile.driverId)
-                        "
+                        (onClick)="saveInlineDriverClass(profile.driverId)"
                         >Save</app-button
                       >
                       <app-button
                         variant="secondary"
                         size="sm"
-                        (onClick)="
-                          cancelEditDriverClass(profile.driverId)
-                        "
+                        (onClick)="cancelEditDriverClass(profile.driverId)"
                         >Cancel</app-button
                       >
                     </div>
                   } @else {
                     <p class="font-medium text-gray-900 dark:text-gray-100">
-                      {{ profile.driverClassName || profile.driverClass || "No class" }}
+                      {{
+                        profile.driverClassName ||
+                          profile.driverClass ||
+                          "No class"
+                      }}
                       @if (canManageProfiles()) {
                         <a
                           href="#"
@@ -472,26 +469,19 @@ interface SeriesPenaltyGroup {
                           profile.accumulatedLicensePoints
                         "
                         (ngModelChange)="
-                          setPendingLicensePoints(
-                            profile.driverId,
-                            $event
-                          )
+                          setPendingLicensePoints(profile.driverId, $event)
                         "
                       />
                       <app-button
                         variant="primary"
                         size="sm"
-                        (onClick)="
-                          saveInlineLicensePoints(profile.driverId)
-                        "
+                        (onClick)="saveInlineLicensePoints(profile.driverId)"
                         >Save</app-button
                       >
                       <app-button
                         variant="secondary"
                         size="sm"
-                        (onClick)="
-                          cancelEditLicensePoints(profile.driverId)
-                        "
+                        (onClick)="cancelEditLicensePoints(profile.driverId)"
                         >Cancel</app-button
                       >
                     </div>
@@ -512,7 +502,7 @@ interface SeriesPenaltyGroup {
                     </p>
                   }
                   @if (
-                    !isDriverMode() &&
+                    !profile._isSingleDriver &&
                     (editingDriverClass()[profile.driverId] ||
                       editingLicensePoints()[profile.driverId])
                   ) {
@@ -541,19 +531,15 @@ interface SeriesPenaltyGroup {
                 <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">
                   Penalty History
                 </h4>
-                @if (
-                  isDriverMode()
-                    ? !stats()?.finalizedReports
-                    : !profile.penalties.length
-                ) {
+                @if (hasNoPenaltyHistory(profile)) {
                   <p class="text-sm text-gray-500 dark:text-gray-400">
                     No finalized penalties found for this
-                    {{ isDriverMode() ? "driver" : "series profile" }}.
+                    {{ penaltyHistorySubject(profile) }}.
                   </p>
                 } @else {
                   <div class="space-y-2">
                     @for (
-                      penalty of (isDriverMode() ? penaltyHistory() : profile.penalties);
+                      penalty of penaltyHistoryItems(profile);
                       track penalty.reportId
                     ) {
                       <a
@@ -572,7 +558,13 @@ interface SeriesPenaltyGroup {
                             </p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">
                               {{ penalty.eventName }} - Event
-                              {{ penalty.eventNumber }} / {{ penalty.sessionName || (penalty.raceNumber ? ("Race " + penalty.raceNumber) : "Session") }}
+                              {{ penalty.eventNumber }} /
+                              {{
+                                penalty.sessionName ||
+                                  (penalty.raceNumber
+                                    ? "Race " + penalty.raceNumber
+                                    : "Session")
+                              }}
                             </p>
                           </div>
                           <span
@@ -590,7 +582,7 @@ interface SeriesPenaltyGroup {
         </div>
 
         <!-- Series Penalties - Driver Mode Only -->
-        @if (isDriverMode()) {
+        @if (showSeriesPenaltiesSection()) {
           <app-card title="Series Penalties">
             <div class="space-y-4">
               @if (seriesOptions().length > 1) {
@@ -633,9 +625,7 @@ interface SeriesPenaltyGroup {
                     @if (getSeriesPenalties(seriesGroup.seriesId).length > 0) {
                       <div class="overflow-x-auto">
                         <table class="w-full text-sm">
-                          <thead
-                            class="bg-gray-50 dark:bg-gray-800"
-                          >
+                          <thead class="bg-gray-50 dark:bg-gray-800">
                             <tr class="text-left">
                               <th
                                 class="px-4 py-2 font-medium text-gray-500 cursor-pointer hover:text-gray-700 align-middle leading-tight dark:text-gray-400 dark:hover:text-gray-200"
@@ -738,10 +728,14 @@ interface SeriesPenaltyGroup {
                             class="divide-y divide-gray-100 dark:divide-gray-800"
                           >
                             @for (
-                              penalty of getSeriesPenalties(seriesGroup.seriesId);
+                              penalty of getSeriesPenalties(
+                                seriesGroup.seriesId
+                              );
                               track penalty._id
                             ) {
-                              <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                              <tr
+                                class="hover:bg-gray-50 dark:hover:bg-gray-800"
+                              >
                                 <td
                                   class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100"
                                 >
@@ -768,7 +762,9 @@ interface SeriesPenaltyGroup {
                                       >Served</app-badge
                                     >
                                   } @else {
-                                    <app-badge variant="danger">Active</app-badge>
+                                    <app-badge variant="danger"
+                                      >Active</app-badge
+                                    >
                                   }
                                 </td>
                                 <td class="px-4 py-3">
@@ -856,9 +852,127 @@ export class DriverUserDetailComponent implements OnInit {
   pendingLinkedUserId = signal("");
   savingLinkedUser = signal(false);
 
-  readonly isDriverMode = computed(() =>
-    !!this._driverId() && !this._userId()
+  readonly isDriverMode = computed(() => !!this._driverId() && !this._userId());
+  readonly isUserMode = computed(() => !this.isDriverMode());
+  readonly detailNotFoundMessage = computed(() =>
+    this.isDriverMode() ? "Driver not found." : "User profile not found.",
   );
+  readonly detailAvatarNumber = computed<number | null>(() => {
+    if (!this.isDriverMode()) return null;
+    return this.driver()?.driverNumber ?? null;
+  });
+  readonly linkedOfficialNameForDriver = computed<string | null>(() => {
+    if (!this.isDriverMode()) return null;
+
+    const currentDriver = this.driver();
+    if (!currentDriver?.userId) return null;
+
+    const officialName = this.linkedUser()?.officialName;
+    return officialName?.trim() ? officialName : null;
+  });
+  readonly detailTitle = computed(() => {
+    if (this.isDriverMode()) {
+      const currentDriver = this.driver();
+      return (
+        this.linkedOfficialNameForDriver() ??
+        currentDriver?.displayName ??
+        currentDriver?.driverName ??
+        ""
+      );
+    }
+    return this.profile()?.user?.officialName ?? "";
+  });
+  readonly detailSubtitle = computed(() => {
+    if (this.isDriverMode()) {
+      const currentDriver = this.driver();
+      const displayName = this.detailTitle();
+      if (
+        currentDriver?.driverName &&
+        displayName !== currentDriver.driverName
+      ) {
+        return currentDriver.driverName;
+      }
+      return null;
+    }
+  });
+  readonly detailMetaLine = computed(() => {
+    if (this.isDriverMode()) return null;
+
+    const discordUsername = this.profile()?.user?.discordUsername;
+    return discordUsername ? `Discord: ${discordUsername}` : null;
+  });
+  readonly detailDiscordUsername = computed(() => {
+    if (this.isDriverMode()) {
+      return this.driver()?.username ?? "Not set";
+    }
+    return this.profile()?.user?.discordUsername || "Not set";
+  });
+  readonly detailOfficialName = computed(() => {
+    if (this.isDriverMode()) {
+      return (
+        this.linkedOfficialNameForDriver() ??
+        this.driver()?.officialName ??
+        this.driver()?.driverName ??
+        "Not set"
+      );
+    }
+    return this.profile()?.user?.officialName || "Not set";
+  });
+  readonly detailFullName = computed(() => {
+    if (this.isDriverMode()) {
+      return this.detailOfficialName();
+    }
+    return (
+      this.profile()?.user?.officialName ||
+      this.profile()?.user?.name ||
+      "Not set"
+    );
+  });
+  readonly primaryUserSeriesProfile = computed(() => {
+    if (this.isDriverMode()) return null;
+
+    const allProfiles = this.profile()?.profiles ?? [];
+    if (!allProfiles.length) return null;
+
+    const selected = this.selectedDriverIds();
+    if (!selected.length) return allProfiles[0];
+
+    return (
+      allProfiles.find((p: any) => selected.includes(p.driverId)) ??
+      allProfiles[0]
+    );
+  });
+  readonly detailDriverNumber = computed(() => {
+    if (this.isDriverMode()) {
+      return this.driver()?.driverNumber ?? null;
+    }
+    return this.primaryUserSeriesProfile()?.driverNumber ?? null;
+  });
+  readonly detailExternalId = computed(() => {
+    if (this.isDriverMode()) {
+      return this.driver()?.externalId ?? null;
+    }
+    return this.primaryUserSeriesProfile()?.externalId ?? null;
+  });
+  readonly showLinkedUserField = computed(() => this.isDriverMode());
+  readonly showLinkedDriversField = computed(() => {
+    if (!this.isUserMode()) return false;
+    return (this.profile()?.profiles?.length ?? 0) > 0;
+  });
+  readonly showStaffNotesSection = computed(
+    () => this.isUserMode() && this.canViewStaffNotes(),
+  );
+  readonly showVisibleSeriesProfilesSection = computed(() => this.isUserMode());
+  readonly showSeriesPenaltiesSection = computed(() => {
+    if (!this.isDriverMode()) return false;
+    return !this.driver()?.userId;
+  });
+  readonly editableOfficialName = computed(() => {
+    if (this.isDriverMode()) {
+      return this.linkedUser()?.officialName ?? "";
+    }
+    return this.profile()?.user?.officialName ?? "";
+  });
 
   // Driver Mode signals
   driver = signal<any>(null);
@@ -898,7 +1012,17 @@ export class DriverUserDetailComponent implements OnInit {
   profilesToShow = computed(() => {
     if (this.isDriverMode()) {
       const drv = this.driver();
-      return drv ? [{ ...drv, _isSingleDriver: true }] : [];
+      if (!drv) return [];
+
+      const preferredDisplayName = this.linkedOfficialNameForDriver();
+      return [
+        {
+          ...drv,
+          displayName: preferredDisplayName ?? drv.displayName,
+          officialName: preferredDisplayName ?? drv.officialName,
+          _isSingleDriver: true,
+        },
+      ];
     }
     return this.visibleProfiles();
   });
@@ -908,19 +1032,19 @@ export class DriverUserDetailComponent implements OnInit {
     return {
       reportsFiledCount: profiles.reduce(
         (sum: number, p: any) => sum + (p.reportsFiledCount || 0),
-        0
+        0,
       ),
       reportsAgainstCount: profiles.reduce(
         (sum: number, p: any) => sum + (p.reportsAgainstCount || 0),
-        0
+        0,
       ),
       pendingReports: profiles.reduce(
         (sum: number, p: any) => sum + (p.pendingReports || 0),
-        0
+        0,
       ),
       finalizedReports: profiles.reduce(
         (sum: number, p: any) => sum + (p.finalizedReports || 0),
-        0
+        0,
       ),
     };
   });
@@ -1070,7 +1194,7 @@ export class DriverUserDetailComponent implements OnInit {
 
     const driver = await this.convex.query(
       this.convex.api.drivers.getByIdWithUser,
-      { driverId: this._driverId() as any }
+      { driverId: this._driverId() as any },
     );
 
     this.driver.set(driver);
@@ -1078,14 +1202,14 @@ export class DriverUserDetailComponent implements OnInit {
 
     const stats = await this.convex.query(
       this.convex.api.drivers.getDriverStats,
-      { driverId: this._driverId() as any }
+      { driverId: this._driverId() as any },
     );
     this.stats.set(stats);
 
     if (driver.championshipId) {
       const classes = await this.convex.query(
         this.convex.api.drivers.getDriverClassesBySeries,
-        { seriesId: driver.championshipId as any }
+        { seriesId: driver.championshipId as any },
       );
       this.classOptionsBySeries.set({ [driver.championshipId]: classes || [] });
     } else {
@@ -1102,7 +1226,7 @@ export class DriverUserDetailComponent implements OnInit {
       {
         driverId: this._driverId() as any,
         championshipId: driver.championshipId ?? undefined,
-      }
+      },
     );
     this.penaltyHistory.set(history || []);
 
@@ -1118,7 +1242,7 @@ export class DriverUserDetailComponent implements OnInit {
       {
         userId: this._userId() as any,
         currentUserId: this.authService.getUserId() ?? undefined,
-      }
+      },
     );
     this.profile.set(profile);
     this.staffNoteDraft.set(profile?.user?.note || "");
@@ -1146,7 +1270,7 @@ export class DriverUserDetailComponent implements OnInit {
           },
         );
         return [seriesId, options || []] as const;
-      })
+      }),
     );
 
     const map: Record<string, any[]> = {};
@@ -1157,7 +1281,7 @@ export class DriverUserDetailComponent implements OnInit {
   }
 
   private async loadSeriesDataForProfiles(
-    seriesProfiles: any[]
+    seriesProfiles: any[],
   ): Promise<void> {
     const uniqueSeriesIds = [
       ...new Set(seriesProfiles.map((p) => p.seriesId).filter(Boolean)),
@@ -1182,7 +1306,7 @@ export class DriverUserDetailComponent implements OnInit {
   private async loadSeries(): Promise<void> {
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
-      {}
+      {},
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);
 
@@ -1205,7 +1329,7 @@ export class DriverUserDetailComponent implements OnInit {
           seriesId: this.selectedSeriesId
             ? (this.selectedSeriesId as any)
             : undefined,
-        }
+        },
       );
       this.penalties.set(data || []);
     } catch (error: any) {
@@ -1229,7 +1353,7 @@ export class DriverUserDetailComponent implements OnInit {
         {
           id: penaltyId as any,
           servedBy: userId,
-        }
+        },
       );
 
       await this.loadPenalties();
@@ -1323,7 +1447,7 @@ export class DriverUserDetailComponent implements OnInit {
           driverId: driverId as any,
           newPoints: points,
           userId: currentUserId,
-        }
+        },
       );
       this.toast.success("License points updated");
       await this.load();
@@ -1335,6 +1459,21 @@ export class DriverUserDetailComponent implements OnInit {
 
   formatDate(value: number): string {
     return new Date(value).toLocaleDateString();
+  }
+
+  penaltyHistoryItems(seriesProfile: any): any[] {
+    if (seriesProfile?._isSingleDriver) {
+      return this.penaltyHistory();
+    }
+    return seriesProfile?.penalties || [];
+  }
+
+  hasNoPenaltyHistory(seriesProfile: any): boolean {
+    return this.penaltyHistoryItems(seriesProfile).length === 0;
+  }
+
+  penaltyHistorySubject(seriesProfile: any): string {
+    return seriesProfile?._isSingleDriver ? "driver" : "series profile";
   }
 
   toggleEditDriverClass(driverId: string): void {
@@ -1419,12 +1558,7 @@ export class DriverUserDetailComponent implements OnInit {
   }
 
   toggleEditOfficialName(): void {
-    if (this.isDriverMode()) {
-      const linkedUser = this.linkedUser();
-      this.pendingOfficialName.set(linkedUser?.officialName || "");
-    } else {
-      this.pendingOfficialName.set(this.profile()?.user?.officialName || "");
-    }
+    this.pendingOfficialName.set(this.editableOfficialName());
     this.editingOfficialName.set(true);
   }
 
@@ -1498,11 +1632,14 @@ export class DriverUserDetailComponent implements OnInit {
 
     this.savingLinkedUser.set(true);
     try {
-      await this.convex.mutation(this.convex.api.drivers.updateUserAssociation, {
-        driverId: driverId as any,
-        newUserId: newUserId ? (newUserId as any) : undefined,
-        userId: currentUserId,
-      });
+      await this.convex.mutation(
+        this.convex.api.drivers.updateUserAssociation,
+        {
+          driverId: driverId as any,
+          newUserId: newUserId ? (newUserId as any) : undefined,
+          userId: currentUserId,
+        },
+      );
 
       this.toast.success("Linked user updated");
       this.editingLinkedUser.set(false);
@@ -1562,7 +1699,7 @@ export class DriverUserDetailComponent implements OnInit {
           driverId: driverId as any,
           newPoints: points,
           userId: currentUserId,
-        }
+        },
       );
 
       this.toast.success("License points updated");
@@ -1613,11 +1750,13 @@ export class DriverUserDetailComponent implements OnInit {
 
   getSeriesPenalties(seriesId: string): SeriesPenaltyRow[] {
     const group = this.filteredAndSortedSeriesPenalties().find(
-      (g) => g.seriesId === seriesId
+      (g) => g.seriesId === seriesId,
     );
     if (!group) return [];
 
-    const column = this.seriesSortColumn()[seriesId] as keyof SeriesPenaltyRow | undefined;
+    const column = this.seriesSortColumn()[seriesId] as
+      | keyof SeriesPenaltyRow
+      | undefined;
     const direction = this.seriesSortDirection()[seriesId];
 
     if (!column) return group.penalties;
