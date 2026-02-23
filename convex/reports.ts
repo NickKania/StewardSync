@@ -6,6 +6,17 @@ import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { requireRole } from "./lib/auth";
 import { reportCounter } from "./reportCounter";
+import { recordChanges, compareAndBuildChanges } from "./lib/audit";
+
+const REPORT_AUDIT_FIELDS = [
+  "isSelfReport",
+  "isAdjusted",
+  "adjustedReason",
+  "appliedPenalty",
+  "atFaultDriverId",
+  "finalDecision",
+  "isNoDriverAtFault",
+] as const;
 
 export const list = query({
   args: {
@@ -567,6 +578,32 @@ export const finalize = mutation({
       updatedAt: now,
     });
 
+    const finalizeValues = {
+      isSelfReport: args.isSelfReport,
+      isAdjusted: args.isAdjusted,
+      adjustedReason: args.adjustedReason,
+      appliedPenalty: args.appliedPenalty,
+      atFaultDriverId: effectiveAtFaultDriverId,
+      finalDecision: args.finalDecision,
+      isNoDriverAtFault,
+    };
+
+    const auditChanges = compareAndBuildChanges(
+      report as any,
+      finalizeValues,
+      REPORT_AUDIT_FIELDS as any,
+    );
+
+    if (auditChanges.length > 0) {
+      await recordChanges(ctx, {
+        tableName: "reports",
+        documentId: args.reportId.toString(),
+        changes: auditChanges,
+        changedByUserId: args.userId,
+        source: "manual",
+      });
+    }
+
     if (effectiveAtFaultDriverId && appliedPenaltyDoc) {
       const atFaultDriver = await ctx.db.get(effectiveAtFaultDriverId);
       const pointsToAdd = appliedPenaltyDoc.licensePoints ?? 0;
@@ -748,8 +785,7 @@ export const updateFinalizedDecision = mutation({
 
     await requireRole(ctx, args.userId, ["head_steward", "league_manager"]);
 
-    const now = Date.now();
-    await ctx.db.patch(args.reportId, {
+    const updates = {
       finalDecision: args.finalDecision,
       appliedPenalty: args.appliedPenalty,
       atFaultDriverId: args.isNoDriverAtFault
@@ -758,11 +794,32 @@ export const updateFinalizedDecision = mutation({
       isNoDriverAtFault: args.isNoDriverAtFault ?? false,
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
+    };
+
+    const now = Date.now();
+    await ctx.db.patch(args.reportId, {
+      ...updates,
       isEdited: true,
       editedBy: args.userId,
       editedAt: now,
       updatedAt: now,
     });
+
+    const auditChanges = compareAndBuildChanges(
+      report as any,
+      updates as any,
+      REPORT_AUDIT_FIELDS as any,
+    );
+
+    if (auditChanges.length > 0) {
+      await recordChanges(ctx, {
+        tableName: "reports",
+        documentId: args.reportId.toString(),
+        changes: auditChanges,
+        changedByUserId: args.userId,
+        source: "manual",
+      });
+    }
 
     return success(args.reportId);
   },
@@ -1241,6 +1298,7 @@ export const getDriverIndividualPenalties = query({
           turn: report.turn,
           appliedPenalty,
           finalDecision: report.finalDecision,
+          isSelfReport: report.isSelfReport ?? false,
         };
       }),
     );

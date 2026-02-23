@@ -10,12 +10,14 @@
 
 import type * as actions from "../actions.js";
 import type * as auth from "../auth.js";
+import type * as changeHistory from "../changeHistory.js";
 import type * as cleanup from "../cleanup.js";
 import type * as debug from "../debug.js";
 import type * as driverClasses from "../driverClasses.js";
 import type * as driverSeriesPenalties from "../driverSeriesPenalties.js";
 import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
+import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_formatting from "../lib/formatting.js";
@@ -48,12 +50,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   auth: typeof auth;
+  changeHistory: typeof changeHistory;
   cleanup: typeof cleanup;
   debug: typeof debug;
   driverClasses: typeof driverClasses;
   driverSeriesPenalties: typeof driverSeriesPenalties;
   drivers: typeof drivers;
   events: typeof events;
+  "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
   "lib/errors": typeof lib_errors;
   "lib/formatting": typeof lib_formatting;

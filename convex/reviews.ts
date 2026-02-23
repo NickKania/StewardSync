@@ -3,6 +3,16 @@ import { v } from "convex/values";
 import { checkUserDriverConflict } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
+import { recordChanges, compareAndBuildChanges } from "./lib/audit";
+
+const REVIEW_AUDIT_FIELDS = [
+  "isSelfReport",
+  "isAdjusted",
+  "adjustedReason",
+  "recommendedPenalty",
+  "atFaultDriverId",
+  "isNoDriverAtFault",
+] as const;
 
 export const list = query({
   args: {},
@@ -279,6 +289,28 @@ export const create = mutation({
 
       await ctx.db.patch(primaryReviewId, { linkedReviewId: secondReviewId });
 
+      const initialChanges: { fieldName: string; fromValue: unknown; toValue: unknown }[] = [];
+      for (const field of REVIEW_AUDIT_FIELDS) {
+        const value = (reviewData as any)[field];
+        if (value !== undefined) {
+          initialChanges.push({
+            fieldName: field,
+            fromValue: undefined,
+            toValue: value,
+          });
+        }
+      }
+
+      if (initialChanges.length > 0) {
+        await recordChanges(ctx, {
+          tableName: "reviews",
+          documentId: primaryReviewId.toString(),
+          changes: initialChanges,
+          changedByUserId: args.userId,
+          source: "manual",
+        });
+      }
+
       if (args.videoTimestamp) {
         await ctx.db.patch(args.reportId, {
           videoTimestamp: args.videoTimestamp,
@@ -292,6 +324,28 @@ export const create = mutation({
 
     // Single review
     const reviewId = await ctx.db.insert("reviews", reviewData);
+
+    const initialChanges: { fieldName: string; fromValue: unknown; toValue: unknown }[] = [];
+    for (const field of REVIEW_AUDIT_FIELDS) {
+      const value = (reviewData as any)[field];
+      if (value !== undefined) {
+        initialChanges.push({
+          fieldName: field,
+          fromValue: undefined,
+          toValue: value,
+        });
+      }
+    }
+
+    if (initialChanges.length > 0) {
+      await recordChanges(ctx, {
+        tableName: "reviews",
+        documentId: reviewId.toString(),
+        changes: initialChanges,
+        changedByUserId: args.userId,
+        source: "manual",
+      });
+    }
 
     if (args.videoTimestamp) {
       await ctx.db.patch(args.reportId, {
@@ -365,10 +419,25 @@ export const update = mutation({
       cleanUpdates["atFaultDriverId"] = undefined;
     }
 
+    const auditChanges = compareAndBuildChanges(
+      review as any,
+      cleanUpdates,
+      REVIEW_AUDIT_FIELDS as any,
+    );
+
     await ctx.db.patch(reviewId, {
       ...cleanUpdates,
       updatedAt: Date.now(),
     });
+
+    if (auditChanges.length > 0) {
+      await recordChanges(ctx, {
+        tableName: "reviews",
+        documentId: reviewId.toString(),
+        changes: auditChanges,
+        source: "manual",
+      });
+    }
 
     return reviewId;
   },
@@ -452,10 +521,25 @@ export const updateWithSecondSteward = mutation({
       cleanUpdates["atFaultDriverId"] = undefined;
     }
 
+    const auditChanges = compareAndBuildChanges(
+      review as any,
+      cleanUpdates,
+      REVIEW_AUDIT_FIELDS as any,
+    );
+
     await ctx.db.patch(args.reviewId, {
       ...cleanUpdates,
       updatedAt: Date.now(),
     });
+
+    if (auditChanges.length > 0) {
+      await recordChanges(ctx, {
+        tableName: "reviews",
+        documentId: args.reviewId.toString(),
+        changes: auditChanges,
+        source: "manual",
+      });
+    }
 
     let linkedReviewId = review.linkedReviewId ?? null;
     if (linkedReviewId) {

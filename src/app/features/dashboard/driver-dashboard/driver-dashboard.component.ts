@@ -10,6 +10,7 @@ import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { TruncateTextComponent } from "@shared/components/truncate-text/truncate-text.component";
 import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 import { Id } from "@convex/_generated/dataModel";
+import { Penalty } from "@app/core/models";
 
 @Component({
   selector: "app-driver-dashboard",
@@ -279,7 +280,12 @@ import { Id } from "@convex/_generated/dataModel";
                               {{ penalty.event?.trackName }}
                             </td>
                             <td class="py-3 text-gray-700 dark:text-gray-300">
-                              {{ penalty.race?.sessionName || (penalty.race?.raceNumber ? ("Race " + penalty.race?.raceNumber) : "Session") }}
+                              {{
+                                penalty.race?.sessionName ||
+                                  (penalty.race?.raceNumber
+                                    ? "Race " + penalty.race?.raceNumber
+                                    : "Session")
+                              }}
                             </td>
                             <td class="py-3 text-gray-700 dark:text-gray-300">
                               {{ penalty.lap }}
@@ -301,7 +307,16 @@ import { Id } from "@convex/_generated/dataModel";
                               >
                             </td>
                             <td class="py-3 text-gray-700 dark:text-gray-300">
-                              {{ penalty.appliedPenalty?.timePenalty }}s
+                              <app-badge
+                                [variant]="
+                                  penalty.isSelfReport ? 'success' : 'default'
+                                "
+                              >
+                                {{ getTimePenalty(penalty) }}s
+                                @if (penalty.isSelfReport) {
+                                  (SR)
+                                }
+                              </app-badge>
                             </td>
                             <td class="py-3">
                               <app-truncate-text
@@ -499,6 +514,18 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         loadingIndividualPenalties: false,
       });
     }
+  }
+
+  getTimePenalty(penalty: any): number {
+    let timePenalty =
+      penalty.lap === "1"
+        ? penalty.appliedPenalty.timePenaltyLap1
+        : penalty.appliedPenalty.timePenalty;
+    if (penalty.isSelfReport) {
+      timePenalty -= penalty.appliedPenalty.selfReportReduction;
+    }
+
+    return timePenalty;
   }
 
   getPenaltyStatusLabel(penalty: any): string {
