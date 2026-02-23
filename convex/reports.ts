@@ -1298,6 +1298,7 @@ export const getDriverIndividualPenalties = query({
           turn: report.turn,
           appliedPenalty,
           finalDecision: report.finalDecision,
+          isSelfReport: report.isSelfReport ?? false,
         };
       }),
     );

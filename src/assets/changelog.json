@@ -20,6 +20,24 @@
         "Rough mobile support",
         "Add 'Finalized By' to report detail view"
       ]
+    },
+    {
+      "version": "1.2.0",
+      "date": "2026-02-19",
+      "changes": [
+        "Fix finalzation not working on submit",
+        "Add report information to finalization form",
+        "Remove form field overrides",
+        "New: UI changes for review and report interfaces"
+      ]
+    },
+    {
+      "version": "1.2.1",
+      "date": "2026-02-23",
+      "changes": [
+        "Add auditing to more editing flows for reports/reviews",
+        "Fix time penalty display bug with driver dashboard's individual penalties"
+      ]
     }
   ]
 }
