@@ -362,6 +362,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     reviewId: v.id("reviews"),
+    userId: v.id("users"),
     incidentDescription: v.optional(v.string()),
     reviewNotes: v.optional(v.string()),
     candidateForStandardization: v.optional(v.boolean()),
@@ -374,7 +375,7 @@ export const update = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { reviewId, ...updates } = args;
+    const { reviewId, userId, ...updates } = args;
 
     const review = await ctx.db.get(reviewId);
     if (!review) {
@@ -435,6 +436,7 @@ export const update = mutation({
         tableName: "reviews",
         documentId: reviewId.toString(),
         changes: auditChanges,
+        changedByUserId: userId,
         source: "manual",
       });
     }
@@ -446,6 +448,7 @@ export const update = mutation({
 export const updateWithSecondSteward = mutation({
   args: {
     reviewId: v.id("reviews"),
+    userId: v.id("users"),
     secondStewardId: v.id("users"),
     incidentDescription: v.optional(v.string()),
     reviewNotes: v.optional(v.string()),
@@ -537,6 +540,7 @@ export const updateWithSecondSteward = mutation({
         tableName: "reviews",
         documentId: args.reviewId.toString(),
         changes: auditChanges,
+        changedByUserId: args.userId,
         source: "manual",
       });
     }

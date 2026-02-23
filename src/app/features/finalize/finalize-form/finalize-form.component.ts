@@ -892,6 +892,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         if (latestReview?._id) {
           await this.convex.mutation(this.convex.api.reviews.update, {
             reviewId: latestReview._id,
+            userId,
             candidateForStandardization:
               formValue.candidateForStandardization || false,
             isAdjusted: formValue.isAdjusted || false,

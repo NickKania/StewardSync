@@ -518,7 +518,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   rejectionReason = "";
   secondStewardUnsubscribe: (() => void) | null = null;
   primaryActionLabel = computed(() =>
-    this.isReportingUser() ? "Save Changes" : "Submit Review",
+    this.currentUserReview() ? "Save Changes" : "Submit Review",
   );
   selectedPenaltyAllowsNoDriver = computed(() => {
     const selectedPenaltyId = this.selectedRecommendedPenaltyId();
@@ -934,10 +934,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       const isNoDriverAtFault =
         formValue.atFaultDriverId === this.NO_DRIVER_OPTION_VALUE;
       const currentUserReview = this.currentUserReview();
-      const useUpdate = this.isReportingUser() && Boolean(currentUserReview);
+      const useUpdate = Boolean(currentUserReview);
 
       const updatePayload = {
         reviewId: currentUserReview?._id,
+        userId,
         incidentDescription: formValue.incidentDescription,
         reviewNotes: formValue.reviewNotes,
         recommendedPenalty: formValue.recommendedPenalty || undefined,
