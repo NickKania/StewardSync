@@ -4,14 +4,12 @@ import {
   OnInit,
   OnDestroy,
   signal,
-  computed,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
 import { CardComponent } from "@shared/components/card/card.component";
-import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { TimeAgoPipe } from "@shared/pipes/date-format.pipe";
@@ -23,44 +21,12 @@ import { TimeAgoPipe } from "@shared/pipes/date-format.pipe";
     CommonModule,
     RouterLink,
     CardComponent,
-    ButtonComponent,
     BadgeComponent,
     LoadingComponent,
     TimeAgoPipe,
   ],
   template: `
     <div class="space-y-6">
-      <div
-        class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
-      >
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            My Reviews
-          </h1>
-          <p class="text-gray-500 mt-1 dark:text-gray-400">
-            Your submitted steward reviews
-          </p>
-        </div>
-        <a routerLink="/reviews">
-          <app-button variant="secondary">
-            <svg
-              class="w-4 h-4 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              ></path>
-            </svg>
-            Back to Queue
-          </app-button>
-        </a>
-      </div>
-
       @if (loading()) {
         <app-loading text="Loading your reviews..." />
       } @else if (reviews().length > 0) {
@@ -161,9 +127,6 @@ import { TimeAgoPipe } from "@shared/pipes/date-format.pipe";
             <p class="text-sm text-gray-400 mt-1 dark:text-gray-500">
               Reviews you submit will appear here
             </p>
-            <a routerLink="/reviews" class="mt-4 inline-block">
-              <app-button variant="primary">Go to Review Queue</app-button>
-            </a>
           </div>
         </app-card>
       }

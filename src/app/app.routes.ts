@@ -122,10 +122,8 @@ export const routes: Routes = [
       },
       {
         path: "my-reviews",
-        loadComponent: () =>
-          import("@features/reviews/my-reviews/my-reviews.component").then(
-            (m) => m.MyReviewsComponent,
-          ),
+        redirectTo: "/reviews?tab=my-reviews",
+        pathMatch: "full",
       },
       {
         path: ":reportId",
