@@ -363,6 +363,7 @@ export const create = mutation({
     lap: v.string(),
     turn: v.string(),
     description: v.string(),
+    videoLink: v.optional(v.string()),
     videoTimestamp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -402,6 +403,17 @@ export const create = mutation({
       throw new UserFacingError("Reports have been locked for this series");
     }
 
+    const trimmedVideoLink = args.videoLink?.trim();
+    const trimmedVideoTimestamp = args.videoTimestamp?.trim();
+    if (
+      series?.requireVideoEvidence &&
+      (!trimmedVideoLink || !trimmedVideoTimestamp)
+    ) {
+      throw new UserFacingError(
+        "Video link and video timestamp are required for this series",
+      );
+    }
+
     // Generate next reportId using sharded counter
     await reportCounter.inc(ctx, "reportId");
     const nextReportId = await reportCounter.count(ctx, "reportId");
@@ -416,7 +428,8 @@ export const create = mutation({
       lap: args.lap,
       turn: args.turn,
       description: args.description,
-      videoTimestamp: args.videoTimestamp,
+      videoLink: trimmedVideoLink,
+      videoTimestamp: trimmedVideoTimestamp,
       reportDate: now,
       status: "pending",
       isFinalized: false,
@@ -437,6 +450,7 @@ export const update = mutation({
     lap: v.optional(v.string()),
     turn: v.optional(v.string()),
     description: v.optional(v.string()),
+    videoLink: v.optional(v.string()),
     videoTimestamp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -471,8 +485,37 @@ export const update = mutation({
       }
     }
 
+    const nextEvent = await ctx.db.get(nextEventId);
+    if (!nextEvent) {
+      throw new UserFacingError("Event not found");
+    }
+    const nextSeries = await ctx.db.get(nextEvent.seriesId);
+
+    const nextVideoLink =
+      updates.videoLink !== undefined
+        ? updates.videoLink.trim()
+        : report.videoLink?.trim();
+    const nextVideoTimestamp =
+      updates.videoTimestamp !== undefined
+        ? updates.videoTimestamp.trim()
+        : report.videoTimestamp?.trim();
+
+    if (
+      nextSeries?.requireVideoEvidence &&
+      (!nextVideoLink || !nextVideoTimestamp)
+    ) {
+      throw new UserFacingError(
+        "Video link and video timestamp are required for this series",
+      );
+    }
+
     const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined),
+      Object.entries({
+        ...updates,
+        videoLink: updates.videoLink !== undefined ? nextVideoLink : undefined,
+        videoTimestamp:
+          updates.videoTimestamp !== undefined ? nextVideoTimestamp : undefined,
+      }).filter(([_, v]) => v !== undefined),
     );
 
     await ctx.db.patch(reportId, {
@@ -839,6 +882,7 @@ export const createBySteward = mutation({
     recommendedPenalty: v.string(),
     atFaultDriverId: v.optional(v.id("drivers")),
     isNoDriverAtFault: v.optional(v.boolean()),
+    videoLink: v.optional(v.string()),
     videoTimestamp: v.optional(v.string()),
     secondStewardId: v.optional(v.id("users")),
     isSelfReport: v.optional(v.boolean()),
@@ -914,6 +958,7 @@ export const createBySteward = mutation({
       lap: args.lap,
       turn: args.turn,
       description: args.description ?? args.incidentDescription,
+      videoLink: args.videoLink,
       videoTimestamp: args.videoTimestamp,
       reportDate: now,
       status: "pending",

@@ -19,6 +19,8 @@ export interface Report {
   isFinalized: boolean;
   isSelfReport?: boolean;
   isStewardReported?: boolean;
+  videoLink?: string;
+  videoTimestamp?: string;
   finalDecision?: string;
   appliedPenalty?: string;
   atFaultDriverId?: Id<'drivers'>;
@@ -52,10 +54,14 @@ export interface CreateReportDto {
   raceId: Id<'races'>;
   turn: string;
   description: string;
+  videoLink?: string;
+  videoTimestamp?: string;
 }
 
 export interface UpdateReportDto {
   reportId: Id<'reports'>;
   turn?: string;
   description?: string;
+  videoLink?: string;
+  videoTimestamp?: string;
 }

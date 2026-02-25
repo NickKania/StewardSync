@@ -258,17 +258,59 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 }
               </div>
 
+              <!-- Video link -->
+              <div>
+                <label class="label">
+                  Video Link @if (isVideoEvidenceRequired()) { * }
+                </label>
+                <input
+                  type="text"
+                  formControlName="videoLink"
+                  class="input"
+                  [class.input-error]="
+                    form.get('videoLink')?.invalid &&
+                    form.get('videoLink')?.touched
+                  "
+                  placeholder="https://..."
+                />
+                @if (
+                  form.get("videoLink")?.hasError("required") &&
+                  form.get("videoLink")?.touched
+                ) {
+                  <p class="mt-1 text-sm text-red-600">
+                    Video link is required for this series
+                  </p>
+                }
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                  Link to video submission for report
+                </p>
+              </div>
+
               <!-- Video timestamp -->
               <div>
-                <label class="label">Video/Replay Timestamp</label>
+                <label class="label">
+                  Video/Replay Timestamp @if (isVideoEvidenceRequired()) { * }
+                </label>
                 <input
                   type="text"
                   formControlName="videoTimestamp"
                   class="input"
+                  [class.input-error]="
+                    form.get('videoTimestamp')?.invalid &&
+                    form.get('videoTimestamp')?.touched
+                  "
                   placeholder="e.g., 1:23:45 or Lap 15, T3 Entry"
                 />
+                @if (
+                  form.get("videoTimestamp")?.hasError("required") &&
+                  form.get("videoTimestamp")?.touched
+                ) {
+                  <p class="mt-1 text-sm text-red-600">
+                    Video timestamp is required for this series
+                  </p>
+                }
                 <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
-                  Optional: Reference to video evidence
+                  Timestamp of incident
                 </p>
               </div>
             </div>
@@ -421,6 +463,20 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     return "";
   });
 
+  selectedSeries = computed(() => {
+    const selectedSeriesId = this.selectedSeriesId();
+    if (!selectedSeriesId) return null;
+    return (
+      this.series().find(
+        (series) => String(series._id) === String(selectedSeriesId),
+      ) || null
+    );
+  });
+
+  isVideoEvidenceRequired = computed(
+    () => this.selectedSeries()?.requireVideoEvidence === true,
+  );
+
   private unsubscribes: (() => void)[] = [];
 
   constructor() {
@@ -432,6 +488,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       lap: ["", [Validators.required]],
       turn: ["", [Validators.required]],
       description: ["", [Validators.required, Validators.minLength(20)]],
+      videoLink: [""],
       videoTimestamp: [""],
       createAnother: [false],
     });
@@ -482,6 +539,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       const data = seriesQuery.data();
       if (data) {
         this.series.set(data);
+        this.applyVideoFieldValidators(this.selectedSeriesId());
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkSeries));
@@ -520,6 +578,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
           if (event && event.seriesId) {
             this.selectedSeriesId.set(event.seriesId);
+            this.applyVideoFieldValidators(event.seriesId);
             await this.loadDriversBySeries(event.seriesId);
           }
 
@@ -531,6 +590,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
             lap: report.lap,
             turn: report.turn,
             description: report.description,
+            videoLink: report.videoLink || "",
             videoTimestamp: report.videoTimestamp || "",
           });
 
@@ -550,6 +610,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
   async onSeriesChange(seriesId: string): Promise<void> {
     this.selectedSeriesId.set(seriesId);
+    this.applyVideoFieldValidators(seriesId);
     this.form.get("reportedDriverId")?.setValue("");
     this.form.get("eventId")?.setValue("");
     this.form.get("raceId")?.setValue("");
@@ -654,6 +715,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       if (savedSeriesId) {
         this.form.patchValue({ seriesId: savedSeriesId });
         this.selectedSeriesId.set(savedSeriesId);
+        this.applyVideoFieldValidators(savedSeriesId);
         this.loadDriversBySeries(savedSeriesId);
       }
 
@@ -680,6 +742,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       const formValue = this.form.value;
       const lap = String(formValue.lap ?? "").trim();
       const turn = String(formValue.turn ?? "").trim();
+      const videoLink = String(formValue.videoLink ?? "").trim();
+      const videoTimestamp = String(formValue.videoTimestamp ?? "").trim();
 
       if (this.isEdit && this.id) {
         await this.convex.mutation(this.convex.api.reports.update, {
@@ -689,7 +753,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
           lap,
           turn,
           description: formValue.description,
-          videoTimestamp: formValue.videoTimestamp || undefined,
+          videoLink: videoLink || undefined,
+          videoTimestamp: videoTimestamp || undefined,
         });
         this.toast.success("Report updated successfully");
       } else {
@@ -706,7 +771,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
           lap,
           turn,
           description: formValue.description,
-          videoTimestamp: formValue.videoTimestamp || undefined,
+          videoLink: videoLink || undefined,
+          videoTimestamp: videoTimestamp || undefined,
         });
         this.toast.success("Report submitted successfully");
       }
@@ -746,6 +812,29 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
   cancel(): void {
     this.router.navigate(["/reports"]);
+  }
+
+  private applyVideoFieldValidators(seriesId: string): void {
+    const selectedSeries = this.series().find(
+      (series) => String(series._id) === String(seriesId),
+    );
+    const videoLinkControl = this.form.get("videoLink");
+    const videoTimestampControl = this.form.get("videoTimestamp");
+
+    if (selectedSeries?.requireVideoEvidence) {
+      videoLinkControl?.setValidators([Validators.required, Validators.pattern(/\S/)]);
+    } else {
+      videoLinkControl?.clearValidators();
+    }
+
+    if (selectedSeries?.requireVideoEvidence) {
+      videoTimestampControl?.setValidators([Validators.required, Validators.pattern(/\S/)]);
+    } else {
+      videoTimestampControl?.clearValidators();
+    }
+
+    videoLinkControl?.updateValueAndValidity({ emitEvent: false });
+    videoTimestampControl?.updateValueAndValidity({ emitEvent: false });
   }
 
   getSessionName(race: { sessionName?: string; raceNumber?: number }): string {

@@ -501,7 +501,8 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                         {{ report.event?.trackName }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ getSessionName(report.race) }}, Turn
+                        {{ getSessionName(report.race) }}, Lap {{ report.lap }},
+                        Turn
                         {{ report.turn }}
                       </p>
                     </td>
