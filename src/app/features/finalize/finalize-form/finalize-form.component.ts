@@ -356,6 +356,33 @@ import { User } from "@app/core/models";
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Video Link
+                  </dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    @if (report()?.videoLink) {
+                      <a
+                        [href]="report()?.videoLink"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        {{ report()?.videoLink }}
+                      </a>
+                    } @else {
+                      Not provided
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Video Timestamp
+                  </dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ report()?.videoTimestamp || "Not provided" }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
                     Reviews
                   </dt>
                   <dd class="font-medium text-gray-900 dark:text-gray-100">
@@ -892,6 +919,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
         if (latestReview?._id) {
           await this.convex.mutation(this.convex.api.reviews.update, {
             reviewId: latestReview._id,
+            userId,
             candidateForStandardization:
               formValue.candidateForStandardization || false,
             isAdjusted: formValue.isAdjusted || false,

@@ -38,6 +38,15 @@
         "Add auditing to more editing flows for reports/reviews",
         "Fix time penalty display bug with driver dashboard's individual penalties"
       ]
+    },
+    {
+      "version": "1.3.0",
+      "date": "2026-02-23",
+      "changes": [
+        "Create My Reviews tab",
+        "Fix editing of reviews trying to create a new review",
+        "Add video link to the report form"
+      ]
     }
   ]
 }

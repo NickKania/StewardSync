@@ -9,6 +9,7 @@ export interface Series {
   reportingOpenTime?: string;
   reportingCloseDuration?: number;
   isReportingLocked?: boolean;
+  requireVideoEvidence?: boolean;
   isActive?: boolean;
   seriesPenaltyNotes?: string;
   scheduledImportTime?: string;

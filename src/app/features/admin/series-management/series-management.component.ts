@@ -757,6 +757,23 @@ import { Id } from "@convex/_generated/dataModel";
                 <label class="flex items-center gap-2">
                   <input
                     type="checkbox"
+                    [(ngModel)]="seriesForm.requireVideoEvidence"
+                    class="rounded border-gray-300 dark:border-gray-700"
+                  />
+                  <span
+                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >Require Video Evidence</span
+                  >
+                </label>
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                  Driver report form will require both video link and video
+                  timestamp.
+                </p>
+              </div>
+              <div>
+                <label class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
                     [(ngModel)]="seriesForm.isActive"
                     class="rounded border-gray-300 dark:border-gray-700"
                   />
@@ -1355,6 +1372,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     reportingOpenTime: "",
     reportingCloseDuration: 0,
     isReportingLocked: false,
+    requireVideoEvidence: false,
     isActive: true,
     seriesPenaltyNotes: "",
   };
@@ -1550,6 +1568,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       reportingOpenTime: this.utcToLocalTime(series.reportingOpenTime || ""),
       reportingCloseDuration: series.reportingCloseDuration || 0,
       isReportingLocked: series.isReportingLocked || false,
+      requireVideoEvidence: series.requireVideoEvidence || false,
       isActive: series.isActive !== false,
       seriesPenaltyNotes: series.seriesPenaltyNotes || "",
     };
@@ -1571,6 +1590,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         reportingCloseDuration:
           this.seriesForm.reportingCloseDuration || undefined,
         isReportingLocked: this.seriesForm.isReportingLocked,
+        requireVideoEvidence: this.seriesForm.requireVideoEvidence,
         isActive: this.seriesForm.isActive,
         seriesPenaltyNotes: this.seriesForm.seriesPenaltyNotes || undefined,
       });
@@ -1583,6 +1603,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         reportingCloseDuration:
           this.seriesForm.reportingCloseDuration || undefined,
         isReportingLocked: this.seriesForm.isReportingLocked,
+        requireVideoEvidence: this.seriesForm.requireVideoEvidence,
         isActive: this.seriesForm.isActive,
         seriesPenaltyNotes: this.seriesForm.seriesPenaltyNotes || undefined,
       });
@@ -1616,6 +1637,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       reportingOpenTime: "",
       reportingCloseDuration: 0,
       isReportingLocked: false,
+      requireVideoEvidence: false,
       isActive: true,
       seriesPenaltyNotes: "",
     };

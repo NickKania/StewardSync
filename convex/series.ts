@@ -39,6 +39,7 @@ export const create = mutation({
     reportingOpenTime: v.optional(v.string()),
     reportingCloseDuration: v.optional(v.number()),
     isReportingLocked: v.optional(v.boolean()),
+    requireVideoEvidence: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
     seriesPenaltyNotes: v.optional(v.string()),
   },
@@ -57,6 +58,7 @@ export const create = mutation({
       simgridLink: args.simgridLink,
       reportingOpenTime: args.reportingOpenTime,
       reportingCloseDuration: args.reportingCloseDuration,
+      requireVideoEvidence: args.requireVideoEvidence,
       seriesPenaltyNotes: args.seriesPenaltyNotes,
       createdAt: Date.now(),
     };
@@ -83,6 +85,7 @@ export const update = mutation({
     reportingOpenTime: v.optional(v.string()),
     reportingCloseDuration: v.optional(v.number()),
     isReportingLocked: v.optional(v.boolean()),
+    requireVideoEvidence: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
     seriesPenaltyNotes: v.optional(v.string()),
   },
@@ -109,6 +112,7 @@ export const update = mutation({
     }
     if (updates.reportingCloseDuration !== undefined) cleanUpdates.reportingCloseDuration = updates.reportingCloseDuration;
     if (updates.isReportingLocked !== undefined) cleanUpdates.isReportingLocked = updates.isReportingLocked;
+    if (updates.requireVideoEvidence !== undefined) cleanUpdates.requireVideoEvidence = updates.requireVideoEvidence;
     if (updates.isActive !== undefined) cleanUpdates.isActive = updates.isActive;
     if (updates.seriesPenaltyNotes !== undefined) cleanUpdates.seriesPenaltyNotes = updates.seriesPenaltyNotes;
 

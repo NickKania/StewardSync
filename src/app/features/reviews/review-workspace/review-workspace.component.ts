@@ -4,11 +4,12 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { AuthService } from "@core/services/auth.service";
 import { ConvexService } from "@core/services/convex.service";
 import { FinalizeDashboardComponent } from "@features/finalize/finalize-dashboard/finalize-dashboard.component";
+import { MyReviewsComponent } from "@features/reviews/my-reviews/my-reviews.component";
 import { ReviewDashboardComponent } from "@features/reviews/review-dashboard/review-dashboard.component";
 import { ReviewSearchComponent } from "@features/reviews/review-search/review-search.component";
 import { Tab, TabsComponent } from "@shared/components/tabs/tabs.component";
 
-type ReviewTabId = "queue" | "search" | "finalization";
+type ReviewTabId = "queue" | "my-reviews" | "search" | "finalization";
 
 @Component({
   selector: "app-review-workspace",
@@ -19,6 +20,7 @@ type ReviewTabId = "queue" | "search" | "finalization";
     ReviewDashboardComponent,
     ReviewSearchComponent,
     FinalizeDashboardComponent,
+    MyReviewsComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -30,6 +32,8 @@ type ReviewTabId = "queue" | "search" | "finalization";
 
       @if (activeTab() === "queue") {
         <app-review-dashboard />
+      } @else if (activeTab() === "my-reviews") {
+        <app-my-reviews />
       } @else if (activeTab() === "search") {
         <app-review-search />
       } @else if (activeTab() === "finalization") {
@@ -68,6 +72,10 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
         id: "queue",
         label: "Review Queue",
         badge: this.pendingReviewCount(),
+      },
+      {
+        id: "my-reviews",
+        label: "My Reviews",
       },
     ];
 
@@ -121,7 +129,12 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
   }
 
   private parseTab(value: unknown): ReviewTabId | null {
-    if (value === "queue" || value === "search" || value === "finalization") {
+    if (
+      value === "queue" ||
+      value === "my-reviews" ||
+      value === "search" ||
+      value === "finalization"
+    ) {
       return value;
     }
     return null;
@@ -136,7 +149,7 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
   }
 
   private isTabVisible(tabId: ReviewTabId | null): tabId is ReviewTabId {
-    if (tabId === "queue") return true;
+    if (tabId === "queue" || tabId === "my-reviews") return true;
     if (tabId === "search") return this.canSearchReviews();
     if (tabId === "finalization") return this.canViewFinalization();
     return false;

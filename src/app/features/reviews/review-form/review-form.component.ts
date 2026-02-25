@@ -425,6 +425,33 @@ import { User } from "@app/core/models";
                 </div>
                 <div>
                   <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Video Link
+                  </dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    @if (report()?.videoLink) {
+                      <a
+                        [href]="report()?.videoLink"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        {{ report()?.videoLink }}
+                      </a>
+                    } @else {
+                      Not provided
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
+                    Video Timestamp
+                  </dt>
+                  <dd class="font-medium text-gray-900 dark:text-gray-100">
+                    {{ report()?.videoTimestamp || "Not provided" }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500 dark:text-gray-400">
                     Filed
                   </dt>
                   <dd class="text-gray-900 dark:text-gray-100">
@@ -518,7 +545,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   rejectionReason = "";
   secondStewardUnsubscribe: (() => void) | null = null;
   primaryActionLabel = computed(() =>
-    this.isReportingUser() ? "Save Changes" : "Submit Review",
+    this.currentUserReview() ? "Save Changes" : "Submit Review",
   );
   selectedPenaltyAllowsNoDriver = computed(() => {
     const selectedPenaltyId = this.selectedRecommendedPenaltyId();
@@ -934,10 +961,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       const isNoDriverAtFault =
         formValue.atFaultDriverId === this.NO_DRIVER_OPTION_VALUE;
       const currentUserReview = this.currentUserReview();
-      const useUpdate = this.isReportingUser() && Boolean(currentUserReview);
+      const useUpdate = Boolean(currentUserReview);
 
       const updatePayload = {
         reviewId: currentUserReview?._id,
+        userId,
         incidentDescription: formValue.incidentDescription,
         reviewNotes: formValue.reviewNotes,
         recommendedPenalty: formValue.recommendedPenalty || undefined,
