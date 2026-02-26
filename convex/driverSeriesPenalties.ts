@@ -34,6 +34,19 @@ const isPenaltyStillActive = (dsp: any, linkedReview: any): boolean => {
   return linkedReview?.status !== "completed";
 };
 
+const getThresholdValue = (threshold: any): number =>
+  typeof threshold?.threshold === "number" ? threshold.threshold : 0;
+
+const comparePenaltySeverity = (
+  left: { thresholdValue: number; assignedAt?: number },
+  right: { thresholdValue: number; assignedAt?: number },
+): number => {
+  if (left.thresholdValue !== right.thresholdValue) {
+    return right.thresholdValue - left.thresholdValue;
+  }
+  return (right.assignedAt ?? 0) - (left.assignedAt ?? 0);
+};
+
 export const assignPenalty = mutation({
   args: {
     driverId: v.id("drivers"),
@@ -46,6 +59,40 @@ export const assignPenalty = mutation({
     const threshold = await ctx.db.get(args.seriesPenaltyThresholdId);
     if (!threshold) {
       throw new UserFacingError("Series penalty threshold not found");
+    }
+
+    const existingPenalties = await ctx.db
+      .query("driverSeriesPenalties")
+      .withIndex("by_driver_and_series", (q) =>
+        q.eq("driverId", args.driverId).eq("seriesId", args.seriesId),
+      )
+      .collect();
+
+    const existingForSeriesPenalty = existingPenalties
+      .filter(
+        (dsp) =>
+          dsp.seriesPenaltyId.toString() === args.seriesPenaltyId.toString(),
+      )
+      .sort((a, b) => {
+        if (a.isServed !== b.isServed) {
+          return a.isServed ? 1 : -1;
+        }
+        return b.assignedAt - a.assignedAt;
+      });
+
+    if (existingForSeriesPenalty.length > 0) {
+      const penaltyToUpdate = existingForSeriesPenalty[0];
+      if (penaltyToUpdate.isServed) {
+        return penaltyToUpdate._id;
+      }
+      await ctx.db.patch(penaltyToUpdate._id, {
+        seriesPenaltyId: args.seriesPenaltyId,
+        seriesPenaltyThresholdId: args.seriesPenaltyThresholdId,
+        requiresReview: threshold.requiresReview ?? false,
+        pointsAtAssignment: args.pointsAtAssignment,
+        assignedAt: Date.now(),
+      });
+      return penaltyToUpdate._id;
     }
 
     const driverSeriesPenaltyId = await ctx.db.insert("driverSeriesPenalties", {
@@ -156,14 +203,24 @@ export const checkAndAssignThresholds = mutation({
         )
         .collect();
 
-      const assignedThresholds: any[] = [];
+      const existingBySeriesPenalty = new Map<string, any>();
       for (const dsp of existingDriverSeriesPenalties) {
-        const linkedReview = await getLinkedRaceBanReview(ctx, dsp);
-        const threshold = await ctx.db.get(dsp.seriesPenaltyThresholdId);
-        const requiresReview =
-          dsp.requiresReview ?? threshold?.requiresReview ?? false;
-        if (isPenaltyStillActive({ ...dsp, requiresReview }, linkedReview)) {
-          assignedThresholds.push(dsp.seriesPenaltyThresholdId);
+        const key = dsp.seriesPenaltyId.toString();
+        const existing = existingBySeriesPenalty.get(key);
+        if (!existing) {
+          existingBySeriesPenalty.set(key, dsp);
+          continue;
+        }
+
+        if (existing.isServed !== dsp.isServed) {
+          if (!dsp.isServed) {
+            existingBySeriesPenalty.set(key, dsp);
+          }
+          continue;
+        }
+
+        if (dsp.assignedAt > existing.assignedAt) {
+          existingBySeriesPenalty.set(key, dsp);
         }
       }
 
@@ -175,41 +232,78 @@ export const checkAndAssignThresholds = mutation({
           )
           .collect();
 
-        for (const threshold of thresholds) {
-          // Check if driver's class is in the threshold's driverClassIds
-          const appliesToDriver = driverClassId
-            ? threshold.driverClassIds.includes(driverClassId)
-            : false;
+        const matchedThresholds = thresholds
+          .filter((threshold) => {
+            const appliesToDriver = driverClassId
+              ? threshold.driverClassIds.includes(driverClassId)
+              : false;
+            return appliesToDriver && totalPoints >= threshold.threshold;
+          })
+          .sort((a, b) =>
+            comparePenaltySeverity(
+              { thresholdValue: getThresholdValue(a) },
+              { thresholdValue: getThresholdValue(b) },
+            ),
+          );
 
-          if (
-            appliesToDriver &&
-            totalPoints >= threshold.threshold &&
-            !assignedThresholds.includes(threshold._id)
-          ) {
-            const driverSeriesPenaltyId = await ctx.db.insert(
-              "driverSeriesPenalties",
-              {
-                driverId: driver._id,
-                seriesId: args.seriesId,
-                seriesPenaltyId: seriesPenalty._id,
-                seriesPenaltyThresholdId: threshold._id,
-                isServed: false,
-                requiresReview: threshold.requiresReview ?? false,
-                pointsAtAssignment: totalPoints,
-                assignedAt: Date.now(),
-              },
-            );
-
-            assignedPenalties.push({
-              driverSeriesPenaltyId,
-              driverName: driver.driverName,
-              driverClass: driverClass?.displayName || "",
-              penaltyName: seriesPenalty.penaltyName,
-              threshold: threshold.threshold,
-              pointsAtAssignment: totalPoints,
-            });
-          }
+        if (matchedThresholds.length === 0) {
+          continue;
         }
+
+        // Keep one row per seriesPenalty; when multiple thresholds are matched,
+        // retain the strongest threshold for that penalty.
+        const strongestMatchedThreshold = matchedThresholds[0];
+        const existingPenalty = existingBySeriesPenalty.get(
+          seriesPenalty._id.toString(),
+        );
+        const assignmentTimestamp = Date.now();
+
+        if (!existingPenalty) {
+          const driverSeriesPenaltyId = await ctx.db.insert(
+            "driverSeriesPenalties",
+            {
+              driverId: driver._id,
+              seriesId: args.seriesId,
+              seriesPenaltyId: seriesPenalty._id,
+              seriesPenaltyThresholdId: strongestMatchedThreshold._id,
+              isServed: false,
+              requiresReview: strongestMatchedThreshold.requiresReview ?? false,
+              pointsAtAssignment: totalPoints,
+              assignedAt: assignmentTimestamp,
+            },
+          );
+
+          assignedPenalties.push({
+            driverSeriesPenaltyId,
+            driverName: driver.driverName,
+            driverClass: driverClass?.displayName || "",
+            penaltyName: seriesPenalty.penaltyName,
+            threshold: strongestMatchedThreshold.threshold,
+            pointsAtAssignment: totalPoints,
+          });
+          continue;
+        }
+
+        if (existingPenalty.isServed) {
+          continue;
+        }
+
+        const isDifferentThreshold =
+          existingPenalty.seriesPenaltyThresholdId.toString() !==
+          strongestMatchedThreshold._id.toString();
+        const isDifferentPoints =
+          existingPenalty.pointsAtAssignment !== totalPoints;
+
+        if (!isDifferentThreshold && !isDifferentPoints) {
+          continue;
+        }
+
+        await ctx.db.patch(existingPenalty._id, {
+          seriesPenaltyThresholdId: strongestMatchedThreshold._id,
+          requiresReview: strongestMatchedThreshold.requiresReview ?? false,
+          pointsAtAssignment: totalPoints,
+          assignedAt: assignmentTimestamp,
+        });
       }
     }
 
@@ -658,6 +752,7 @@ export const getDashboardPenaltyGroups = query({
           _id: dsp._id,
           driverId: dsp.driverId,
           seriesId: dsp.seriesId,
+          seriesPenaltyId: dsp.seriesPenaltyId,
           seriesName: series?.name ?? "Unknown Series",
           driverName:
             driverUser?.officialName || driver?.driverName || "Unknown Driver",
@@ -686,10 +781,38 @@ export const getDashboardPenaltyGroups = query({
     );
     const activePenalties = penaltiesWithDetails.filter(Boolean);
 
-    // Only one unserved penalty can be served per event for the same driver in a series.
-    // Assign expected dates by severity so the most severe penalties are served first.
-    const penaltiesByDriverInSeries = new Map<string, any[]>();
+    // Enforce one displayed active penalty per driver/seriesPenalty.
+    const strongestPenaltyBySeriesPenalty = new Map<string, any>();
     for (const penalty of activePenalties as any[]) {
+      if (!penalty.seriesId || !penalty.driverId || !penalty.seriesPenaltyId) {
+        continue;
+      }
+      const key = `${penalty.seriesId.toString()}:${penalty.driverId.toString()}:${penalty.seriesPenaltyId.toString()}`;
+      const existing = strongestPenaltyBySeriesPenalty.get(key);
+      if (!existing) {
+        strongestPenaltyBySeriesPenalty.set(key, penalty);
+        continue;
+      }
+
+      const existingSeverity = {
+        thresholdValue: existing.threshold ?? 0,
+        assignedAt: existing.assignedAt,
+      };
+      const candidateSeverity = {
+        thresholdValue: penalty.threshold ?? 0,
+        assignedAt: penalty.assignedAt,
+      };
+      if (comparePenaltySeverity(existingSeverity, candidateSeverity) > 0) {
+        strongestPenaltyBySeriesPenalty.set(key, penalty);
+      }
+    }
+
+    const dedupedActivePenalties = Array.from(
+      strongestPenaltyBySeriesPenalty.values(),
+    );
+
+    const penaltiesByDriverInSeries = new Map<string, any[]>();
+    for (const penalty of dedupedActivePenalties as any[]) {
       const key = `${penalty.seriesId.toString()}:${penalty.driverId.toString()}`;
       if (!penaltiesByDriverInSeries.has(key)) {
         penaltiesByDriverInSeries.set(key, []);
@@ -720,15 +843,12 @@ export const getDashboardPenaltyGroups = query({
 
       const unservedBySeverity = penalties
         .filter((penalty) => !penalty.isServed)
-        .sort((a, b) => {
-          if (a.pointsAtAssignment !== b.pointsAtAssignment) {
-            return b.pointsAtAssignment - a.pointsAtAssignment;
-          }
-          if (a.threshold !== b.threshold) {
-            return (b.threshold ?? 0) - (a.threshold ?? 0);
-          }
-          return a.assignedAt - b.assignedAt;
-        });
+        .sort((a, b) =>
+          comparePenaltySeverity(
+            { thresholdValue: a.threshold ?? 0, assignedAt: a.assignedAt },
+            { thresholdValue: b.threshold ?? 0, assignedAt: b.assignedAt },
+          ),
+        );
 
       unservedBySeverity.forEach((penalty, index) => {
         penalty.expectedServeDate = uniqueUpcomingEvents[index]?.eventDate ?? null;
@@ -739,7 +859,7 @@ export const getDashboardPenaltyGroups = query({
       string,
       { seriesId: any; seriesName: string; penalties: any[] }
     >();
-    for (const penalty of activePenalties as any[]) {
+    for (const penalty of dedupedActivePenalties as any[]) {
       const key = penalty.seriesId.toString();
       if (!grouped.has(key)) {
         grouped.set(key, {
@@ -812,5 +932,145 @@ export const cleanupOrphanedPenalties = internalMutation({
       removedCount: toRemove.length,
       removed: toRemove,
     };
+  },
+});
+
+export const cleanupDuplicateSeriesPenalties = internalMutation({
+  args: {
+    dryRun: v.optional(v.boolean()),
+    seriesId: v.optional(v.id("series")),
+  },
+  handler: async (ctx: any, args) => {
+    const dryRun = args.dryRun ?? true;
+    const now = Date.now();
+
+    const driverSeriesPenalties = args.seriesId
+      ? await ctx.db
+          .query("driverSeriesPenalties")
+          .withIndex("by_series", (q: any) => q.eq("seriesId", args.seriesId))
+          .collect()
+      : await ctx.db.query("driverSeriesPenalties").collect();
+
+    const groups = new Map<string, any[]>();
+    for (const dsp of driverSeriesPenalties) {
+      const key = `${dsp.driverId.toString()}:${dsp.seriesId.toString()}:${dsp.seriesPenaltyId.toString()}`;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(dsp);
+    }
+
+    const thresholdCache = new Map<string, number>();
+    const getThreshold = async (thresholdId: any): Promise<number> => {
+      const key = thresholdId.toString();
+      if (!thresholdCache.has(key)) {
+        const thresholdDoc = await ctx.db.get(thresholdId);
+        thresholdCache.set(key, getThresholdValue(thresholdDoc));
+      }
+      return thresholdCache.get(key) ?? 0;
+    };
+
+    const summary = {
+      dryRun,
+      totalPenalties: driverSeriesPenalties.length,
+      duplicateGroups: 0,
+      penaltiesMarkedForRemoval: 0,
+      penaltiesRemoved: 0,
+      raceBanReviewsRelinked: 0,
+      groups: [] as any[],
+    };
+
+    for (const [groupKey, entries] of groups.entries()) {
+      if (entries.length <= 1) {
+        continue;
+      }
+
+      summary.duplicateGroups += 1;
+
+      const scored = await Promise.all(
+        entries.map(async (dsp) => {
+          const linkedReviews = await ctx.db
+            .query("raceBanReviews")
+            .withIndex("by_driver_series_penalty", (q: any) =>
+              q.eq("driverSeriesPenaltyId", dsp._id),
+            )
+            .collect();
+          const thresholdValue = await getThreshold(dsp.seriesPenaltyThresholdId);
+
+          return {
+            dsp,
+            thresholdValue,
+            linkedReviews,
+          };
+        }),
+      );
+
+      scored.sort((a, b) => {
+        if (a.dsp.isServed !== b.dsp.isServed) {
+          return a.dsp.isServed ? 1 : -1;
+        }
+        if (a.thresholdValue !== b.thresholdValue) {
+          return b.thresholdValue - a.thresholdValue;
+        }
+        if (a.dsp.assignedAt !== b.dsp.assignedAt) {
+          return b.dsp.assignedAt - a.dsp.assignedAt;
+        }
+        return b.linkedReviews.length - a.linkedReviews.length;
+      });
+
+      const keeper = scored[0];
+      const duplicates = scored.slice(1);
+      summary.penaltiesMarkedForRemoval += duplicates.length;
+
+      const groupResult = {
+        groupKey,
+        keeperId: keeper.dsp._id,
+        duplicateIds: duplicates.map((item) => item.dsp._id),
+        relinkedReviewIds: [] as any[],
+      };
+
+      if (!dryRun) {
+        for (const duplicate of duplicates) {
+          for (const review of duplicate.linkedReviews) {
+            await ctx.db.patch(review._id, {
+              driverSeriesPenaltyId: keeper.dsp._id,
+              updatedAt: now,
+            });
+            groupResult.relinkedReviewIds.push(review._id);
+            summary.raceBanReviewsRelinked += 1;
+          }
+
+          if (
+            duplicate.dsp.raceBanReviewId &&
+            !groupResult.relinkedReviewIds.some(
+              (id) => id.toString() === duplicate.dsp.raceBanReviewId.toString(),
+            )
+          ) {
+            const reviewByField = await ctx.db.get(duplicate.dsp.raceBanReviewId);
+            if (reviewByField) {
+              await ctx.db.patch(reviewByField._id, {
+                driverSeriesPenaltyId: keeper.dsp._id,
+                updatedAt: now,
+              });
+              groupResult.relinkedReviewIds.push(reviewByField._id);
+              summary.raceBanReviewsRelinked += 1;
+            }
+          }
+
+          await ctx.db.delete(duplicate.dsp._id);
+          summary.penaltiesRemoved += 1;
+        }
+
+        if (groupResult.relinkedReviewIds.length > 0) {
+          await ctx.db.patch(keeper.dsp._id, {
+            raceBanReviewId: groupResult.relinkedReviewIds[0],
+          });
+        }
+      }
+
+      summary.groups.push(groupResult);
+    }
+
+    return summary;
   },
 });

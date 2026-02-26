@@ -18,6 +18,16 @@ const REPORT_AUDIT_FIELDS = [
   "isNoDriverAtFault",
 ] as const;
 
+const comparePenaltySeverity = (
+  left: { threshold: number; assignedAt?: number },
+  right: { threshold: number; assignedAt?: number },
+): number => {
+  if (left.threshold !== right.threshold) {
+    return right.threshold - left.threshold;
+  }
+  return (right.assignedAt ?? 0) - (left.assignedAt ?? 0);
+};
+
 export const list = query({
   args: {
     status: v.optional(
@@ -729,29 +739,29 @@ export const finalize = mutation({
           )
           .collect();
 
-        const assignedThresholds: string[] = [];
+        const existingBySeriesPenalty = new Map<string, any>();
         for (const dsp of existingDriverSeriesPenalties) {
-          const linkedReview = dsp.raceBanReviewId
-            ? await ctx.db.get(dsp.raceBanReviewId)
-            : await ctx.db
-                .query("raceBanReviews")
-                .withIndex("by_driver_series_penalty", (q) =>
-                  q.eq("driverSeriesPenaltyId", dsp._id),
-                )
-                .first();
-          const thresholdDoc = await ctx.db.get(dsp.seriesPenaltyThresholdId);
-          const requiresReview =
-            dsp.requiresReview ?? thresholdDoc?.requiresReview ?? false;
-          const stillActive =
-            !dsp.isServed ||
-            (requiresReview && linkedReview?.status !== "completed");
-          if (stillActive) {
-            assignedThresholds.push(dsp.seriesPenaltyThresholdId.toString());
+          const key = dsp.seriesPenaltyId.toString();
+          const existing = existingBySeriesPenalty.get(key);
+          if (!existing) {
+            existingBySeriesPenalty.set(key, dsp);
+            continue;
+          }
+
+          if (existing.isServed !== dsp.isServed) {
+            if (!dsp.isServed) {
+              existingBySeriesPenalty.set(key, dsp);
+            }
+            continue;
+          }
+
+          if (dsp.assignedAt > existing.assignedAt) {
+            existingBySeriesPenalty.set(key, dsp);
           }
         }
 
         console.log(
-          `[FINALIZE] Driver ${driver.driverNumber} has ${existingDriverSeriesPenalties.length} existing penalties, ${assignedThresholds.length} unserved`,
+          `[FINALIZE] Driver ${driver.driverNumber} has ${existingDriverSeriesPenalties.length} existing penalties`,
         );
 
         for (const seriesPenalty of seriesPenalties) {
@@ -762,37 +772,72 @@ export const finalize = mutation({
             )
             .collect();
 
-          for (const threshold of thresholds) {
-            const appliesToDriver =
-              driverClassId &&
-              threshold.driverClassIds &&
-              threshold.driverClassIds.includes(driverClassId as any);
-            const thresholdMet = totalPoints >= threshold.threshold;
-            const alreadyAssigned = assignedThresholds.includes(
-              threshold._id.toString(),
+          const matchedThresholds = thresholds
+            .filter((threshold) => {
+              const appliesToDriver =
+                driverClassId &&
+                threshold.driverClassIds &&
+                threshold.driverClassIds.includes(driverClassId as any);
+              return appliesToDriver && totalPoints >= threshold.threshold;
+            })
+            .sort((a, b) =>
+              comparePenaltySeverity(
+                { threshold: a.threshold },
+                { threshold: b.threshold },
+              ),
             );
 
-            console.log(
-              `[FINALIZE] Checking threshold for ${seriesPenalty.penaltyName}: applies=${appliesToDriver}, threshold=${threshold.threshold}, met=${thresholdMet}, alreadyAssigned=${alreadyAssigned}`,
-            );
-
-            if (appliesToDriver && thresholdMet && !alreadyAssigned) {
-              console.log(
-                `[FINALIZE] >>> ASSIGNING penalty ${seriesPenalty.penaltyName} to driver ${driver.driverNumber}`,
-              );
-              const insertedId = await ctx.db.insert("driverSeriesPenalties", {
-                driverId: driver._id,
-                seriesId: event.seriesId,
-                seriesPenaltyId: seriesPenalty._id,
-                seriesPenaltyThresholdId: threshold._id,
-                isServed: false,
-                requiresReview: threshold.requiresReview ?? false,
-                pointsAtAssignment: totalPoints,
-                assignedAt: Date.now(),
-              });
-              console.log(`[FINALIZE] >>> ASSIGNED with ID: ${insertedId}`);
-            }
+          if (matchedThresholds.length === 0) {
+            continue;
           }
+
+          const strongestMatchedThreshold = matchedThresholds[0];
+          const existingPenalty = existingBySeriesPenalty.get(
+            seriesPenalty._id.toString(),
+          );
+          const assignmentTimestamp = Date.now();
+
+          if (!existingPenalty) {
+            console.log(
+              `[FINALIZE] >>> ASSIGNING penalty ${seriesPenalty.penaltyName} to driver ${driver.driverNumber}`,
+            );
+            const insertedId = await ctx.db.insert("driverSeriesPenalties", {
+              driverId: driver._id,
+              seriesId: event.seriesId,
+              seriesPenaltyId: seriesPenalty._id,
+              seriesPenaltyThresholdId: strongestMatchedThreshold._id,
+              isServed: false,
+              requiresReview: strongestMatchedThreshold.requiresReview ?? false,
+              pointsAtAssignment: totalPoints,
+              assignedAt: assignmentTimestamp,
+            });
+            console.log(`[FINALIZE] >>> ASSIGNED with ID: ${insertedId}`);
+            continue;
+          }
+
+          if (existingPenalty.isServed) {
+            continue;
+          }
+
+          const isDifferentThreshold =
+            existingPenalty.seriesPenaltyThresholdId.toString() !==
+            strongestMatchedThreshold._id.toString();
+          const isDifferentPoints =
+            existingPenalty.pointsAtAssignment !== totalPoints;
+
+          if (!isDifferentThreshold && !isDifferentPoints) {
+            continue;
+          }
+
+          console.log(
+            `[FINALIZE] >>> UPDATING existing penalty ${existingPenalty._id} for driver ${driver.driverNumber} to ${seriesPenalty.penaltyName}`,
+          );
+          await ctx.db.patch(existingPenalty._id, {
+            seriesPenaltyThresholdId: strongestMatchedThreshold._id,
+            requiresReview: strongestMatchedThreshold.requiresReview ?? false,
+            pointsAtAssignment: totalPoints,
+            assignedAt: assignmentTimestamp,
+          });
         }
       }
     }
