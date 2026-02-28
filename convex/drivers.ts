@@ -16,8 +16,10 @@ const findUserByDiscordUsername = async (ctx: any, username?: string) => {
 
   const users = await ctx.db.query("users").collect();
   return (
-    users.find((user: any) => normalizeUsername(user.discordUsername) === normalizedUsername) ??
-    null
+    users.find(
+      (user: any) =>
+        normalizeUsername(user.discordUsername) === normalizedUsername,
+    ) ?? null
   );
 };
 
@@ -72,7 +74,10 @@ export const getById = query({
 
     return {
       ...driver,
-      displayName: getDriverDisplayName(driver, linkedUser ? { officialName: linkedUser.officialName } : undefined),
+      displayName: getDriverDisplayName(
+        driver,
+        linkedUser ? { officialName: linkedUser.officialName } : undefined,
+      ),
     };
   },
 });
@@ -110,7 +115,10 @@ export const getByIdWithUser = query({
       linkedUser,
       seriesId: series?._id ?? null,
       seriesName: series?.name ?? "No Series",
-      displayName: getDriverDisplayName(driver, linkedUser ? { officialName: linkedUser.officialName } : undefined),
+      displayName: getDriverDisplayName(
+        driver,
+        linkedUser ? { officialName: linkedUser.officialName } : undefined,
+      ),
       driverClassName: driverClassData?.displayName ?? null,
       driverClass: driverClassData
         ? {
@@ -158,19 +166,19 @@ export const getByChampionship = query({
   handler: async (ctx, args) => {
     const drivers = await ctx.db
       .query("drivers")
-      .withIndex("by_championship", (q) => q.eq("championshipId", args.championshipId))
+      .withIndex("by_championship", (q) =>
+        q.eq("championshipId", args.championshipId),
+      )
       .collect();
 
     // Enrich with display names and driver class data
     const enrichedDrivers = await Promise.all(
       drivers.map(async (driver) => {
-        let linkedUser:
-          | {
-              _id: typeof driver.userId;
-              name: string;
-              officialName?: string;
-            }
-          | null = null;
+        let linkedUser: {
+          _id: typeof driver.userId;
+          name: string;
+          officialName?: string;
+        } | null = null;
 
         if (driver.userId) {
           const user = await ctx.db.get(driver.userId);
@@ -220,12 +228,15 @@ export const getPenaltyHistory = query({
   handler: async (ctx, args) => {
     const reports = await ctx.db
       .query("reports")
-      .withIndex("by_reported_driver", (q) => q.eq("reportedDriverId", args.driverId))
+      .withIndex("by_at_fault_driver", (q) =>
+        q.eq("atFaultDriverId", args.driverId),
+      )
       .collect();
 
     const finalizedReports = reports.filter((report) => {
       if (report.status !== "finalized") return false;
-      if (report.atFaultDriverId) return report.atFaultDriverId === args.driverId;
+      if (report.atFaultDriverId)
+        return report.atFaultDriverId === args.driverId;
       return report.reportedDriverId === args.driverId;
     });
 
@@ -234,11 +245,14 @@ export const getPenaltyHistory = query({
         const [event, race, appliedPenalty] = await Promise.all([
           ctx.db.get(report.eventId),
           ctx.db.get(report.raceId),
-          report.appliedPenalty ? ctx.db.get(report.appliedPenalty as any) : null,
+          report.appliedPenalty
+            ? ctx.db.get(report.appliedPenalty as any)
+            : null,
         ]);
 
         if (!event) return null;
-        if (args.championshipId && event.seriesId !== args.championshipId) return null;
+        if (args.championshipId && event.seriesId !== args.championshipId)
+          return null;
 
         return {
           reportId: report._id,
@@ -256,7 +270,8 @@ export const getPenaltyHistory = query({
           penaltyId: report.appliedPenalty ?? null,
           penaltyName: (appliedPenalty as any)?.name ?? null,
           licensePoints: (appliedPenalty as any)?.licensePoints ?? 0,
-          finalizedAt: report.finalizedAt ?? report.updatedAt ?? report.createdAt,
+          finalizedAt:
+            report.finalizedAt ?? report.updatedAt ?? report.createdAt,
         };
       }),
     );
@@ -291,11 +306,17 @@ export const getUserProfile = query({
           .collect()
       ).map(async (driver) => {
         const [series, driverClass, reportsAgainst] = await Promise.all([
-          driver.championshipId ? ctx.db.get(driver.championshipId) : Promise.resolve(null),
-          driver.driverClassId ? ctx.db.get(driver.driverClassId) : Promise.resolve(null),
+          driver.championshipId
+            ? ctx.db.get(driver.championshipId)
+            : Promise.resolve(null),
+          driver.driverClassId
+            ? ctx.db.get(driver.driverClassId)
+            : Promise.resolve(null),
           ctx.db
             .query("reports")
-            .withIndex("by_reported_driver", (q) => q.eq("reportedDriverId", driver._id))
+            .withIndex("by_at_fault_driver", (q) =>
+              q.eq("atFaultDriverId", driver._id),
+            )
             .collect(),
         ]);
 
@@ -306,7 +327,10 @@ export const getUserProfile = query({
             .withIndex("by_series", (q) => q.eq("seriesId", seriesId))
             .collect();
           const lastEventDate =
-            events.reduce((latest, evt) => Math.max(latest, evt.eventDate), 0) || 0;
+            events.reduce(
+              (latest, evt) => Math.max(latest, evt.eventDate),
+              0,
+            ) || 0;
           seriesRecency.set(seriesId.toString(), lastEventDate);
         }
 
@@ -314,14 +338,17 @@ export const getUserProfile = query({
           reportsAgainst
             .filter((report) => {
               if (report.status !== "finalized") return false;
-              if (report.atFaultDriverId) return report.atFaultDriverId === driver._id;
+              if (report.atFaultDriverId)
+                return report.atFaultDriverId === driver._id;
               return report.reportedDriverId === driver._id;
             })
             .map(async (report) => {
               const [event, race, penalty] = await Promise.all([
                 ctx.db.get(report.eventId),
                 ctx.db.get(report.raceId),
-                report.appliedPenalty ? ctx.db.get(report.appliedPenalty as any) : null,
+                report.appliedPenalty
+                  ? ctx.db.get(report.appliedPenalty as any)
+                  : null,
               ]);
 
               if (!event) return null;
@@ -340,7 +367,8 @@ export const getUserProfile = query({
                     : "Session"),
                 penaltyName: (penalty as any)?.name ?? null,
                 licensePoints: (penalty as any)?.licensePoints ?? 0,
-                finalizedAt: report.finalizedAt ?? report.updatedAt ?? report.createdAt,
+                finalizedAt:
+                  report.finalizedAt ?? report.updatedAt ?? report.createdAt,
               };
             }),
         );
@@ -353,7 +381,9 @@ export const getUserProfile = query({
           driverId: driver._id,
           seriesId: series?._id ?? null,
           seriesName: series?.name ?? "No Series",
-          seriesLastEventDate: series ? seriesRecency.get(series._id.toString()) ?? 0 : 0,
+          seriesLastEventDate: series
+            ? (seriesRecency.get(series._id.toString()) ?? 0)
+            : 0,
           driverNumber: driver.driverNumber,
           driverName: driver.driverName,
           displayName: getDriverDisplayName(
@@ -406,7 +436,9 @@ export const create = mutation({
       .first();
 
     if (existing) {
-      throw new UserFacingError(`Driver with number ${args.driverNumber} already exists`);
+      throw new UserFacingError(
+        `Driver with number ${args.driverNumber} already exists`,
+      );
     }
 
     // Auto-generate officialName using "F. Name" format
@@ -443,11 +475,15 @@ export const update = mutation({
     if (updates.driverNumber !== undefined) {
       const existing = await ctx.db
         .query("drivers")
-        .withIndex("by_number", (q) => q.eq("driverNumber", updates.driverNumber!))
+        .withIndex("by_number", (q) =>
+          q.eq("driverNumber", updates.driverNumber!),
+        )
         .first();
 
       if (existing && existing._id !== driverId) {
-        throw new Error(`Driver with number ${updates.driverNumber} already exists`);
+        throw new Error(
+          `Driver with number ${updates.driverNumber} already exists`,
+        );
       }
     }
 
@@ -458,7 +494,7 @@ export const update = mutation({
 
     // Remove undefined values
     const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined)
+      Object.entries(updates).filter(([_, v]) => v !== undefined),
     );
 
     await ctx.db.patch(driverId, cleanUpdates);
@@ -487,8 +523,13 @@ export const updateOfficialName = mutation({
     }
 
     // Only event_manager and league_manager can update official names
-    if (userRole.name !== "event_manager" && userRole.name !== "league_manager") {
-      throw new UserFacingError("Only event managers can update official names");
+    if (
+      userRole.name !== "event_manager" &&
+      userRole.name !== "league_manager"
+    ) {
+      throw new UserFacingError(
+        "Only event managers can update official names",
+      );
     }
 
     // Check if driver exists
@@ -513,7 +554,7 @@ export const getDriverClassesBySeries = query({
       .query("driverClasses")
       .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
       .collect();
-    
+
     return driverClasses.sort((a, b) => a.className.localeCompare(b.className));
   },
 });
@@ -526,22 +567,29 @@ export const getDriverStats = query({
 
     const reportsFiledAgainst = await ctx.db
       .query("reports")
-      .withIndex("by_reported_driver", (q) => q.eq("reportedDriverId", args.driverId))
+      .withIndex("by_at_fault_driver", (q) =>
+        q.eq("atFaultDriverId", args.driverId),
+      )
       .collect();
 
     let reportsFiled = [];
     if (driver?.userId) {
       reportsFiled = await ctx.db
         .query("reports")
-        .withIndex("by_reporting_user", (q) => q.eq("reportingUserId", driver.userId))
+        .withIndex("by_reporting_user", (q) =>
+          q.eq("reportingUserId", driver.userId),
+        )
         .collect();
     }
 
     return {
       reportsFiledCount: reportsFiled.length,
       reportsAgainstCount: reportsFiledAgainst.length,
-      pendingReports: reportsFiledAgainst.filter((r) => r.status === "pending").length,
-      finalizedReports: reportsFiledAgainst.filter((r) => r.status === "finalized").length,
+      pendingReports: reportsFiledAgainst.filter((r) => r.status === "pending")
+        .length,
+      finalizedReports: reportsFiledAgainst.filter(
+        (r) => r.status === "finalized",
+      ).length,
       accumulatedLicensePoints: driver.accumulatedLicensePoints || 0,
       isActive: driver.isActive ?? true,
     };
@@ -564,7 +612,7 @@ export const importOrUpdateDriver = mutation({
       .collect();
 
     const driverInThisChampionship = existing.find(
-      (driver) => driver.championshipId === args.championshipId
+      (driver) => driver.championshipId === args.championshipId,
     );
 
     const officialName = formatDriverName(args.driverName);
@@ -585,11 +633,11 @@ export const importOrUpdateDriver = mutation({
         fallbackOfficialName: args.driverName,
       });
 
-      return { action: 'updated', driverId: driverInThisChampionship._id };
+      return { action: "updated", driverId: driverInThisChampionship._id };
     }
 
     const unassignedDriver = existing.find(
-      (driver) => driver.championshipId === undefined
+      (driver) => driver.championshipId === undefined,
     );
 
     if (unassignedDriver) {
@@ -609,7 +657,7 @@ export const importOrUpdateDriver = mutation({
         fallbackOfficialName: args.driverName,
       });
 
-      return { action: 'updated', driverId: unassignedDriver._id };
+      return { action: "updated", driverId: unassignedDriver._id };
     }
 
     const driverId = await ctx.db.insert("drivers", {
@@ -631,7 +679,7 @@ export const importOrUpdateDriver = mutation({
       fallbackOfficialName: args.driverName,
     });
 
-    return { action: 'created', driverId };
+    return { action: "created", driverId };
   },
 });
 
@@ -643,13 +691,18 @@ export const markInactiveDrivers = mutation({
   handler: async (ctx, args) => {
     const allDrivers = await ctx.db
       .query("drivers")
-      .withIndex("by_championship", (q) => q.eq("championshipId", args.championshipId))
+      .withIndex("by_championship", (q) =>
+        q.eq("championshipId", args.championshipId),
+      )
       .collect();
 
     let markedInactive = 0;
 
     for (const driver of allDrivers) {
-      if (!args.activeDriverNumbers.includes(driver.driverNumber) && driver.isActive !== false) {
+      if (
+        !args.activeDriverNumbers.includes(driver.driverNumber) &&
+        driver.isActive !== false
+      ) {
         await ctx.db.patch(driver._id, { isActive: false });
         markedInactive++;
       }
@@ -823,8 +876,12 @@ export const listAggregatedByUser = query({
 
         const driversWithDetails = await Promise.all(
           drivers.map(async (driver) => {
-            const series = driver.championshipId ? await ctx.db.get(driver.championshipId) : null;
-            const driverClass = driver.driverClassId ? await ctx.db.get(driver.driverClassId) : null;
+            const series = driver.championshipId
+              ? await ctx.db.get(driver.championshipId)
+              : null;
+            const driverClass = driver.driverClassId
+              ? await ctx.db.get(driver.driverClassId)
+              : null;
 
             return {
               ...driver,
@@ -832,7 +889,7 @@ export const listAggregatedByUser = query({
               seriesIsActive: series?.isActive ?? true,
               driverClassName: driverClass?.displayName,
             };
-          })
+          }),
         );
 
         const sortedDrivers = driversWithDetails.sort((a, b) => {
@@ -849,12 +906,12 @@ export const listAggregatedByUser = query({
           officialName: user.officialName,
           drivers: sortedDrivers,
         };
-      })
+      }),
     );
 
-    return result.filter(r => r !== null).sort((a, b) =>
-      a!.userName.localeCompare(b!.userName)
-    );
+    return result
+      .filter((r) => r !== null)
+      .sort((a, b) => a!.userName.localeCompare(b!.userName));
   },
 });
 
@@ -866,9 +923,7 @@ export const getSeriesIdsForUser = query({
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .collect();
 
-    return drivers
-      .filter((d) => d.championshipId)
-      .map((d) => d.championshipId);
+    return drivers.filter((d) => d.championshipId).map((d) => d.championshipId);
   },
 });
 
@@ -882,7 +937,10 @@ export const getUserDriverLinks = query({
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .collect();
 
-    console.log(`[DEBUG] Found ${drivers.length} drivers linked to user:`, drivers);
+    console.log(
+      `[DEBUG] Found ${drivers.length} drivers linked to user:`,
+      drivers,
+    );
 
     return drivers.map((driver) => ({
       driverId: driver._id,

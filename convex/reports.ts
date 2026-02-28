@@ -1362,8 +1362,8 @@ export const getDriverIndividualPenalties = query({
   handler: async (ctx, args) => {
     const reports = await ctx.db
       .query("reports")
-      .withIndex("by_reported_driver", (q) =>
-        q.eq("reportedDriverId", args.driverId),
+      .withIndex("by_at_fault_driver", (q) =>
+        q.eq("atFaultDriverId", args.driverId),
       )
       .filter((q) => q.eq(q.field("status"), "finalized"))
       .collect();

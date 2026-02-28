@@ -233,6 +233,7 @@ export default defineSchema({
     .index("by_reporting_driver", ["reportingDriverId"])
     .index("by_reporting_user", ["reportingUserId"])
     .index("by_reported_driver", ["reportedDriverId"])
+    .index("by_at_fault_driver", ["atFaultDriverId"])
     .index("by_date", ["reportDate"])
     .index("by_reportId", ["reportId"]),
 
