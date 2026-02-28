@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
+import { getCurrentUserRole, hasMinimumRole } from "./lib/auth";
 
 export const list = query({
   handler: async (ctx) => {
@@ -12,6 +13,38 @@ export const listActive = query({
   handler: async (ctx) => {
     const series = await ctx.db.query("series").order("desc").collect();
     return series.filter(s => s.isActive !== false);
+  },
+});
+
+export const listActiveForUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const userRole = await getCurrentUserRole(ctx, args.userId);
+
+    if (hasMinimumRole(userRole, "steward")) {
+      const series = await ctx.db.query("series").order("desc").collect();
+      return series.filter(s => s.isActive !== false);
+    }
+
+    const drivers = await ctx.db
+      .query("drivers")
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const seriesIds = new Set(
+      drivers
+        .filter((d) => d.championshipId)
+        .map((d) => d.championshipId)
+    );
+
+    if (seriesIds.size === 0) {
+      return [];
+    }
+
+    const allSeries = await ctx.db.query("series").collect();
+    return allSeries.filter(
+      (s) => s.isActive !== false && seriesIds.has(s._id)
+    );
   },
 });
 

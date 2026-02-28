@@ -528,21 +528,24 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   }
 
   private async loadData(): Promise<void> {
-    // Load series
-    const seriesQuery = this.convex.createReactiveQuery(
-      this.convex.api.series.listActive,
-      {},
-    );
-    this.unsubscribes.push(seriesQuery.unsubscribe);
+    const userId = this.authService.getUserId();
 
-    const checkSeries = setInterval(() => {
-      const data = seriesQuery.data();
-      if (data) {
-        this.series.set(data);
-        this.applyVideoFieldValidators(this.selectedSeriesId());
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkSeries));
+    if (userId) {
+      const seriesQuery = this.convex.createReactiveQuery(
+        this.convex.api.series.listActiveForUser,
+        { userId: userId as any },
+      );
+      this.unsubscribes.push(seriesQuery.unsubscribe);
+
+      const checkSeries = setInterval(() => {
+        const data = seriesQuery.data();
+        if (data) {
+          this.series.set(data);
+          this.applyVideoFieldValidators(this.selectedSeriesId());
+        }
+      }, 100);
+      this.unsubscribes.push(() => clearInterval(checkSeries));
+    }
 
     // Load all events (filtering done in computed)
     const eventsQuery = this.convex.createReactiveQuery(
