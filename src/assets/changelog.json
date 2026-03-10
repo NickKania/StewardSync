@@ -54,6 +54,13 @@
       "changes": [
         "Fix driver individual penalties to use at-fault driver instead of reported driver"
       ]
+    },
+    {
+      "version": "1.3.2",
+      "date": "2026-03-10",
+      "changes": [
+        "Fix: Restore reportingCloseDuration validation for driver report submissions",
+      ]
     }
   ]
 }

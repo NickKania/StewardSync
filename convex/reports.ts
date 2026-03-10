@@ -413,6 +413,25 @@ export const create = mutation({
       throw new UserFacingError("Reports have been locked for this series");
     }
 
+    // Check if reporting window has closed
+    if (series && series.reportingOpenTime && series.reportingCloseDuration) {
+      const eventDate = new Date(event.eventDate);
+      const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
+
+      const openTime = new Date(eventDate);
+      openTime.setUTCHours(hours, minutes, 0, 0);
+
+      const closeTime = new Date(openTime);
+      closeTime.setHours(closeTime.getHours() + series.reportingCloseDuration);
+
+      const now = new Date();
+      if (now > closeTime) {
+        throw new UserFacingError(
+          `Reporting closed at ${closeTime.toISOString()}. Reports can no longer be submitted for this event.`
+        );
+      }
+    }
+
     const trimmedVideoLink = args.videoLink?.trim();
     const trimmedVideoTimestamp = args.videoTimestamp?.trim();
     if (
