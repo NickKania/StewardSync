@@ -61,6 +61,13 @@
       "changes": [
         "Fix: Restore reportingCloseDuration validation for driver report submissions"
       ]
+    },
+    {
+      "version": "1.4.0",
+      "date": "2026-03-10",
+      "changes": [
+        "Update navigation handling to preserve filtering and location"
+      ]
     }
   ]
 }

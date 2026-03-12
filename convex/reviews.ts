@@ -553,6 +553,22 @@ export const updateWithSecondSteward = mutation({
           userId: args.secondStewardId,
           updatedAt: Date.now(),
         });
+
+        // Update video timestamp on report if provided
+        if (updates.videoTimestamp) {
+          await ctx.db.patch(review.reportId, {
+            videoTimestamp: updates.videoTimestamp,
+          });
+        }
+
+        // Mark report as reviewed if there are 2+ reviews
+        if (report.status !== "reviewed") {
+          await ctx.db.patch(review.reportId, {
+            status: "reviewed",
+            updatedAt: Date.now(),
+          });
+        }
+
         return args.reviewId;
       }
       linkedReviewId = null;
@@ -573,6 +589,22 @@ export const updateWithSecondSteward = mutation({
         linkedReviewId: existingSecondReview._id,
         updatedAt: Date.now(),
       });
+
+      // Update video timestamp on report if provided
+      if (updates.videoTimestamp) {
+        await ctx.db.patch(review.reportId, {
+          videoTimestamp: updates.videoTimestamp,
+        });
+      }
+
+      // Mark report as reviewed if there are 2+ reviews
+      if (report.status !== "reviewed") {
+        await ctx.db.patch(review.reportId, {
+          status: "reviewed",
+          updatedAt: Date.now(),
+        });
+      }
+
       return args.reviewId;
     }
 
@@ -597,6 +629,26 @@ export const updateWithSecondSteward = mutation({
     });
 
     await ctx.db.patch(args.reviewId, { linkedReviewId: secondReviewId });
+
+    // Update video timestamp on report if provided
+    if (updates.videoTimestamp) {
+      await ctx.db.patch(review.reportId, {
+        videoTimestamp: updates.videoTimestamp,
+      });
+    }
+
+    // Mark report as reviewed if there are now 2+ reviews
+    const reviewCount = await ctx.db
+      .query("reviews")
+      .withIndex("by_report", (q) => q.eq("reportId", review.reportId))
+      .collect();
+
+    if (reviewCount.length >= 2 && report.status !== "reviewed") {
+      await ctx.db.patch(review.reportId, {
+        status: "reviewed",
+        updatedAt: Date.now(),
+      });
+    }
 
     return args.reviewId;
   },
