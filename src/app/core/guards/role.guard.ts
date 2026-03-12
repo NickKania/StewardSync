@@ -1,13 +1,27 @@
-import { inject } from '@angular/core';
-import { CanActivateFn, Router, ActivatedRouteSnapshot } from '@angular/router';
-import { AuthService } from '@core/services/auth.service';
-import { RoleName } from '@core/models';
+import { inject } from "@angular/core";
+import {
+  ActivatedRouteSnapshot,
+  CanActivateFn,
+  Router,
+  UrlTree,
+} from "@angular/router";
+import { AuthService } from "@core/services/auth.service";
+import { RoleName, RouteWithFallbackData } from "@core/models";
 
 export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  const requiredRoles = route.data['roles'] as RoleName[] | undefined;
+  const requiredRoles = route.data["roles"] as RoleName[] | undefined;
+  const { fallbackCommands } = route.data as RouteWithFallbackData;
+
+  const getFallback = (): UrlTree => {
+    if (fallbackCommands?.length) {
+      return router.createUrlTree([...fallbackCommands]);
+    }
+
+    return router.createUrlTree(["/"]);
+  };
 
   if (!requiredRoles || requiredRoles.length === 0) {
     return true;
@@ -20,8 +34,7 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
           if (authService.hasRole(...requiredRoles)) {
             resolve(true);
           } else {
-            router.navigate(['/']);
-            resolve(false);
+            resolve(getFallback());
           }
         } else {
           setTimeout(checkRole, 50);
@@ -35,6 +48,5 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     return true;
   }
 
-  router.navigate(['/']);
-  return false;
+  return getFallback();
 };

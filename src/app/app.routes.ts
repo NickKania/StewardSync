@@ -2,6 +2,7 @@ import { Routes } from "@angular/router";
 import { authGuard } from "@core/guards/auth.guard";
 import { roleGuard } from "@core/guards/role.guard";
 import { appRuntimeConfig } from "@core/config/runtime-config";
+import { RouteRedirectComponent } from "@core/components/route-redirect/route-redirect.component";
 
 export const routes: Routes = [
   {
@@ -59,13 +60,50 @@ export const routes: Routes = [
     children: [
       {
         path: "",
+        pathMatch: "full",
+        component: RouteRedirectComponent,
+        data: {
+          redirectCommands: ["/reports", "my"],
+          legacyTabMap: {
+            my_reports: ["/reports", "my"],
+            finalized_reports: ["/reports", "finalized"],
+            all_reports: ["/reports", "all"],
+          },
+        },
+      },
+      {
+        path: "my",
         loadComponent: () =>
           import("@features/reports/report-list/report-list.component").then(
             (m) => m.ReportListComponent,
           ),
+        data: { tabId: "my_reports" },
+      },
+      {
+        path: "finalized",
+        loadComponent: () =>
+          import("@features/reports/report-list/report-list.component").then(
+            (m) => m.ReportListComponent,
+          ),
+        data: { tabId: "finalized_reports" },
+      },
+      {
+        path: "all",
+        loadComponent: () =>
+          import("@features/reports/report-list/report-list.component").then(
+            (m) => m.ReportListComponent,
+          ),
+        data: { tabId: "all_reports" },
       },
       {
         path: "new",
+        loadComponent: () =>
+          import("@features/reports/report-form/report-form.component").then(
+            (m) => m.ReportFormComponent,
+          ),
+      },
+      {
+        path: ":id/edit",
         loadComponent: () =>
           import("@features/reports/report-form/report-form.component").then(
             (m) => m.ReportFormComponent,
@@ -76,13 +114,6 @@ export const routes: Routes = [
         loadComponent: () =>
           import("@features/reports/report-detail/report-detail.component").then(
             (m) => m.ReportDetailComponent,
-          ),
-      },
-      {
-        path: ":id/edit",
-        loadComponent: () =>
-          import("@features/reports/report-form/report-form.component").then(
-            (m) => m.ReportFormComponent,
           ),
       },
     ],
@@ -96,22 +127,17 @@ export const routes: Routes = [
     children: [
       {
         path: "",
-        loadComponent: () =>
-          import("@features/reviews/review-workspace/review-workspace.component").then(
-            (m) => m.ReviewWorkspaceComponent,
-          ),
-      },
-      {
-        path: "search",
-        canActivate: [roleGuard],
+        pathMatch: "full",
+        component: RouteRedirectComponent,
         data: {
-          roles: ["head_steward", "league_manager"],
-          defaultTab: "search",
+          redirectCommands: ["/reviews", "queue"],
+          legacyTabMap: {
+            queue: ["/reviews", "queue"],
+            "my-reviews": ["/reviews", "my-reviews"],
+            search: ["/reviews", "search"],
+            finalization: ["/reviews", "finalization"],
+          },
         },
-        loadComponent: () =>
-          import("@features/reviews/review-workspace/review-workspace.component").then(
-            (m) => m.ReviewWorkspaceComponent,
-          ),
       },
       {
         path: "steward-incident",
@@ -121,9 +147,51 @@ export const routes: Routes = [
           ),
       },
       {
-        path: "my-reviews",
-        redirectTo: "/reviews?tab=my-reviews",
-        pathMatch: "full",
+        path: "",
+        loadComponent: () =>
+          import("@features/reviews/review-workspace/review-workspace.component").then(
+            (m) => m.ReviewWorkspaceComponent,
+          ),
+        children: [
+          {
+            path: "queue",
+            loadComponent: () =>
+              import("@features/reviews/review-dashboard/review-dashboard.component").then(
+                (m) => m.ReviewDashboardComponent,
+              ),
+          },
+          {
+            path: "my-reviews",
+            loadComponent: () =>
+              import("@features/reviews/my-reviews/my-reviews.component").then(
+                (m) => m.MyReviewsComponent,
+              ),
+          },
+          {
+            path: "search",
+            canActivate: [roleGuard],
+            data: {
+              roles: ["head_steward", "league_manager"],
+              fallbackCommands: ["/reviews", "queue"],
+            },
+            loadComponent: () =>
+              import("@features/reviews/review-search/review-search.component").then(
+                (m) => m.ReviewSearchComponent,
+              ),
+          },
+          {
+            path: "finalization",
+            canActivate: [roleGuard],
+            data: {
+              roles: ["head_steward", "league_manager"],
+              fallbackCommands: ["/reviews", "queue"],
+            },
+            loadComponent: () =>
+              import("@features/finalize/finalize-dashboard/finalize-dashboard.component").then(
+                (m) => m.FinalizeDashboardComponent,
+              ),
+          },
+        ],
       },
       {
         path: ":reportId",
@@ -141,11 +209,11 @@ export const routes: Routes = [
     children: [
       {
         path: "",
-        loadComponent: () =>
-          import("@features/reviews/review-workspace/review-workspace.component").then(
-            (m) => m.ReviewWorkspaceComponent,
-          ),
-        data: { defaultTab: "finalization" },
+        pathMatch: "full",
+        component: RouteRedirectComponent,
+        data: {
+          redirectCommands: ["/reviews", "finalization"],
+        },
       },
       {
         path: ":reportId",
@@ -211,10 +279,50 @@ export const routes: Routes = [
     data: {
       roles: ["steward", "head_steward", "event_manager", "league_manager"],
     },
-    loadComponent: () =>
-      import("@features/statistics/statistics-dashboard/statistics-dashboard.component").then(
-        (m) => m.StatisticsDashboardComponent,
-      ),
+    children: [
+      {
+        path: "",
+        pathMatch: "full",
+        component: RouteRedirectComponent,
+        data: {
+          redirectCommands: ["/statistics", "event-rundown"],
+          legacyTabMap: {
+            event_rundown: ["/statistics", "event-rundown"],
+            series_overview: ["/statistics", "series-overview"],
+            time_penalty_summary: ["/statistics", "time-penalty-summary"],
+          },
+        },
+      },
+      {
+        path: "event-rundown",
+        loadComponent: () =>
+          import("@features/statistics/statistics-dashboard/statistics-dashboard.component").then(
+            (m) => m.StatisticsDashboardComponent,
+          ),
+        data: { tabId: "event_rundown" },
+      },
+      {
+        path: "series-overview",
+        canActivate: [roleGuard],
+        data: {
+          roles: ["head_steward", "event_manager", "league_manager"],
+          fallbackCommands: ["/statistics", "event-rundown"],
+          tabId: "series_overview",
+        },
+        loadComponent: () =>
+          import("@features/statistics/statistics-dashboard/statistics-dashboard.component").then(
+            (m) => m.StatisticsDashboardComponent,
+          ),
+      },
+      {
+        path: "time-penalty-summary",
+        loadComponent: () =>
+          import("@features/statistics/statistics-dashboard/statistics-dashboard.component").then(
+            (m) => m.StatisticsDashboardComponent,
+          ),
+        data: { tabId: "time_penalty_summary" },
+      },
+    ],
   },
   {
     path: "admin",

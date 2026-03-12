@@ -18,6 +18,7 @@ import {
 } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { NavigationService } from "@core/services/navigation.service";
 import { ToastService } from "@core/services/toast.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
@@ -421,13 +422,13 @@ import { User } from "@app/core/models";
         <app-card>
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">Report not found</p>
-            <a
-              [routerLink]="['/reviews']"
-              [queryParams]="{ tab: 'finalization' }"
-              class="mt-4 inline-block"
+            <app-button
+              class="mt-4 inline-flex"
+              variant="primary"
+              (onClick)="goBackToFinalization()"
             >
-              <app-button variant="primary">Back to Finalization</app-button>
-            </a>
+              Back to Finalization
+            </app-button>
           </div>
         </app-card>
       }
@@ -478,6 +479,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+  private navigationService = inject(NavigationService);
   private router = inject(Router);
   private toast = inject(ToastService);
 
@@ -1013,9 +1015,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
       this.toast.success("Report rejected");
       this.showRejectModal = false;
-      this.router.navigate(["/reviews"], {
-        queryParams: { tab: "finalization" },
-      });
+      this.router.navigate(["/reviews", "finalization"]);
     } catch (error: any) {
       this.toast.error(error.message || "Failed to reject report");
     } finally {
@@ -1024,9 +1024,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(["/reviews"], {
-      queryParams: { tab: "finalization" },
-    });
+    this.navigationService.goBack(["/reviews", "finalization"]);
   }
 
   getSessionName(
@@ -1035,6 +1033,10 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  goBackToFinalization(): void {
+    this.navigationService.goBack(["/reviews", "finalization"]);
   }
 }
 

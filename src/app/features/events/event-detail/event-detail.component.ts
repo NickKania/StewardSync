@@ -11,6 +11,7 @@ import { RouterLink } from "@angular/router";
 import { FormsModule } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { NavigationService } from "@core/services/navigation.service";
 import { ToastService } from "@core/services/toast.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
@@ -52,24 +53,22 @@ import { Id } from "@convex/_generated/dataModel";
             </p>
           </div>
           <div class="flex gap-3">
-            <a routerLink="/events">
-              <app-button variant="secondary">
-                <svg
-                  class="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                  ></path>
-                </svg>
-                Back to Events
-              </app-button>
-            </a>
+            <app-button variant="secondary" (onClick)="goBackToEvents()">
+              <svg
+                class="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                ></path>
+              </svg>
+              Back to Events
+            </app-button>
             <a routerLink="/reports/new">
               <app-button variant="primary">File Report</app-button>
             </a>
@@ -242,7 +241,7 @@ import { Id } from "@convex/_generated/dataModel";
                           </svg>
                         </button>
                         <a
-                          [routerLink]="['/reports']"
+                          [routerLink]="['/reports', 'my']"
                           [queryParams]="{
                             event: event()?._id,
                             race: race._id,
@@ -289,9 +288,13 @@ import { Id } from "@convex/_generated/dataModel";
         <app-card>
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">Event not found</p>
-            <a routerLink="/events" class="mt-4 inline-block">
-              <app-button variant="primary">Back to Events</app-button>
-            </a>
+            <app-button
+              class="mt-4 inline-flex"
+              variant="primary"
+              (onClick)="goBackToEvents()"
+            >
+              Back to Events
+            </app-button>
           </div>
         </app-card>
       }
@@ -340,6 +343,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+  private navigationService = inject(NavigationService);
   private toast = inject(ToastService);
 
   event = signal<any>(null);
@@ -631,6 +635,10 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  goBackToEvents(): void {
+    this.navigationService.goBack(["/events"]);
   }
 
   private generateCSV(headers: string[], rows: any[][]): string {

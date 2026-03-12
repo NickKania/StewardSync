@@ -1290,7 +1290,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       if (this.form.get("createAnother")?.value) {
         this.resetForAnother();
       } else {
-        this.router.navigate(["/reports"]);
+        this.router.navigate(["/reports", "my"]);
       }
     } catch (error: any) {
       this.toast.error(error.message || "Failed to create incident");
@@ -1300,7 +1300,7 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(["/reviews"]);
+    this.router.navigate(["/reviews", "queue"]);
   }
 
   private resetForAnother(): void {

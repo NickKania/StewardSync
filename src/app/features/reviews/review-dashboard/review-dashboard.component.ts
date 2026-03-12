@@ -46,7 +46,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
         </div>
         <div class="flex gap-2 flex-wrap">
           @if (canSearchReviews()) {
-            <a [routerLink]="['/reviews']" [queryParams]="{ tab: 'search' }">
+            <a [routerLink]="['/reviews', 'search']">
               <app-button variant="secondary">
                 <svg
                   class="w-4 h-4 mr-2"

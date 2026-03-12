@@ -8,9 +8,10 @@ import {
   Input,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { Router, RouterLink } from "@angular/router";
+import { RouterLink } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { NavigationService } from "@core/services/navigation.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
@@ -586,9 +587,13 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
         <app-card>
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">Report not found</p>
-            <a routerLink="/reports" class="mt-4 inline-block">
-              <app-button variant="primary">Back to Reports</app-button>
-            </a>
+            <app-button
+              class="mt-4 inline-flex"
+              variant="primary"
+              (onClick)="goBackToReports()"
+            >
+              Back to Reports
+            </app-button>
           </div>
         </app-card>
       }
@@ -616,6 +621,7 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
 
   private convex = inject(ConvexService);
   authService = inject(AuthService);
+  private navigationService = inject(NavigationService);
 
   report = signal<any>(null);
   loading = signal(true);
@@ -756,5 +762,9 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  goBackToReports(): void {
+    this.navigationService.goBack(["/reports", "my"]);
   }
 }

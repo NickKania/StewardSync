@@ -611,7 +611,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         }
       } catch (error) {
         this.toast.error("Failed to load report");
-        this.router.navigate(["/reports"]);
+        this.router.navigate(["/reports", "my"]);
       }
     } else {
       this.loadSavedCreateAnother();
@@ -789,7 +789,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         this.toast.success("Report submitted successfully");
       }
 
-      this.router.navigate(["/reports"]);
+      this.router.navigate(["/reports", "my"]);
     } catch (error: any) {
       const errorMessage = this.extractUserFacingError(error.message);
       this.toast.error(errorMessage || "Failed to submit report");
@@ -823,7 +823,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(["/reports"]);
+    this.router.navigate(["/reports", "my"]);
   }
 
   private applyVideoFieldValidators(seriesId: string): void {

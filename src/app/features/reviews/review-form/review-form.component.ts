@@ -18,6 +18,7 @@ import {
 } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { NavigationService } from "@core/services/navigation.service";
 import { ToastService } from "@core/services/toast.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
@@ -474,9 +475,13 @@ import { User } from "@app/core/models";
         <app-card>
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">Report not found</p>
-            <a routerLink="/reviews" class="mt-4 inline-block">
-              <app-button variant="primary">Back to Reviews</app-button>
-            </a>
+            <app-button
+              class="mt-4 inline-flex"
+              variant="primary"
+              (onClick)="goBackToReviews()"
+            >
+              Back to Reviews
+            </app-button>
           </div>
         </app-card>
       }
@@ -526,6 +531,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
   private fb = inject(FormBuilder);
   private convex = inject(ConvexService);
+  private navigationService = inject(NavigationService);
   private router = inject(Router);
   private toast = inject(ToastService);
   authService = inject(AuthService);
@@ -937,11 +943,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit(): Promise<void> {
-    await this.submitReview({ redirectTo: "/reviews" });
+    await this.submitReview({ redirectTo: ["/reviews", "queue"] });
   }
 
   private async submitReview(options: {
-    redirectTo: string;
+    redirectTo: readonly string[];
     queryParams?: Record<string, string>;
   }): Promise<void> {
     if (this.form.invalid) {
@@ -1030,7 +1036,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           : "Review submitted successfully",
       );
 
-      await this.router.navigate([options.redirectTo], {
+      await this.router.navigate([...options.redirectTo], {
         queryParams: options.queryParams,
       });
     } catch (error: any) {
@@ -1104,7 +1110,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
       this.toast.success("Report rejected");
       this.showRejectModal = false;
-      this.router.navigate(["/reviews"]);
+      this.router.navigate(["/reviews", "queue"]);
     } catch (error: any) {
       this.toast.error(error.message || "Failed to reject report");
     } finally {
@@ -1113,7 +1119,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(["/reviews"]);
+    this.navigationService.goBack(["/reviews", "queue"]);
   }
 
   getSessionName(
@@ -1122,5 +1128,9 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  goBackToReviews(): void {
+    this.navigationService.goBack(["/reviews", "queue"]);
   }
 }

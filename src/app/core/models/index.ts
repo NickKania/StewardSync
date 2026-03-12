@@ -4,3 +4,4 @@ export * from './event.model';
 export * from './report.model';
 export * from './review.model';
 export * from './series.model';
+export * from './route-data';

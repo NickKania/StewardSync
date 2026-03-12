@@ -1,14 +1,16 @@
 import {
   Component,
+  DestroyRef,
   OnDestroy,
   OnInit,
   computed,
   inject,
   signal,
 } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
-import { RouterLink } from "@angular/router";
+import { ActivatedRoute, Params, Router, RouterLink } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { Series } from "@core/models/series.model";
 import { CardComponent } from "@shared/components/card/card.component";
@@ -88,7 +90,7 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
             <input
               type="checkbox"
               [ngModel]="showInactive()"
-              (ngModelChange)="showInactive.set($event); filterSeriesDrivers()"
+              (ngModelChange)="onShowInactiveChange($event)"
             />
             Show Withdrawn
           </label>
@@ -216,6 +218,9 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
 })
 export class DriverListComponent implements OnInit, OnDestroy {
   private readonly convex = inject(ConvexService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   loading = signal(true);
   series = signal<Series[]>([]);
@@ -260,6 +265,10 @@ export class DriverListComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.applyQueryParams(params));
+
     void this.loadInitial();
   }
 
@@ -283,13 +292,16 @@ export class DriverListComponent implements OnInit, OnDestroy {
     }
   }
 
-  async onSeriesChange(seriesId: string): Promise<void> {
+  async onSeriesChange(seriesId: string, syncQueryParams = true): Promise<void> {
     this.selectedSeriesId.set(seriesId || "");
     this.selectedClassName.set("");
 
     if (!seriesId) {
       this.seriesDrivers.set([]);
       this.filteredSeriesDrivers.set([]);
+      if (syncQueryParams) {
+        this.syncQueryParams();
+      }
       return;
     }
 
@@ -310,18 +322,38 @@ export class DriverListComponent implements OnInit, OnDestroy {
     } finally {
       this.loading.set(false);
     }
+
+    if (syncQueryParams) {
+      this.syncQueryParams();
+    }
   }
 
-  onSearchChange(value: string): void {
+  onSearchChange(value: string, syncQueryParams = true): void {
     this.searchTerm.set(value || "");
     if (this.selectedSeriesId()) {
       this.filterSeriesDrivers();
     }
+    if (syncQueryParams) {
+      this.syncQueryParams();
+    }
   }
 
-  onClassChange(value: string): void {
+  onClassChange(value: string, syncQueryParams = true): void {
     this.selectedClassName.set(value || "");
     this.filterSeriesDrivers();
+    if (syncQueryParams) {
+      this.syncQueryParams();
+    }
+  }
+
+  onShowInactiveChange(value: boolean, syncQueryParams = true): void {
+    this.showInactive.set(Boolean(value));
+    if (this.selectedSeriesId()) {
+      this.filterSeriesDrivers();
+    }
+    if (syncQueryParams) {
+      this.syncQueryParams();
+    }
   }
 
   filterSeriesDrivers(): void {
@@ -359,5 +391,125 @@ export class DriverListComponent implements OnInit, OnDestroy {
 
     rows.sort((a, b) => a.driverNumber - b.driverNumber);
     this.filteredSeriesDrivers.set(rows);
+  }
+
+  private applyQueryParams(params: Params): void {
+    const nextSearch = this.getStringParam(params, "search");
+    const nextSeries = this.getStringParam(params, "series");
+    const nextClass = this.getStringParam(params, "class");
+    const nextShowInactive = this.getBooleanParam(params, "showInactive");
+
+    const searchChanged = nextSearch !== this.searchTerm();
+    const seriesChanged = nextSeries !== this.selectedSeriesId();
+    const classValue = nextSeries ? nextClass : "";
+    const classChanged = classValue !== this.selectedClassName();
+    const inactiveChanged = nextShowInactive !== this.showInactive();
+
+    if (searchChanged) {
+      this.onSearchChange(nextSearch, false);
+    }
+
+    if (inactiveChanged) {
+      this.onShowInactiveChange(nextShowInactive, false);
+    }
+
+    if (seriesChanged) {
+      void this.onSeriesChange(nextSeries, false).then(() => {
+        if (classValue !== this.selectedClassName()) {
+          this.onClassChange(classValue, false);
+        } else if (nextSeries) {
+          this.filterSeriesDrivers();
+        }
+      });
+      return;
+    }
+
+    if (classChanged) {
+      this.onClassChange(classValue, false);
+    } else if (nextSeries && (searchChanged || inactiveChanged)) {
+      this.filterSeriesDrivers();
+    }
+  }
+
+  private getFilterQueryParams(): Record<string, string | undefined> {
+    return {
+      search: this.searchTerm() || undefined,
+      series: this.selectedSeriesId() || undefined,
+      class: this.selectedSeriesId() ? this.selectedClassName() || undefined : undefined,
+      showInactive: this.showInactive() ? "true" : undefined,
+    };
+  }
+
+  private syncQueryParams(): void {
+    const currentQueryParams = this.route.snapshot.queryParams as Record<string, unknown>;
+    const queryParams = this.getMergedQueryParams(currentQueryParams);
+
+    if (this.areQueryParamsEqual(currentQueryParams, queryParams)) {
+      return;
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+    });
+  }
+
+  private getMergedQueryParams(
+    currentQueryParams: Record<string, unknown>,
+  ): Record<string, string | undefined> {
+    const preservedParams: Record<string, string | undefined> = {};
+    const filterKeys = new Set(["search", "series", "class", "showInactive"]);
+
+    Object.entries(currentQueryParams).forEach(([key, value]) => {
+      if (!filterKeys.has(key) && typeof value === "string" && value) {
+        preservedParams[key] = value;
+      }
+    });
+
+    return {
+      ...preservedParams,
+      ...this.getFilterQueryParams(),
+    };
+  }
+
+  private areQueryParamsEqual(
+    current: Record<string, unknown>,
+    next: Record<string, string | undefined>,
+  ): boolean {
+    const normalize = (params: Record<string, unknown>): Record<string, string> => {
+      const normalized: Record<string, string> = {};
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (typeof value === "string" && value) {
+          normalized[key] = value;
+        }
+      });
+
+      return normalized;
+    };
+
+    const normalizedCurrent = normalize(current);
+    const normalizedNext = normalize(next);
+    const currentKeys = Object.keys(normalizedCurrent).sort();
+    const nextKeys = Object.keys(normalizedNext).sort();
+
+    if (currentKeys.length !== nextKeys.length) {
+      return false;
+    }
+
+    return currentKeys.every(
+      (key, index) =>
+        key === nextKeys[index] && normalizedCurrent[key] === normalizedNext[key],
+    );
+  }
+
+  private getStringParam(params: Params, key: string): string {
+    const value = params[key];
+    return typeof value === "string" ? value : "";
+  }
+
+  private getBooleanParam(params: Params, key: string): boolean {
+    const value = params[key];
+    return value === "true" || value === "1";
   }
 }

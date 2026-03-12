@@ -1,6 +1,7 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
 import { Series } from '@core/models/series.model';
@@ -33,7 +34,11 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
       <app-card>
         <div class="flex gap-4">
           <div class="w-full sm:w-48">
-            <select class="input" [(ngModel)]="selectedSeries">
+            <select
+              class="input"
+              [ngModel]="selectedSeries()"
+              (ngModelChange)="onSeriesChange($event)"
+            >
               <option value="">All series</option>
               @for (s of series(); track s._id) {
                 <option [value]="s._id">{{ s.name }}</option>
@@ -92,6 +97,9 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
 })
 export class EventListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   events = signal<any[]>([]);
   series = signal<Series[]>([]);
@@ -110,6 +118,10 @@ export class EventListComponent implements OnInit, OnDestroy {
   private unsubscribes: (() => void)[] = [];
 
   ngOnInit(): void {
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.applyQueryParams(params));
+
     this.loadEvents();
   }
 
@@ -141,6 +153,92 @@ export class EventListComponent implements OnInit, OnDestroy {
       }
     }, 100);
     this.unsubscribes.push(() => clearInterval(checkData));
+  }
+
+  onSeriesChange(seriesId: string, syncQueryParams = true): void {
+    this.selectedSeries.set(seriesId || '');
+    if (syncQueryParams) {
+      this.syncQueryParams();
+    }
+  }
+
+  private applyQueryParams(params: Params): void {
+    const nextSeries = this.getStringParam(params, 'series');
+    if (nextSeries !== this.selectedSeries()) {
+      this.onSeriesChange(nextSeries, false);
+    }
+  }
+
+  private getFilterQueryParams(): Record<string, string | undefined> {
+    return {
+      series: this.selectedSeries() || undefined,
+    };
+  }
+
+  private syncQueryParams(): void {
+    const currentQueryParams = this.route.snapshot.queryParams as Record<string, unknown>;
+    const queryParams = this.getMergedQueryParams(currentQueryParams);
+    if (this.areQueryParamsEqual(currentQueryParams, queryParams)) {
+      return;
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+    });
+  }
+
+  private getMergedQueryParams(
+    currentQueryParams: Record<string, unknown>,
+  ): Record<string, string | undefined> {
+    const preservedParams: Record<string, string | undefined> = {};
+
+    Object.entries(currentQueryParams).forEach(([key, value]) => {
+      if (key !== 'series' && typeof value === 'string' && value) {
+        preservedParams[key] = value;
+      }
+    });
+
+    return {
+      ...preservedParams,
+      ...this.getFilterQueryParams(),
+    };
+  }
+
+  private areQueryParamsEqual(
+    current: Record<string, unknown>,
+    next: Record<string, string | undefined>,
+  ): boolean {
+    const normalize = (params: Record<string, unknown>): Record<string, string> => {
+      const normalized: Record<string, string> = {};
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (typeof value === 'string' && value) {
+          normalized[key] = value;
+        }
+      });
+
+      return normalized;
+    };
+
+    const normalizedCurrent = normalize(current);
+    const normalizedNext = normalize(next);
+    const currentKeys = Object.keys(normalizedCurrent).sort();
+    const nextKeys = Object.keys(normalizedNext).sort();
+
+    if (currentKeys.length !== nextKeys.length) {
+      return false;
+    }
+
+    return currentKeys.every(
+      (key, index) =>
+        key === nextKeys[index] && normalizedCurrent[key] === normalizedNext[key],
+    );
+  }
+
+  private getStringParam(params: Params, key: string): string {
+    const value = params[key];
+    return typeof value === 'string' ? value : '';
   }
 
   getEventStatus(eventDate: number): 'success' | 'warning' | 'info' {
