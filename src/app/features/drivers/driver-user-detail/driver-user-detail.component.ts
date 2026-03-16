@@ -18,6 +18,7 @@ import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { CardComponent } from "@shared/components/card/card.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { ModalComponent } from "@shared/components/modal/modal.component";
 import {
   SelectComponent,
   SelectOption,
@@ -57,6 +58,7 @@ interface SeriesPenaltyGroup {
     CardComponent,
     LoadingComponent,
     SelectComponent,
+    ModalComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -105,10 +107,15 @@ interface SeriesPenaltyGroup {
               }
             </div>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             <a routerLink="/drivers">
               <app-button variant="secondary">Back to Drivers</app-button>
             </a>
+            @if (canCreateMeetingThread()) {
+              <app-button variant="primary" (onClick)="openMeetingThreadModal()">
+                Setup Meeting Thread
+              </app-button>
+            }
             @if (linkedUser()) {
               <a [routerLink]="['/drivers/user', linkedUser()._id]">
                 <app-button variant="primary">Go To User Profile</app-button>
@@ -814,6 +821,37 @@ interface SeriesPenaltyGroup {
           </app-card>
         }
       }
+
+      <!-- Meeting Thread Modal -->
+      <app-modal
+        [isOpen]="showMeetingThreadModal()"
+        title="Setup Meeting Thread"
+        size="md"
+        (close)="closeMeetingThreadModal()"
+      >
+        <label class="label">Initial Message</label>
+        <textarea
+          class="input min-h-[120px]"
+          [ngModel]="meetingThreadMessage()"
+          (ngModelChange)="meetingThreadMessage.set($event)"
+          placeholder="Enter the purpose or agenda for this meeting..."
+        ></textarea>
+        <div modal-footer class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+          <app-button
+            variant="secondary"
+            (onClick)="closeMeetingThreadModal()"
+          >
+            Cancel
+          </app-button>
+          <app-button
+            variant="primary"
+            [loading]="creatingMeetingThread()"
+            (onClick)="createMeetingThread()"
+          >
+            Create Thread
+          </app-button>
+        </div>
+      </app-modal>
     </div>
   `,
 })
@@ -851,6 +889,11 @@ export class DriverUserDetailComponent implements OnInit {
   editingLinkedUser = signal(false);
   pendingLinkedUserId = signal("");
   savingLinkedUser = signal(false);
+
+  // Meeting thread modal
+  showMeetingThreadModal = signal(false);
+  meetingThreadMessage = signal("");
+  creatingMeetingThread = signal(false);
 
   readonly isDriverMode = computed(() => !!this._driverId() && !this._userId());
   readonly isUserMode = computed(() => !this.isDriverMode());
@@ -1141,6 +1184,11 @@ export class DriverUserDetailComponent implements OnInit {
 
   canViewStaffNotes(): boolean {
     return this.authService.hasMinimumRole("steward");
+  }
+
+  canCreateMeetingThread(): boolean {
+    return this.authService.hasRole("head_steward") ||
+           this.authService.hasRole("league_manager");
   }
 
   setStaffNoteDraft(value: string): void {
@@ -1459,6 +1507,56 @@ export class DriverUserDetailComponent implements OnInit {
 
   formatDate(value: number): string {
     return new Date(value).toLocaleDateString();
+  }
+
+  openMeetingThreadModal(): void {
+    this.meetingThreadMessage.set("");
+    this.showMeetingThreadModal.set(true);
+  }
+
+  closeMeetingThreadModal(): void {
+    this.showMeetingThreadModal.set(false);
+    this.meetingThreadMessage.set("");
+  }
+
+  async createMeetingThread(): Promise<void> {
+    const message = this.meetingThreadMessage().trim();
+    if (!message) {
+      this.toast.warning("Please enter a message");
+      return;
+    }
+
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId) {
+      this.toast.error("Not authenticated");
+      return;
+    }
+
+    const targetDriverId = this.isDriverMode() ? this._driverId() : this.primaryUserSeriesProfile()?.driverId;
+    if (!targetDriverId) {
+      this.toast.error("No driver found");
+      return;
+    }
+
+    this.creatingMeetingThread.set(true);
+    try {
+      const result = await this.convex.mutation(
+        this.convex.api.driverMeetingThreads.createDriverMeetingThread,
+        {
+          driverId: targetDriverId as any,
+          initialMessage: message,
+          userId: currentUserId as any,
+        }
+      );
+
+      this.toast.success("Meeting thread created");
+      this.closeMeetingThreadModal();
+    } catch (error: any) {
+      console.error("Failed to create meeting thread:", error);
+      this.toast.error(error?.message || "Failed to create meeting thread");
+    } finally {
+      this.creatingMeetingThread.set(false);
+    }
   }
 
   penaltyHistoryItems(seriesProfile: any): any[] {
