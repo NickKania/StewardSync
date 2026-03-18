@@ -318,19 +318,29 @@ interface SeriesPenaltyGroup {
           </dl>
         </app-card>
 
-        <!-- Staff Notes - User Mode Only -->
+        <!-- Staff Notes -->
         @if (showStaffNotesSection()) {
           <app-card>
-            <label class="label">Staff Notes</label>
+            <label class="label">
+              @if (isUserMode()) {
+                Staff Notes (User & Drivers)
+              } @else {
+                Driver Staff Notes
+              }
+            </label>
             <textarea
               class="input min-h-[120px]"
               [ngModel]="staffNoteDraft()"
               (ngModelChange)="setStaffNoteDraft($event)"
-              placeholder="Add internal notes for staff only..."
+              [placeholder]="staffNotePlaceholder()"
             ></textarea>
             <div class="flex items-center justify-between mt-3">
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Visible to stewards and above only.
+                @if (isUserMode()) {
+                  Notes for user and linked drivers. Visible to stewards and above only.
+                } @else {
+                  Driver notes. Visible to stewards and above only.
+                }
               </p>
               <app-button
                 variant="primary"
@@ -897,6 +907,11 @@ export class DriverUserDetailComponent implements OnInit {
 
   readonly isDriverMode = computed(() => !!this._driverId() && !this._userId());
   readonly isUserMode = computed(() => !this.isDriverMode());
+  readonly staffNotePlaceholder = computed(() =>
+    this.isUserMode()
+      ? "Add internal notes for staff only... Use '--- User Note ---' and '--- #123 - Series Name ---' headers to separate notes."
+      : "Add internal notes for this driver...",
+  );
   readonly detailNotFoundMessage = computed(() =>
     this.isDriverMode() ? "Driver not found." : "User profile not found.",
   );
@@ -1003,7 +1018,7 @@ export class DriverUserDetailComponent implements OnInit {
     return (this.profile()?.profiles?.length ?? 0) > 0;
   });
   readonly showStaffNotesSection = computed(
-    () => this.isUserMode() && this.canViewStaffNotes(),
+    () => this.canViewStaffNotes(),
   );
   readonly showVisibleSeriesProfilesSection = computed(() => this.isUserMode());
   readonly showSeriesPenaltiesSection = computed(() => {
@@ -1195,18 +1210,129 @@ export class DriverUserDetailComponent implements OnInit {
     this.staffNoteDraft.set(value);
   }
 
+  private buildCombinedNote(userNote: string, profiles: any[]): string {
+    const parts: string[] = [];
+
+    // Add user note if it exists
+    if (userNote && userNote.trim()) {
+      parts.push(`--- User Note ---\n${userNote.trim()}`);
+    }
+
+    // Add driver notes for each profile
+    for (const profile of profiles) {
+      if (profile.note && profile.note.trim()) {
+        const driverInfo = `#${profile.driverNumber} - ${profile.seriesName}`;
+        parts.push(`--- ${driverInfo} ---\n${profile.note.trim()}`);
+      }
+    }
+
+    return parts.join("\n\n");
+  }
+
+  private parseCombinedNote(combinedNote: string): {
+    userNote: string;
+    driverNotes: Map<string, string>;
+  } {
+    const lines = combinedNote.split("\n");
+    const userNote: string[] = [];
+    const driverNotes = new Map<string, string>();
+    let currentDriverKey: string | null = null;
+    let currentNote: string[] = [];
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // Check for user note delimiter
+      if (trimmedLine === "--- User Note ---") {
+        // Save previous note if exists
+        if (currentDriverKey) {
+          driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
+        } else if (currentNote.length > 0) {
+          userNote.push(...currentNote);
+        }
+        currentDriverKey = null;
+        currentNote = [];
+        continue;
+      }
+
+      // Check for driver note delimiter (format: --- #123 - Series Name ---)
+      const driverMatch = trimmedLine.match(/^---\s*#(\d+)\s*-\s*([^(-]+)\s*---$/);
+      if (driverMatch) {
+        // Save previous note if exists
+        if (currentDriverKey) {
+          driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
+        } else if (currentNote.length > 0) {
+          userNote.push(...currentNote);
+        }
+        currentDriverKey = `${driverMatch[1]}-${driverMatch[2].trim()}`;
+        currentNote = [];
+        continue;
+      }
+
+      // Add line to current note
+      currentNote.push(line);
+    }
+
+    // Save last note
+    if (currentDriverKey) {
+      driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
+    } else if (currentNote.length > 0) {
+      userNote.push(...currentNote);
+    }
+
+    return {
+      userNote: userNote.join("\n").trim(),
+      driverNotes,
+    };
+  }
+
   async saveStaffNote(): Promise<void> {
     const currentUserId = this.authService.getUserId();
-    if (!currentUserId || !this.userId) return;
+    if (!currentUserId) return;
 
     this.savingStaffNote.set(true);
     try {
-      await this.convex.mutation(this.convex.api.users.updateNote, {
-        userId: this.userId as any,
-        note: this.staffNoteDraft(),
-        currentUserId,
-      });
-      this.toast.success("Staff note updated");
+      if (this.isDriverMode()) {
+        // Driver mode: save to driver note
+        if (!this._driverId()) return;
+
+        await this.convex.mutation(this.convex.api.drivers.updateNote, {
+          driverId: this._driverId() as any,
+          note: this.staffNoteDraft(),
+          currentUserId,
+        });
+        this.toast.success("Driver note updated");
+      } else {
+        // User mode: parse and save both user and driver notes
+        if (!this.userId) return;
+
+        const { userNote, driverNotes } = this.parseCombinedNote(
+          this.staffNoteDraft(),
+        );
+
+        // Save user note
+        await this.convex.mutation(this.convex.api.users.updateNote, {
+          userId: this.userId as any,
+          note: userNote,
+          currentUserId,
+        });
+
+        // Save each driver note
+        const profiles = this.profile()?.profiles || [];
+        for (const profile of profiles) {
+          const driverKey = `${profile.driverNumber}-${profile.seriesName}`;
+          const driverNote = driverNotes.get(driverKey) ?? "";
+
+          await this.convex.mutation(this.convex.api.drivers.updateNote, {
+            driverId: profile.driverId as any,
+            note: driverNote,
+            currentUserId,
+          });
+        }
+
+        this.toast.success("Staff notes updated");
+      }
+
       await this.load();
     } catch (error: any) {
       console.error("Failed to update staff note:", error);
@@ -1247,6 +1373,7 @@ export class DriverUserDetailComponent implements OnInit {
 
     this.driver.set(driver);
     this.linkedUser.set(driver.linkedUser);
+    this.staffNoteDraft.set(driver.note || "");
 
     const stats = await this.convex.query(
       this.convex.api.drivers.getDriverStats,
@@ -1293,7 +1420,13 @@ export class DriverUserDetailComponent implements OnInit {
       },
     );
     this.profile.set(profile);
-    this.staffNoteDraft.set(profile?.user?.note || "");
+
+    // Build combined note from user note + all linked driver notes
+    const combinedNote = this.buildCombinedNote(
+      profile?.user?.note || "",
+      profile?.profiles || [],
+    );
+    this.staffNoteDraft.set(combinedNote);
 
     if (profile?.profiles?.length) {
       const defaultDriverIds = profile.profiles

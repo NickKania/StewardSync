@@ -20,5 +20,6 @@ export interface Driver {
   steamId?: string;
   championshipId?: Id<'series'>;
   userId?: Id<'users'>;
+  note?: string;
   createdAt: number;
 }

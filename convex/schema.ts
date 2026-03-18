@@ -50,6 +50,7 @@ export default defineSchema({
     userId: v.optional(v.id("users")),
     accumulatedLicensePoints: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
+    note: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_number", ["driverNumber"])
