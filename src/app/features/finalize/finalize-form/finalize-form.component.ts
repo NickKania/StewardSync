@@ -622,6 +622,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     const checkReport = setInterval(() => {
       const data = reportQuery.data();
       if (data !== undefined) {
+        clearInterval(checkReport);
         this.report.set(data);
         this.loading.set(false);
 
