@@ -245,7 +245,7 @@ import { Id } from "@convex/_generated/dataModel";
                               </button>
                               <button
                                 (click)="deletePenalty(penalty._id)"
-                                class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
+                                class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
                               >
                                 <svg
                                   class="w-4 h-4"
@@ -383,7 +383,7 @@ import { Id } from "@convex/_generated/dataModel";
                               </button>
                               <button
                                 (click)="deleteSeriesPenalty(sp._id)"
-                                class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
+                                class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
                               >
                                 <svg
                                   class="w-4 h-4"
@@ -574,12 +574,12 @@ import { Id } from "@convex/_generated/dataModel";
                            Import events first to enable scheduled imports
                          </p>
                        } @else if (status.isScheduledImportActive) {
-                         <div
-                           class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3"
-                         >
-                           <div class="flex items-center gap-2 mb-2">
-                             <svg
-                               class="w-4 h-4 text-green-600 dark:text-green-400"
+                          <div
+                            class="bg-success-bg border border-success-border rounded-lg p-3"
+                          >
+                            <div class="flex items-center gap-2 mb-2">
+                              <svg
+                                class="w-4 h-4 text-success"
                                fill="none"
                                stroke="currentColor"
                                viewBox="0 0 24 24"
@@ -591,8 +591,8 @@ import { Id } from "@convex/_generated/dataModel";
                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                                ></path>
                              </svg>
-                             <span
-                               class="text-sm font-medium text-green-800 dark:text-green-200"
+                              <span
+                                class="text-sm font-medium text-success-text"
                                >Active</span
                              >
                            </div>
@@ -1012,7 +1012,7 @@ import { Id } from "@convex/_generated/dataModel";
                         </div>
                         <button
                           (click)="removeThreshold(threshold.id || '')"
-                          class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
+                          class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
                           type="button"
                         >
                           <svg

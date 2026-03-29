@@ -31,7 +31,7 @@ import { SelectOption } from "../select/select.component";
         >
           {{ label }}
           @if (required) {
-            <span class="text-red-500 dark:text-red-400">*</span>
+            <span class="text-danger">*</span>
           }
         </label>
       }
@@ -97,7 +97,7 @@ import { SelectOption } from "../select/select.component";
       }
 
       @if (error) {
-        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+        <p class="mt-1 text-sm text-danger">{{ error }}</p>
       }
     </div>
   `,
@@ -327,7 +327,7 @@ export class SearchSelectComponent implements ControlValueAccessor {
     const base =
       "block w-full px-3 py-2 border rounded-lg shadow-sm bg-white focus:outline-none focus:ring-2 focus:border-primary-500 transition-colors text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700";
     const errorClass = this.error
-      ? "border-red-300 focus:ring-red-500 focus:border-red-500 dark:border-red-500/70 dark:focus:ring-red-400 dark:focus:border-red-400"
+      ? "border-danger-border focus:ring-danger-ring focus:border-danger"
       : "border-gray-300 focus:ring-primary-500 dark:border-gray-700 dark:focus:ring-primary-400 dark:focus:border-primary-400";
     const disabledClass = this.disabled
       ? "bg-gray-100 cursor-not-allowed dark:bg-gray-800"
@@ -341,7 +341,7 @@ export class SearchSelectComponent implements ControlValueAccessor {
     const base =
       "px-3 py-2.5 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-0 whitespace-nowrap dark:hover:bg-gray-800 dark:border-gray-800";
     const selectedClass = isSelected
-      ? "bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200"
+      ? "bg-info-bg text-info-text"
       : "text-gray-900 dark:text-gray-100";
     const disabledClass = option.disabled
       ? "opacity-50 cursor-not-allowed"

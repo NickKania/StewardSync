@@ -143,7 +143,7 @@ interface SeriesPenaltyGroup {
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-2xl sm:text-3xl font-bold text-amber-600">
+                <p class="text-2xl sm:text-3xl font-bold text-warning">
                   {{ statsToShow()?.reportsAgainstCount || 0 }}
                 </p>
                 <p
@@ -155,7 +155,7 @@ interface SeriesPenaltyGroup {
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-2xl sm:text-3xl font-bold text-blue-600">
+                <p class="text-2xl sm:text-3xl font-bold text-info">
                   {{ statsToShow()?.pendingReports || 0 }}
                 </p>
                 <p
@@ -167,7 +167,7 @@ interface SeriesPenaltyGroup {
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-2xl sm:text-3xl font-bold text-green-600">
+                <p class="text-2xl sm:text-3xl font-bold text-success">
                   {{ statsToShow()?.finalizedReports || 0 }}
                 </p>
                 <p
@@ -524,7 +524,7 @@ interface SeriesPenaltyGroup {
                       editingLicensePoints()[profile.driverId])
                   ) {
                     <textarea
-                      class="input w-full mt-2 border-red-300 dark:border-red-700"
+                      class="input w-full mt-2 border-danger-border"
                       rows="3"
                       [ngModel]="
                         seriesData()[profile.seriesId]?.seriesPenaltyNotes || ''

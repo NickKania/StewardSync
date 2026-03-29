@@ -111,18 +111,18 @@ import { Penalty } from "@app/core/models";
                       <div
                         class="rounded-lg border p-4"
                         [ngClass]="{
-                          'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20':
+                          'border-danger-border bg-danger-bg':
                             !penalty.raceBanReviewId,
-                          'border-yellow-200 bg-yellow-50 dark:border-yellow-900/40 dark:bg-yellow-950/20':
+                          'border-warning-border bg-warning-bg':
                             penalty.raceBanReviewId,
                         }"
                       >
                         <p
                           class="text-sm"
                           [ngClass]="{
-                            'text-red-800 dark:text-red-200':
+                            'text-danger-text':
                               !penalty.raceBanReviewId,
-                            'text-yellow-800 dark:text-yellow-200':
+                            'text-warning-text':
                               penalty.raceBanReviewId,
                           }"
                         >
@@ -135,9 +135,9 @@ import { Penalty } from "@app/core/models";
                           [routerLink]="['/race-reviews/request', penalty._id]"
                           class="mt-2 inline-flex text-sm font-medium"
                           [ngClass]="{
-                            'text-red-700 hover:text-red-900 dark:text-red-200 dark:hover:text-red-100':
+                            'text-danger hover:text-danger-hover':
                               !penalty.raceBanReviewId,
-                            'text-yellow-700 hover:text-yellow-900 dark:text-yellow-200 dark:hover:text-yellow-100':
+                            'text-warning hover:text-warning-hover':
                               penalty.raceBanReviewId,
                           }"
                         >

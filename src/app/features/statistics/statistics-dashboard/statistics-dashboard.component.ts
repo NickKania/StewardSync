@@ -449,7 +449,7 @@ interface RaceTimePenaltySummary {
                                       [class]="
                                         getStripedRowClasses(i) +
                                         (!row.isFinalized
-                                          ? ' bg-red-100 dark:bg-red-900/30'
+                                          ? ' bg-danger-bg'
                                           : '')
                                       "
                                     >
@@ -593,7 +593,7 @@ interface RaceTimePenaltySummary {
                           />
                           @if (hideNoDriverAtFaultWithoutTicket()) {
                             <p
-                              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+                              class="mt-2 text-sm font-medium text-danger"
                             >
                               Incidents with no at-fault driver and no ticket
                               are hidden
@@ -612,7 +612,7 @@ interface RaceTimePenaltySummary {
                           />
                           @if (hideNoDriverAtFaultWithoutTicket()) {
                             <p
-                              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+                              class="mt-2 text-sm font-medium text-danger"
                             >
                               Incidents with no at-fault driver and no ticket
                               are hidden

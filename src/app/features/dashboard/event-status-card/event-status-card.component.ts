@@ -76,15 +76,15 @@ interface LatestEventStatusRow {
                   >
                     <div class="flex h-full w-full">
                       <div
-                        class="h-full bg-amber-400 dark:bg-amber-500"
+                        class="h-full bg-warning"
                         [style.width.%]="percent(row.stats.pending, row)"
                       ></div>
                       <div
-                        class="h-full bg-sky-500 dark:bg-sky-400"
+                        class="h-full bg-info"
                         [style.width.%]="percent(row.stats.reviewed, row)"
                       ></div>
                       <div
-                        class="h-full bg-emerald-500 dark:bg-emerald-400"
+                        class="h-full bg-success"
                         [style.width.%]="percent(row.stats.finalized, row)"
                       ></div>
                     </div>
@@ -95,35 +95,35 @@ interface LatestEventStatusRow {
                 </div>
 
                 <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-500/30 dark:bg-amber-500/10">
-                    <p class="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                  <div class="rounded-lg border border-warning-border bg-warning-bg px-3 py-2">
+                    <p class="text-xs uppercase tracking-wide text-warning-text">
                       Opened
                     </p>
-                    <p class="text-lg font-semibold text-amber-800 dark:text-amber-200">
+                    <p class="text-lg font-semibold text-warning-text">
                       {{ row.stats.pending }}
-                      <span class="text-xs font-medium text-amber-600 dark:text-amber-300">
+                      <span class="text-xs font-medium text-warning">
                         {{ percent(row.stats.pending, row) | number: "1.0-0" }}%
                       </span>
                     </p>
                   </div>
-                  <div class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 dark:border-sky-500/30 dark:bg-sky-500/10">
-                    <p class="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                  <div class="rounded-lg border border-info-border bg-info-bg px-3 py-2">
+                    <p class="text-xs uppercase tracking-wide text-info-text">
                       Under Review
                     </p>
-                    <p class="text-lg font-semibold text-sky-800 dark:text-sky-200">
+                    <p class="text-lg font-semibold text-info-text">
                       {{ row.stats.reviewed }}
-                      <span class="text-xs font-medium text-sky-600 dark:text-sky-300">
+                      <span class="text-xs font-medium text-info">
                         {{ percent(row.stats.reviewed, row) | number: "1.0-0" }}%
                       </span>
                     </p>
                   </div>
-                  <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-500/30 dark:bg-emerald-500/10">
-                    <p class="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                  <div class="rounded-lg border border-success-border bg-success-bg px-3 py-2">
+                    <p class="text-xs uppercase tracking-wide text-success-text">
                       Finalized
                     </p>
-                    <p class="text-lg font-semibold text-emerald-800 dark:text-emerald-200">
+                    <p class="text-lg font-semibold text-success-text">
                       {{ row.stats.finalized }}
-                      <span class="text-xs font-medium text-emerald-600 dark:text-emerald-300">
+                      <span class="text-xs font-medium text-success">
                         {{ percent(row.stats.finalized, row) | number: "1.0-0" }}%
                       </span>
                     </p>

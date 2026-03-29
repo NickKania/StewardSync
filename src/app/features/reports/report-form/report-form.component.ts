@@ -83,8 +83,8 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
       } @else {
         <form [formGroup]="form" (ngSubmit)="onSubmit()">
           @if (reportingStatusMessage()) {
-            <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-              <p class="text-sm text-blue-800 flex items-center gap-2">
+            <div class="mb-4 p-3 rounded-lg bg-info-bg border border-info-border">
+              <p class="text-sm text-info-text flex items-center gap-2">
                 <svg
                   class="w-4 h-4"
                   fill="none"
@@ -127,7 +127,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 @if (
                   form.get("seriesId")?.invalid && form.get("seriesId")?.touched
                 ) {
-                  <p class="mt-1 text-sm text-red-600">Series is required</p>
+                  <p class="mt-1 text-sm text-danger">Series is required</p>
                 }
               </div>
 
@@ -153,7 +153,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 @if (
                   form.get("eventId")?.invalid && form.get("eventId")?.touched
                 ) {
-                  <p class="mt-1 text-sm text-red-600">Event is required</p>
+                  <p class="mt-1 text-sm text-danger">Event is required</p>
                 }
               </div>
 
@@ -178,7 +178,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                 @if (
                   form.get("raceId")?.invalid && form.get("raceId")?.touched
                 ) {
-                  <p class="mt-1 text-sm text-red-600">Session is required</p>
+                  <p class="mt-1 text-sm text-danger">Session is required</p>
                 }
               </div>
 
@@ -196,7 +196,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   min="1"
                 />
                 @if (form.get("lap")?.invalid && form.get("lap")?.touched) {
-                  <p class="mt-1 text-sm text-red-600">Lap is required</p>
+                  <p class="mt-1 text-sm text-danger">Lap is required</p>
                 }
               </div>
 
@@ -214,7 +214,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   min="1"
                 />
                 @if (form.get("turn")?.invalid && form.get("turn")?.touched) {
-                  <p class="mt-1 text-sm text-red-600">Turn is required</p>
+                  <p class="mt-1 text-sm text-danger">Turn is required</p>
                 }
               </div>
 
@@ -252,7 +252,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   form.get("description")?.invalid &&
                   form.get("description")?.touched
                 ) {
-                  <p class="mt-1 text-sm text-red-600">
+                  <p class="mt-1 text-sm text-danger">
                     Description is required (minimum 20 characters)
                   </p>
                 }
@@ -277,7 +277,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   form.get("videoLink")?.hasError("required") &&
                   form.get("videoLink")?.touched
                 ) {
-                  <p class="mt-1 text-sm text-red-600">
+                  <p class="mt-1 text-sm text-danger">
                     Video link is required for this series
                   </p>
                 }
@@ -305,7 +305,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   form.get("videoTimestamp")?.hasError("required") &&
                   form.get("videoTimestamp")?.touched
                 ) {
-                  <p class="mt-1 text-sm text-red-600">
+                  <p class="mt-1 text-sm text-danger">
                     Video timestamp is required for this series
                   </p>
                 }

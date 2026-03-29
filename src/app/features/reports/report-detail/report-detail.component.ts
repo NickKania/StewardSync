@@ -341,7 +341,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                           track adjustedReview._id
                         ) {
                           <div
-                            class="bg-amber-50 border border-amber-200 rounded-lg p-3"
+                            class="bg-warning-bg border border-warning-border rounded-lg p-3"
                           >
                             <div class="flex items-center justify-between mb-1">
                               <span
@@ -352,7 +352,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                                 }}</span
                               >
                             </div>
-                            <p class="text-sm text-amber-800">
+                            <p class="text-sm text-warning-text">
                               {{ adjustedReview.adjustedReason }}
                             </p>
                           </div>
@@ -462,15 +462,15 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                 <div class="flex items-center gap-3">
                   <div
                     class="w-10 h-10 rounded-full flex items-center justify-center"
-                    [class.bg-amber-100]="report()?.status === 'pending'"
-                    [class.bg-blue-100]="report()?.status === 'reviewed'"
-                    [class.bg-green-100]="report()?.status === 'finalized'"
-                    [class.bg-red-100]="report()?.status === 'rejected'"
+                    [class.bg-warning-bg]="report()?.status === 'pending'"
+                    [class.bg-info-bg]="report()?.status === 'reviewed'"
+                    [class.bg-success-bg]="report()?.status === 'finalized'"
+                    [class.bg-danger-bg]="report()?.status === 'rejected'"
                   >
                     @switch (report()?.status) {
                       @case ("pending") {
                         <svg
-                          class="w-5 h-5 text-amber-600"
+                          class="w-5 h-5 text-warning"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -485,7 +485,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                       }
                       @case ("reviewed") {
                         <svg
-                          class="w-5 h-5 text-blue-600"
+                          class="w-5 h-5 text-info"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -506,7 +506,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                       }
                       @case ("finalized") {
                         <svg
-                          class="w-5 h-5 text-green-600"
+                          class="w-5 h-5 text-success"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -521,7 +521,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                       }
                       @case ("rejected") {
                         <svg
-                          class="w-5 h-5 text-red-600"
+                          class="w-5 h-5 text-danger"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"

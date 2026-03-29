@@ -62,7 +62,7 @@ import { Penalty } from "@core/models/series.model";
               form.get("finalDecision")?.invalid &&
               form.get("finalDecision")?.touched
             ) {
-              <p class="mt-1 text-sm text-red-600">Decision is required</p>
+              <p class="mt-1 text-sm text-danger">Decision is required</p>
             }
           </div>
 
@@ -88,12 +88,12 @@ import { Penalty } from "@core/models/series.model";
               form.get("appliedPenalty")?.invalid &&
               form.get("appliedPenalty")?.touched
             ) {
-              <p class="mt-1 text-sm text-red-600">
+              <p class="mt-1 text-sm text-danger">
                 Penalty selection is required
               </p>
             }
             @if (availablePenalties().length === 0) {
-              <p class="mt-1 text-sm text-yellow-600">
+              <p class="mt-1 text-sm text-warning">
                 No penalties configured for this series.
               </p>
             }
@@ -135,7 +135,7 @@ import { Penalty } from "@core/models/series.model";
               form.get("officialNotes")?.invalid &&
               form.get("officialNotes")?.touched
             ) {
-              <p class="mt-1 text-sm text-red-600">
+              <p class="mt-1 text-sm text-danger">
                 Official notes are required
               </p>
             }

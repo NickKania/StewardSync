@@ -223,7 +223,7 @@ import { Id } from "@convex/_generated/dataModel";
                       <div class="flex items-center gap-2">
                         <button
                           (click)="removeRace(race._id)"
-                          class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
+                          class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
                           title="Delete session"
                         >
                           <svg

@@ -114,7 +114,7 @@ import { User } from "@app/core/models";
                       form.get("reviewNotes")?.invalid &&
                       form.get("reviewNotes")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Review notes are required
                       </p>
                     }
@@ -148,12 +148,12 @@ import { User } from "@app/core/models";
                       form.get("recommendedPenalty")?.invalid &&
                       form.get("recommendedPenalty")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Recommended penalty is required
                       </p>
                     }
                     @if (availablePenalties().length === 0) {
-                      <p class="text-xs text-yellow-600 mt-1">
+                      <p class="text-xs text-warning mt-1">
                         No penalties configured for this series
                       </p>
                     }
@@ -265,7 +265,7 @@ import { User } from "@app/core/models";
                       </p>
                     }
                     @if (shouldWarnSecondStewardRelink()) {
-                      <p class="text-xs text-amber-700 mt-1">
+                      <p class="text-xs text-warning-text mt-1">
                         This steward already has a review on this report. Saving
                         changes will relink to that existing review.
                       </p>
@@ -364,7 +364,7 @@ import { User } from "@app/core/models";
                       >
                         {{ review.reviewNotes }}
                         @if (review.isAdjusted && review.adjustedReason) {
-                          <br /><span class="text-amber-700"
+                          <br /><span class="text-warning-text"
                             >[Adjusted: {{ review.adjustedReason }}]</span
                           >
                         }

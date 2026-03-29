@@ -98,7 +98,7 @@ import { User } from "@app/core/models";
                       form.get("incidentDescription")?.invalid &&
                       form.get("incidentDescription")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Incident description is required
                       </p>
                     }
@@ -142,12 +142,12 @@ import { User } from "@app/core/models";
                       form.get("appliedPenalty")?.invalid &&
                       form.get("appliedPenalty")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Penalty selection is required
                       </p>
                     }
                     @if (availablePenalties().length === 0) {
-                      <p class="mt-1 text-sm text-yellow-600">
+                      <p class="mt-1 text-sm text-warning">
                         No penalties configured for this series. Please
                         configure penalties first.
                       </p>
@@ -303,7 +303,7 @@ import { User } from "@app/core/models";
                       >
                         {{ review.reviewNotes }}
                         @if (review.isAdjusted && review.adjustedReason) {
-                          <br /><span class="text-amber-700"
+                          <br /><span class="text-warning-text"
                             >[Adjusted: {{ review.adjustedReason }}]</span
                           >
                         }

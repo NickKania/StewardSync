@@ -53,14 +53,14 @@ export class ToastComponent {
     const baseClasses = '';
     switch (toast.type) {
       case 'success':
-        return `${baseClasses} bg-green-100 text-green-800 border border-green-200 dark:bg-green-900/40 dark:text-green-200 dark:border-green-800/60`;
+        return `${baseClasses} bg-success-bg text-success-text border border-success-border`;
       case 'error':
-        return `${baseClasses} bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/40 dark:text-red-200 dark:border-red-800/60`;
+        return `${baseClasses} bg-danger-bg text-danger-text border border-danger-border`;
       case 'warning':
-        return `${baseClasses} bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-800/60`;
+        return `${baseClasses} bg-warning-bg text-warning-text border border-warning-border`;
       case 'info':
       default:
-        return `${baseClasses} bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800/60`;
+        return `${baseClasses} bg-info-bg text-info-text border border-info-border`;
     }
   }
 

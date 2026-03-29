@@ -234,7 +234,7 @@ const FILTER_QUERY_PARAM_KEYS = new Set([
                     <td class="px-3 py-4">
                       @if (result.candidateForStandardization) {
                         <span
-                          class="inline-block px-2.5 py-0.5 text-sm font-medium rounded-full bg-amber-100 text-amber-800 whitespace-nowrap"
+                          class="inline-block px-2.5 py-0.5 text-sm font-medium rounded-full bg-warning-bg text-warning-text whitespace-nowrap"
                         >
                           Candidate
                         </span>

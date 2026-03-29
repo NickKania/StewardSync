@@ -85,8 +85,8 @@ import { SelectOption } from "@shared/components/select/select.component";
         </div>
 
         @if (reportingStatusMessage()) {
-          <div class="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-            <p class="text-sm text-blue-800 flex items-center gap-2">
+          <div class="mb-4 p-3 rounded-lg bg-info-bg border border-info-border">
+            <p class="text-sm text-info-text flex items-center gap-2">
               <svg
                 class="w-4 h-4"
                 fill="none"
@@ -167,7 +167,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                       form.get("eventId")?.invalid &&
                       form.get("eventId")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">Event is required</p>
+                      <p class="mt-1 text-sm text-danger">Event is required</p>
                     }
                   </div>
 
@@ -192,7 +192,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                     @if (
                       form.get("raceId")?.invalid && form.get("raceId")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">Session is required</p>
+                      <p class="mt-1 text-sm text-danger">Session is required</p>
                     }
                   </div>
 
@@ -209,7 +209,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                       min="1"
                     />
                     @if (form.get("lap")?.invalid && form.get("lap")?.touched) {
-                      <p class="mt-1 text-sm text-red-600">Lap is required</p>
+                      <p class="mt-1 text-sm text-danger">Lap is required</p>
                     }
                   </div>
 
@@ -228,7 +228,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                     @if (
                       form.get("turn")?.invalid && form.get("turn")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">Turn is required</p>
+                      <p class="mt-1 text-sm text-danger">Turn is required</p>
                     }
                   </div>
 
@@ -248,7 +248,7 @@ import { SelectOption } from "@shared/components/select/select.component";
                       form.get("incidentDescription")?.invalid &&
                       form.get("incidentDescription")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Incident description is required (minimum 10 characters)
                       </p>
                     }
@@ -288,12 +288,12 @@ import { SelectOption } from "@shared/components/select/select.component";
                       form.get("recommendedPenalty")?.invalid &&
                       form.get("recommendedPenalty")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Recommended penalty is required
                       </p>
                     }
                     @if (availablePenalties().length === 0) {
-                      <p class="text-xs text-yellow-600 mt-1">
+                      <p class="text-xs text-warning mt-1">
                         No penalties configured for this series
                       </p>
                     }

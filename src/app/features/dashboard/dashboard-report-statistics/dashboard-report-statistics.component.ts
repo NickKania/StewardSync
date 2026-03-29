@@ -46,7 +46,7 @@ interface DashboardReportStats {
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-amber-600 dark:text-amber-400">
+            <p class="text-3xl font-bold text-warning">
               {{ stats().pending }}
             </p>
             <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
@@ -56,7 +56,7 @@ interface DashboardReportStats {
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+            <p class="text-3xl font-bold text-info">
               {{ stats().reviewed }}
             </p>
             <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
@@ -66,7 +66,7 @@ interface DashboardReportStats {
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-3xl font-bold text-green-600 dark:text-green-400">
+            <p class="text-3xl font-bold text-success">
               {{ stats().finalized }}
             </p>
             <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">

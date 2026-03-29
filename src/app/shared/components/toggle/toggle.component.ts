@@ -19,7 +19,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/f
         <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-200">
           {{ label }}
           @if (required) {
-            <span class="text-red-500 dark:text-red-400">*</span>
+            <span class="text-danger">*</span>
           }
         </label>
       }
