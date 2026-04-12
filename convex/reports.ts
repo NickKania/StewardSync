@@ -113,6 +113,24 @@ export const getById = query({
     const report = await ctx.db.get(args.reportId);
     if (!report) return null;
 
+    const populateDriverWithClass = async (
+      driverId: Id<"drivers"> | null | undefined,
+    ) => {
+      if (!driverId) return null;
+      const driver = await ctx.db.get(driverId);
+      if (!driver) return null;
+
+      const driverClass = driver.driverClassId
+        ? await ctx.db.get(driver.driverClassId)
+        : null;
+
+      return {
+        ...driver,
+        driverClass: driverClass?.displayName ?? null,
+        driverClassObj: driverClass,
+      };
+    };
+
     const reportingDriver = report.reportingDriverId
       ? await ctx.db.get(report.reportingDriverId)
       : null;
@@ -125,18 +143,16 @@ export const getById = query({
     const editedByUser = report.editedBy
       ? await ctx.db.get(report.editedBy)
       : null;
-    const reportedDriver = report.reportedDriverId
-      ? await ctx.db.get(report.reportedDriverId)
-      : null;
+    const reportedDriver = await populateDriverWithClass(
+      report.reportedDriverId,
+    );
 
     const reportReviews = await ctx.db
       .query("reviews")
       .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
       .collect();
 
-    let atFaultDriver = report.atFaultDriverId
-      ? await ctx.db.get(report.atFaultDriverId)
-      : null;
+    let atFaultDriver = await populateDriverWithClass(report.atFaultDriverId);
 
     if (!atFaultDriver && reportReviews.length > 0) {
       const latestReview = reportReviews.reduce((latest, current) => {
@@ -146,7 +162,9 @@ export const getById = query({
       });
 
       if (latestReview.atFaultDriverId) {
-        atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
+        atFaultDriver = await populateDriverWithClass(
+          latestReview.atFaultDriverId,
+        );
       }
     }
 
@@ -327,7 +345,9 @@ export const getReadyForFinalization = query({
         const reviewCount = reviews.length;
 
         // Get atFaultDriverId from latest review if not set on report
-        let atFaultDriver = await populateDriverWithClass(report.atFaultDriverId);
+        let atFaultDriver = await populateDriverWithClass(
+          report.atFaultDriverId,
+        );
 
         if (!atFaultDriver && reviews.length > 0) {
           const latestReview = reviews.reduce((latest, current) => {
@@ -427,7 +447,7 @@ export const create = mutation({
       const now = new Date();
       if (now > closeTime) {
         throw new UserFacingError(
-          `Reporting closed at ${closeTime.toISOString()}. Reports can no longer be submitted for this event.`
+          `Reporting closed at ${closeTime.toISOString()}. Reports can no longer be submitted for this event.`,
         );
       }
     }
@@ -629,7 +649,7 @@ export const finalize = mutation({
     const isNoDriverAtFault = args.isNoDriverAtFault ?? false;
     const effectiveAtFaultDriverId = isNoDriverAtFault
       ? undefined
-      : args.atFaultDriverId ?? report.reportedDriverId;
+      : (args.atFaultDriverId ?? report.reportedDriverId);
 
     let appliedPenaltyDoc: any = null;
     if (args.appliedPenalty) {
@@ -1476,7 +1496,8 @@ export const getEventExportData = query({
           return null;
         }
 
-        const atFaultDriverId = report.atFaultDriverId || report.reportedDriverId;
+        const atFaultDriverId =
+          report.atFaultDriverId || report.reportedDriverId;
         const atFaultDriver = await ctx.db.get(atFaultDriverId);
 
         if (
@@ -1493,9 +1514,9 @@ export const getEventExportData = query({
           userOfficialName = user?.officialName;
         }
         const displayName = atFaultDriver
-          ? (userOfficialName ||
-              atFaultDriver.officialName ||
-              atFaultDriver.driverName)
+          ? userOfficialName ||
+            atFaultDriver.officialName ||
+            atFaultDriver.driverName
           : null;
 
         let driverClassDisplayName: string | null = null;
@@ -1526,7 +1547,9 @@ export const getEventExportData = query({
 
         if (appliedPenalty) {
           const baseTimePenalty = isLap1
-            ? (appliedPenalty.timePenaltyLap1 ?? appliedPenalty.timePenalty ?? 0)
+            ? (appliedPenalty.timePenaltyLap1 ??
+              appliedPenalty.timePenalty ??
+              0)
             : (appliedPenalty.timePenalty ?? 0);
           const selfReportReduction = appliedPenalty.selfReportReduction ?? 0;
           timePenaltySeconds =

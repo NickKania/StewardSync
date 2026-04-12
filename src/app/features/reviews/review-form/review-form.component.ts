@@ -99,7 +99,12 @@ import { User } from "@app/core/models";
 
                   <!-- Review notes -->
                   <div>
-                    <label class="label">Review Notes</label>
+                    <label class="label"
+                      >Review Notes
+                      @if (form.get("candidateForStandardization")?.value) {
+                        <span class="text-danger">*</span>
+                      }
+                    </label>
                     <textarea
                       formControlName="reviewNotes"
                       class="input min-h-[120px]"
@@ -115,7 +120,8 @@ import { User } from "@app/core/models";
                       form.get("reviewNotes")?.touched
                     ) {
                       <p class="mt-1 text-sm text-danger">
-                        Review notes are required
+                        Review notes are required when marking for
+                        standardization
                       </p>
                     }
                     <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
@@ -630,7 +636,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       adjustedReason: [""],
     });
 
-    // Add conditional validation for adjustedReason based on isAdjusted
     this.form.get("isAdjusted")?.valueChanges.subscribe((isAdjusted) => {
       this.updateAdjustedReasonValidation(isAdjusted);
     });
@@ -639,6 +644,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       ?.valueChanges.subscribe((penaltyId: string) => {
         this.onRecommendedPenaltyChange(penaltyId);
       });
+    this.form
+      .get("candidateForStandardization")
+      ?.valueChanges.subscribe((candidate: boolean) => {
+        this.updateReviewNotesValidation(candidate);
+      });
   }
 
   ngOnInit(): void {
@@ -646,6 +656,18 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     this.loadStewards();
     this.loadDrivers();
     this.loadSavedSteward();
+  }
+
+  private updateReviewNotesValidation(candidate: boolean): void {
+    const reviewNotesControl = this.form.get("reviewNotes");
+    if (!reviewNotesControl) return;
+
+    if (candidate) {
+      reviewNotesControl.setValidators([Validators.required]);
+    } else {
+      reviewNotesControl.clearValidators();
+    }
+    reviewNotesControl.updateValueAndValidity();
   }
 
   private updateAdjustedReasonValidation(isAdjusted: boolean): void {

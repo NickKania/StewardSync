@@ -208,13 +208,31 @@ import { User } from "@app/core/models";
 
                   <!-- Official notes -->
                   <div>
-                    <label class="label">Official Notes</label>
+                    <label class="label"
+                      >Official Notes
+                      @if (form.get("candidateForStandardization")?.value) {
+                        <span class="text-danger">*</span>
+                      }
+                    </label>
                     <textarea
                       formControlName="officialNotes"
                       class="input min-h-[100px]"
+                      [class.input-error]="
+                        form.get('officialNotes')?.invalid &&
+                        form.get('officialNotes')?.touched
+                      "
                       placeholder="Additional notes for the official record..."
                       rows="4"
                     ></textarea>
+                    @if (
+                      form.get("officialNotes")?.invalid &&
+                      form.get("officialNotes")?.touched
+                    ) {
+                      <p class="mt-1 text-sm text-danger">
+                        Official notes are required when marking for
+                        standardization
+                      </p>
+                    }
                     <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Not public facing - internal use only
                     </p>
@@ -566,6 +584,23 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       ?.valueChanges.subscribe((penaltyId: string) => {
         this.onAppliedPenaltyChange(penaltyId);
       });
+    this.form
+      .get("candidateForStandardization")
+      ?.valueChanges.subscribe((candidate: boolean) => {
+        this.updateOfficialNotesValidation(candidate);
+      });
+  }
+
+  private updateOfficialNotesValidation(candidate: boolean): void {
+    const officialNotesControl = this.form.get("officialNotes");
+    if (!officialNotesControl) return;
+
+    if (candidate) {
+      officialNotesControl.setValidators([Validators.required]);
+    } else {
+      officialNotesControl.clearValidators();
+    }
+    officialNotesControl.updateValueAndValidity();
   }
 
   private updateAdjustedReasonValidation(isAdjusted: boolean): void {

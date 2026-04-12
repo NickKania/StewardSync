@@ -255,13 +255,31 @@ import { SelectOption } from "@shared/components/select/select.component";
                   </div>
 
                   <div>
-                    <label class="label">Review Notes</label>
+                    <label class="label"
+                      >Review Notes
+                      @if (form.get("candidateForStandardization")?.value) {
+                        <span class="text-danger">*</span>
+                      }
+                    </label>
                     <textarea
                       formControlName="reviewNotes"
                       class="input min-h-[120px]"
+                      [class.input-error]="
+                        form.get('reviewNotes')?.invalid &&
+                        form.get('reviewNotes')?.touched
+                      "
                       placeholder="Your assessment of the incident, findings, and observations..."
                       rows="5"
                     ></textarea>
+                    @if (
+                      form.get("reviewNotes")?.invalid &&
+                      form.get("reviewNotes")?.touched
+                    ) {
+                      <p class="mt-1 text-sm text-danger">
+                        Review notes are required when marking for
+                        standardization
+                      </p>
+                    }
                   </div>
 
                   <div>
@@ -751,6 +769,24 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
         atFaultDriverControl.setValue(value);
       }
     });
+
+    this.form
+      .get("candidateForStandardization")
+      ?.valueChanges.subscribe((candidate: boolean) => {
+        this.updateReviewNotesValidation(candidate);
+      });
+  }
+
+  private updateReviewNotesValidation(candidate: boolean): void {
+    const reviewNotesControl = this.form.get("reviewNotes");
+    if (!reviewNotesControl) return;
+
+    if (candidate) {
+      reviewNotesControl.setValidators([Validators.required]);
+    } else {
+      reviewNotesControl.clearValidators();
+    }
+    reviewNotesControl.updateValueAndValidity();
   }
 
   ngOnDestroy(): void {
