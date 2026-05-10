@@ -78,7 +78,8 @@ export class ConvexService implements OnDestroy {
 
   createReactiveQuery<T extends FunctionReference<'query'>>(
     func: T,
-    args: FunctionArgs<T>
+    args: FunctionArgs<T>,
+    onData?: (data: FunctionReturnType<T>) => void
   ) {
     const data = signal<FunctionReturnType<T> | undefined>(undefined);
     const loading = signal(true);
@@ -91,6 +92,7 @@ export class ConvexService implements OnDestroy {
         data.set(result);
         loading.set(false);
         error.set(null);
+        onData?.(result);
       }
     );
 

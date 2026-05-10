@@ -431,64 +431,44 @@ export class ReportListComponent implements OnInit, OnDestroy {
     const reportsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.list,
       {},
-    );
-    this.unsubscribes.push(reportsQuery.unsubscribe);
-
-    const checkReports = setInterval(() => {
-      const data = reportsQuery.data();
-      if (data) {
+      (data) => {
         this.reports.set(data);
         this.filterReports();
         this.loading.set(false);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReports));
+      },
+    );
+    this.unsubscribes.push(reportsQuery.unsubscribe);
 
     // Load events for filter
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
       {},
-    );
-    this.unsubscribes.push(eventsQuery.unsubscribe);
-
-    const checkEvents = setInterval(() => {
-      const data = eventsQuery.data();
-      if (data) {
+      (data) => {
         this.events.set(data);
         this.filterReports();
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkEvents));
+      },
+    );
+    this.unsubscribes.push(eventsQuery.unsubscribe);
 
     // Load active series for filtering events
     const activeSeriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
       {},
+      (data) => {
+        this.activeSeries.set(data);
+      },
     );
     this.unsubscribes.push(activeSeriesQuery.unsubscribe);
-
-    const checkActiveSeries = setInterval(() => {
-      const data = activeSeriesQuery.data();
-      if (data) {
-        this.activeSeries.set(data);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkActiveSeries));
 
     // Load races for filter
     const racesQuery = this.convex.createReactiveQuery(
       this.convex.api.races.list,
       {},
+      (data) => {
+        this.races.set(data);
+      },
     );
     this.unsubscribes.push(racesQuery.unsubscribe);
-
-    const checkRaces = setInterval(() => {
-      const data = racesQuery.data();
-      if (data) {
-        this.races.set(data);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkRaces));
 
     // Load user's series memberships if they're a driver
     if (this.authService.userRole() === "driver") {
@@ -497,17 +477,12 @@ export class ReportListComponent implements OnInit, OnDestroy {
         const userSeriesQuery = this.convex.createReactiveQuery(
           this.convex.api.drivers.getSeriesIdsForUser,
           { userId: currentUserId },
-        );
-        this.unsubscribes.push(userSeriesQuery.unsubscribe);
-
-        const checkUserSeries = setInterval(() => {
-          const data = userSeriesQuery.data();
-          if (data) {
+          (data) => {
             this.userSeriesIds.set(data.map((id: any) => id.toString()));
             this.filterReports();
-          }
-        }, 100);
-        this.unsubscribes.push(() => clearInterval(checkUserSeries));
+          },
+        );
+        this.unsubscribes.push(userSeriesQuery.unsubscribe);
       }
     }
 

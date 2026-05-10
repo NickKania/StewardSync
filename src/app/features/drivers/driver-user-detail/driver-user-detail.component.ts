@@ -1488,16 +1488,11 @@ export class DriverUserDetailComponent implements OnInit {
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
       {},
-    );
-    this.unsubscribes.push(seriesQuery.unsubscribe);
-
-    const checkSeries = setInterval(() => {
-      const data = seriesQuery.data();
-      if (data) {
+      (data) => {
         this.series.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkSeries));
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
   }
 
   async loadPenalties(): Promise<void> {

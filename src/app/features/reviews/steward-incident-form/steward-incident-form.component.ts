@@ -797,32 +797,22 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
       {},
-    );
-    this.unsubscribes.push(seriesQuery.unsubscribe);
-
-    const checkSeries = setInterval(() => {
-      const data = seriesQuery.data();
-      if (data) {
+      (data) => {
         this.series.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkSeries));
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
 
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
       {},
-    );
-    this.unsubscribes.push(eventsQuery.unsubscribe);
-
-    const checkEvents = setInterval(() => {
-      const data = eventsQuery.data();
-      if (data) {
+      (data) => {
         this.events.set(data);
         this.tryPrefillFromSourceReport();
         this.tryLoadPendingPenalties();
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkEvents));
+    );
+    this.unsubscribes.push(eventsQuery.unsubscribe);
 
     this.loadStewards();
     this.loadSavedSeries();
@@ -982,16 +972,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
     const stewardsQuery = this.convex.createReactiveQuery(
       this.convex.api.users.listStewards,
       {},
-    );
-    this.unsubscribes.push(stewardsQuery.unsubscribe);
-
-    const checkStewards = setInterval(() => {
-      const data = stewardsQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.stewards.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkStewards));
+    );
+    this.unsubscribes.push(stewardsQuery.unsubscribe);
   }
 
   private loadSavedSteward(): void {

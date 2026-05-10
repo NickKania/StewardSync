@@ -695,17 +695,12 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
     const reportQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getById,
       { reportId: this.id as any },
-    );
-    this.unsubscribes.push(reportQuery.unsubscribe);
-
-    const checkReport = setInterval(() => {
-      const data = reportQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.report.set(data);
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReport));
+    );
+    this.unsubscribes.push(reportQuery.unsubscribe);
   }
 
   getStatusVariant(

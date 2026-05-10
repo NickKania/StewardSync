@@ -654,32 +654,22 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
     const pendingQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getPendingForReview,
       {},
-    );
-    this.unsubscribes.push(pendingQuery.unsubscribe);
-
-    const checkPending = setInterval(() => {
-      const data = pendingQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.pendingReports.set(data);
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkPending));
+    );
+    this.unsubscribes.push(pendingQuery.unsubscribe);
 
     // Load reviewed reports (ready for finalization)
     const reviewedQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getReadyForFinalization,
       {},
-    );
-    this.unsubscribes.push(reviewedQuery.unsubscribe);
-
-    const checkReviewed = setInterval(() => {
-      const data = reviewedQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.reviewedReports.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReviewed));
+    );
+    this.unsubscribes.push(reviewedQuery.unsubscribe);
 
     // Load review stats for current user
     const userId = this.authService.getUserId();
@@ -687,16 +677,11 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
       const statsQuery = this.convex.createReactiveQuery(
         this.convex.api.reviews.getStats,
         { userId },
-      );
-      this.unsubscribes.push(statsQuery.unsubscribe);
-
-      const checkStats = setInterval(() => {
-        const data = statsQuery.data();
-        if (data !== undefined) {
+        (data) => {
           this.reviewStats.set(data);
         }
-      }, 100);
-      this.unsubscribes.push(() => clearInterval(checkStats));
+      );
+      this.unsubscribes.push(statsQuery.unsubscribe);
     }
   }
 

@@ -237,36 +237,24 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   private loadData(): void {
-    // Load users
     const usersQuery = this.convex.createReactiveQuery(
       this.convex.api.users.list,
-      {}
-    );
-    this.unsubscribes.push(usersQuery.unsubscribe);
-
-    const checkUsers = setInterval(() => {
-      const data = usersQuery.data();
-      if (data !== undefined) {
+      {},
+      (data) => {
         this.users.set(data);
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkUsers));
+    );
+    this.unsubscribes.push(usersQuery.unsubscribe);
 
-    // Load roles
     const rolesQuery = this.convex.createReactiveQuery(
       this.convex.api.users.listRoles,
-      {}
-    );
-    this.unsubscribes.push(rolesQuery.unsubscribe);
-
-    const checkRoles = setInterval(() => {
-      const data = rolesQuery.data();
-      if (data !== undefined) {
+      {},
+      (data) => {
         this.roles.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkRoles));
+    );
+    this.unsubscribes.push(rolesQuery.unsubscribe);
   }
 
   getRoleVariant(roleName: string | undefined): 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info' {

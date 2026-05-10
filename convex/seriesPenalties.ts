@@ -1,5 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireRole } from "./lib/auth";
+import { Id } from "./_generated/dataModel";
 
 export const list = query({
   args: {},
@@ -120,15 +122,18 @@ export const getById = query({
 
 export const create = mutation({
   args: {
+    currentUserId: v.id("users"),
     seriesId: v.id("series"),
     penaltyName: v.string(),
     penaltyDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const { currentUserId, ...data } = args;
+    await requireRole(ctx, currentUserId as Id<"users">, ["event_manager", "league_manager"]);
     const seriesPenaltyId = await ctx.db.insert("seriesPenalties", {
-      seriesId: args.seriesId,
-      penaltyName: args.penaltyName,
-      penaltyDescription: args.penaltyDescription,
+      seriesId: data.seriesId,
+      penaltyName: data.penaltyName,
+      penaltyDescription: data.penaltyDescription,
       createdAt: Date.now(),
     });
     return seriesPenaltyId;
@@ -138,19 +143,22 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("seriesPenalties"),
+    currentUserId: v.id("users"),
     penaltyName: v.string(),
     penaltyDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...updates } = args;
+    const { id, currentUserId, ...updates } = args;
+    await requireRole(ctx, currentUserId as Id<"users">, ["event_manager", "league_manager"]);
     await ctx.db.patch(id, updates);
     return id;
   },
 });
 
 export const remove = mutation({
-  args: { id: v.id("seriesPenalties") },
+  args: { id: v.id("seriesPenalties"), currentUserId: v.id("users") },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId as Id<"users">, ["event_manager", "league_manager"]);
     await ctx.db.delete(args.id);
   },
 });

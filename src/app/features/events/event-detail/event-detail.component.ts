@@ -480,6 +480,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
 
     try {
       await this.convex.mutation(this.convex.api.races.create, {
+        currentUserId: this.authService.requireUserId(),
         eventId: this.event()?._id,
         sessionName,
         raceNumber:
@@ -508,7 +509,7 @@ export class EventDetailComponent implements OnInit, OnDestroy {
     }
 
     try {
-      await this.convex.mutation(this.convex.api.races.remove, { raceId });
+      await this.convex.mutation(this.convex.api.races.remove, { raceId, currentUserId: this.authService.requireUserId() });
       await this.loadEvent();
     } catch (error: any) {
       alert(

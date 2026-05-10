@@ -1,7 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
-import { getCurrentUserRole, hasMinimumRole } from "./lib/auth";
+import { getCurrentUserRole, hasMinimumRole, requireRole } from "./lib/auth";
 
 export const list = query({
   handler: async (ctx) => {
@@ -66,6 +66,7 @@ export const getByIdWithSimgridLink = query({
 
 export const create = mutation({
   args: {
+    currentUserId: v.id("users"),
     name: v.string(),
     description: v.optional(v.string()),
     simgridLink: v.optional(v.string()),
@@ -77,31 +78,34 @@ export const create = mutation({
     seriesPenaltyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    if (args.reportingOpenTime && !isValidTimeFormat(args.reportingOpenTime)) {
+    const { currentUserId, ...data } = args;
+    await requireRole(ctx, currentUserId, ["event_manager", "league_manager"]);
+
+    if (data.reportingOpenTime && !isValidTimeFormat(data.reportingOpenTime)) {
       throw new UserFacingError("Invalid reportingOpenTime format. Use HH:MM (24-hour format)");
     }
 
-    if (args.reportingCloseDuration !== undefined && args.reportingCloseDuration <= 0) {
+    if (data.reportingCloseDuration !== undefined && data.reportingCloseDuration <= 0) {
       throw new UserFacingError("reportingCloseDuration must be a positive number");
     }
 
     const insertData: any = {
-      name: args.name,
-      description: args.description,
-      simgridLink: args.simgridLink,
-      reportingOpenTime: args.reportingOpenTime,
-      reportingCloseDuration: args.reportingCloseDuration,
-      requireVideoEvidence: args.requireVideoEvidence,
-      seriesPenaltyNotes: args.seriesPenaltyNotes,
+      name: data.name,
+      description: data.description,
+      simgridLink: data.simgridLink,
+      reportingOpenTime: data.reportingOpenTime,
+      reportingCloseDuration: data.reportingCloseDuration,
+      requireVideoEvidence: data.requireVideoEvidence,
+      seriesPenaltyNotes: data.seriesPenaltyNotes,
       createdAt: Date.now(),
     };
 
-    if (args.isReportingLocked !== undefined) {
-      insertData.isReportingLocked = args.isReportingLocked;
+    if (data.isReportingLocked !== undefined) {
+      insertData.isReportingLocked = data.isReportingLocked;
     }
 
-    if (args.isActive !== undefined) {
-      insertData.isActive = args.isActive;
+    if (data.isActive !== undefined) {
+      insertData.isActive = data.isActive;
     }
 
     const seriesId = await ctx.db.insert("series", insertData);
@@ -112,6 +116,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("series"),
+    currentUserId: v.id("users"),
     name: v.string(),
     description: v.optional(v.string()),
     simgridLink: v.optional(v.string()),
@@ -123,7 +128,9 @@ export const update = mutation({
     seriesPenaltyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...updates } = args;
+    const { id, currentUserId, ...updates } = args;
+
+    await requireRole(ctx, currentUserId, ["event_manager", "league_manager"]);
 
     if (updates.reportingOpenTime) {
       if (!isValidTimeFormat(updates.reportingOpenTime)) {
@@ -155,8 +162,9 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: { id: v.id("series") },
+  args: { id: v.id("series"), currentUserId: v.id("users") },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["event_manager", "league_manager"]);
     // Check if any events are using this series
     const events = await ctx.db
       .query("events")

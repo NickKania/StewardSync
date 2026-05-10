@@ -560,6 +560,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   });
 
   private unsubscribes: (() => void)[] = [];
+  private penaltiesUnsubscribe: (() => void) | null = null;
 
   constructor() {
     this.form = this.fb.group({
@@ -624,20 +625,18 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     const driversQuery = this.convex.createReactiveQuery(
       this.convex.api.drivers.list,
       {},
-    );
-    this.unsubscribes.push(driversQuery.unsubscribe);
-
-    const checkDrivers = setInterval(() => {
-      const data = driversQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.drivers.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkDrivers));
+    );
+    this.unsubscribes.push(driversQuery.unsubscribe);
   }
 
   ngOnDestroy(): void {
     this.unsubscribes.forEach((unsub) => unsub());
+    if (this.penaltiesUnsubscribe) {
+      this.penaltiesUnsubscribe();
+    }
   }
 
   private loadReport(): void {
@@ -649,12 +648,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     const reportQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getById,
       { reportId: this.reportId as any },
-    );
-    this.unsubscribes.push(reportQuery.unsubscribe);
-
-    const checkReport = setInterval(() => {
-      const data = reportQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.report.set(data);
         this.loading.set(false);
 
@@ -731,8 +725,6 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             );
           }
 
-          // Pre-select atFaultDriverId from latest review or reportedDriver
-          // only when the field is still empty to avoid overriding user edits
           if (
             atFaultDriverControl &&
             atFaultDriverControl.pristine &&
@@ -749,7 +741,6 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             }
           }
 
-          // Pre-select applied penalty from latest review's recommended penalty
           if (
             latestReview?.recommendedPenaltyObj &&
             this.availablePenalties().length > 0
@@ -770,29 +761,27 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           }
         }
 
-        // Load penalties for this series
         if (data?.event?.seriesId) {
           this.loadPenalties(data.event.seriesId);
         }
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReport));
+    );
+    this.unsubscribes.push(reportQuery.unsubscribe);
   }
 
   private loadPenalties(seriesId: string): void {
+    if (this.penaltiesUnsubscribe) {
+      this.penaltiesUnsubscribe();
+      this.penaltiesUnsubscribe = null;
+    }
+
     const penaltiesQuery = this.convex.createReactiveQuery(
       this.convex.api.penalties.getBySeries,
       { seriesId: seriesId as any },
-    );
-    this.unsubscribes.push(penaltiesQuery.unsubscribe);
-
-    const checkPenalties = setInterval(() => {
-      const data = penaltiesQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.availablePenalties.set(data);
         this.enforceAtFaultDriverSelection();
 
-        // Pre-select applied penalty from latest review when penalties are loaded
         const report = this.report();
         if (report?.reviews && report.reviews.length > 0) {
           const latestReview = report.reviews.reduce(
@@ -820,8 +809,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           }
         }
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkPenalties));
+    );
+    this.penaltiesUnsubscribe = penaltiesQuery.unsubscribe;
   }
 
   private onAppliedPenaltyChange(penaltyId: string): void {

@@ -1,6 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
+import { requireRole } from "./lib/auth";
+import { Id } from "./_generated/dataModel";
 
 export const listBySeries = query({
   args: { seriesId: v.id("series") },
@@ -68,29 +70,32 @@ export const getOrCreate = mutation({
 
 export const create = mutation({
   args: {
+    currentUserId: v.id("users"),
     seriesId: v.id("series"),
     className: v.string(),
     displayName: v.string(),
   },
   handler: async (ctx, args) => {
-    // Check if class already exists for this series
+    const { currentUserId, ...data } = args;
+    await requireRole(ctx, currentUserId as Id<"users">, ["event_manager", "league_manager"]);
+
     const existing = await ctx.db
       .query("driverClasses")
       .withIndex("by_series_class", (q) =>
-        q.eq("seriesId", args.seriesId).eq("className", args.className)
+        q.eq("seriesId", data.seriesId).eq("className", data.className)
       )
       .first();
 
     if (existing) {
       throw new UserFacingError(
-        `Driver class "${args.className}" already exists for this series`
+        `Driver class "${data.className}" already exists for this series`
       );
     }
 
     const driverClassId = await ctx.db.insert("driverClasses", {
-      seriesId: args.seriesId,
-      className: args.className,
-      displayName: args.displayName,
+      seriesId: data.seriesId,
+      className: data.className,
+      displayName: data.displayName,
       createdAt: Date.now(),
     });
 
@@ -100,27 +105,31 @@ export const create = mutation({
 
 export const updateDisplayName = mutation({
   args: {
+    currentUserId: v.id("users"),
     id: v.id("driverClasses"),
     displayName: v.string(),
   },
   handler: async (ctx, args) => {
-    const driverClass = await ctx.db.get(args.id);
+    const { currentUserId, id, displayName } = args;
+    await requireRole(ctx, currentUserId as Id<"users">, ["event_manager", "league_manager"]);
+    const driverClass = await ctx.db.get(id);
     if (!driverClass) {
       throw new UserFacingError("Driver class not found");
     }
 
-    await ctx.db.patch(args.id, {
-      displayName: args.displayName,
+    await ctx.db.patch(id, {
+      displayName,
     });
 
-    return args.id;
+    return id;
   },
 });
 
 export const remove = mutation({
-  args: { id: v.id("driverClasses") },
+  args: { id: v.id("driverClasses"), currentUserId: v.id("users") },
   handler: async (ctx, args) => {
-    // Check if any drivers are using this class
+    await requireRole(ctx, args.currentUserId as Id<"users">, ["event_manager", "league_manager"]);
+
     const driversUsingClass = await ctx.db
       .query("drivers")
       .withIndex("by_driver_class", (q) => q.eq("driverClassId", args.id))

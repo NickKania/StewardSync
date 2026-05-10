@@ -130,29 +130,34 @@ export class EventListComponent implements OnInit, OnDestroy {
   }
 
   private loadEvents(): void {
+    let eventsLoaded = false;
+    let seriesLoaded = false;
+
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
-      {}
+      {},
+      (data) => {
+        this.events.set(data);
+        eventsLoaded = true;
+        if (eventsLoaded && seriesLoaded) {
+          this.loading.set(false);
+        }
+      }
     );
     this.unsubscribes.push(eventsQuery.unsubscribe);
 
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
-      {}
+      {},
+      (data) => {
+        this.series.set(data);
+        seriesLoaded = true;
+        if (eventsLoaded && seriesLoaded) {
+          this.loading.set(false);
+        }
+      }
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);
-
-    const checkData = setInterval(() => {
-      const eventsData = eventsQuery.data();
-      const seriesData = seriesQuery.data();
-
-      if (eventsData !== undefined && seriesData !== undefined) {
-        this.events.set(eventsData);
-        this.series.set(seriesData);
-        this.loading.set(false);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkData));
   }
 
   onSeriesChange(seriesId: string, syncQueryParams = true): void {

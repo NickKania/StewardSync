@@ -284,32 +284,22 @@ export class FinalizeDashboardComponent implements OnInit, OnDestroy {
     const reportsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getReadyForFinalization,
       {},
-    );
-    this.unsubscribes.push(reportsQuery.unsubscribe);
-
-    const checkReports = setInterval(() => {
-      const data = reportsQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.reports.set(data);
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReports));
+    );
+    this.unsubscribes.push(reportsQuery.unsubscribe);
 
     // Load stats
     const statsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getStats,
       {},
-    );
-    this.unsubscribes.push(statsQuery.unsubscribe);
-
-    const checkStats = setInterval(() => {
-      const data = statsQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.stats.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkStats));
+    );
+    this.unsubscribes.push(statsQuery.unsubscribe);
   }
 
   getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {

@@ -2037,32 +2037,22 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
       {},
-    );
-    this.unsubscribes.push(eventsQuery.unsubscribe);
-
-    const checkEvents = setInterval(() => {
-      const data = eventsQuery.data();
-      if (data) {
+      (data) => {
         this.events.set(data);
         this.eventsLoaded.set(true);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkEvents));
+    );
+    this.unsubscribes.push(eventsQuery.unsubscribe);
 
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
       {},
-    );
-    this.unsubscribes.push(seriesQuery.unsubscribe);
-
-    const checkSeries = setInterval(() => {
-      const data = seriesQuery.data();
-      if (data) {
+      (data) => {
         this.series.set(data);
         this.seriesLoaded.set(true);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkSeries));
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
 
     // Failsafe: stop loading after 10 seconds regardless of state
     setTimeout(() => {
