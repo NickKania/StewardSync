@@ -618,10 +618,14 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadReport();
-    this.loadDrivers();
   }
 
   private loadDrivers(): void {
+    const report = this.report();
+    if (!report?.event?.seriesId) {
+      return;
+    }
+
     const driversQuery = this.convex.createReactiveQuery(
       this.convex.api.drivers.list,
       {},
@@ -763,6 +767,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
         if (data?.event?.seriesId) {
           this.loadPenalties(data.event.seriesId);
+          this.loadDrivers();
         }
       }
     );

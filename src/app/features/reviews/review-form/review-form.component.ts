@@ -655,7 +655,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadReport();
     this.loadStewards();
-    this.loadDrivers();
     this.loadSavedSteward();
   }
 
@@ -684,6 +683,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   }
 
   private loadDrivers(): void {
+    const report = this.report();
+    if (!report?.event?.seriesId) {
+      return;
+    }
+
     const driversQuery = this.convex.createReactiveQuery(
       this.convex.api.drivers.list,
       {},
@@ -822,6 +826,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           // Load penalties for this series
           if (data?.event?.seriesId) {
             this.loadPenalties(data.event.seriesId);
+            this.loadDrivers();
           }
         }
 
