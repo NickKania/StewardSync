@@ -18,6 +18,7 @@ import {
 } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { NavigationService } from "@core/services/navigation.service";
 import { ToastService } from "@core/services/toast.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
@@ -98,7 +99,12 @@ import { User } from "@app/core/models";
 
                   <!-- Review notes -->
                   <div>
-                    <label class="label">Review Notes</label>
+                    <label class="label"
+                      >Review Notes
+                      @if (form.get("candidateForStandardization")?.value) {
+                        <span class="text-danger">*</span>
+                      }
+                    </label>
                     <textarea
                       formControlName="reviewNotes"
                       class="input min-h-[120px]"
@@ -113,8 +119,9 @@ import { User } from "@app/core/models";
                       form.get("reviewNotes")?.invalid &&
                       form.get("reviewNotes")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
-                        Review notes are required
+                      <p class="mt-1 text-sm text-danger">
+                        Review notes are required when marking for
+                        standardization
                       </p>
                     }
                     <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
@@ -147,12 +154,12 @@ import { User } from "@app/core/models";
                       form.get("recommendedPenalty")?.invalid &&
                       form.get("recommendedPenalty")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Recommended penalty is required
                       </p>
                     }
                     @if (availablePenalties().length === 0) {
-                      <p class="text-xs text-yellow-600 mt-1">
+                      <p class="text-xs text-warning mt-1">
                         No penalties configured for this series
                       </p>
                     }
@@ -264,7 +271,7 @@ import { User } from "@app/core/models";
                       </p>
                     }
                     @if (shouldWarnSecondStewardRelink()) {
-                      <p class="text-xs text-amber-700 mt-1">
+                      <p class="text-xs text-warning-text mt-1">
                         This steward already has a review on this report. Saving
                         changes will relink to that existing review.
                       </p>
@@ -363,7 +370,7 @@ import { User } from "@app/core/models";
                       >
                         {{ review.reviewNotes }}
                         @if (review.isAdjusted && review.adjustedReason) {
-                          <br /><span class="text-amber-700"
+                          <br /><span class="text-warning-text"
                             >[Adjusted: {{ review.adjustedReason }}]</span
                           >
                         }
@@ -474,9 +481,13 @@ import { User } from "@app/core/models";
         <app-card>
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">Report not found</p>
-            <a routerLink="/reviews" class="mt-4 inline-block">
-              <app-button variant="primary">Back to Reviews</app-button>
-            </a>
+            <app-button
+              class="mt-4 inline-flex"
+              variant="primary"
+              (onClick)="goBackToReviews()"
+            >
+              Back to Reviews
+            </app-button>
           </div>
         </app-card>
       }
@@ -526,6 +537,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
   private fb = inject(FormBuilder);
   private convex = inject(ConvexService);
+  private navigationService = inject(NavigationService);
   private router = inject(Router);
   private toast = inject(ToastService);
   authService = inject(AuthService);
@@ -609,6 +621,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   });
 
   private unsubscribes: (() => void)[] = [];
+  private penaltiesUnsubscribe: (() => void) | null = null;
 
   constructor() {
     this.form = this.fb.group({
@@ -624,7 +637,6 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       adjustedReason: [""],
     });
 
-    // Add conditional validation for adjustedReason based on isAdjusted
     this.form.get("isAdjusted")?.valueChanges.subscribe((isAdjusted) => {
       this.updateAdjustedReasonValidation(isAdjusted);
     });
@@ -633,12 +645,29 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       ?.valueChanges.subscribe((penaltyId: string) => {
         this.onRecommendedPenaltyChange(penaltyId);
       });
+    this.form
+      .get("candidateForStandardization")
+      ?.valueChanges.subscribe((candidate: boolean) => {
+        this.updateReviewNotesValidation(candidate);
+      });
   }
 
   ngOnInit(): void {
     this.loadReport();
     this.loadStewards();
     this.loadSavedSteward();
+  }
+
+  private updateReviewNotesValidation(candidate: boolean): void {
+    const reviewNotesControl = this.form.get("reviewNotes");
+    if (!reviewNotesControl) return;
+
+    if (candidate) {
+      reviewNotesControl.setValidators([Validators.required]);
+    } else {
+      reviewNotesControl.clearValidators();
+    }
+    reviewNotesControl.updateValueAndValidity();
   }
 
   private updateAdjustedReasonValidation(isAdjusted: boolean): void {
@@ -660,22 +689,20 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     }
 
     const driversQuery = this.convex.createReactiveQuery(
-      this.convex.api.drivers.getByChampionship,
-      { championshipId: report.event.seriesId },
-    );
-    this.unsubscribes.push(driversQuery.unsubscribe);
-
-    const checkDrivers = setInterval(() => {
-      const data = driversQuery.data();
-      if (data !== undefined) {
+      this.convex.api.drivers.list,
+      {},
+      (data) => {
         this.drivers.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkDrivers));
+    );
+    this.unsubscribes.push(driversQuery.unsubscribe);
   }
 
   ngOnDestroy(): void {
     this.unsubscribes.forEach((unsub) => unsub());
+    if (this.penaltiesUnsubscribe) {
+      this.penaltiesUnsubscribe();
+    }
   }
 
   private loadReport(): void {
@@ -687,15 +714,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     const reportQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getById,
       { reportId: this.reportId as any },
-    );
-    this.unsubscribes.push(reportQuery.unsubscribe);
-
-    let checkCount = 0;
-    const checkReport = setInterval(() => {
-      checkCount++;
-      const data = reportQuery.data();
-      if (data !== undefined) {
-        clearInterval(checkReport);
+      (data) => {
         this.report.set(data);
 
         // Pre-fill incident description (only if control is pristine and value has changed)
@@ -737,26 +756,45 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           }
 
           if (currentUserReview) {
-            this.form.patchValue({
-              reviewNotes: currentUserReview.reviewNotes || "",
-              recommendedPenalty: currentUserReview.recommendedPenalty || "",
-              videoTimestamp: currentUserReview.videoTimestamp || "",
-              secondStewardId:
+            const fieldsToPatch: Record<string, any> = {};
+            const mappings: [string, any][] = [
+              ["reviewNotes", currentUserReview.reviewNotes || ""],
+              ["recommendedPenalty", currentUserReview.recommendedPenalty || ""],
+              ["videoTimestamp", currentUserReview.videoTimestamp || ""],
+              [
+                "secondStewardId",
                 currentUserReview.linkedReview?.userId ||
-                currentUserReview.linkedReviewId ||
-                "",
-              isSelfReport: Boolean(currentUserReview.isSelfReport),
-              isAdjusted: Boolean(currentUserReview.isAdjusted),
-              candidateForStandardization: Boolean(
-                currentUserReview.candidateForStandardization,
-              ),
-              adjustedReason: currentUserReview.adjustedReason || "",
-            });
+                  currentUserReview.linkedReviewId ||
+                  "",
+              ],
+              ["isSelfReport", Boolean(currentUserReview.isSelfReport)],
+              ["isAdjusted", Boolean(currentUserReview.isAdjusted)],
+              [
+                "candidateForStandardization",
+                Boolean(currentUserReview.candidateForStandardization),
+              ],
+              ["adjustedReason", currentUserReview.adjustedReason || ""],
+            ];
 
-            // Initialize validation for adjustedReason based on isAdjusted value
-            this.updateAdjustedReasonValidation(
-              Boolean(currentUserReview.isAdjusted),
-            );
+            for (const [controlName, value] of mappings) {
+              const control = this.form.get(controlName);
+              if (control && control.pristine) {
+                fieldsToPatch[controlName] = value;
+              }
+            }
+
+            if (Object.keys(fieldsToPatch).length > 0) {
+              this.form.patchValue(fieldsToPatch);
+            }
+
+            if (
+              currentUserReview.isAdjusted !== undefined &&
+              this.form.get("isAdjusted")?.pristine
+            ) {
+              this.updateAdjustedReasonValidation(
+                Boolean(currentUserReview.isAdjusted),
+              );
+            }
           }
 
           // Filter out current user's review if exists
@@ -769,10 +807,20 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           // pre-fill the form with that review's data
           if (!currentUserReview && otherReviews.length === 1) {
             const firstReview = otherReviews[0];
-            this.form.patchValue({
-              incidentDescription: firstReview.incidentDescription || "",
-              recommendedPenalty: firstReview.recommendedPenalty || "",
-            });
+            const prefillFields: Record<string, any> = {};
+            const descControl = this.form.get("incidentDescription");
+            if (descControl && descControl.pristine) {
+              prefillFields["incidentDescription"] =
+                firstReview.incidentDescription || "";
+            }
+            const penaltyControl = this.form.get("recommendedPenalty");
+            if (penaltyControl && penaltyControl.pristine) {
+              prefillFields["recommendedPenalty"] =
+                firstReview.recommendedPenalty || "";
+            }
+            if (Object.keys(prefillFields).length > 0) {
+              this.form.patchValue(prefillFields);
+            }
           }
 
           // Load penalties for this series
@@ -784,25 +832,25 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReport));
+    );
+    this.unsubscribes.push(reportQuery.unsubscribe);
   }
 
   private loadPenalties(seriesId: string): void {
+    if (this.penaltiesUnsubscribe) {
+      this.penaltiesUnsubscribe();
+      this.penaltiesUnsubscribe = null;
+    }
+
     const penaltiesQuery = this.convex.createReactiveQuery(
       this.convex.api.penalties.getBySeries,
       { seriesId: seriesId as any },
-    );
-    this.unsubscribes.push(penaltiesQuery.unsubscribe);
-
-    const checkPenalties = setInterval(() => {
-      const data = penaltiesQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.availablePenalties.set(data);
         this.enforceAtFaultDriverSelection();
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkPenalties));
+    );
+    this.penaltiesUnsubscribe = penaltiesQuery.unsubscribe;
   }
 
   private onRecommendedPenaltyChange(penaltyId: string): void {
@@ -835,16 +883,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     const stewardsQuery = this.convex.createReactiveQuery(
       this.convex.api.users.listStewards,
       {},
-    );
-    this.unsubscribes.push(stewardsQuery.unsubscribe);
-
-    const checkStewards = setInterval(() => {
-      const data = stewardsQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.stewards.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkStewards));
+    );
+    this.unsubscribes.push(stewardsQuery.unsubscribe);
   }
 
   private loadSavedSteward(): void {
@@ -942,11 +985,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit(): Promise<void> {
-    await this.submitReview({ redirectTo: "/reviews" });
+    await this.submitReview({ redirectTo: ["/reviews", "queue"] });
   }
 
   private async submitReview(options: {
-    redirectTo: string;
+    redirectTo: readonly string[];
     queryParams?: Record<string, string>;
   }): Promise<void> {
     if (this.form.invalid) {
@@ -1035,7 +1078,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
           : "Review submitted successfully",
       );
 
-      await this.router.navigate([options.redirectTo], {
+      await this.router.navigate([...options.redirectTo], {
         queryParams: options.queryParams,
       });
     } catch (error: any) {
@@ -1109,7 +1152,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
 
       this.toast.success("Report rejected");
       this.showRejectModal = false;
-      this.router.navigate(["/reviews"]);
+      this.router.navigate(["/reviews", "queue"]);
     } catch (error: any) {
       this.toast.error(error.message || "Failed to reject report");
     } finally {
@@ -1118,7 +1161,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(["/reviews"]);
+    this.navigationService.goBack(["/reviews", "queue"]);
   }
 
   getSessionName(
@@ -1127,5 +1170,9 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  goBackToReviews(): void {
+    this.navigationService.goBack(["/reviews", "queue"]);
   }
 }

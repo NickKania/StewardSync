@@ -1,5 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
+import { requireRole } from "./lib/auth";
 import { UserFacingError } from "./lib/errors";
 
 function buildSessionName(race: {
@@ -68,22 +70,25 @@ export const getById = query({
 
 export const create = mutation({
   args: {
+    currentUserId: v.id("users"),
     eventId: v.id("events"),
     raceNumber: v.optional(v.number()),
     sessionName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId as Id<"users">, ["event_manager", "league_manager"]);
+    const { currentUserId, ...data } = args;
     // Verify event exists
-    const event = await ctx.db.get(args.eventId);
+    const event = await ctx.db.get(data.eventId);
     if (!event) {
       throw new Error("Event not found");
     }
 
     const normalizedProvidedSessionName =
-      args.sessionName && args.sessionName.trim()
-        ? normalizeSessionName(args.sessionName)
-        : typeof args.raceNumber === "number"
-          ? normalizeSessionName(`Race ${args.raceNumber}`)
+      data.sessionName && data.sessionName.trim()
+        ? normalizeSessionName(data.sessionName)
+        : typeof data.raceNumber === "number"
+          ? normalizeSessionName(`Race ${data.raceNumber}`)
           : "";
 
     if (!normalizedProvidedSessionName) {
@@ -91,16 +96,15 @@ export const create = mutation({
     }
 
     if (
-      args.raceNumber !== undefined &&
-      (!Number.isInteger(args.raceNumber) || args.raceNumber < 1)
+      data.raceNumber !== undefined &&
+      (!Number.isInteger(data.raceNumber) || data.raceNumber < 1)
     ) {
       throw new UserFacingError("Race number must be a positive whole number");
     }
 
-    // Check if session label or race number already exists for this event
     const existingRaces = await ctx.db
       .query("races")
-      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .withIndex("by_event", (q) => q.eq("eventId", data.eventId))
       .collect();
 
     if (
@@ -111,24 +115,24 @@ export const create = mutation({
       )
     ) {
       throw new UserFacingError(
-        `Session "${buildSessionName(args)}" already exists for this event`,
+        `Session "${buildSessionName(data)}" already exists for this event`,
       );
     }
 
     if (
-      args.raceNumber !== undefined &&
-      existingRaces.some((r) => r.raceNumber === args.raceNumber)
+      data.raceNumber !== undefined &&
+      existingRaces.some((r) => r.raceNumber === data.raceNumber)
     ) {
       throw new UserFacingError(
-        `Race ${args.raceNumber} already exists for this event`,
+        `Race ${data.raceNumber} already exists for this event`,
       );
     }
 
-    const sessionName = args.sessionName?.trim() || buildSessionName(args);
+    const sessionName = data.sessionName?.trim() || buildSessionName(data);
     const raceId = await ctx.db.insert("races", {
-      eventId: args.eventId,
+      eventId: data.eventId,
       raceNumber:
-        args.raceNumber ??
+        data.raceNumber ??
         (sessionName.match(/^race\s+(\d+)$/i)
           ? Number(sessionName.match(/^race\s+(\d+)$/i)?.[1])
           : 0),
@@ -141,9 +145,10 @@ export const create = mutation({
 });
 
 export const remove = mutation({
-  args: { raceId: v.id("races") },
+  args: { raceId: v.id("races"), currentUserId: v.id("users") },
   handler: async (ctx, args) => {
-    // Check if there are any reports for this session
+    await requireRole(ctx, args.currentUserId as Id<"users">, ["event_manager", "league_manager"]);
+
     const reports = await ctx.db
       .query("reports")
       .filter((q) => q.eq(q.field("raceId"), args.raceId))

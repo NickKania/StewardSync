@@ -366,6 +366,14 @@ export class AuthService {
     return this._userId();
   }
 
+  requireUserId(): Id<"users"> {
+    const userId = this._userId();
+    if (!userId) {
+      throw new Error("Session expired. Please log in again.");
+    }
+    return userId;
+  }
+
   hasRole(...roles: RoleName[]): boolean {
     const currentRole = this.userRole();
     return currentRole ? roles.includes(currentRole) : false;

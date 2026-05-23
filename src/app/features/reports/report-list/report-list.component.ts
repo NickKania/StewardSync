@@ -1,17 +1,19 @@
 import {
   Component,
   inject,
+  Input,
   OnInit,
   OnDestroy,
   signal,
   computed,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { FormsModule } from "@angular/forms";
-import { ActivatedRoute } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { REPORT_TABS, ReportTabId } from "@core/models";
+import { syncQueryParams } from "@core/utils/query-params.utils";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
@@ -75,7 +77,6 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
       <app-tabs
         [tabs]="visibleTabs()"
         [activeTab]="activeTab()"
-        (activeTabChange)="selectTab($event)"
       />
 
       <!-- Filters -->
@@ -92,7 +93,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
             label="Status"
             [options]="statusOptions"
             [(ngModel)]="selectedStatus"
-            (ngModelChange)="filterReports()"
+            (ngModelChange)="onStatusChange()"
             placeholder="All statuses"
           />
           <app-select
@@ -106,7 +107,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
             label="Session"
             [options]="raceOptions()"
             [(ngModel)]="selectedRace"
-            (ngModelChange)="filterReports()"
+            (ngModelChange)="onRaceChange()"
             placeholder="All sessions"
           />
         </div>
@@ -290,10 +291,13 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
   `,
 })
 export class ReportListComponent implements OnInit, OnDestroy {
+  @Input() tabId: ReportTabId = REPORT_TABS.MY;
+
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
   private route = inject(ActivatedRoute);
-  private readonly validTabs = ["my_reports", "finalized_reports", "all_reports"] as const;
+  private router = inject(Router);
+  private readonly validTabs = Object.values(REPORT_TABS) as readonly ReportTabId[];
 
   canViewReportingUser = computed(() =>
     this.authService.hasMinimumRole("steward"),
@@ -302,21 +306,35 @@ export class ReportListComponent implements OnInit, OnDestroy {
     this.authService.hasMinimumRole("steward"),
   );
 
-  activeTab = signal<"my_reports" | "finalized_reports" | "all_reports">(
-    "my_reports",
-  );
-  visibleTabs = computed((): Tab[] => {
+  activeTab = signal<ReportTabId>(REPORT_TABS.MY);
+  visibleTabs(): Tab[] {
+    const queryParams = this.getFilterQueryParams();
     const tabs: Tab[] = [
-      { id: "my_reports", label: "My Reports" },
-      { id: "finalized_reports", label: "All Finalized Reports" },
+      {
+        id: REPORT_TABS.MY,
+        label: "My Reports",
+        routeCommands: ["/reports", "my"],
+        queryParams,
+      },
+      {
+        id: REPORT_TABS.FINALIZED,
+        label: "All Finalized Reports",
+        routeCommands: ["/reports", "finalized"],
+        queryParams,
+      },
     ];
 
     if (this.canViewAllReportsTab()) {
-      tabs.push({ id: "all_reports", label: "All Reports" });
+      tabs.push({
+        id: REPORT_TABS.ALL,
+        label: "All Reports",
+        routeCommands: ["/reports", "all"],
+        queryParams,
+      });
     }
 
     return tabs;
-  });
+  }
 
   reports = signal<any[]>([]);
   filteredReports = signal<any[]>([]);
@@ -401,6 +419,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
   private unsubscribes: (() => void)[] = [];
 
   ngOnInit(): void {
+    this.applyRouteTab();
     this.loadData();
   }
 
@@ -413,64 +432,44 @@ export class ReportListComponent implements OnInit, OnDestroy {
     const reportsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.list,
       {},
-    );
-    this.unsubscribes.push(reportsQuery.unsubscribe);
-
-    const checkReports = setInterval(() => {
-      const data = reportsQuery.data();
-      if (data) {
+      (data) => {
         this.reports.set(data);
         this.filterReports();
         this.loading.set(false);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReports));
+      },
+    );
+    this.unsubscribes.push(reportsQuery.unsubscribe);
 
     // Load events for filter
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
       {},
-    );
-    this.unsubscribes.push(eventsQuery.unsubscribe);
-
-    const checkEvents = setInterval(() => {
-      const data = eventsQuery.data();
-      if (data) {
+      (data) => {
         this.events.set(data);
         this.filterReports();
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkEvents));
+      },
+    );
+    this.unsubscribes.push(eventsQuery.unsubscribe);
 
     // Load active series for filtering events
     const activeSeriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
       {},
+      (data) => {
+        this.activeSeries.set(data);
+      },
     );
     this.unsubscribes.push(activeSeriesQuery.unsubscribe);
-
-    const checkActiveSeries = setInterval(() => {
-      const data = activeSeriesQuery.data();
-      if (data) {
-        this.activeSeries.set(data);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkActiveSeries));
 
     // Load races for filter
     const racesQuery = this.convex.createReactiveQuery(
       this.convex.api.races.list,
       {},
+      (data) => {
+        this.races.set(data);
+      },
     );
     this.unsubscribes.push(racesQuery.unsubscribe);
-
-    const checkRaces = setInterval(() => {
-      const data = racesQuery.data();
-      if (data) {
-        this.races.set(data);
-      }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkRaces));
 
     // Load user's series memberships if they're a driver
     if (this.authService.userRole() === "driver") {
@@ -479,44 +478,48 @@ export class ReportListComponent implements OnInit, OnDestroy {
         const userSeriesQuery = this.convex.createReactiveQuery(
           this.convex.api.drivers.getSeriesIdsForUser,
           { userId: currentUserId },
-        );
-        this.unsubscribes.push(userSeriesQuery.unsubscribe);
-
-        const checkUserSeries = setInterval(() => {
-          const data = userSeriesQuery.data();
-          if (data) {
+          (data) => {
             this.userSeriesIds.set(data.map((id: any) => id.toString()));
             this.filterReports();
-          }
-        }, 100);
-        this.unsubscribes.push(() => clearInterval(checkUserSeries));
+          },
+        );
+        this.unsubscribes.push(userSeriesQuery.unsubscribe);
       }
     }
 
-    // Read query parameters and apply initial filters
-    this.route.queryParams.subscribe((params) => {
-      if (params["event"]) {
-        this.selectedEvent = params["event"];
-      }
-      if (params["race"]) {
-        this.selectedRace = params["race"];
-      }
-      if (params["tab"] && this.isValidTab(params["tab"])) {
-        this.selectTab(params["tab"]);
-      }
+    const queryParamsSubscription = this.route.queryParams.subscribe((params) => {
+      this.selectedSeries = typeof params["series"] === "string" ? params["series"] : "";
+      this.selectedStatus = typeof params["status"] === "string" ? params["status"] : "";
+      this.selectedEvent = typeof params["event"] === "string" ? params["event"] : "";
+      this.selectedRace = typeof params["race"] === "string" ? params["race"] : "";
       this.filterReports();
     });
+    this.unsubscribes.push(() => queryParamsSubscription.unsubscribe());
   }
+
+  private readonly reportFilterKeys = new Set(["series", "status", "event", "race"]);
 
   onSeriesChange(): void {
     this.selectedEvent = "";
     this.selectedRace = "";
     this.filterReports();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.reportFilterKeys);
   }
 
   onEventChange(): void {
     this.selectedRace = "";
     this.filterReports();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.reportFilterKeys);
+  }
+
+  onStatusChange(): void {
+    this.filterReports();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.reportFilterKeys);
+  }
+
+  onRaceChange(): void {
+    this.filterReports();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.reportFilterKeys);
   }
 
   filterReports(): void {
@@ -540,13 +543,16 @@ export class ReportListComponent implements OnInit, OnDestroy {
       });
     }
 
-    if (this.activeTab() === "my_reports") {
+    if (this.activeTab() === REPORT_TABS.MY) {
       filtered = filtered.filter((report) => report.reportingUserId === currentUserId);
-    } else if (this.activeTab() === "finalized_reports") {
+    } else if (this.activeTab() === REPORT_TABS.FINALIZED) {
       filtered = filtered.filter((report) => report.status === "finalized");
-    } else if (this.activeTab() === "all_reports" && !this.canViewAllReportsTab()) {
-      this.activeTab.set("my_reports");
-      filtered = filtered.filter((report) => report.reportingUserId === currentUserId);
+    } else if (this.activeTab() === REPORT_TABS.ALL) {
+      // If user doesn't have access to all_reports, they'll see filtered results
+      // based on the access control above (driver role check)
+      if (!this.canViewAllReportsTab()) {
+        filtered = filtered.filter((report) => report.reportingUserId === currentUserId);
+      }
     }
 
     // Filter by series
@@ -578,24 +584,9 @@ export class ReportListComponent implements OnInit, OnDestroy {
     this.filteredReports.set(filtered);
   }
 
-  selectTab(tabId: string): void {
-    if (!this.isValidTab(tabId)) {
-      return;
-    }
-
-    if (tabId === "all_reports" && !this.canViewAllReportsTab()) {
-      return;
-    }
-
-    this.activeTab.set(tabId);
-    this.filterReports();
-  }
-
-  private isValidTab(
-    tabId: string,
-  ): tabId is "my_reports" | "finalized_reports" | "all_reports" {
+  private isValidTab(tabId: string): tabId is ReportTabId {
     return this.validTabs.includes(
-      tabId as "my_reports" | "finalized_reports" | "all_reports",
+      tabId as ReportTabId,
     );
   }
 
@@ -623,5 +614,27 @@ export class ReportListComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  private applyRouteTab(): void {
+    const requestedTab = this.isValidTab(this.tabId) ? this.tabId : REPORT_TABS.MY;
+
+    // Always follow the URL - if user doesn't have access to the requested tab,
+    // fall back to a tab they can access without redirecting
+    if (requestedTab === REPORT_TABS.ALL && !this.canViewAllReportsTab()) {
+      this.activeTab.set(REPORT_TABS.MY);
+      return;
+    }
+
+    this.activeTab.set(requestedTab);
+  }
+
+  private getFilterQueryParams(): Record<string, string | undefined> {
+    return {
+      series: this.selectedSeries || undefined,
+      status: this.selectedStatus || undefined,
+      event: this.selectedEvent || undefined,
+      race: this.selectedRace || undefined,
+    };
   }
 }

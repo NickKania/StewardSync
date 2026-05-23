@@ -19,7 +19,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/f
         <label [for]="id" class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">
           {{ label }}
           @if (required) {
-            <span class="text-red-500 dark:text-red-400">*</span>
+            <span class="text-danger">*</span>
           }
         </label>
       }
@@ -35,7 +35,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/f
         (blur)="onTouched()"
       />
       @if (error) {
-        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+        <p class="mt-1 text-sm text-danger">{{ error }}</p>
       }
       @if (hint && !error) {
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ hint }}</p>
@@ -82,7 +82,7 @@ export class InputComponent implements ControlValueAccessor {
   getInputClasses(): string {
     const base = 'block w-full px-3 py-2 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-primary-500 transition-colors bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:placeholder-gray-500';
     const errorClass = this.error
-      ? 'border-red-300 focus:ring-red-500 focus:border-red-500 dark:border-red-500/70 dark:focus:ring-red-400 dark:focus:border-red-400'
+      ? 'border-danger-border focus:ring-danger-ring focus:border-danger'
       : 'border-gray-300 focus:ring-primary-500 dark:border-gray-700 dark:focus:ring-primary-400 dark:focus:border-primary-400';
     const disabledClass = this.disabled ? 'bg-gray-100 cursor-not-allowed dark:bg-gray-800' : '';
 

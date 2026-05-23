@@ -1,9 +1,11 @@
-import { Component, inject, signal, computed, effect, untracked } from '@angular/core';
+import { DestroyRef, Component, inject, signal, computed, effect, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { ConvexService } from '@core/services/convex.service';
 import { AuthService } from '@core/services/auth.service';
+import { getStringParam, getBooleanParam, syncQueryParams } from '@core/utils/query-params.utils';
 import { CardComponent } from '@shared/components/card/card.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
@@ -20,6 +22,25 @@ interface FilterState {
   startDate: string;
   endDate: string;
 }
+
+const DEFAULT_FILTERS: FilterState = {
+  searchQuery: '',
+  seriesId: '',
+  userId: '',
+  candidateForStandardizationOnly: false,
+  startDate: '',
+  endDate: '',
+};
+
+const FILTER_QUERY_PARAM_KEYS = new Set([
+  'searchQuery',
+  'seriesId',
+  'userId',
+  'candidateForStandardizationOnly',
+  'startDate',
+  'endDate',
+  'page',
+]);
 
 @Component({
   selector: 'app-review-search',
@@ -46,7 +67,7 @@ interface FilterState {
         </div>
       </div>
 
-      <div class="relative z-0">
+      <div class="relative z-20">
         <app-card [overflowHidden]="false">
           <div class="space-y-4">
           <div>
@@ -214,7 +235,7 @@ interface FilterState {
                     <td class="px-3 py-4">
                       @if (result.candidateForStandardization) {
                         <span
-                          class="inline-block px-2.5 py-0.5 text-sm font-medium rounded-full bg-amber-100 text-amber-800 whitespace-nowrap"
+                          class="inline-block px-2.5 py-0.5 text-sm font-medium rounded-full bg-warning-bg text-warning-text whitespace-nowrap"
                         >
                           Candidate
                         </span>
@@ -272,17 +293,13 @@ interface FilterState {
 export class ReviewSearchComponent {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   readonly PAGE_SIZE = 20;
 
-  filters = signal<FilterState>({
-    searchQuery: '',
-    seriesId: '',
-    userId: '',
-    candidateForStandardizationOnly: false,
-    startDate: '',
-    endDate: '',
-  });
+  filters = signal<FilterState>({ ...DEFAULT_FILTERS });
 
   loading = signal(true);
   results = signal<any[]>([]);
@@ -321,6 +338,10 @@ export class ReviewSearchComponent {
   private searchTimeout: any = null;
 
   constructor() {
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.applyQueryParams(params));
+
     this.loadInitialData();
     effect(() => {
       this.filters();
@@ -347,29 +368,25 @@ export class ReviewSearchComponent {
 
   onSearchChange(): void {
     this.currentPage.set(1);
-    this.performSearch();
+    this.filters.set({ ...this.filters() });
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), FILTER_QUERY_PARAM_KEYS, { replaceUrl: true });
   }
 
   onFilterChange(): void {
     this.currentPage.set(1);
-    this.performSearch();
+    this.filters.set({ ...this.filters() });
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), FILTER_QUERY_PARAM_KEYS, { replaceUrl: true });
   }
 
   onPageChange(page: number): void {
     this.currentPage.set(page);
-    this.performSearch();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), FILTER_QUERY_PARAM_KEYS, { replaceUrl: true });
   }
 
   clearFilters(): void {
-    this.filters.set({
-      searchQuery: '',
-      seriesId: '',
-      userId: '',
-      candidateForStandardizationOnly: false,
-      startDate: '',
-      endDate: '',
-    });
+    this.filters.set({ ...DEFAULT_FILTERS });
     this.currentPage.set(1);
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), FILTER_QUERY_PARAM_KEYS, { replaceUrl: true });
   }
 
   performSearch(): void {
@@ -465,5 +482,68 @@ export class ReviewSearchComponent {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  private applyQueryParams(params: Params): void {
+    const parsedFilters = this.parseFiltersFromQueryParams(params);
+    const parsedPage = this.parsePageFromQueryParams(params);
+
+    if (!this.areFiltersEqual(this.filters(), parsedFilters)) {
+      this.filters.set(parsedFilters);
+    }
+
+    if (this.currentPage() !== parsedPage) {
+      this.currentPage.set(parsedPage);
+    }
+  }
+
+  private parseFiltersFromQueryParams(params: Params): FilterState {
+    return {
+      searchQuery: getStringParam(params, 'searchQuery'),
+      seriesId: getStringParam(params, 'seriesId'),
+      userId: getStringParam(params, 'userId'),
+      candidateForStandardizationOnly: getBooleanParam(
+        params,
+        'candidateForStandardizationOnly',
+      ),
+      startDate: this.getDateParam(params, 'startDate'),
+      endDate: this.getDateParam(params, 'endDate'),
+    };
+  }
+
+  private parsePageFromQueryParams(params: Params): number {
+    const pageValue = getStringParam(params, 'page');
+    const parsed = Number.parseInt(pageValue, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }
+
+  private getDateParam(params: Params, key: string): string {
+    const value = getStringParam(params, key);
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+  }
+
+  private areFiltersEqual(a: FilterState, b: FilterState): boolean {
+    return (
+      a.searchQuery === b.searchQuery &&
+      a.seriesId === b.seriesId &&
+      a.userId === b.userId &&
+      a.candidateForStandardizationOnly === b.candidateForStandardizationOnly &&
+      a.startDate === b.startDate &&
+      a.endDate === b.endDate
+    );
+  }
+
+  private getFilterQueryParams(): Record<string, string | undefined> {
+    const f = this.filters();
+
+    return {
+      searchQuery: f.searchQuery || undefined,
+      seriesId: f.seriesId || undefined,
+      userId: f.userId || undefined,
+      candidateForStandardizationOnly: f.candidateForStandardizationOnly ? 'true' : undefined,
+      startDate: f.startDate || undefined,
+      endDate: f.endDate || undefined,
+      page: this.currentPage() > 1 ? String(this.currentPage()) : undefined,
+    };
   }
 }

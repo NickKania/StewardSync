@@ -160,17 +160,12 @@ export class MyReviewsComponent implements OnInit, OnDestroy {
     const reviewsQuery = this.convex.createReactiveQuery(
       this.convex.api.reviews.getByUser,
       { userId },
-    );
-    this.unsubscribes.push(reviewsQuery.unsubscribe);
-
-    const checkReviews = setInterval(() => {
-      const data = reviewsQuery.data() as any;
-      if (data !== undefined) {
-        this.reviews.set(data);
+      (data) => {
+        this.reviews.set(data as any);
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReviews));
+    );
+    this.unsubscribes.push(reviewsQuery.unsubscribe);
   }
 
   getStatusVariant(

@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
-import { getCurrentUserRole, hasMinimumRole } from "./lib/auth";
+import { getCurrentUserRole, hasMinimumRole, requireRole } from "./lib/auth";
 import { formatDriverName, getDriverDisplayName } from "./lib/formatting";
 
 const normalizeUsername = (value?: string): string | undefined => {
@@ -127,6 +127,7 @@ export const getByIdWithUser = query({
             displayName: driverClassData.displayName,
           }
         : null,
+      note: driver.note,
     };
   },
 });
@@ -395,6 +396,7 @@ export const getUserProfile = query({
           driverClassId: driver.driverClassId ?? null,
           driverClassName: driverClass?.displayName ?? null,
           accumulatedLicensePoints: driver.accumulatedLicensePoints ?? 0,
+          note: canViewNotes ? driver.note : undefined,
           penalties: penaltyHistory,
         };
       }),
@@ -857,6 +859,27 @@ export const updateUserAssociation = mutation({
     });
 
     return args.driverId;
+  },
+});
+
+export const updateNote = mutation({
+  args: {
+    driverId: v.id("drivers"),
+    note: v.string(),
+    currentUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const { driverId, note, currentUserId } = args;
+
+    // Verify current user is steward or higher
+    await requireRole(ctx, currentUserId, ["steward"]);
+
+    const trimmed = note.trim();
+    await ctx.db.patch(driverId, {
+      note: trimmed || undefined,
+    });
+
+    return driverId;
   },
 });
 

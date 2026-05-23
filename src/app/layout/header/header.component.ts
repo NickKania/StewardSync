@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { ThemeService } from '@core/services/theme.service';
+import { ColorModeService } from '@core/services/color-mode.service';
 import { SidebarStateService } from '@core/services/sidebar-state.service';
 
 @Component({
@@ -35,6 +36,16 @@ import { SidebarStateService } from '@core/services/sidebar-state.service';
 
         <!-- User menu -->
         <div class="flex items-center gap-4">
+          <button
+            class="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
+            (click)="colorModeService.toggleColorBlindMode()"
+            [attr.aria-label]="colorModeService.isColorBlind() ? 'Disable accessible colors' : 'Enable accessible colors'"
+            [title]="colorModeService.isColorBlind() ? 'Accessible colors on' : 'Accessible colors off'"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+            </svg>
+          </button>
           <button
             class="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
             (click)="themeService.toggleTheme()"
@@ -101,6 +112,7 @@ import { SidebarStateService } from '@core/services/sidebar-state.service';
 export class HeaderComponent {
   authService = inject(AuthService);
   themeService = inject(ThemeService);
+  colorModeService = inject(ColorModeService);
   readonly sidebarStateService = inject(SidebarStateService);
 
   showUserMenu = false;

@@ -1,16 +1,20 @@
 import { Component, Input, Output, EventEmitter } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { RouterLink } from "@angular/router";
 
 export interface Tab {
   id: string;
   label: string;
   badge?: string | number;
+  routeCommands?: unknown[] | string[];
+  queryParams?: Record<string, string | number | boolean | undefined>;
+  exact?: boolean;
 }
 
 @Component({
   selector: "app-tabs",
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
     <div class="border-b border-gray-200 dark:border-gray-700">
       <nav
@@ -20,29 +24,55 @@ export interface Tab {
         role="tablist"
       >
         @for (tab of tabs; track tab.id) {
-          <button
-            [attr.aria-selected]="activeTab === tab.id"
-            [attr.role]="tab"
-            [class]="getTabClasses(tab.id)"
-            (click)="onTabClick(tab.id)"
-            type="button"
-            class="shrink-0"
-          >
-            {{ tab.label }}
-            @if (tab.badge !== undefined) {
-              <span
-                class="ml-1.5 px-1.5 py-0.5 text-xs rounded-full"
-                [class.bg-gray-100]="activeTab !== tab.id"
-                [class.text-gray-600]="activeTab !== tab.id"
-                [class.dark.bg-gray-700]="activeTab !== tab.id"
-                [class.dark.text-gray-300]="activeTab !== tab.id"
-                [class.bg-white]="activeTab === tab.id"
-                [class.text-primary-600]="activeTab === tab.id"
-              >
-                {{ tab.badge }}
-              </span>
-            }
-          </button>
+          @if (tab.routeCommands?.length) {
+            <a
+              [attr.aria-selected]="activeTab === tab.id"
+              role="tab"
+              [class]="getTabClasses(tab.id)"
+              [queryParams]="tab.queryParams"
+              [routerLink]="tab.routeCommands"
+              class="shrink-0"
+            >
+              {{ tab.label }}
+              @if (tab.badge !== undefined) {
+                <span
+                  class="ml-1.5 px-1.5 py-0.5 text-xs rounded-full"
+                  [class.bg-gray-100]="activeTab !== tab.id"
+                  [class.text-gray-600]="activeTab !== tab.id"
+                  [class.dark.bg-gray-700]="activeTab !== tab.id"
+                  [class.dark.text-gray-300]="activeTab !== tab.id"
+                  [class.bg-white]="activeTab === tab.id"
+                  [class.text-primary-600]="activeTab === tab.id"
+                >
+                  {{ tab.badge }}
+                </span>
+              }
+            </a>
+          } @else {
+            <button
+              [attr.aria-selected]="activeTab === tab.id"
+              role="tab"
+              [class]="getTabClasses(tab.id)"
+              (click)="onTabClick(tab.id)"
+              type="button"
+              class="shrink-0"
+            >
+              {{ tab.label }}
+              @if (tab.badge !== undefined) {
+                <span
+                  class="ml-1.5 px-1.5 py-0.5 text-xs rounded-full"
+                  [class.bg-gray-100]="activeTab !== tab.id"
+                  [class.text-gray-600]="activeTab !== tab.id"
+                  [class.dark.bg-gray-700]="activeTab !== tab.id"
+                  [class.dark.text-gray-300]="activeTab !== tab.id"
+                  [class.bg-white]="activeTab === tab.id"
+                  [class.text-primary-600]="activeTab === tab.id"
+                >
+                  {{ tab.badge }}
+                </span>
+              }
+            </button>
+          }
         }
       </nav>
     </div>

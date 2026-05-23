@@ -38,10 +38,10 @@ export class StatsGridComponent {
     const variantClasses: Record<string, string> = {
       default: "text-gray-900 dark:text-gray-100",
       primary: "text-primary-600",
-      success: "text-green-600",
-      warning: "text-amber-600",
-      danger: "text-red-600",
-      info: "text-blue-600",
+      success: "text-success",
+      warning: "text-warning",
+      danger: "text-danger",
+      info: "text-info",
     };
 
     return `${base} ${variantClasses[variant] ?? variantClasses["default"]}`;

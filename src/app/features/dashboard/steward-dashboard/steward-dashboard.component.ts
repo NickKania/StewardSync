@@ -26,7 +26,7 @@ import { DashboardReportStatisticsComponent } from "../dashboard-report-statisti
             Monitor incident volume and review the pending queue.
           </p>
         </div>
-        <a routerLink="/reviews">
+        <a [routerLink]="['/reviews', 'queue']">
           <app-button variant="secondary">Open Review Queue</app-button>
         </a>
       </div>

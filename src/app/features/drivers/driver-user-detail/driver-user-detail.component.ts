@@ -18,6 +18,7 @@ import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { CardComponent } from "@shared/components/card/card.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
+import { ModalComponent } from "@shared/components/modal/modal.component";
 import {
   SelectComponent,
   SelectOption,
@@ -57,6 +58,7 @@ interface SeriesPenaltyGroup {
     CardComponent,
     LoadingComponent,
     SelectComponent,
+    ModalComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -105,10 +107,15 @@ interface SeriesPenaltyGroup {
               }
             </div>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             <a routerLink="/drivers">
               <app-button variant="secondary">Back to Drivers</app-button>
             </a>
+            @if (canCreateMeetingThread()) {
+              <app-button variant="primary" (onClick)="openMeetingThreadModal()">
+                Setup Meeting Thread
+              </app-button>
+            }
             @if (linkedUser()) {
               <a [routerLink]="['/drivers/user', linkedUser()._id]">
                 <app-button variant="primary">Go To User Profile</app-button>
@@ -136,7 +143,7 @@ interface SeriesPenaltyGroup {
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-2xl sm:text-3xl font-bold text-amber-600">
+                <p class="text-2xl sm:text-3xl font-bold text-warning">
                   {{ statsToShow()?.reportsAgainstCount || 0 }}
                 </p>
                 <p
@@ -148,7 +155,7 @@ interface SeriesPenaltyGroup {
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-2xl sm:text-3xl font-bold text-blue-600">
+                <p class="text-2xl sm:text-3xl font-bold text-info">
                   {{ statsToShow()?.pendingReports || 0 }}
                 </p>
                 <p
@@ -160,7 +167,7 @@ interface SeriesPenaltyGroup {
             </app-card>
             <app-card>
               <div class="text-center">
-                <p class="text-2xl sm:text-3xl font-bold text-green-600">
+                <p class="text-2xl sm:text-3xl font-bold text-success">
                   {{ statsToShow()?.finalizedReports || 0 }}
                 </p>
                 <p
@@ -311,19 +318,29 @@ interface SeriesPenaltyGroup {
           </dl>
         </app-card>
 
-        <!-- Staff Notes - User Mode Only -->
+        <!-- Staff Notes -->
         @if (showStaffNotesSection()) {
           <app-card>
-            <label class="label">Staff Notes</label>
+            <label class="label">
+              @if (isUserMode()) {
+                Staff Notes (User & Drivers)
+              } @else {
+                Driver Staff Notes
+              }
+            </label>
             <textarea
               class="input min-h-[120px]"
               [ngModel]="staffNoteDraft()"
               (ngModelChange)="setStaffNoteDraft($event)"
-              placeholder="Add internal notes for staff only..."
+              [placeholder]="staffNotePlaceholder()"
             ></textarea>
             <div class="flex items-center justify-between mt-3">
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Visible to stewards and above only.
+                @if (isUserMode()) {
+                  Notes for user and linked drivers. Visible to stewards and above only.
+                } @else {
+                  Driver notes. Visible to stewards and above only.
+                }
               </p>
               <app-button
                 variant="primary"
@@ -507,7 +524,7 @@ interface SeriesPenaltyGroup {
                       editingLicensePoints()[profile.driverId])
                   ) {
                     <textarea
-                      class="input w-full mt-2 border-red-300 dark:border-red-700"
+                      class="input w-full mt-2 border-danger-border"
                       rows="3"
                       [ngModel]="
                         seriesData()[profile.seriesId]?.seriesPenaltyNotes || ''
@@ -814,6 +831,37 @@ interface SeriesPenaltyGroup {
           </app-card>
         }
       }
+
+      <!-- Meeting Thread Modal -->
+      <app-modal
+        [isOpen]="showMeetingThreadModal()"
+        title="Setup Meeting Thread"
+        size="md"
+        (close)="closeMeetingThreadModal()"
+      >
+        <label class="label">Initial Message</label>
+        <textarea
+          class="input min-h-[120px]"
+          [ngModel]="meetingThreadMessage()"
+          (ngModelChange)="meetingThreadMessage.set($event)"
+          placeholder="Enter the purpose or agenda for this meeting..."
+        ></textarea>
+        <div modal-footer class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+          <app-button
+            variant="secondary"
+            (onClick)="closeMeetingThreadModal()"
+          >
+            Cancel
+          </app-button>
+          <app-button
+            variant="primary"
+            [loading]="creatingMeetingThread()"
+            (onClick)="createMeetingThread()"
+          >
+            Create Thread
+          </app-button>
+        </div>
+      </app-modal>
     </div>
   `,
 })
@@ -852,8 +900,18 @@ export class DriverUserDetailComponent implements OnInit {
   pendingLinkedUserId = signal("");
   savingLinkedUser = signal(false);
 
+  // Meeting thread modal
+  showMeetingThreadModal = signal(false);
+  meetingThreadMessage = signal("");
+  creatingMeetingThread = signal(false);
+
   readonly isDriverMode = computed(() => !!this._driverId() && !this._userId());
   readonly isUserMode = computed(() => !this.isDriverMode());
+  readonly staffNotePlaceholder = computed(() =>
+    this.isUserMode()
+      ? "Add internal notes for staff only... Use '--- User Note ---' and '--- #123 - Series Name ---' headers to separate notes."
+      : "Add internal notes for this driver...",
+  );
   readonly detailNotFoundMessage = computed(() =>
     this.isDriverMode() ? "Driver not found." : "User profile not found.",
   );
@@ -960,7 +1018,7 @@ export class DriverUserDetailComponent implements OnInit {
     return (this.profile()?.profiles?.length ?? 0) > 0;
   });
   readonly showStaffNotesSection = computed(
-    () => this.isUserMode() && this.canViewStaffNotes(),
+    () => this.canViewStaffNotes(),
   );
   readonly showVisibleSeriesProfilesSection = computed(() => this.isUserMode());
   readonly showSeriesPenaltiesSection = computed(() => {
@@ -1143,22 +1201,135 @@ export class DriverUserDetailComponent implements OnInit {
     return this.authService.hasMinimumRole("steward");
   }
 
+  canCreateMeetingThread(): boolean {
+    return this.authService.hasRole("head_steward") ||
+           this.authService.hasRole("league_manager");
+  }
+
   setStaffNoteDraft(value: string): void {
     this.staffNoteDraft.set(value);
   }
 
+  private buildCombinedNote(userNote: string, profiles: any[]): string {
+    const parts: string[] = [];
+
+    if (userNote && userNote.trim()) {
+      parts.push(`[[USER_NOTE]]\n${userNote.trim()}`);
+    }
+
+    for (const profile of profiles) {
+      if (profile.note && profile.note.trim()) {
+        parts.push(`[[DRIVER_NOTE:${profile.driverNumber}:${profile.seriesName}]]\n${profile.note.trim()}`);
+      }
+    }
+
+    return parts.join("\n\n");
+  }
+
+  private parseCombinedNote(combinedNote: string): {
+    userNote: string;
+    driverNotes: Map<string, string>;
+  } {
+    const lines = combinedNote.split("\n");
+    const userNote: string[] = [];
+    const driverNotes = new Map<string, string>();
+    let currentDriverKey: string | null = null;
+    let currentNote: string[] = [];
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      if (trimmedLine === "[[USER_NOTE]]") {
+        if (currentDriverKey) {
+          driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
+        } else if (currentNote.length > 0) {
+          userNote.push(...currentNote);
+        }
+        currentDriverKey = null;
+        currentNote = [];
+        continue;
+      }
+
+      const driverMatch = trimmedLine.match(/^\[\[DRIVER_NOTE:(\d+):(.+)\]\]$/);
+      if (driverMatch) {
+        if (currentDriverKey) {
+          driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
+        } else if (currentNote.length > 0) {
+          userNote.push(...currentNote);
+        }
+        currentDriverKey = `${driverMatch[1]}-${driverMatch[2].trim()}`;
+        currentNote = [];
+        continue;
+      }
+
+      currentNote.push(line);
+    }
+
+    if (currentDriverKey) {
+      driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
+    } else if (currentNote.length > 0) {
+      userNote.push(...currentNote);
+    }
+
+    return {
+      userNote: userNote.join("\n").trim(),
+      driverNotes,
+    };
+  }
+
   async saveStaffNote(): Promise<void> {
     const currentUserId = this.authService.getUserId();
-    if (!currentUserId || !this.userId) return;
+    if (!currentUserId) return;
 
     this.savingStaffNote.set(true);
     try {
-      await this.convex.mutation(this.convex.api.users.updateNote, {
-        userId: this.userId as any,
-        note: this.staffNoteDraft(),
-        currentUserId,
-      });
-      this.toast.success("Staff note updated");
+      if (this.isDriverMode()) {
+        // Driver mode: save to driver note
+        if (!this._driverId()) return;
+
+        await this.convex.mutation(this.convex.api.drivers.updateNote, {
+          driverId: this._driverId() as any,
+          note: this.staffNoteDraft(),
+          currentUserId,
+        });
+        this.toast.success("Driver note updated");
+      } else {
+        // User mode: parse and save both user and driver notes
+        if (!this.userId) return;
+
+        const { userNote, driverNotes } = this.parseCombinedNote(
+          this.staffNoteDraft(),
+        );
+
+        const mutations: Promise<void>[] = [];
+
+        mutations.push(
+          this.convex.mutation(this.convex.api.users.updateNote, {
+            userId: this.userId as any,
+            note: userNote,
+            currentUserId,
+          }),
+        );
+
+        const profiles = this.profile()?.profiles || [];
+        for (const profile of profiles) {
+          const driverKey = `${profile.driverNumber}-${profile.seriesName}`;
+          const driverNote = driverNotes.get(driverKey) ?? "";
+
+          mutations.push(
+            this.convex.mutation(this.convex.api.drivers.updateNote, {
+              driverId: profile.driverId as any,
+              note: driverNote,
+              currentUserId,
+            }),
+          );
+        }
+
+        await Promise.all(mutations);
+
+        this.toast.success("Staff notes updated");
+      }
+
       await this.load();
     } catch (error: any) {
       console.error("Failed to update staff note:", error);
@@ -1199,6 +1370,7 @@ export class DriverUserDetailComponent implements OnInit {
 
     this.driver.set(driver);
     this.linkedUser.set(driver.linkedUser);
+    this.staffNoteDraft.set(driver.note || "");
 
     const stats = await this.convex.query(
       this.convex.api.drivers.getDriverStats,
@@ -1245,7 +1417,13 @@ export class DriverUserDetailComponent implements OnInit {
       },
     );
     this.profile.set(profile);
-    this.staffNoteDraft.set(profile?.user?.note || "");
+
+    // Build combined note from user note + all linked driver notes
+    const combinedNote = this.buildCombinedNote(
+      profile?.user?.note || "",
+      profile?.profiles || [],
+    );
+    this.staffNoteDraft.set(combinedNote);
 
     if (profile?.profiles?.length) {
       const defaultDriverIds = profile.profiles
@@ -1307,16 +1485,11 @@ export class DriverUserDetailComponent implements OnInit {
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
       {},
-    );
-    this.unsubscribes.push(seriesQuery.unsubscribe);
-
-    const checkSeries = setInterval(() => {
-      const data = seriesQuery.data();
-      if (data) {
+      (data) => {
         this.series.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkSeries));
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
   }
 
   async loadPenalties(): Promise<void> {
@@ -1459,6 +1632,56 @@ export class DriverUserDetailComponent implements OnInit {
 
   formatDate(value: number): string {
     return new Date(value).toLocaleDateString();
+  }
+
+  openMeetingThreadModal(): void {
+    this.meetingThreadMessage.set("");
+    this.showMeetingThreadModal.set(true);
+  }
+
+  closeMeetingThreadModal(): void {
+    this.showMeetingThreadModal.set(false);
+    this.meetingThreadMessage.set("");
+  }
+
+  async createMeetingThread(): Promise<void> {
+    const message = this.meetingThreadMessage().trim();
+    if (!message) {
+      this.toast.warning("Please enter a message");
+      return;
+    }
+
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId) {
+      this.toast.error("Not authenticated");
+      return;
+    }
+
+    const targetDriverId = this.isDriverMode() ? this._driverId() : this.primaryUserSeriesProfile()?.driverId;
+    if (!targetDriverId) {
+      this.toast.error("No driver found");
+      return;
+    }
+
+    this.creatingMeetingThread.set(true);
+    try {
+      const result = await this.convex.mutation(
+        this.convex.api.driverMeetingThreads.createDriverMeetingThread,
+        {
+          driverId: targetDriverId as any,
+          initialMessage: message,
+          userId: currentUserId as any,
+        }
+      );
+
+      this.toast.success("Meeting thread created");
+      this.closeMeetingThreadModal();
+    } catch (error: any) {
+      console.error("Failed to create meeting thread:", error);
+      this.toast.error(error?.message || "Failed to create meeting thread");
+    } finally {
+      this.creatingMeetingThread.set(false);
+    }
   }
 
   penaltyHistoryItems(seriesProfile: any): any[] {

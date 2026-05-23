@@ -8,9 +8,10 @@ import {
   Input,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { Router, RouterLink } from "@angular/router";
+import { RouterLink } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { NavigationService } from "@core/services/navigation.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
@@ -340,7 +341,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                           track adjustedReview._id
                         ) {
                           <div
-                            class="bg-amber-50 border border-amber-200 rounded-lg p-3"
+                            class="bg-warning-bg border border-warning-border rounded-lg p-3"
                           >
                             <div class="flex items-center justify-between mb-1">
                               <span
@@ -351,7 +352,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                                 }}</span
                               >
                             </div>
-                            <p class="text-sm text-amber-800">
+                            <p class="text-sm text-warning-text">
                               {{ adjustedReview.adjustedReason }}
                             </p>
                           </div>
@@ -461,15 +462,15 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                 <div class="flex items-center gap-3">
                   <div
                     class="w-10 h-10 rounded-full flex items-center justify-center"
-                    [class.bg-amber-100]="report()?.status === 'pending'"
-                    [class.bg-blue-100]="report()?.status === 'reviewed'"
-                    [class.bg-green-100]="report()?.status === 'finalized'"
-                    [class.bg-red-100]="report()?.status === 'rejected'"
+                    [class.bg-warning-bg]="report()?.status === 'pending'"
+                    [class.bg-info-bg]="report()?.status === 'reviewed'"
+                    [class.bg-success-bg]="report()?.status === 'finalized'"
+                    [class.bg-danger-bg]="report()?.status === 'rejected'"
                   >
                     @switch (report()?.status) {
                       @case ("pending") {
                         <svg
-                          class="w-5 h-5 text-amber-600"
+                          class="w-5 h-5 text-warning"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -484,7 +485,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                       }
                       @case ("reviewed") {
                         <svg
-                          class="w-5 h-5 text-blue-600"
+                          class="w-5 h-5 text-info"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -505,7 +506,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                       }
                       @case ("finalized") {
                         <svg
-                          class="w-5 h-5 text-green-600"
+                          class="w-5 h-5 text-success"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -520,7 +521,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                       }
                       @case ("rejected") {
                         <svg
-                          class="w-5 h-5 text-red-600"
+                          class="w-5 h-5 text-danger"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -586,9 +587,13 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
         <app-card>
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">Report not found</p>
-            <a routerLink="/reports" class="mt-4 inline-block">
-              <app-button variant="primary">Back to Reports</app-button>
-            </a>
+            <app-button
+              class="mt-4 inline-flex"
+              variant="primary"
+              (onClick)="goBackToReports()"
+            >
+              Back to Reports
+            </app-button>
           </div>
         </app-card>
       }
@@ -616,6 +621,7 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
 
   private convex = inject(ConvexService);
   authService = inject(AuthService);
+  private navigationService = inject(NavigationService);
 
   report = signal<any>(null);
   loading = signal(true);
@@ -689,17 +695,12 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
     const reportQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getById,
       { reportId: this.id as any },
-    );
-    this.unsubscribes.push(reportQuery.unsubscribe);
-
-    const checkReport = setInterval(() => {
-      const data = reportQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.report.set(data);
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReport));
+    );
+    this.unsubscribes.push(reportQuery.unsubscribe);
   }
 
   getStatusVariant(
@@ -756,5 +757,9 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  goBackToReports(): void {
+    this.navigationService.goBack(["/reports", "my"]);
   }
 }

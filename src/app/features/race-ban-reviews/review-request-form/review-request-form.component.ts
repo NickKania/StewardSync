@@ -58,8 +58,8 @@ interface AvailabilityRow {
 
         <app-card>
           <div class="space-y-4">
-            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/30 dark:bg-amber-950/20">
-              <p class="text-sm text-amber-900 dark:text-amber-100">
+            <div class="rounded-lg border border-warning-border bg-warning-bg p-4">
+              <p class="text-sm text-warning-text">
                 Please try to provide at least 24 hours notice. Same-day requests may not
                 be honored. You will receive a Discord notification once a meeting
                 date/time is confirmed.
@@ -77,7 +77,7 @@ interface AvailabilityRow {
                 Driver: {{ requirement()!.driver.driverName }} #{{ requirement()!.driver.driverNumber }}
               </p>
               @if (requirement()!.existingRequest?.status === "scheduled") {
-                <p class="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                <p class="mt-2 text-sm text-info">
                   Meeting already scheduled for
                   {{
                     requirement()!.existingRequest!.selectedMeetingStartAt
@@ -88,14 +88,14 @@ interface AvailabilityRow {
             </div>
 
             @if (requirement()!.existingRequest?.status === "completed") {
-              <div class="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900/30 dark:bg-green-950/20">
-                <p class="text-sm text-green-800 dark:text-green-200">
+              <div class="rounded-lg border border-success-border bg-success-bg p-4">
+                <p class="text-sm text-success-text">
                   This race review has already been completed.
                 </p>
               </div>
             } @else if (requirement()!.existingRequest?.status === "scheduled") {
-              <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/30 dark:bg-blue-950/20">
-                <p class="text-sm text-blue-800 dark:text-blue-200">
+              <div class="rounded-lg border border-info-border bg-info-bg p-4">
+                <p class="text-sm text-info-text">
                   This meeting is already scheduled. Contact a head steward if you
                   need to reschedule.
                 </p>
@@ -135,7 +135,7 @@ interface AvailabilityRow {
                         @if (availabilityRows().length > 1) {
                           <button
                             type="button"
-                            class="text-xs text-red-600 hover:text-red-700"
+                            class="text-xs text-danger hover:text-danger-hover"
                             (click)="removeAvailabilityRow(row.id)"
                           >
                             Remove

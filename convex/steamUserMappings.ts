@@ -1,5 +1,7 @@
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { requireRole } from "./lib/auth";
 import { UserFacingError } from "./lib/errors";
 
 export const getBySteamId = query({
@@ -104,8 +106,10 @@ export const updateUserAssociation = mutation({
     steamId: v.string(),
     oldUserId: v.id("users"),
     newUserId: v.id("users"),
+    currentUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId as Id<"users">, ["steward"]);
     const existing = await ctx.db
       .query("steamUserMappings")
       .withIndex("by_steam_id", (q) => q.eq("steamId", args.steamId))

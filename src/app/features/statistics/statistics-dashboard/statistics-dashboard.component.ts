@@ -1,42 +1,46 @@
 import {
   Component,
-  inject,
-  OnInit,
-  OnDestroy,
-  signal,
-  computed,
+  DestroyRef,
   ElementRef,
+  HostBinding,
+  inject,
+  Input,
+  OnDestroy,
+  OnInit,
+  QueryList,
+  signal,
+  untracked,
   ViewChild,
   ViewChildren,
-  QueryList,
-  untracked,
-  HostBinding,
+  computed,
+  effect,
 } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
+import { RouterModule } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { toPng } from "html-to-image";
+import { debounceTime, Subject } from "rxjs";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
 import { SidebarStateService } from "@core/services/sidebar-state.service";
-import { CardComponent } from "@shared/components/card/card.component";
+import { STATISTICS_TABS, StatisticsTabId } from "@core/models";
+import { areQueryParamsEqual } from "@core/utils/query-params.utils";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
-import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
+import { CardComponent } from "@shared/components/card/card.component";
+import { LoadingComponent } from "@shared/components/loading/loading.component";
+import {
+  LegendComponent,
+  LegendItem,
+} from "@shared/components/legend/legend.component";
 import {
   SelectComponent,
   SelectOption,
 } from "@shared/components/select/select.component";
 import { TabsComponent, Tab } from "@shared/components/tabs/tabs.component";
-import {
-  LegendComponent,
-  LegendItem,
-} from "@shared/components/legend/legend.component";
 import { ToggleComponent } from "@shared/components/toggle/toggle.component";
-import { RouterModule } from "@angular/router";
-import { ActivatedRoute, Router } from "@angular/router";
-import { effect, DestroyRef } from "@angular/core";
-import { debounceTime, Subject } from "rxjs";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
 interface EventRundownRow {
   reportId: string | number | null;
@@ -140,11 +144,11 @@ interface RaceTimePenaltySummary {
             class="export-header bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
           >
             <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              @if (activeTab() === "event_rundown") {
+              @if (activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
                 Event Rundown
-              } @else if (activeTab() === "series_overview") {
+              } @else if (activeTab() === STATISTICS_TABS.SERIES_OVERVIEW) {
                 Series Overview - License Points
-              } @else if (activeTab() === "time_penalty_summary") {
+              } @else if (activeTab() === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
                 Time Penalty Summary
               }
             </div>
@@ -159,7 +163,7 @@ interface RaceTimePenaltySummary {
               : 'space-y-6'
           "
         >
-          @if (activeTab() === "event_rundown") {
+          @if (activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
             <div class="space-y-6">
               <app-card>
                 <div
@@ -446,7 +450,7 @@ interface RaceTimePenaltySummary {
                                       [class]="
                                         getStripedRowClasses(i) +
                                         (!row.isFinalized
-                                          ? ' bg-red-100 dark:bg-red-900/30'
+                                          ? ' bg-danger-bg'
                                           : '')
                                       "
                                     >
@@ -580,7 +584,7 @@ interface RaceTimePenaltySummary {
                         </div>
                       }
 
-                      @if (!isExportMode() && activeTab() === "event_rundown") {
+                      @if (!isExportMode() && activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
                         <div
                           class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700"
                         >
@@ -590,7 +594,7 @@ interface RaceTimePenaltySummary {
                           />
                           @if (hideNoDriverAtFaultWithoutTicket()) {
                             <p
-                              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+                              class="mt-2 text-sm font-medium text-danger"
                             >
                               Incidents with no at-fault driver and no ticket
                               are hidden
@@ -609,7 +613,7 @@ interface RaceTimePenaltySummary {
                           />
                           @if (hideNoDriverAtFaultWithoutTicket()) {
                             <p
-                              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+                              class="mt-2 text-sm font-medium text-danger"
                             >
                               Incidents with no at-fault driver and no ticket
                               are hidden
@@ -636,7 +640,7 @@ interface RaceTimePenaltySummary {
             </div>
           }
 
-          @if (activeTab() === "series_overview" && canViewSeriesStats()) {
+          @if (activeTab() === STATISTICS_TABS.SERIES_OVERVIEW && canViewSeriesStats()) {
             <div class="space-y-6">
               <app-card>
                 <div
@@ -911,7 +915,7 @@ interface RaceTimePenaltySummary {
             </div>
           }
 
-          @if (activeTab() === "time_penalty_summary") {
+          @if (activeTab() === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
             <div class="space-y-6">
               <app-card>
                 <div
@@ -1249,6 +1253,11 @@ interface RaceTimePenaltySummary {
   `,
 })
 export class StatisticsDashboardComponent implements OnInit, OnDestroy {
+  @Input() tabId: StatisticsTabId = STATISTICS_TABS.EVENT_RUNDOWN;
+
+  // Make STATISTICS_TABS available to the template
+  readonly STATISTICS_TABS = STATISTICS_TABS;
+
   @HostBinding("class.export-mode") get exportModeClass() {
     return this.isExportMode();
   }
@@ -1265,9 +1274,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   seriesPoints = signal<DriverPointsRow[]>([]);
   timePenaltySummary = signal<RaceTimePenaltySummary[]>([]);
   loading = signal(true);
-  activeTab = signal<
-    "event_rundown" | "series_overview" | "time_penalty_summary"
-  >("event_rundown");
+  activeTab = signal<StatisticsTabId>(STATISTICS_TABS.EVENT_RUNDOWN);
   isExportMode = signal<boolean>(false);
 
   selectedEventId = "";
@@ -1281,6 +1288,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   private timePenaltyFilterSubject = new Subject<string>();
   private queryParamsApplied = signal(false);
   private destroyRef = inject(DestroyRef);
+  private readonly validTabs = Object.values(STATISTICS_TABS) as readonly StatisticsTabId[];
 
   private loadingEffect = effect(
     () => {
@@ -1300,10 +1308,12 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
         this.seriesLoaded() &&
         !this.queryParamsApplied()
       ) {
-        this.route.queryParams.subscribe((params) => {
-          this.applyQueryParamsFromUrl(params);
-          this.queryParamsApplied.set(true);
-        });
+        this.route.queryParams
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe((params) => {
+            this.applyQueryParamsFromUrl(params);
+            this.queryParamsApplied.set(true);
+          });
       }
     },
     { allowSignalWrites: true },
@@ -1329,7 +1339,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     () => {
       const column = this.seriesSortColumn();
       const direction = this.seriesSortDirection();
-      if (this.activeTab() === "series_overview" && column) {
+      if (this.activeTab() === STATISTICS_TABS.SERIES_OVERVIEW && column) {
         this.updateQueryParams({
           sortColumn: column,
           sortDirection: direction,
@@ -1366,7 +1376,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   activeSeriesIds = computed(() => this.series().map((s) => s._id.toString()));
 
   legendItems = computed<LegendItem[]>(() => {
-    if (this.activeTab() === "event_rundown") {
+    if (this.activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
       return [
         {
           label: "🟢 (SR)",
@@ -1377,7 +1387,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
           description: "Incident reviewed but not yet finalized",
         },
       ];
-    } else if (this.activeTab() === "series_overview") {
+    } else if (this.activeTab() === STATISTICS_TABS.SERIES_OVERVIEW) {
       return [
         {
           label: "🟢 Name (Xpts)",
@@ -1660,12 +1670,12 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
 
   visibleTabs = computed((): Tab[] => {
     const tabs: Tab[] = [
-      { id: "event_rundown", label: "Event Rundown" },
-      { id: "time_penalty_summary", label: "Time Penalty Summary" },
+      { id: STATISTICS_TABS.EVENT_RUNDOWN, label: "Event Rundown" },
+      { id: STATISTICS_TABS.TIME_PENALTY_SUMMARY, label: "Time Penalty Summary" },
     ];
 
     if (this.canViewSeriesStats()) {
-      tabs.push({ id: "series_overview", label: "Series Overview" });
+      tabs.push({ id: STATISTICS_TABS.SERIES_OVERVIEW, label: "Series Overview" });
     }
 
     return tabs;
@@ -1748,43 +1758,21 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   }
 
   selectTab(tabId: string): void {
-    if (
-      tabId === "event_rundown" ||
-      tabId === "series_overview" ||
-      tabId === "time_penalty_summary"
-    ) {
-      untracked(() => {
-        this.activeTab.set(
-          tabId as "event_rundown" | "series_overview" | "time_penalty_summary",
-        );
-
-        if (tabId === "event_rundown") {
-          this.eventFilterText.set(this.seriesFilterText());
-        } else if (tabId === "series_overview") {
-          this.seriesFilterText.set(this.eventFilterText());
-        }
-
-        this.updateQueryParams({
-          tab: tabId,
-          event:
-            tabId === "series_overview" || tabId === "time_penalty_summary"
-              ? undefined
-              : this.selectedEventId || undefined,
-          series:
-            tabId === "event_rundown"
-              ? undefined
-              : this.selectedSeriesId || undefined,
-          sortColumn:
-            tabId === "series_overview"
-              ? this.seriesSortColumn() || undefined
-              : undefined,
-          sortDirection:
-            tabId === "series_overview"
-              ? this.seriesSortDirection() || undefined
-              : undefined,
-        });
-      });
+    if (!this.isValidTab(tabId)) {
+      return;
     }
+
+    untracked(() => {
+      if (tabId === STATISTICS_TABS.EVENT_RUNDOWN) {
+        this.eventFilterText.set(this.seriesFilterText());
+      } else if (tabId === STATISTICS_TABS.SERIES_OVERVIEW) {
+        this.seriesFilterText.set(this.eventFilterText());
+      }
+
+      void this.router.navigate(["/statistics", this.getTabRouteSegment(tabId)], {
+        queryParams: this.getQueryParamsForTab(tabId),
+      });
+    });
   }
 
   sortEventRundown(raceNumber: number, column: keyof EventRundownRow): void {
@@ -1862,18 +1850,50 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   private unsubscribes: (() => void)[] = [];
 
   private updateQueryParams(params: Record<string, string | undefined>): void {
-    this.router.navigate([], {
+    const currentQueryParams = this.route.snapshot.queryParams as Record<
+      string,
+      unknown
+    >;
+    const queryParams = this.getMergedQueryParams(currentQueryParams, params);
+
+    if (areQueryParamsEqual(currentQueryParams, queryParams)) {
+      return;
+    }
+
+    void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: params,
-      queryParamsHandling: "merge",
+      queryParams,
     });
+  }
+
+  private getMergedQueryParams(
+    currentQueryParams: Record<string, unknown>,
+    nextParams: Record<string, string | undefined>,
+  ): Record<string, string | undefined> {
+    const mergedParams: Record<string, string | undefined> = {};
+
+    Object.entries(currentQueryParams).forEach(([key, value]) => {
+      if (typeof value === "string" && value) {
+        mergedParams[key] = value;
+      }
+    });
+
+    Object.entries(nextParams).forEach(([key, value]) => {
+      if (value) {
+        mergedParams[key] = value;
+      } else {
+        delete mergedParams[key];
+      }
+    });
+
+    return mergedParams;
   }
 
   private setupFilterDebounce(): void {
     this.eventFilterSubject
       .pipe(debounceTime(1000), takeUntilDestroyed(this.destroyRef))
       .subscribe((filterText) => {
-        if (this.activeTab() === "event_rundown") {
+        if (this.activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
           this.updateQueryParams({ filter: filterText || undefined });
         }
       });
@@ -1881,7 +1901,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     this.seriesFilterSubject
       .pipe(debounceTime(1000), takeUntilDestroyed(this.destroyRef))
       .subscribe((filterText) => {
-        if (this.activeTab() === "series_overview") {
+        if (this.activeTab() === STATISTICS_TABS.SERIES_OVERVIEW) {
           this.updateQueryParams({ filter: filterText || undefined });
         }
       });
@@ -1889,7 +1909,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     this.timePenaltyFilterSubject
       .pipe(debounceTime(1000), takeUntilDestroyed(this.destroyRef))
       .subscribe((filterText) => {
-        if (this.activeTab() === "time_penalty_summary") {
+        if (this.activeTab() === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
           this.updateQueryParams({ filter: filterText || undefined });
         }
       });
@@ -1901,25 +1921,15 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     let needsUpdate = false;
     const paramsToUpdate: Record<string, string | undefined> = {};
 
-    if (
-      params["tab"] === "event_rundown" ||
-      params["tab"] === "series_overview" ||
-      params["tab"] === "time_penalty_summary"
-    ) {
-      this.activeTab.set(
-        params["tab"] as
-          | "event_rundown"
-          | "series_overview"
-          | "time_penalty_summary",
-      );
-    }
-
     if (params["event"]) {
       const eventExists = this.events().some((e) => e._id === params["event"]);
       if (eventExists) {
-        this.selectedEventId = params["event"];
-        if (params["tab"] === "event_rundown") {
+        if (this.activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
+          this.selectedEventId = params["event"];
           this.loadEventRundown();
+        } else if (this.activeTab() === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
+          this.timePenaltyEventId = params["event"];
+          this.loadTimePenaltySummary();
         }
       } else {
         paramsToUpdate["event"] = undefined;
@@ -1932,10 +1942,12 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
         (s) => s._id === params["series"],
       );
       if (seriesExists) {
-        this.selectedSeriesId = params["series"];
-        this.timePenaltySeriesId = params["series"];
-        if (params["tab"] === "series_overview") {
+        if (this.activeTab() === STATISTICS_TABS.SERIES_OVERVIEW) {
+          this.selectedSeriesId = params["series"];
+          this.timePenaltySeriesId = params["series"];
           this.loadSeriesPoints();
+        } else if (this.activeTab() === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
+          this.timePenaltySeriesId = params["series"];
         }
       } else {
         paramsToUpdate["series"] = undefined;
@@ -1979,6 +1991,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.applyRouteTab();
     this.setupFilterDebounce();
     this.loadData();
   }
@@ -1994,32 +2007,22 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
       {},
-    );
-    this.unsubscribes.push(eventsQuery.unsubscribe);
-
-    const checkEvents = setInterval(() => {
-      const data = eventsQuery.data();
-      if (data) {
+      (data) => {
         this.events.set(data);
         this.eventsLoaded.set(true);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkEvents));
+    );
+    this.unsubscribes.push(eventsQuery.unsubscribe);
 
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
       {},
-    );
-    this.unsubscribes.push(seriesQuery.unsubscribe);
-
-    const checkSeries = setInterval(() => {
-      const data = seriesQuery.data();
-      if (data) {
+      (data) => {
         this.series.set(data);
         this.seriesLoaded.set(true);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkSeries));
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
 
     // Failsafe: stop loading after 10 seconds regardless of state
     setTimeout(() => {
@@ -2030,7 +2033,12 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   async loadEventRundown(): Promise<void> {
     if (!this.selectedEventId) {
       this.eventRundown.set([]);
-      this.updateQueryParams({ event: undefined });
+      this.updateQueryParams({
+        event: undefined,
+        series: undefined,
+        sortColumn: undefined,
+        sortDirection: undefined,
+      });
       return;
     }
 
@@ -2043,6 +2051,8 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       this.updateQueryParams({
         event: this.selectedEventId,
         series: undefined,
+        sortColumn: undefined,
+        sortDirection: undefined,
       });
     } catch (error: any) {
       console.error("Failed to load event rundown:", error);
@@ -2054,7 +2064,12 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     if (!this.selectedSeriesId) {
       this.seriesPoints.set([]);
       this.seriesPenaltyDefinitions.set([]);
-      this.updateQueryParams({ series: undefined });
+      this.updateQueryParams({
+        series: undefined,
+        event: undefined,
+        sortColumn: undefined,
+        sortDirection: undefined,
+      });
       return;
     }
 
@@ -2073,6 +2088,8 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       this.updateQueryParams({
         series: this.selectedSeriesId,
         event: undefined,
+        sortColumn: this.seriesSortColumn() || undefined,
+        sortDirection: this.seriesSortDirection() || undefined,
       });
     } catch (error: any) {
       console.error("Failed to load series points:", error);
@@ -2084,6 +2101,12 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
   async loadTimePenaltySummary(): Promise<void> {
     if (!this.timePenaltyEventId) {
       this.timePenaltySummary.set([]);
+      this.updateQueryParams({
+        series: this.timePenaltySeriesId || undefined,
+        event: undefined,
+        sortColumn: undefined,
+        sortDirection: undefined,
+      });
       return;
     }
 
@@ -2093,6 +2116,12 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
         { eventId: this.timePenaltyEventId as any },
       );
       this.timePenaltySummary.set(data || []);
+      this.updateQueryParams({
+        series: this.timePenaltySeriesId || undefined,
+        event: this.timePenaltyEventId,
+        sortColumn: undefined,
+        sortDirection: undefined,
+      });
     } catch (error: any) {
       console.error("Failed to load time penalty summary:", error);
       this.timePenaltySummary.set([]);
@@ -2164,5 +2193,76 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       // Automatically exit export mode
       this.exitExportMode();
     }
+  }
+
+  private applyRouteTab(): void {
+    // Always follow the URL - if the tabId is invalid, fall back to event-rundown
+    // without redirecting, so URL-based navigation takes precedence
+    if (this.isValidTab(this.tabId)) {
+      this.activeTab.set(this.tabId);
+    } else {
+      this.activeTab.set(STATISTICS_TABS.EVENT_RUNDOWN);
+    }
+  }
+
+  private getQueryParamsForTab(
+    tabId: StatisticsTabId,
+  ): Record<string, string | undefined> {
+    const filter =
+      tabId === STATISTICS_TABS.EVENT_RUNDOWN
+        ? this.eventFilterText() || undefined
+        : tabId === STATISTICS_TABS.SERIES_OVERVIEW
+          ? this.seriesFilterText() || undefined
+          : this.timePenaltyFilterText() || undefined;
+
+    if (tabId === STATISTICS_TABS.EVENT_RUNDOWN) {
+      return {
+        event: this.selectedEventId || undefined,
+        filter,
+        series: undefined,
+        sortColumn: undefined,
+        sortDirection: undefined,
+      };
+    }
+
+    if (tabId === STATISTICS_TABS.SERIES_OVERVIEW) {
+      return {
+        series: this.selectedSeriesId || undefined,
+        filter,
+        sortColumn: this.seriesSortColumn() || undefined,
+        sortDirection: this.seriesSortDirection() || undefined,
+        event: undefined,
+      };
+    }
+
+    return {
+      series: this.timePenaltySeriesId || undefined,
+      event: this.timePenaltyEventId || undefined,
+      filter,
+      sortColumn: undefined,
+      sortDirection: undefined,
+    };
+  }
+
+  private getTabRouteSegment(
+    tabId: StatisticsTabId,
+  ): "event-rundown" | "series-overview" | "time-penalty-summary" {
+    if (tabId === STATISTICS_TABS.SERIES_OVERVIEW) {
+      return "series-overview";
+    }
+
+    if (tabId === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
+      return "time-penalty-summary";
+    }
+
+    return "event-rundown";
+  }
+
+  private isValidTab(
+    tabId: string,
+  ): tabId is StatisticsTabId {
+    return this.validTabs.includes(
+      tabId as StatisticsTabId,
+    );
   }
 }

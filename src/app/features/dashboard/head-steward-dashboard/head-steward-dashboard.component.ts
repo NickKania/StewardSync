@@ -32,7 +32,7 @@ import { EventStatusCardComponent } from "../event-status-card/event-status-card
             Manage active reviews, finalization queue, and series penalties.
           </p>
         </div>
-        <a [routerLink]="['/reviews']" [queryParams]="{ tab: 'search' }">
+        <a [routerLink]="['/reviews', 'search']">
           <app-button variant="secondary">Search Reviews</app-button>
         </a>
       </div>

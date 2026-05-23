@@ -1,249 +1,131 @@
 # StewardSync
 
-A unified application for reviewing and reporting sim-racing incidents.
+A unified application for reviewing and reporting sim-racing incidents. Drivers file incident reports, stewards review them, and head stewards/event managers finalize rulings.
+
+## Tech Stack
+
+- **Frontend:** Angular 17+ (standalone components, signals)
+- **Backend:** Convex (self-hosted or cloud)
+- **Authentication:** Discord OAuth 2.0 (PKCE flow)
+- **Styling:** Tailwind CSS 3.x
+- **Package Manager:** bun
 
 ## Prerequisites
 
-- Docker Engine + Docker Compose plugin
-- `bun`
-- Node.js 20 via `nvm` (for non-Docker workflows)
+- [bun](https://bun.sh)
+- Node.js 20 (via `nvm` or similar)
 
-## Self-Contained Docker Stack
+## Getting Started
 
-The repository now ships with a single `compose.yaml` that brings up:
-
-- `backend` (Convex self-hosted API + HTTP actions)
-- `convex-keygen` (one-shot admin key generation)
-- `convex-deployer` (one-shot Convex function deployment)
-- `dashboard` (Convex dashboard)
-- `frontend` (Angular app served by Nginx with runtime config injection)
-
-### First Run
-
-1. Copy the template environment file:
-   ```bash
-   cp .env.docker.example .env
-   ```
-2. Set a secure Convex secret:
-   ```bash
-   openssl rand -hex 32
-   ```
-   Put that value in `CONVEX_INSTANCE_SECRET` in `.env`.
-3. Start the full stack:
-   ```bash
-   docker compose up -d --build
-   ```
-4. Verify containers:
-   ```bash
-   docker compose ps
-   ```
-5. Open services:
-   - App: `http://localhost:4200`
-   - Convex API: `http://127.0.0.1:3210`
-   - Convex Actions: `http://127.0.0.1:3211`
-   - Convex Dashboard: `http://localhost:6791`
-
-### How It Auto-Links
-
-- `convex-keygen` writes an admin key to shared volume path `/convex/shared/admin_key`.
-- `convex-deployer` waits for backend health, reads that key, and runs `bun x convex deploy`.
-- `frontend` waits for deploy completion and injects runtime flags (including `PUBLIC_CONVEX_URL` and `PUBLIC_ENABLE_DEV_LOGIN`) into `runtime-config.js` at startup.
-
-## Convex Admin Key
-
-You can retrieve the active key any time with either command:
+### 1. Install dependencies
 
 ```bash
-docker compose exec backend ./generate_admin_key.sh
+nvm use 20
+bun install
 ```
+
+### 2. Configure environment
 
 ```bash
-docker compose run --rm --entrypoint /bin/sh convex-keygen -ceu 'cat /convex/shared/admin_key'
+cp .env.example .env
 ```
 
-In the running stack, the generated key is stored in the shared Docker volume at `/convex/shared/admin_key`.
+Edit `.env` and set:
+- `PUBLIC_CONVEX_URL` — Your Convex deployment URL (cloud or self-hosted)
+- `PUBLIC_ENABLE_DEV_LOGIN` — Set to `true` for development, `false` for production
+- `DISCORD_CLIENT_ID` — Discord application client ID
+- `DISCORD_CLIENT_SECRET` — Discord application client secret
+
+### 3. Set up Convex
+
+**Option A: Convex Cloud (recommended for getting started)**
+
+```bash
+bun x convex dev
+```
+
+This will prompt you to create or link a Convex project.
+
+**Option B: Self-hosted Convex**
+
+Follow the [Convex self-hosting guide](https://docs.convex.dev/self-hosted) to set up your own backend.
+
+### 4. Start development
+
+```bash
+bun run dev
+```
+
+This starts both the Convex dev server and Angular dev server concurrently.
+
+- App: `http://localhost:4200`
+- Convex Dashboard: Available via `bun x convex dashboard`
 
 ## Useful Commands
 
 ```bash
-# Node 20 (for local non-Docker flows)
-export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 20
-
-# Install dependencies
-bun install
-
-# Cloud Convex + Angular dev
-bun run dev
-
-# Full Docker stack
-bun run docker:up:build
-bun run docker:logs
-bun run docker:down
-
-# Print local Convex admin key
-bun run convex:local:admin-key
+bun run dev              # Start Convex + Angular dev servers
+bun run start            # Start Angular only
+bun run start:local      # Start Angular with local Convex config
+bun run build            # Production build
+bun run test             # Run unit tests
+bun run convex:deploy    # Deploy Convex functions
 ```
 
-## Fast Docker Build for macOS
+## Role-Based Access
 
-Docker builds on macOS can be slow due to filesystem I/O overhead. For faster local development:
+| Role | Capabilities |
+|------|-------------|
+| **Driver** | Submit incident reports, view own reports |
+| **Steward** | View all reports, submit reviews, edit incident descriptions |
+| **Head Steward** | All steward actions + finalize reports |
+| **Event Manager** | All head steward actions + manage series/events |
+| **League Manager** | Full administrative access + user/role management |
+
+## Project Structure
+
+```
+StewardSync/
+├── convex/              # Convex backend
+│   ├── schema.ts        # Database schema
+│   ├── lib/             # Shared utilities (auth, audit, errors)
+│   ├── reports.ts       # Report CRUD + finalization
+│   ├── reviews.ts       # Review CRUD
+│   └── ...              # Other domain modules
+├── src/
+│   └── app/
+│       ├── core/        # Services, guards, models
+│       ├── shared/      # Reusable UI components, directives, pipes
+│       ├── features/    # Feature modules (auth, reports, reviews, etc.)
+│       └── layout/      # Header, sidebar
+├── scripts/             # Build and deployment scripts
+└── docs/                # Documentation
+```
+
+## Deployment
+
+### Vercel (Frontend)
+
+See [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md) for deploying the Angular frontend to Vercel.
+
+### Convex (Backend)
+
+Deploy to Convex Cloud:
 
 ```bash
-# Fast build (pre-builds Angular locally, then creates Docker image)
-bun run docker:build:fast
-
-# Or run the script directly
-./scripts/build-docker-fast.sh
-
-# Then start the stack with the fast build
-docker compose -f docker-compose.fast.yml up
+bun run convex:deploy
 ```
 
-**Why use fast builds?**
-- Standard Docker build: 20+ minutes on macOS
-- Fast build: ~30 seconds (5 seconds for Angular + 25 seconds for Docker image)
+Or self-host using the [Convex self-hosting documentation](https://docs.convex.dev/self-hosted).
 
-**When to use:**
-- Local development on macOS
-- Rapid iteration during development
-- When you need quick feedback loops
+## Contributing
 
-**When NOT to use:**
-- CI/CD pipelines (use standard Dockerfile)
-- Production builds (use standard Dockerfile)
-- When building on Linux/WSL2 (standard build is fast enough)
+Contributions are welcome! Please ensure you:
 
-See [docs/docker-fast-build.md](docs/docker-fast-build.md) for more details and troubleshooting.
+1. Follow the existing code patterns and conventions
+2. Test your changes thoroughly
+3. Keep files under 300 lines when possible
 
-## Cloud Vendor Deployment (Docker Compose)
+## License
 
-This flow works on any provider where you control a Linux host/VM with Docker.
-
-1. Provision host resources:
-   - Linux VM/instance
-   - Docker + Compose installed
-   - Persistent disk for Docker volumes
-2. Configure DNS:
-   - `app.<your-domain>` -> frontend
-   - `api.<your-domain>` -> Convex API (`3210`)
-   - `actions.<your-domain>` -> Convex HTTP actions (`3211`)
-   - Optional: `convex-dashboard.<your-domain>` -> dashboard (`6791`)
-3. Copy project and environment file:
-   ```bash
-   cp .env.docker.example .env
-   ```
-4. Set required `.env` values:
-   - `CONVEX_INSTANCE_SECRET`: generate with `openssl rand -hex 32`
-   - `CONVEX_INSTANCE_NAME`: stable instance label (for key derivation)
-   - `CONVEX_CLOUD_ORIGIN`: public Convex API URL, e.g. `https://api.example.com`
-   - `CONVEX_SITE_ORIGIN`: public Convex actions URL, e.g. `https://actions.example.com`
-   - `PUBLIC_CONVEX_URL`: browser-visible Convex API URL (usually same as `CONVEX_CLOUD_ORIGIN`)
-   - `PUBLIC_ENABLE_DEV_LOGIN`: set to `false` for production deployments
-   - `NEXT_PUBLIC_DEPLOYMENT_URL`: dashboard target URL (usually same as `CONVEX_CLOUD_ORIGIN`)
-5. Deploy:
-   ```bash
-   docker compose up -d --build
-   ```
-6. Validate:
-   ```bash
-   docker compose ps
-   docker compose logs --tail=200 convex-deployer backend frontend
-   ```
-7. Capture and store admin key in your cloud secret manager:
-   ```bash
-   docker compose exec backend ./generate_admin_key.sh
-   ```
- 8. For upgrades:
-  ```bash
-  git pull
-  docker compose up -d --build
-  ```
-
-## Container Registry Deployment (Docker Hub)
-
-### Automated CI/CD (Recommended)
-
-1. Configure Docker Hub credentials in GitHub Actions:
-   - Go to: **Settings → Secrets and variables → Actions**
-   - Add `DOCKER_USERNAME`: Your Docker Hub username
-   - Add `DOCKER_PASSWORD`: Docker Hub access token (create at https://hub.docker.com/settings/security)
-
-2. Images build automatically on push to `main` branch
-   - View workflow runs: **Actions** tab in GitHub
-   - Image tags: `<username>/stewardsync:frontend-<sha7>`, `<username>/stewardsync:deployer-<sha7>`
-   - Latest tags: `<username>/stewardsync:frontend-latest`, `<username>/stewardsync:deployer-latest`
-
-3. Update `.env` on your deployment host:
-   ```bash
-   cp .env.docker.example .env
-   # Edit and set:
-   # DOCKER_USERNAME=your-dockerhub-username
-   ```
-
-4. Deploy:
-   ```bash
-   docker compose up -d
-   ```
-
-### Manual Image Management
-
-Build images locally without pushing:
-```bash
-# Set your Docker Hub username
-export DOCKER_USERNAME=your-username
-
-# Build images
-bun run docker:build:local
-
-# Or using script directly
-./scripts/build-images.sh
-```
-
-Push images to Docker Hub:
-```bash
-# Push images
-./scripts/push-images.sh
-
-# Tag and push as latest (after pushing specific version)
-TAG=$(git rev-parse --short HEAD)
-./scripts/tag-latest.sh ${TAG}
-```
-
-### Image Tags
-
-- `frontend-latest` / `deployer-latest`: Latest stable release from main branch
-- `frontend-<sha7>` / `deployer-<sha7>`: Specific commit version (immutable)
-- Use commit SHA tags for production deployments for reproducibility
-
-### Rolling Back to a Previous Version
-
-1. Find the commit SHA you want to rollback to:
-   ```bash
-   git log --oneline
-   ```
-
-2. Pull the specific image version:
-   ```bash
-   docker pull yourusername/stewardsync:frontend-<sha7>
-   docker pull yourusername/stewardsync:deployer-<sha7>
-   ```
-
-3. Update `compose.yaml` to use specific tags:
-   ```yaml
-   frontend:
-     image: yourusername/stewardsync:frontend-abc1234
-   convex-deployer:
-     image: yourusername/stewardsync:deployer-abc1234
-   ```
-
-4. Restart services:
-   ```bash
-   docker compose up -d
-   ```
-
-## Tech Stack
-
-- Frontend: Angular 17+ (standalone components, signals)
-- Backend: Convex (self-hosted or cloud)
-- Auth: Convex Auth with Google OAuth 2.0
-- Styling: Tailwind CSS
+[MIT](LICENSE)

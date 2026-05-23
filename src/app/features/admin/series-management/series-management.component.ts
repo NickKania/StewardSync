@@ -9,6 +9,7 @@ import {
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
+import { AuthService } from "@core/services/auth.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
@@ -245,7 +246,7 @@ import { Id } from "@convex/_generated/dataModel";
                               </button>
                               <button
                                 (click)="deletePenalty(penalty._id)"
-                                class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
+                                class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
                               >
                                 <svg
                                   class="w-4 h-4"
@@ -383,7 +384,7 @@ import { Id } from "@convex/_generated/dataModel";
                               </button>
                               <button
                                 (click)="deleteSeriesPenalty(sp._id)"
-                                class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
+                                class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
                               >
                                 <svg
                                   class="w-4 h-4"
@@ -574,12 +575,12 @@ import { Id } from "@convex/_generated/dataModel";
                            Import events first to enable scheduled imports
                          </p>
                        } @else if (status.isScheduledImportActive) {
-                         <div
-                           class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3"
-                         >
-                           <div class="flex items-center gap-2 mb-2">
-                             <svg
-                               class="w-4 h-4 text-green-600 dark:text-green-400"
+                          <div
+                            class="bg-success-bg border border-success-border rounded-lg p-3"
+                          >
+                            <div class="flex items-center gap-2 mb-2">
+                              <svg
+                                class="w-4 h-4 text-success"
                                fill="none"
                                stroke="currentColor"
                                viewBox="0 0 24 24"
@@ -591,8 +592,8 @@ import { Id } from "@convex/_generated/dataModel";
                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                                ></path>
                              </svg>
-                             <span
-                               class="text-sm font-medium text-green-800 dark:text-green-200"
+                              <span
+                                class="text-sm font-medium text-success-text"
                                >Active</span
                              >
                            </div>
@@ -1012,7 +1013,7 @@ import { Id } from "@convex/_generated/dataModel";
                         </div>
                         <button
                           (click)="removeThreshold(threshold.id || '')"
-                          class="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500"
+                          class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
                           type="button"
                         >
                           <svg
@@ -1347,6 +1348,7 @@ import { Id } from "@convex/_generated/dataModel";
 })
 export class SeriesManagementComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
+  private authService = inject(AuthService);
 
   series = signal<Series[]>([]);
   penalties = signal<Penalty[]>([]);
@@ -1474,12 +1476,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.list,
       {},
-    );
-    this.unsubscribes.push(seriesQuery.unsubscribe);
-
-    const checkSeries = setInterval(() => {
-      const data = seriesQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.series.set(data);
         this.loading.set(false);
 
@@ -1488,41 +1485,30 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           this.subscribeToScheduledImportStatus(s._id);
         });
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkSeries));
+    );
+    this.unsubscribes.push(seriesQuery.unsubscribe);
   }
 
   private subscribeToScheduledImportStatus(seriesId: Id<"series">): void {
     const query = this.convex.createReactiveQuery(
       (this.convex.api as any).scheduledImports.getScheduleStatus,
       { seriesId },
-    );
-    this.unsubscribes.push(query.unsubscribe);
-
-    const checkData = setInterval(() => {
-      const data = query.data();
-      if (data !== undefined) {
+      (data) => {
         this.scheduledImportStatuses.update((map) => {
           const newMap = new Map(map);
           newMap.set(seriesId, data);
           return newMap;
         });
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkData));
+    );
+    this.unsubscribes.push(query.unsubscribe);
   }
 
   private loadPenalties(): void {
     const penaltiesQuery = this.convex.createReactiveQuery(
       this.convex.api.penalties.list,
       {},
-    );
-    this.unsubscribes.push(penaltiesQuery.unsubscribe);
-
-    const checkPenalties = setInterval(() => {
-      const data = penaltiesQuery.data();
-      if (data !== undefined) {
-        // Filter out penalties with null series (shouldn't happen but TypeScript requires it)
+      (data) => {
         const validPenalties = data
           .filter((p: any) => p.series !== null)
           .map((p: any) => ({
@@ -1531,28 +1517,23 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           }));
         this.penalties.set(validPenalties);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkPenalties));
+    );
+    this.unsubscribes.push(penaltiesQuery.unsubscribe);
   }
 
   private loadSeriesPenalties(): void {
     const seriesPenaltiesQuery = this.convex.createReactiveQuery(
       this.convex.api.seriesPenalties.list,
       {},
-    );
-    this.unsubscribes.push(seriesPenaltiesQuery.unsubscribe);
-
-    const checkSeriesPenalties = setInterval(() => {
-      const data = seriesPenaltiesQuery.data();
-      if (data !== undefined) {
+      (data) => {
         const validSeriesPenalties = data.map((sp: any) => ({
           ...sp,
           series: sp.series || undefined,
         }));
         this.seriesPenalties.set(validSeriesPenalties);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkSeriesPenalties));
+    );
+    this.unsubscribes.push(seriesPenaltiesQuery.unsubscribe);
   }
 
   getSeriesPenalties(seriesId: Id<"series">): Penalty[] {
@@ -1583,6 +1564,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     if (this.editingSeriesId) {
       await this.convex.mutation(this.convex.api.series.update, {
         id: this.editingSeriesId,
+        currentUserId: this.authService.requireUserId(),
         name: this.seriesForm.name,
         description: this.seriesForm.description || undefined,
         simgridLink: this.seriesForm.simgridLink || undefined,
@@ -1596,6 +1578,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       });
     } else {
       await this.convex.mutation(this.convex.api.series.create, {
+        currentUserId: this.authService.requireUserId(),
         name: this.seriesForm.name,
         description: this.seriesForm.description || undefined,
         simgridLink: this.seriesForm.simgridLink || undefined,
@@ -1620,6 +1603,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       try {
         await this.convex.mutation(this.convex.api.series.remove, {
           id: seriesId,
+          currentUserId: this.authService.requireUserId(),
         });
       } catch (error: any) {
         alert(error.message);
@@ -1686,6 +1670,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     if (this.editingPenaltyId) {
       await this.convex.mutation(this.convex.api.penalties.update, {
         id: this.editingPenaltyId,
+        currentUserId: this.authService.requireUserId(),
         name: this.penaltyForm.name,
         timePenalty: this.penaltyForm.timePenalty,
         selfReportReduction: this.penaltyForm.selfReportReduction,
@@ -1696,6 +1681,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     } else {
       if (!this.penaltyForm.seriesId) return;
       await this.convex.mutation(this.convex.api.penalties.create, {
+        currentUserId: this.authService.requireUserId(),
         seriesId: this.penaltyForm.seriesId as Id<"series">,
         name: this.penaltyForm.name,
         timePenalty: this.penaltyForm.timePenalty,
@@ -1712,6 +1698,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     if (confirm("Are you sure you want to delete this penalty?")) {
       await this.convex.mutation(this.convex.api.penalties.remove, {
         id: penaltyId,
+        currentUserId: this.authService.requireUserId(),
       });
     }
   }
@@ -1844,6 +1831,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       if (this.editingSeriesPenaltyId) {
         await this.convex.mutation(this.convex.api.seriesPenalties.update, {
           id: this.editingSeriesPenaltyId,
+          currentUserId: this.authService.requireUserId(),
           penaltyName: this.seriesPenaltyForm.penaltyName,
           penaltyDescription:
             this.seriesPenaltyForm.penaltyDescription || undefined,
@@ -1859,6 +1847,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
             this.convex.api.seriesPenaltyThresholds.remove,
             {
               id: existing._id,
+              currentUserId: this.authService.requireUserId(),
             },
           );
         }
@@ -1867,6 +1856,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           await this.convex.mutation(
             this.convex.api.seriesPenaltyThresholds.create,
             {
+              currentUserId: this.authService.requireUserId(),
               seriesPenaltyId: this.editingSeriesPenaltyId,
               threshold: threshold.threshold,
               requiresReview: threshold.requiresReview,
@@ -1880,6 +1870,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         const seriesPenaltyId = await this.convex.mutation(
           this.convex.api.seriesPenalties.create,
           {
+            currentUserId: this.authService.requireUserId(),
             seriesId: this.seriesPenaltyForm.seriesId as Id<"series">,
             penaltyName: this.seriesPenaltyForm.penaltyName,
             penaltyDescription:
@@ -1891,6 +1882,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
           await this.convex.mutation(
             this.convex.api.seriesPenaltyThresholds.create,
             {
+              currentUserId: this.authService.requireUserId(),
               seriesPenaltyId,
               threshold: threshold.threshold,
               requiresReview: threshold.requiresReview,
@@ -1922,12 +1914,14 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
             this.convex.api.seriesPenaltyThresholds.remove,
             {
               id: threshold._id,
+              currentUserId: this.authService.requireUserId(),
             },
           );
         }
 
         await this.convex.mutation(this.convex.api.seriesPenalties.remove, {
           id: seriesPenaltyId,
+          currentUserId: this.authService.requireUserId(),
         });
       } catch (error: any) {
         alert(`Failed to delete series penalty: ${error.message}`);
@@ -2168,7 +2162,6 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   }
 
   private subscribeToDriverClassesForSeries(seriesId: Id<"series">): void {
-    // Avoid duplicate subscriptions
     if (this.driverClassesSubscriptions.has(seriesId)) {
       return;
     }
@@ -2176,26 +2169,19 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     const query = this.convex.createReactiveQuery(
       this.convex.api.driverClasses.getDriverClassesWithUsage,
       { seriesId },
-    );
-
-    const checkData = setInterval(() => {
-      const data = query.data();
-      if (data !== undefined) {
+      (data) => {
         this.driverClassesBySeries.update((map) => {
           const newMap = new Map(map);
           newMap.set(seriesId, data);
           return newMap;
         });
       }
-    }, 100);
+    );
 
-    // Store cleanup function
     this.driverClassesSubscriptions.set(seriesId, () => {
-      clearInterval(checkData);
       query.unsubscribe();
     });
     this.unsubscribes.push(() => {
-      clearInterval(checkData);
       query.unsubscribe();
     });
   }
@@ -2218,6 +2204,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       await this.convex.mutation(
         this.convex.api.driverClasses.updateDisplayName,
         {
+          currentUserId: this.authService.requireUserId(),
           id: this.editingDriverClassId,
           displayName: this.editingDriverClassName.trim(),
         },

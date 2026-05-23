@@ -1,16 +1,19 @@
 import {
   Component,
+  DestroyRef,
   OnDestroy,
   OnInit,
   computed,
   inject,
   signal,
 } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
-import { RouterLink } from "@angular/router";
+import { ActivatedRoute, Params, Router, RouterLink } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { Series } from "@core/models/series.model";
+import { getStringParam, getBooleanParam, syncQueryParams } from "@core/utils/query-params.utils";
 import { CardComponent } from "@shared/components/card/card.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
@@ -88,7 +91,7 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
             <input
               type="checkbox"
               [ngModel]="showInactive()"
-              (ngModelChange)="showInactive.set($event); filterSeriesDrivers()"
+              (ngModelChange)="onShowInactiveChange($event)"
             />
             Show Withdrawn
           </label>
@@ -216,6 +219,9 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
 })
 export class DriverListComponent implements OnInit, OnDestroy {
   private readonly convex = inject(ConvexService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   loading = signal(true);
   series = signal<Series[]>([]);
@@ -260,6 +266,10 @@ export class DriverListComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.applyQueryParams(params));
+
     void this.loadInitial();
   }
 
@@ -283,13 +293,18 @@ export class DriverListComponent implements OnInit, OnDestroy {
     }
   }
 
-  async onSeriesChange(seriesId: string): Promise<void> {
+  private readonly driverFilterKeys = new Set(["search", "series", "class", "showInactive"]);
+
+  async onSeriesChange(seriesId: string, doSync = true): Promise<void> {
     this.selectedSeriesId.set(seriesId || "");
     this.selectedClassName.set("");
 
     if (!seriesId) {
       this.seriesDrivers.set([]);
       this.filteredSeriesDrivers.set([]);
+      if (doSync) {
+        syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
+      }
       return;
     }
 
@@ -310,18 +325,38 @@ export class DriverListComponent implements OnInit, OnDestroy {
     } finally {
       this.loading.set(false);
     }
+
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
+    }
   }
 
-  onSearchChange(value: string): void {
+  onSearchChange(value: string, doSync = true): void {
     this.searchTerm.set(value || "");
     if (this.selectedSeriesId()) {
       this.filterSeriesDrivers();
     }
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
+    }
   }
 
-  onClassChange(value: string): void {
+  onClassChange(value: string, doSync = true): void {
     this.selectedClassName.set(value || "");
     this.filterSeriesDrivers();
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
+    }
+  }
+
+  onShowInactiveChange(value: boolean, doSync = true): void {
+    this.showInactive.set(Boolean(value));
+    if (this.selectedSeriesId()) {
+      this.filterSeriesDrivers();
+    }
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
+    }
   }
 
   filterSeriesDrivers(): void {
@@ -359,5 +394,52 @@ export class DriverListComponent implements OnInit, OnDestroy {
 
     rows.sort((a, b) => a.driverNumber - b.driverNumber);
     this.filteredSeriesDrivers.set(rows);
+  }
+
+  private applyQueryParams(params: Params): void {
+    const nextSearch = getStringParam(params, "search");
+    const nextSeries = getStringParam(params, "series");
+    const nextClass = getStringParam(params, "class");
+    const nextShowInactive = getBooleanParam(params, "showInactive");
+
+    const searchChanged = nextSearch !== this.searchTerm();
+    const seriesChanged = nextSeries !== this.selectedSeriesId();
+    const classValue = nextSeries ? nextClass : "";
+    const classChanged = classValue !== this.selectedClassName();
+    const inactiveChanged = nextShowInactive !== this.showInactive();
+
+    if (searchChanged) {
+      this.onSearchChange(nextSearch, false);
+    }
+
+    if (inactiveChanged) {
+      this.onShowInactiveChange(nextShowInactive, false);
+    }
+
+    if (seriesChanged) {
+      void this.onSeriesChange(nextSeries, false).then(() => {
+        if (classValue !== this.selectedClassName()) {
+          this.onClassChange(classValue, false);
+        } else if (nextSeries) {
+          this.filterSeriesDrivers();
+        }
+      });
+      return;
+    }
+
+    if (classChanged) {
+      this.onClassChange(classValue, false);
+    } else if (nextSeries && (searchChanged || inactiveChanged)) {
+      this.filterSeriesDrivers();
+    }
+  }
+
+  private getFilterQueryParams(): Record<string, string | undefined> {
+    return {
+      search: this.searchTerm() || undefined,
+      series: this.selectedSeriesId() || undefined,
+      class: this.selectedSeriesId() ? this.selectedClassName() || undefined : undefined,
+      showInactive: this.showInactive() ? "true" : undefined,
+    };
   }
 }

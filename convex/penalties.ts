@@ -1,5 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireRole } from "./lib/auth";
+import { Id } from "./_generated/dataModel";
 
 export const list = query({
   handler: async (ctx) => {
@@ -38,6 +40,7 @@ export const getById = query({
 
 export const create = mutation({
   args: {
+    currentUserId: v.id("users"),
     seriesId: v.id("series"),
     name: v.string(),
     timePenalty: v.number(),
@@ -47,19 +50,22 @@ export const create = mutation({
     allowNoDriverAtFault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const series = await ctx.db.get(args.seriesId);
+    const { currentUserId, ...data } = args;
+    await requireRole(ctx, currentUserId as Id<"users">, ["event_manager", "league_manager"]);
+
+    const series = await ctx.db.get(data.seriesId);
     if (!series) {
       throw new Error("Series not found");
     }
 
     const penaltyId = await ctx.db.insert("penalties", {
-      seriesId: args.seriesId,
-      name: args.name,
-      timePenalty: args.timePenalty,
-      selfReportReduction: args.selfReportReduction ?? 0,
-      timePenaltyLap1: args.timePenaltyLap1 ?? args.timePenalty,
-      licensePoints: args.licensePoints,
-      allowNoDriverAtFault: args.allowNoDriverAtFault ?? false,
+      seriesId: data.seriesId,
+      name: data.name,
+      timePenalty: data.timePenalty,
+      selfReportReduction: data.selfReportReduction ?? 0,
+      timePenaltyLap1: data.timePenaltyLap1 ?? data.timePenalty,
+      licensePoints: data.licensePoints,
+      allowNoDriverAtFault: data.allowNoDriverAtFault ?? false,
       createdAt: Date.now(),
     });
 
@@ -70,6 +76,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("penalties"),
+    currentUserId: v.id("users"),
     name: v.string(),
     timePenalty: v.number(),
     selfReportReduction: v.optional(v.number()),
@@ -78,7 +85,8 @@ export const update = mutation({
     allowNoDriverAtFault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { id, ...updates } = args;
+    await requireRole(ctx, args.currentUserId as Id<"users">, ["event_manager", "league_manager"]);
+    const { id, currentUserId, ...updates } = args;
 
     const cleanUpdates = {
       name: updates.name,
@@ -97,8 +105,9 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: { id: v.id("penalties") },
+  args: { id: v.id("penalties"), currentUserId: v.id("users") },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId as Id<"users">, ["event_manager", "league_manager"]);
     await ctx.db.delete(args.id);
   },
 });

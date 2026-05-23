@@ -42,7 +42,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         <app-card>
           <div class="text-center">
-            <p class="text-2xl sm:text-3xl font-bold text-blue-600">
+            <p class="text-2xl sm:text-3xl font-bold text-info">
               {{ reports().length }}
             </p>
             <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">Ready to Finalize</p>
@@ -50,7 +50,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-2xl sm:text-3xl font-bold text-green-600">
+            <p class="text-2xl sm:text-3xl font-bold text-success">
               {{ stats()?.finalized || 0 }}
             </p>
             <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">Finalized</p>
@@ -58,7 +58,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
         </app-card>
         <app-card class="col-span-2 sm:col-span-1">
           <div class="text-center">
-            <p class="text-2xl sm:text-3xl font-bold text-red-600">
+            <p class="text-2xl sm:text-3xl font-bold text-danger">
               {{ stats()?.rejected || 0 }}
             </p>
             <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">Rejected</p>
@@ -284,32 +284,22 @@ export class FinalizeDashboardComponent implements OnInit, OnDestroy {
     const reportsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getReadyForFinalization,
       {},
-    );
-    this.unsubscribes.push(reportsQuery.unsubscribe);
-
-    const checkReports = setInterval(() => {
-      const data = reportsQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.reports.set(data);
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReports));
+    );
+    this.unsubscribes.push(reportsQuery.unsubscribe);
 
     // Load stats
     const statsQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getStats,
       {},
-    );
-    this.unsubscribes.push(statsQuery.unsubscribe);
-
-    const checkStats = setInterval(() => {
-      const data = statsQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.stats.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkStats));
+    );
+    this.unsubscribes.push(statsQuery.unsubscribe);
   }
 
   getSessionName(race: { sessionName?: string; raceNumber?: number } | null | undefined): string {

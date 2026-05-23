@@ -7,7 +7,6 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Racing-inspired color palette
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',
@@ -20,6 +19,38 @@ module.exports = {
           800: '#1e40af',
           900: '#1e3a8a',
           950: '#172554',
+        },
+        success: {
+          DEFAULT: 'var(--color-success)',
+          bg: 'var(--color-success-bg)',
+          text: 'var(--color-success-text)',
+          hover: 'var(--color-success-hover)',
+          border: 'var(--color-success-border)',
+          ring: 'var(--color-success-ring)',
+        },
+        danger: {
+          DEFAULT: 'var(--color-danger)',
+          bg: 'var(--color-danger-bg)',
+          text: 'var(--color-danger-text)',
+          hover: 'var(--color-danger-hover)',
+          border: 'var(--color-danger-border)',
+          ring: 'var(--color-danger-ring)',
+        },
+        warning: {
+          DEFAULT: 'var(--color-warning)',
+          bg: 'var(--color-warning-bg)',
+          text: 'var(--color-warning-text)',
+          hover: 'var(--color-warning-hover)',
+          border: 'var(--color-warning-border)',
+          ring: 'var(--color-warning-ring)',
+        },
+        info: {
+          DEFAULT: 'var(--color-info)',
+          bg: 'var(--color-info-bg)',
+          text: 'var(--color-info-text)',
+          hover: 'var(--color-info-hover)',
+          border: 'var(--color-info-border)',
+          ring: 'var(--color-info-ring)',
         },
         racing: {
           red: '#dc2626',

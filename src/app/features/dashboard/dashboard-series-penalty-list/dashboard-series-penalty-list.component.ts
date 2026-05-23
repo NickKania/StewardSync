@@ -205,7 +205,7 @@ interface DashboardPenaltyGroup {
                               </a>
                             } @else if (penalty.requiresReview) {
                               <p
-                                class="text-xs text-red-700 dark:text-red-300 mb-2"
+                                class="text-xs text-danger mb-2"
                               >
                                 No review request submitted yet.
                               </p>

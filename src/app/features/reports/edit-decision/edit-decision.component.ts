@@ -62,7 +62,7 @@ import { Penalty } from "@core/models/series.model";
               form.get("finalDecision")?.invalid &&
               form.get("finalDecision")?.touched
             ) {
-              <p class="mt-1 text-sm text-red-600">Decision is required</p>
+              <p class="mt-1 text-sm text-danger">Decision is required</p>
             }
           </div>
 
@@ -88,12 +88,12 @@ import { Penalty } from "@core/models/series.model";
               form.get("appliedPenalty")?.invalid &&
               form.get("appliedPenalty")?.touched
             ) {
-              <p class="mt-1 text-sm text-red-600">
+              <p class="mt-1 text-sm text-danger">
                 Penalty selection is required
               </p>
             }
             @if (availablePenalties().length === 0) {
-              <p class="mt-1 text-sm text-yellow-600">
+              <p class="mt-1 text-sm text-warning">
                 No penalties configured for this series.
               </p>
             }
@@ -135,7 +135,7 @@ import { Penalty } from "@core/models/series.model";
               form.get("officialNotes")?.invalid &&
               form.get("officialNotes")?.touched
             ) {
-              <p class="mt-1 text-sm text-red-600">
+              <p class="mt-1 text-sm text-danger">
                 Official notes are required
               </p>
             }
@@ -209,6 +209,7 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
   });
 
   private unsubscribes: (() => void)[] = [];
+  private formInitialized = false;
 
   constructor() {
     this.form = this.fb.group({
@@ -248,18 +249,12 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
     const driversQuery = this.convex.createReactiveQuery(
       this.convex.api.drivers.list,
       {},
-    );
-    this.unsubscribes.push(driversQuery.unsubscribe);
-
-    const checkDrivers = setInterval(() => {
-      const data = driversQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.drivers.set(data);
         this.initializeForm();
-        clearInterval(checkDrivers);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkDrivers));
+    );
+    this.unsubscribes.push(driversQuery.unsubscribe);
   }
 
   private loadPenalties(): void {
@@ -271,37 +266,32 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
     const penaltiesQuery = this.convex.createReactiveQuery(
       this.convex.api.penalties.getBySeries,
       { seriesId: this.report.event.seriesId as any },
-    );
-    this.unsubscribes.push(penaltiesQuery.unsubscribe);
-
-    const checkPenalties = setInterval(() => {
-      const data = penaltiesQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.availablePenalties.set(data);
         this.enforceAtFaultDriverSelection();
         this.initializeForm();
-        clearInterval(checkPenalties);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkPenalties));
+    );
+    this.unsubscribes.push(penaltiesQuery.unsubscribe);
   }
 
   private initializeForm(): void {
-    if (this.report) {
-      this.form.patchValue({
-        finalDecision: this.report.finalDecision || "",
-        appliedPenalty: this.report.appliedPenalty || "",
-        atFaultDriverId: this.report.isNoDriverAtFault
-          ? this.NO_DRIVER_OPTION_VALUE
-          : this.report.atFaultDriverId
-            ? String(this.report.atFaultDriverId)
-            : "",
-        officialNotes: this.report.officialNotes || "",
-        isSelfReport: this.report.isSelfReport || false,
-      });
-      this.enforceAtFaultDriverSelection();
-      this.loading.set(false);
-    }
+    if (this.formInitialized || !this.report) return;
+    this.formInitialized = true;
+
+    this.form.patchValue({
+      finalDecision: this.report.finalDecision || "",
+      appliedPenalty: this.report.appliedPenalty || "",
+      atFaultDriverId: this.report.isNoDriverAtFault
+        ? this.NO_DRIVER_OPTION_VALUE
+        : this.report.atFaultDriverId
+          ? String(this.report.atFaultDriverId)
+          : "",
+      officialNotes: this.report.officialNotes || "",
+      isSelfReport: this.report.isSelfReport || false,
+    });
+    this.enforceAtFaultDriverSelection();
+    this.loading.set(false);
   }
 
   private onAppliedPenaltyChange(penaltyId: string): void {

@@ -1,9 +1,11 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
 import { Series } from '@core/models/series.model';
+import { getStringParam, syncQueryParams } from '@core/utils/query-params.utils';
 import { CardComponent } from '@shared/components/card/card.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
@@ -33,7 +35,11 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
       <app-card>
         <div class="flex gap-4">
           <div class="w-full sm:w-48">
-            <select class="input" [(ngModel)]="selectedSeries">
+            <select
+              class="input"
+              [ngModel]="selectedSeries()"
+              (ngModelChange)="onSeriesChange($event)"
+            >
               <option value="">All series</option>
               @for (s of series(); track s._id) {
                 <option [value]="s._id">{{ s.name }}</option>
@@ -92,6 +98,9 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
 })
 export class EventListComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   events = signal<any[]>([]);
   series = signal<Series[]>([]);
@@ -110,6 +119,10 @@ export class EventListComponent implements OnInit, OnDestroy {
   private unsubscribes: (() => void)[] = [];
 
   ngOnInit(): void {
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.applyQueryParams(params));
+
     this.loadEvents();
   }
 
@@ -118,29 +131,64 @@ export class EventListComponent implements OnInit, OnDestroy {
   }
 
   private loadEvents(): void {
+    let eventsLoaded = false;
+    let seriesLoaded = false;
+
+    const markLoaded = () => {
+      if (eventsLoaded && seriesLoaded) {
+        this.loading.set(false);
+      }
+    };
+
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
-      {}
+      {},
+      (data) => {
+        this.events.set(data);
+        eventsLoaded = true;
+        markLoaded();
+      }
     );
     this.unsubscribes.push(eventsQuery.unsubscribe);
 
     const seriesQuery = this.convex.createReactiveQuery(
       this.convex.api.series.listActive,
-      {}
+      {},
+      (data) => {
+        this.series.set(data);
+        seriesLoaded = true;
+        markLoaded();
+      }
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);
 
-    const checkData = setInterval(() => {
-      const eventsData = eventsQuery.data();
-      const seriesData = seriesQuery.data();
-
-      if (eventsData !== undefined && seriesData !== undefined) {
-        this.events.set(eventsData);
-        this.series.set(seriesData);
+    const timeoutId = setTimeout(() => {
+      if (!eventsLoaded || !seriesLoaded) {
+        console.warn('Event list loading timed out');
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkData));
+    }, 15000);
+    this.unsubscribes.push(() => clearTimeout(timeoutId));
+  }
+
+  onSeriesChange(seriesId: string, doSync = true): void {
+    this.selectedSeries.set(seriesId || '');
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), new Set(['series']));
+    }
+  }
+
+  private applyQueryParams(params: Params): void {
+    const nextSeries = getStringParam(params, 'series');
+    if (nextSeries !== this.selectedSeries()) {
+      this.onSeriesChange(nextSeries, false);
+    }
+  }
+
+  private getFilterQueryParams(): Record<string, string | undefined> {
+    return {
+      series: this.selectedSeries() || undefined,
+    };
   }
 
   getEventStatus(eventDate: number): 'success' | 'warning' | 'info' {

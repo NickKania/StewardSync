@@ -5,6 +5,7 @@ import { HeaderComponent } from '@app/layout/header/header.component';
 import { SidebarComponent } from '@app/layout/sidebar/sidebar.component';
 import { AuthService } from '@core/services/auth.service';
 import { ThemeService } from '@core/services/theme.service';
+import { ColorModeService } from '@core/services/color-mode.service';
 import { SidebarStateService } from '@core/services/sidebar-state.service';
 import { ToastComponent } from '@shared/components/toast/toast.component';
 
@@ -38,10 +39,12 @@ import { ToastComponent } from '@shared/components/toast/toast.component';
 export class AppComponent implements OnInit {
   authService = inject(AuthService);
   themeService = inject(ThemeService);
+  colorModeService = inject(ColorModeService);
   readonly sidebarStateService = inject(SidebarStateService);
 
   ngOnInit(): void {
     this.themeService.initialize();
+    this.colorModeService.initialize();
     this.authService.initialize();
   }
 }

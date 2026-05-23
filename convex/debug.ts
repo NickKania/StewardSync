@@ -1,6 +1,8 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { checkUserDriverConflict } from "./lib/reports";
+import { requireRole } from "./lib/auth";
+import { Id } from "./_generated/dataModel";
 
 export const debugReportConflict = query({
   args: {
@@ -221,9 +223,11 @@ export const debugPenaltyAssignment = query({
 
 export const manuallyAssignPenaltiesForReport = mutation({
   args: {
+    currentUserId: v.id("users"),
     reportId: v.id("reports"),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId as Id<"users">, ["league_manager"]);
     console.log(`[MANUAL ASSIGN] Starting for report: ${args.reportId}`);
 
     const report = await ctx.db.get(args.reportId);

@@ -29,6 +29,7 @@ StewardSync is a unified application for reviewing racing steward reports. The a
 StewardSync/
 ├── convex/              # Convex backend
 │   ├── _generated/      # Auto-generated types
+│   ├── lib/             # Shared utilities (auth, audit, errors, formatting)
 │   ├── schema.ts        # Database schema definition
 │   ├── auth.ts          # Authentication configuration
 │   ├── users.ts         # User queries/mutations
@@ -37,14 +38,21 @@ StewardSync/
 │   ├── races.ts         # Race queries/mutations
 │   ├── reports.ts       # Report queries/mutations
 │   ├── reviews.ts       # Review queries/mutations
+│   ├── penalties.ts     # Penalty definition CRUD
+│   ├── series.ts        # Series CRUD
+│   ├── seriesPenalties.ts        # Series penalty definitions
+│   ├── seriesPenaltyThresholds.ts # Penalty thresholds
+│   ├── driverSeriesPenalties.ts   # Assigned penalties to drivers
+│   ├── driverClasses.ts          # Driver classification per series
+│   ├── debug.ts         # Debug/diagnostic queries (gated behind league_manager)
 │   └── seed.ts          # Data seeding functions
 ├── src/
 │   ├── app/
 │   │   ├── core/        # Core services, guards, models
 │   │   ├── shared/      # Reusable components, directives, pipes
 │   │   ├── features/    # Feature modules (auth, reports, reviews, etc.)
-│   │   └── layout/      # Layout components (header, sidebar, footer)
-│   ├── environments/    # Environment configs (dev, prod)
+│   │   └── layout/      # Layout components (header, sidebar)
+│   ├── environments/    # Environment configs (dev, local, prod)
 │   ├── index.html
 │   ├── main.ts
 │   └── styles.css       # Global styles
@@ -113,19 +121,19 @@ export class FeatureNameComponent {
 ### Services
 - Use Angular dependency injection
 - Separate business logic from component logic
-- Use services for Convex API calls
+- Use `ConvexService` for Convex API calls (wraps `ConvexClient`)
 - Implement proper error handling with try-catch
-- Use the `inject()` function from Convex Angular integration
+- Use the `inject()` function for dependency injection
 
 ```typescript
-import { Injectable } from '@angular/core';
-import { InjectedConvexClient } from '@convex-dev/angular';
+import { Injectable, inject } from '@angular/core';
+import { ConvexService } from '@core/services/convex.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FeatureService {
-  private readonly convex = inject(InjectedConvexClient);
+  private readonly convex = inject(ConvexService);
   
   // Implementation
 }
@@ -174,6 +182,8 @@ export default defineSchema({
 ### Queries & Mutations
 - Place query functions in appropriate files (e.g., `reports.ts`, `users.ts`)
 - Use Convex's type-safe API
+- **All mutations must include auth checks** using `requireRole()` from `lib/auth.ts`
+- Pass `currentUserId` as the first argument to all protected mutations
 - Implement proper validation in mutations
 - Use runtime validators for all arguments
 - Return proper TypeScript types
@@ -181,6 +191,8 @@ export default defineSchema({
 ```typescript
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireRole } from "./lib/auth";
+import { Id } from "./_generated/dataModel";
 
 export const getReport = query({
   args: { id: v.id("reports") },
@@ -192,6 +204,7 @@ export const getReport = query({
 
 export const createReport = mutation({
   args: {
+    currentUserId: v.id("users"),
     reportingDriver: v.id("drivers"),
     reportedDriver: v.id("drivers"),
     event: v.id("events"),
@@ -200,8 +213,11 @@ export const createReport = mutation({
     description: v.string(),
   },
   handler: async (ctx, args) => {
+    const { currentUserId, ...data } = args;
+    await requireRole(ctx, currentUserId as Id<"users">, ["driver"]);
+    
     const newReportId = await ctx.db.insert("reports", {
-      ...args,
+      ...data,
       isFinalized: false,
     });
     return newReportId;
@@ -210,10 +226,11 @@ export const createReport = mutation({
 ```
 
 ### Authentication
-- Use Convex Auth for authentication
-- Handle user creation on first login
+- Discord OAuth 2.0 PKCE flow handled by `AuthService`
+- Session stored in localStorage, user state exposed via signals
 - Store user role information in the users table
-- Implement proper permission checks in backend functions using `auth.getUserId()`
+- Backend mutations receive `currentUserId` from the frontend for authorization
+- Use `requireRole()` from `lib/auth.ts` for role-based access control
 
 ---
 
@@ -297,17 +314,8 @@ bun run start:local
 
 ### Convex Operations
 ```bash
-# Start local Convex with Docker
-bun run convex:local:start
-
-# Stop local Convex
-bun run convex:local:stop
-
-# View logs
-bun run convex:local:logs
-
-# Push schema/functions to local instance
-bun run convex:local:push
+# Start Convex dev server (cloud)
+bun run convex:dev
 
 # Deploy to production
 bun run convex:deploy
@@ -348,14 +356,14 @@ export class FeatureNameComponent {
 
 ### New Service Template
 ```typescript
-import { Injectable } from '@angular/core';
-import { InjectedConvexClient } from '@convex-dev/angular';
+import { Injectable, inject } from '@angular/core';
+import { ConvexService } from '@core/services/convex.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class FeatureService {
-  private readonly convex = inject(InjectedConvexClient);
+  private readonly convex = inject(ConvexService);
   
   // Implementation
 }
@@ -379,14 +387,18 @@ export const getFeatureData = query({
 ```typescript
 import { mutation } from './_generated/server';
 import { v } from 'convex/values';
+import { requireRole } from './lib/auth';
+import { Id } from './_generated/dataModel';
 
 export const createFeature = mutation({
   args: {
+    currentUserId: v.id("users"),
     name: v.string(),
-    // Add other fields
   },
   handler: async (ctx, args) => {
-    const newId = await ctx.db.insert("tableName", args);
+    const { currentUserId, ...data } = args;
+    await requireRole(ctx, currentUserId as Id<"users">, ["steward"]);
+    const newId = await ctx.db.insert("tableName", data);
     return newId;
   },
 });
@@ -428,7 +440,7 @@ export const createFeature = mutation({
 ## Important Considerations
 
 ### When Making Schema Changes
-- After modifying schema, run `bun run convex:local:push` to` update
+- After modifying schema, run `bun run convex:deploy` to update
 - Check Convex dashboard for any schema validation errors
 - Consider data migration if breaking changes are made
 
@@ -451,13 +463,14 @@ export const createFeature = mutation({
 
 #### Convex Schema Changes Not Reflecting
 ```bash
-# Push schema changes
-bun run convex:local:push
+# Deploy schema changes
+bun run convex:deploy
 ```
 
 #### Authentication Issues
-- Check that Convex Auth is properly configured
+- Check that Discord OAuth is properly configured in `convex/auth.ts`
 - Ensure user creation is handled in auth flow
+- Verify Discord Client ID and Secret are set in environment config
 
 #### Styling Issues
 - Clear Tailwind cache: `rm -rf .angular/cache`
@@ -467,113 +480,23 @@ bun run convex:local:push
 #### Development Server Issues
 - Ensure Node 20 is active: `nvm use 20`
 - Verify port 4200 is not in use
-- Check that Docker is running for local Convex
 
 #### Convex-Specific Debugging
 
-**Working with Local Convex (Docker Setup)**
-
-When working with the local Convex instance:
-
-1. **Generate Admin Key** (if not already configured):
+1. **Deploy Functions**:
    ```bash
-   docker compose -f docker-compose.local.yml exec backend ./generate_admin_key.sh
-   # Copy the generated admin key
-   ```
-
-2. **Deploy Functions to Local Convex**:
-   ```bash
-   # Set environment variables
-   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210
-   CONVEX_SELF_HOSTED_ADMIN_KEY='your-generated-key'
-
-   # Deploy (without running dev server)
    bun x convex deploy
-
-   # Or with specific environment
-   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
-     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
-     bun x convex deploy
    ```
 
-3. **Run Queries/Mutations via CLI**:
+2. **Run Queries/Mutations via CLI**:
    ```bash
-   # Query function
-   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
-     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
-     bun x convex run tableName:functionName
-
-   # Mutation with arguments (JSON)
-   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
-     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
-     bun x convex run migrations:getMigrationStatus
-
-   # Function with JSON args
-   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
-     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
-     bun x convex run seriesPenaltyThresholds:getById '{"id":"kh7djwzs4hz1tfgfbbgabtrxqh7zc8x0"}'
+   bun x convex run fileName:functionName
+   bun x convex run fileName:functionName '{"arg": "value"}'
    ```
 
-4. **Check Convex Data**:
+3. **Check Convex Data**:
    ```bash
-   # View all records in a table
-   CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
-     CONVEX_SELF_HOSTED_ADMIN_KEY='your-key' \
-     bun x convex data tableName
-
-   # Example: check driver series penalties
-   bun x convex data driverSeriesPenalties
-
-   # Example: check thresholds
-   bun x convex data seriesPenaltyThresholds
-   ```
-
-5. **List Available Functions**:
-   ```bash
-   bun x convex run migrations:getMigrationStatus 2>&1 | grep "•"
-   # Shows all available functions if an invalid function name is used
-   ```
-
-**Debugging Data Integrity Issues**
-
-When investigating Convex data issues:
-
-1. **Check Schema vs Data**:
-   - Verify schema in `convex/schema.ts` matches data structure
-   - Use `bun x convex data tableName` to inspect actual data
-   - Look for missing fields or incorrect types
-
-2. **Identify Orphaned Records**:
-   - Query for records and check if referenced IDs exist
-   - Example: If penalties reference thresholds that don't exist
-   - Create cleanup mutation to remove orphaned records
-
-3. **Test Functions Step by Step**:
-   - Run queries via CLI to verify data retrieval
-   - Run mutations via CLI to test data creation
-   - Check function returns match expected TypeScript types
-
-4. **Migration Debugging**:
-   - Run `migrations:getMigrationStatus` to see what needs migration
-   - Run migrations incrementally, checking results after each step
-   - Verify migration completed successfully before proceeding
-
-5. **Common Convex CLI Commands**:
-   ```bash
-   # Deploy code only (no dev server)
-   bun x convex deploy
-
-   # List data from table
    bun x convex data tableName
-
-   # Run query/mutation
-   bun x convex run fileName:functionName [args]
-
-   # Check available functions (by running invalid function)
-   bun x convex run invalidName
-
-   # View logs
-   bun run convex:local:logs
    ```
 
 **Error Handling Pattern**:
@@ -594,7 +517,6 @@ When Convex functions fail:
 - [Convex Documentation](https://docs.convex.dev/)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 - [Project README](./README.md)
-- [Implementation Plan](./plan.md)
 
 ---
 

@@ -1,13 +1,15 @@
 import { CommonModule } from "@angular/common";
 import { Component, computed, inject, OnDestroy, OnInit, signal } from "@angular/core";
-import { ActivatedRoute, Router } from "@angular/router";
+import {
+  ActivatedRoute,
+  NavigationEnd,
+  Router,
+  RouterOutlet,
+} from "@angular/router";
 import { AuthService } from "@core/services/auth.service";
 import { ConvexService } from "@core/services/convex.service";
-import { FinalizeDashboardComponent } from "@features/finalize/finalize-dashboard/finalize-dashboard.component";
-import { MyReviewsComponent } from "@features/reviews/my-reviews/my-reviews.component";
-import { ReviewDashboardComponent } from "@features/reviews/review-dashboard/review-dashboard.component";
-import { ReviewSearchComponent } from "@features/reviews/review-search/review-search.component";
 import { Tab, TabsComponent } from "@shared/components/tabs/tabs.component";
+import { filter, Subscription } from "rxjs";
 
 type ReviewTabId = "queue" | "my-reviews" | "search" | "finalization";
 
@@ -17,28 +19,13 @@ type ReviewTabId = "queue" | "my-reviews" | "search" | "finalization";
   imports: [
     CommonModule,
     TabsComponent,
-    ReviewDashboardComponent,
-    ReviewSearchComponent,
-    FinalizeDashboardComponent,
-    MyReviewsComponent,
+    RouterOutlet,
   ],
   template: `
     <div class="space-y-6">
-      <app-tabs
-        [tabs]="tabs()"
-        [activeTab]="activeTab()"
-        (activeTabChange)="selectTab($event)"
-      />
+      <app-tabs [tabs]="tabs()" [activeTab]="activeTab()" />
 
-      @if (activeTab() === "queue") {
-        <app-review-dashboard />
-      } @else if (activeTab() === "my-reviews") {
-        <app-my-reviews />
-      } @else if (activeTab() === "search") {
-        <app-review-search />
-      } @else if (activeTab() === "finalization") {
-        <app-finalize-dashboard />
-      }
+      <router-outlet />
     </div>
   `,
 })
@@ -47,6 +34,7 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly subscriptions = new Subscription();
 
   private readonly pendingReviewQuery = this.convex.createReactiveQuery(
     this.convex.api.reports.getPendingForReview,
@@ -72,10 +60,12 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
         id: "queue",
         label: "Review Queue",
         badge: this.pendingReviewCount(),
+        routeCommands: ["/reviews", "queue"],
       },
       {
         id: "my-reviews",
         label: "My Reviews",
+        routeCommands: ["/reviews", "my-reviews"],
       },
     ];
 
@@ -83,6 +73,7 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
       items.push({
         id: "search",
         label: "Review Search",
+        routeCommands: ["/reviews", "search"],
       });
     }
 
@@ -91,6 +82,7 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
         id: "finalization",
         label: "Finalization Queue",
         badge: this.finalizeQueueCount(),
+        routeCommands: ["/reviews", "finalization"],
       });
     }
 
@@ -98,34 +90,18 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    const requestedTab =
-      this.parseTab(this.activatedRoute.snapshot.queryParamMap.get("tab")) ??
-      this.parseTab(this.activatedRoute.snapshot.data["defaultTab"]);
-    const validTab = this.isTabVisible(requestedTab) ? requestedTab : null;
-    this.activeTab.set(validTab ?? (this.tabs()[0]?.id as ReviewTabId));
+    this.syncActiveTab();
+    this.subscriptions.add(
+      this.router.events
+        .pipe(filter((event) => event instanceof NavigationEnd))
+        .subscribe(() => this.syncActiveTab()),
+    );
   }
 
   ngOnDestroy(): void {
     this.pendingReviewQuery.unsubscribe();
     this.finalizeQueueQuery.unsubscribe();
-  }
-
-  selectTab(tabId: string): void {
-    const parsedTab = this.parseTab(tabId);
-    if (!this.isTabVisible(parsedTab)) {
-      return;
-    }
-
-    this.activeTab.set(parsedTab);
-
-    if (parsedTab === "queue") {
-      void this.router.navigate(["/reviews"]);
-      return;
-    }
-
-    void this.router.navigate(["/reviews"], {
-      queryParams: { tab: parsedTab },
-    });
+    this.subscriptions.unsubscribe();
   }
 
   private parseTab(value: unknown): ReviewTabId | null {
@@ -153,5 +129,24 @@ export class ReviewWorkspaceComponent implements OnInit, OnDestroy {
     if (tabId === "search") return this.canSearchReviews();
     if (tabId === "finalization") return this.canViewFinalization();
     return false;
+  }
+
+  private syncActiveTab(): void {
+    const childPath = this.activatedRoute.firstChild?.routeConfig?.path;
+    const requestedTab = this.parseTab(childPath);
+    const validTab = this.isTabVisible(requestedTab) ? requestedTab : null;
+    const fallbackTab = this.tabs()[0]?.id as ReviewTabId | undefined;
+
+    // If the requested tab is valid (user has access), use it
+    if (validTab) {
+      this.activeTab.set(validTab);
+      return;
+    }
+
+    // If no valid tab but we have a fallback, use it without redirecting
+    // This ensures URL-based navigation always takes precedence
+    if (fallbackTab) {
+      this.activeTab.set(fallbackTab);
+    }
   }
 }

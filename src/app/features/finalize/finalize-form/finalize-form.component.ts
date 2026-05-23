@@ -18,6 +18,7 @@ import {
 } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
+import { NavigationService } from "@core/services/navigation.service";
 import { ToastService } from "@core/services/toast.service";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
@@ -97,7 +98,7 @@ import { User } from "@app/core/models";
                       form.get("incidentDescription")?.invalid &&
                       form.get("incidentDescription")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Incident description is required
                       </p>
                     }
@@ -141,12 +142,12 @@ import { User } from "@app/core/models";
                       form.get("appliedPenalty")?.invalid &&
                       form.get("appliedPenalty")?.touched
                     ) {
-                      <p class="mt-1 text-sm text-red-600">
+                      <p class="mt-1 text-sm text-danger">
                         Penalty selection is required
                       </p>
                     }
                     @if (availablePenalties().length === 0) {
-                      <p class="mt-1 text-sm text-yellow-600">
+                      <p class="mt-1 text-sm text-warning">
                         No penalties configured for this series. Please
                         configure penalties first.
                       </p>
@@ -207,13 +208,31 @@ import { User } from "@app/core/models";
 
                   <!-- Official notes -->
                   <div>
-                    <label class="label">Official Notes</label>
+                    <label class="label"
+                      >Official Notes
+                      @if (form.get("candidateForStandardization")?.value) {
+                        <span class="text-danger">*</span>
+                      }
+                    </label>
                     <textarea
                       formControlName="officialNotes"
                       class="input min-h-[100px]"
+                      [class.input-error]="
+                        form.get('officialNotes')?.invalid &&
+                        form.get('officialNotes')?.touched
+                      "
                       placeholder="Additional notes for the official record..."
                       rows="4"
                     ></textarea>
+                    @if (
+                      form.get("officialNotes")?.invalid &&
+                      form.get("officialNotes")?.touched
+                    ) {
+                      <p class="mt-1 text-sm text-danger">
+                        Official notes are required when marking for
+                        standardization
+                      </p>
+                    }
                     <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Not public facing - internal use only
                     </p>
@@ -302,7 +321,7 @@ import { User } from "@app/core/models";
                       >
                         {{ review.reviewNotes }}
                         @if (review.isAdjusted && review.adjustedReason) {
-                          <br /><span class="text-amber-700"
+                          <br /><span class="text-warning-text"
                             >[Adjusted: {{ review.adjustedReason }}]</span
                           >
                         }
@@ -421,13 +440,13 @@ import { User } from "@app/core/models";
         <app-card>
           <div class="text-center py-12">
             <p class="text-gray-500 dark:text-gray-400">Report not found</p>
-            <a
-              [routerLink]="['/reviews']"
-              [queryParams]="{ tab: 'finalization' }"
-              class="mt-4 inline-block"
+            <app-button
+              class="mt-4 inline-flex"
+              variant="primary"
+              (onClick)="goBackToFinalization()"
             >
-              <app-button variant="primary">Back to Finalization</app-button>
-            </a>
+              Back to Finalization
+            </app-button>
           </div>
         </app-card>
       }
@@ -478,6 +497,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+  private navigationService = inject(NavigationService);
   private router = inject(Router);
   private toast = inject(ToastService);
 
@@ -540,6 +560,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   });
 
   private unsubscribes: (() => void)[] = [];
+  private penaltiesUnsubscribe: (() => void) | null = null;
 
   constructor() {
     this.form = this.fb.group({
@@ -564,6 +585,23 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       ?.valueChanges.subscribe((penaltyId: string) => {
         this.onAppliedPenaltyChange(penaltyId);
       });
+    this.form
+      .get("candidateForStandardization")
+      ?.valueChanges.subscribe((candidate: boolean) => {
+        this.updateOfficialNotesValidation(candidate);
+      });
+  }
+
+  private updateOfficialNotesValidation(candidate: boolean): void {
+    const officialNotesControl = this.form.get("officialNotes");
+    if (!officialNotesControl) return;
+
+    if (candidate) {
+      officialNotesControl.setValidators([Validators.required]);
+    } else {
+      officialNotesControl.clearValidators();
+    }
+    officialNotesControl.updateValueAndValidity();
   }
 
   private updateAdjustedReasonValidation(isAdjusted: boolean): void {
@@ -589,22 +627,20 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     }
 
     const driversQuery = this.convex.createReactiveQuery(
-      this.convex.api.drivers.getByChampionship,
-      { championshipId: report.event.seriesId },
-    );
-    this.unsubscribes.push(driversQuery.unsubscribe);
-
-    const checkDrivers = setInterval(() => {
-      const data = driversQuery.data();
-      if (data !== undefined) {
+      this.convex.api.drivers.list,
+      {},
+      (data) => {
         this.drivers.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkDrivers));
+    );
+    this.unsubscribes.push(driversQuery.unsubscribe);
   }
 
   ngOnDestroy(): void {
     this.unsubscribes.forEach((unsub) => unsub());
+    if (this.penaltiesUnsubscribe) {
+      this.penaltiesUnsubscribe();
+    }
   }
 
   private loadReport(): void {
@@ -616,13 +652,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     const reportQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getById,
       { reportId: this.reportId as any },
-    );
-    this.unsubscribes.push(reportQuery.unsubscribe);
-
-    const checkReport = setInterval(() => {
-      const data = reportQuery.data();
-      if (data !== undefined) {
-        clearInterval(checkReport);
+      (data) => {
         this.report.set(data);
         this.loading.set(false);
 
@@ -699,8 +729,6 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             );
           }
 
-          // Pre-select atFaultDriverId from latest review or reportedDriver
-          // only when the field is still empty to avoid overriding user edits
           if (
             atFaultDriverControl &&
             atFaultDriverControl.pristine &&
@@ -717,7 +745,6 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             }
           }
 
-          // Pre-select applied penalty from latest review's recommended penalty
           if (
             latestReview?.recommendedPenaltyObj &&
             this.availablePenalties().length > 0
@@ -738,30 +765,28 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           }
         }
 
-        // Load penalties for this series
         if (data?.event?.seriesId) {
           this.loadPenalties(data.event.seriesId);
           this.loadDrivers();
         }
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReport));
+    );
+    this.unsubscribes.push(reportQuery.unsubscribe);
   }
 
   private loadPenalties(seriesId: string): void {
+    if (this.penaltiesUnsubscribe) {
+      this.penaltiesUnsubscribe();
+      this.penaltiesUnsubscribe = null;
+    }
+
     const penaltiesQuery = this.convex.createReactiveQuery(
       this.convex.api.penalties.getBySeries,
       { seriesId: seriesId as any },
-    );
-    this.unsubscribes.push(penaltiesQuery.unsubscribe);
-
-    const checkPenalties = setInterval(() => {
-      const data = penaltiesQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.availablePenalties.set(data);
         this.enforceAtFaultDriverSelection();
 
-        // Pre-select applied penalty from latest review when penalties are loaded
         const report = this.report();
         if (report?.reviews && report.reviews.length > 0) {
           const latestReview = report.reviews.reduce(
@@ -789,8 +814,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
           }
         }
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkPenalties));
+    );
+    this.penaltiesUnsubscribe = penaltiesQuery.unsubscribe;
   }
 
   private onAppliedPenaltyChange(penaltyId: string): void {
@@ -1019,9 +1044,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
       this.toast.success("Report rejected");
       this.showRejectModal = false;
-      this.router.navigate(["/reviews"], {
-        queryParams: { tab: "finalization" },
-      });
+      this.router.navigate(["/reviews", "finalization"]);
     } catch (error: any) {
       this.toast.error(error.message || "Failed to reject report");
     } finally {
@@ -1030,9 +1053,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(["/reviews"], {
-      queryParams: { tab: "finalization" },
-    });
+    this.navigationService.goBack(["/reviews", "finalization"]);
   }
 
   getSessionName(
@@ -1041,6 +1062,10 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  goBackToFinalization(): void {
+    this.navigationService.goBack(["/reviews", "finalization"]);
   }
 }
 

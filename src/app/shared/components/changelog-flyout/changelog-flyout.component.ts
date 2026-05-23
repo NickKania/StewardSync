@@ -23,7 +23,7 @@ interface ChangelogRelease {
         @if (isLoading()) {
           <p class="text-sm text-gray-600 dark:text-gray-300">Loading changelog...</p>
         } @else if (errorMessage()) {
-          <p class="text-sm text-red-600 dark:text-red-400">{{ errorMessage() }}</p>
+          <p class="text-sm text-danger">{{ errorMessage() }}</p>
         } @else {
           @if (releases().length > 0) {
             <div class="space-y-6">

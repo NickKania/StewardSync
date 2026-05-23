@@ -46,7 +46,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
         </div>
         <div class="flex gap-2 flex-wrap">
           @if (canSearchReviews()) {
-            <a [routerLink]="['/reviews']" [queryParams]="{ tab: 'search' }">
+            <a [routerLink]="['/reviews', 'search']">
               <app-button variant="secondary">
                 <svg
                   class="w-4 h-4 mr-2"
@@ -90,7 +90,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <app-card>
           <div class="text-center">
-            <p class="text-2xl sm:text-3xl font-bold text-amber-600">
+            <p class="text-2xl sm:text-3xl font-bold text-warning">
               {{ pendingReports().length }}
             </p>
             <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
@@ -112,7 +112,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-2xl sm:text-3xl font-bold text-green-600">
+            <p class="text-2xl sm:text-3xl font-bold text-success">
               {{ reviewStats()?.today || 0 }}
             </p>
             <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
@@ -122,7 +122,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
         </app-card>
         <app-card>
           <div class="text-center">
-            <p class="text-2xl sm:text-3xl font-bold text-blue-600">
+            <p class="text-2xl sm:text-3xl font-bold text-info">
               {{ reviewedReports().length }}
             </p>
             <p class="text-xs sm:text-sm text-gray-500 mt-1 dark:text-gray-400">
@@ -654,32 +654,22 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
     const pendingQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getPendingForReview,
       {},
-    );
-    this.unsubscribes.push(pendingQuery.unsubscribe);
-
-    const checkPending = setInterval(() => {
-      const data = pendingQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.pendingReports.set(data);
         this.loading.set(false);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkPending));
+    );
+    this.unsubscribes.push(pendingQuery.unsubscribe);
 
     // Load reviewed reports (ready for finalization)
     const reviewedQuery = this.convex.createReactiveQuery(
       this.convex.api.reports.getReadyForFinalization,
       {},
-    );
-    this.unsubscribes.push(reviewedQuery.unsubscribe);
-
-    const checkReviewed = setInterval(() => {
-      const data = reviewedQuery.data();
-      if (data !== undefined) {
+      (data) => {
         this.reviewedReports.set(data);
       }
-    }, 100);
-    this.unsubscribes.push(() => clearInterval(checkReviewed));
+    );
+    this.unsubscribes.push(reviewedQuery.unsubscribe);
 
     // Load review stats for current user
     const userId = this.authService.getUserId();
@@ -687,16 +677,11 @@ export class ReviewDashboardComponent implements OnInit, OnDestroy {
       const statsQuery = this.convex.createReactiveQuery(
         this.convex.api.reviews.getStats,
         { userId },
-      );
-      this.unsubscribes.push(statsQuery.unsubscribe);
-
-      const checkStats = setInterval(() => {
-        const data = statsQuery.data();
-        if (data !== undefined) {
+        (data) => {
           this.reviewStats.set(data);
         }
-      }, 100);
-      this.unsubscribes.push(() => clearInterval(checkStats));
+      );
+      this.unsubscribes.push(statsQuery.unsubscribe);
     }
   }
 

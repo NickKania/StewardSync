@@ -19,7 +19,7 @@ export interface MultiSelectOption {
         <label [for]="id" class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">
           {{ label() }}
           @if (required()) {
-            <span class="text-red-500 dark:text-red-400">*</span>
+            <span class="text-danger">*</span>
           }
         </label>
       }
@@ -68,7 +68,7 @@ export interface MultiSelectOption {
       }
 
       @if (error()) {
-        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error() }}</p>
+        <p class="mt-1 text-sm text-danger">{{ error() }}</p>
       }
     </div>
   `
@@ -130,7 +130,7 @@ export class MultiSelectComponent {
   getDropdownClasses() {
     const base = 'block w-full px-3 py-2 border rounded-lg shadow-sm bg-white focus:outline-none transition-colors cursor-pointer min-h-[42px] flex items-center dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700';
     const errorClass = this.error()
-      ? 'border-red-300 dark:border-red-500/70'
+      ? 'border-danger-border'
       : 'border-gray-300 dark:border-gray-700';
     const disabledClass = this.disabled() ? 'bg-gray-100 cursor-not-allowed dark:bg-gray-800' : 'hover:border-gray-400 dark:hover:border-gray-600';
 

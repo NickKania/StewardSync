@@ -102,20 +102,23 @@ export const getWithRaces = query({
 
 export const create = mutation({
   args: {
+    currentUserId: v.id("users"),
     seriesId: v.id("series"),
     eventNumber: v.number(),
     trackName: v.string(),
     eventDate: v.number(),
   },
   handler: async (ctx, args) => {
-    // Verify series exists
-    const series = await ctx.db.get(args.seriesId);
+    await requireRole(ctx, args.currentUserId, ["event_manager", "league_manager"]);
+    const { currentUserId, ...data } = args;
+
+    const series = await ctx.db.get(data.seriesId);
     if (!series) {
       throw new Error("Series not found");
     }
 
     const eventId = await ctx.db.insert("events", {
-      ...args,
+      ...data,
       createdAt: Date.now(),
     });
 

@@ -114,7 +114,7 @@ interface ReviewRequirementRow {
                         Open
                       </a>
                     } @else {
-                      <span class="text-sm text-red-700 dark:text-red-300">
+                      <span class="text-sm text-danger">
                         Driver action needed
                       </span>
                     }

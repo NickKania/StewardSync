@@ -92,8 +92,8 @@ interface SlotOption {
           </div>
 
           @if (review()!.selectedMeetingStartAt) {
-            <div class="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/30 dark:bg-blue-950/20">
-              <p class="text-sm text-blue-800 dark:text-blue-200">
+            <div class="mt-4 rounded-lg border border-info-border bg-info-bg p-3">
+              <p class="text-sm text-info-text">
                 Scheduled meeting:
                 {{ review()!.selectedMeetingStartAt | dateFormat: "PPp" }}
                 @if (review()!.selectedMeetingEndAt) {
@@ -104,8 +104,8 @@ interface SlotOption {
           }
 
           @if (review()!.notificationError) {
-            <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/30 dark:bg-amber-950/20">
-              <p class="text-sm text-amber-800 dark:text-amber-200">
+            <div class="mt-4 rounded-lg border border-warning-border bg-warning-bg p-3">
+              <p class="text-sm text-warning-text">
                 Meeting notification warning: {{ review()!.notificationError }}
               </p>
             </div>
