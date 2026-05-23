@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { ConvexService } from '@core/services/convex.service';
 import { AuthService } from '@core/services/auth.service';
+import { getStringParam, getBooleanParam, syncQueryParams } from '@core/utils/query-params.utils';
 import { CardComponent } from '@shared/components/card/card.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
 import { ButtonComponent } from '@shared/components/button/button.component';
@@ -368,24 +369,24 @@ export class ReviewSearchComponent {
   onSearchChange(): void {
     this.currentPage.set(1);
     this.filters.set({ ...this.filters() });
-    this.syncQueryParams();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), FILTER_QUERY_PARAM_KEYS, { replaceUrl: true });
   }
 
   onFilterChange(): void {
     this.currentPage.set(1);
     this.filters.set({ ...this.filters() });
-    this.syncQueryParams();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), FILTER_QUERY_PARAM_KEYS, { replaceUrl: true });
   }
 
   onPageChange(page: number): void {
     this.currentPage.set(page);
-    this.syncQueryParams();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), FILTER_QUERY_PARAM_KEYS, { replaceUrl: true });
   }
 
   clearFilters(): void {
     this.filters.set({ ...DEFAULT_FILTERS });
     this.currentPage.set(1);
-    this.syncQueryParams();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), FILTER_QUERY_PARAM_KEYS, { replaceUrl: true });
   }
 
   performSearch(): void {
@@ -498,10 +499,10 @@ export class ReviewSearchComponent {
 
   private parseFiltersFromQueryParams(params: Params): FilterState {
     return {
-      searchQuery: this.getStringParam(params, 'searchQuery'),
-      seriesId: this.getStringParam(params, 'seriesId'),
-      userId: this.getStringParam(params, 'userId'),
-      candidateForStandardizationOnly: this.getBooleanParam(
+      searchQuery: getStringParam(params, 'searchQuery'),
+      seriesId: getStringParam(params, 'seriesId'),
+      userId: getStringParam(params, 'userId'),
+      candidateForStandardizationOnly: getBooleanParam(
         params,
         'candidateForStandardizationOnly',
       ),
@@ -511,23 +512,13 @@ export class ReviewSearchComponent {
   }
 
   private parsePageFromQueryParams(params: Params): number {
-    const pageValue = this.getStringParam(params, 'page');
+    const pageValue = getStringParam(params, 'page');
     const parsed = Number.parseInt(pageValue, 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
   }
 
-  private getStringParam(params: Params, key: string): string {
-    const value = params[key];
-    return typeof value === 'string' ? value : '';
-  }
-
-  private getBooleanParam(params: Params, key: string): boolean {
-    const value = params[key];
-    return value === 'true' || value === '1';
-  }
-
   private getDateParam(params: Params, key: string): string {
-    const value = this.getStringParam(params, key);
+    const value = getStringParam(params, key);
     return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
   }
 
@@ -554,69 +545,5 @@ export class ReviewSearchComponent {
       endDate: f.endDate || undefined,
       page: this.currentPage() > 1 ? String(this.currentPage()) : undefined,
     };
-  }
-
-  private syncQueryParams(): void {
-    const currentQueryParams = this.route.snapshot.queryParams as Record<string, unknown>;
-    const queryParams = this.getMergedQueryParams(currentQueryParams);
-
-    if (this.areQueryParamsEqual(currentQueryParams, queryParams)) {
-      return;
-    }
-
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams,
-      replaceUrl: true,
-    });
-  }
-
-  private getMergedQueryParams(
-    currentQueryParams: Record<string, unknown>,
-  ): Record<string, string | undefined> {
-    const preservedParams: Record<string, string | undefined> = {};
-
-    Object.entries(currentQueryParams).forEach(([key, value]) => {
-      if (!FILTER_QUERY_PARAM_KEYS.has(key) && typeof value === 'string' && value) {
-        preservedParams[key] = value;
-      }
-    });
-
-    return {
-      ...preservedParams,
-      ...this.getFilterQueryParams(),
-    };
-  }
-
-  private areQueryParamsEqual(
-    current: Record<string, unknown>,
-    next: Record<string, string | undefined>,
-  ): boolean {
-    const normalize = (params: Record<string, unknown>): Record<string, string> => {
-      const normalized: Record<string, string> = {};
-
-      Object.entries(params).forEach(([key, value]) => {
-        if (typeof value === 'string' && value) {
-          normalized[key] = value;
-        }
-      });
-
-      return normalized;
-    };
-
-    const normalizedCurrent = normalize(current);
-    const normalizedNext = normalize(next);
-
-    const currentKeys = Object.keys(normalizedCurrent).sort();
-    const nextKeys = Object.keys(normalizedNext).sort();
-
-    if (currentKeys.length !== nextKeys.length) {
-      return false;
-    }
-
-    return currentKeys.every(
-      (key, index) =>
-        key === nextKeys[index] && normalizedCurrent[key] === normalizedNext[key],
-    );
   }
 }

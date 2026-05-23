@@ -1213,16 +1213,13 @@ export class DriverUserDetailComponent implements OnInit {
   private buildCombinedNote(userNote: string, profiles: any[]): string {
     const parts: string[] = [];
 
-    // Add user note if it exists
     if (userNote && userNote.trim()) {
-      parts.push(`--- User Note ---\n${userNote.trim()}`);
+      parts.push(`[[USER_NOTE]]\n${userNote.trim()}`);
     }
 
-    // Add driver notes for each profile
     for (const profile of profiles) {
       if (profile.note && profile.note.trim()) {
-        const driverInfo = `#${profile.driverNumber} - ${profile.seriesName}`;
-        parts.push(`--- ${driverInfo} ---\n${profile.note.trim()}`);
+        parts.push(`[[DRIVER_NOTE:${profile.driverNumber}:${profile.seriesName}]]\n${profile.note.trim()}`);
       }
     }
 
@@ -1242,9 +1239,7 @@ export class DriverUserDetailComponent implements OnInit {
     for (const line of lines) {
       const trimmedLine = line.trim();
 
-      // Check for user note delimiter
-      if (trimmedLine === "--- User Note ---") {
-        // Save previous note if exists
+      if (trimmedLine === "[[USER_NOTE]]") {
         if (currentDriverKey) {
           driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
         } else if (currentNote.length > 0) {
@@ -1255,10 +1250,8 @@ export class DriverUserDetailComponent implements OnInit {
         continue;
       }
 
-      // Check for driver note delimiter (format: --- #123 - Series Name ---)
-      const driverMatch = trimmedLine.match(/^---\s*#(\d+)\s*-\s*([^(-]+)\s*---$/);
+      const driverMatch = trimmedLine.match(/^\[\[DRIVER_NOTE:(\d+):(.+)\]\]$/);
       if (driverMatch) {
-        // Save previous note if exists
         if (currentDriverKey) {
           driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
         } else if (currentNote.length > 0) {
@@ -1269,11 +1262,9 @@ export class DriverUserDetailComponent implements OnInit {
         continue;
       }
 
-      // Add line to current note
       currentNote.push(line);
     }
 
-    // Save last note
     if (currentDriverKey) {
       driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
     } else if (currentNote.length > 0) {
@@ -1310,25 +1301,31 @@ export class DriverUserDetailComponent implements OnInit {
           this.staffNoteDraft(),
         );
 
-        // Save user note
-        await this.convex.mutation(this.convex.api.users.updateNote, {
-          userId: this.userId as any,
-          note: userNote,
-          currentUserId,
-        });
+        const mutations: Promise<void>[] = [];
 
-        // Save each driver note
+        mutations.push(
+          this.convex.mutation(this.convex.api.users.updateNote, {
+            userId: this.userId as any,
+            note: userNote,
+            currentUserId,
+          }),
+        );
+
         const profiles = this.profile()?.profiles || [];
         for (const profile of profiles) {
           const driverKey = `${profile.driverNumber}-${profile.seriesName}`;
           const driverNote = driverNotes.get(driverKey) ?? "";
 
-          await this.convex.mutation(this.convex.api.drivers.updateNote, {
-            driverId: profile.driverId as any,
-            note: driverNote,
-            currentUserId,
-          });
+          mutations.push(
+            this.convex.mutation(this.convex.api.drivers.updateNote, {
+              driverId: profile.driverId as any,
+              note: driverNote,
+              currentUserId,
+            }),
+          );
         }
+
+        await Promise.all(mutations);
 
         this.toast.success("Staff notes updated");
       }

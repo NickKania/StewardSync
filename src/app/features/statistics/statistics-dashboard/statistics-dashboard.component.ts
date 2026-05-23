@@ -26,6 +26,7 @@ import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
 import { SidebarStateService } from "@core/services/sidebar-state.service";
 import { STATISTICS_TABS, StatisticsTabId } from "@core/models";
+import { areQueryParamsEqual } from "@core/utils/query-params.utils";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { CardComponent } from "@shared/components/card/card.component";
@@ -1855,7 +1856,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     >;
     const queryParams = this.getMergedQueryParams(currentQueryParams, params);
 
-    if (this.areQueryParamsEqual(currentQueryParams, queryParams)) {
+    if (areQueryParamsEqual(currentQueryParams, queryParams)) {
       return;
     }
 
@@ -1886,37 +1887,6 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
     });
 
     return mergedParams;
-  }
-
-  private areQueryParamsEqual(
-    current: Record<string, unknown>,
-    next: Record<string, string | undefined>,
-  ): boolean {
-    const normalize = (params: Record<string, unknown>): Record<string, string> => {
-      const normalized: Record<string, string> = {};
-
-      Object.entries(params).forEach(([key, value]) => {
-        if (typeof value === "string" && value) {
-          normalized[key] = value;
-        }
-      });
-
-      return normalized;
-    };
-
-    const normalizedCurrent = normalize(current);
-    const normalizedNext = normalize(next);
-    const currentKeys = Object.keys(normalizedCurrent).sort();
-    const nextKeys = Object.keys(normalizedNext).sort();
-
-    if (currentKeys.length !== nextKeys.length) {
-      return false;
-    }
-
-    return currentKeys.every(
-      (key, index) =>
-        key === nextKeys[index] && normalizedCurrent[key] === normalizedNext[key],
-    );
   }
 
   private setupFilterDebounce(): void {

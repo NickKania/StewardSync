@@ -13,6 +13,7 @@ import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Params, Router, RouterLink } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
 import { Series } from "@core/models/series.model";
+import { getStringParam, getBooleanParam, syncQueryParams } from "@core/utils/query-params.utils";
 import { CardComponent } from "@shared/components/card/card.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
@@ -292,15 +293,17 @@ export class DriverListComponent implements OnInit, OnDestroy {
     }
   }
 
-  async onSeriesChange(seriesId: string, syncQueryParams = true): Promise<void> {
+  private readonly driverFilterKeys = new Set(["search", "series", "class", "showInactive"]);
+
+  async onSeriesChange(seriesId: string, doSync = true): Promise<void> {
     this.selectedSeriesId.set(seriesId || "");
     this.selectedClassName.set("");
 
     if (!seriesId) {
       this.seriesDrivers.set([]);
       this.filteredSeriesDrivers.set([]);
-      if (syncQueryParams) {
-        this.syncQueryParams();
+      if (doSync) {
+        syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
       }
       return;
     }
@@ -323,36 +326,36 @@ export class DriverListComponent implements OnInit, OnDestroy {
       this.loading.set(false);
     }
 
-    if (syncQueryParams) {
-      this.syncQueryParams();
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
     }
   }
 
-  onSearchChange(value: string, syncQueryParams = true): void {
+  onSearchChange(value: string, doSync = true): void {
     this.searchTerm.set(value || "");
     if (this.selectedSeriesId()) {
       this.filterSeriesDrivers();
     }
-    if (syncQueryParams) {
-      this.syncQueryParams();
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
     }
   }
 
-  onClassChange(value: string, syncQueryParams = true): void {
+  onClassChange(value: string, doSync = true): void {
     this.selectedClassName.set(value || "");
     this.filterSeriesDrivers();
-    if (syncQueryParams) {
-      this.syncQueryParams();
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
     }
   }
 
-  onShowInactiveChange(value: boolean, syncQueryParams = true): void {
+  onShowInactiveChange(value: boolean, doSync = true): void {
     this.showInactive.set(Boolean(value));
     if (this.selectedSeriesId()) {
       this.filterSeriesDrivers();
     }
-    if (syncQueryParams) {
-      this.syncQueryParams();
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.driverFilterKeys);
     }
   }
 
@@ -394,10 +397,10 @@ export class DriverListComponent implements OnInit, OnDestroy {
   }
 
   private applyQueryParams(params: Params): void {
-    const nextSearch = this.getStringParam(params, "search");
-    const nextSeries = this.getStringParam(params, "series");
-    const nextClass = this.getStringParam(params, "class");
-    const nextShowInactive = this.getBooleanParam(params, "showInactive");
+    const nextSearch = getStringParam(params, "search");
+    const nextSeries = getStringParam(params, "series");
+    const nextClass = getStringParam(params, "class");
+    const nextShowInactive = getBooleanParam(params, "showInactive");
 
     const searchChanged = nextSearch !== this.searchTerm();
     const seriesChanged = nextSeries !== this.selectedSeriesId();
@@ -438,78 +441,5 @@ export class DriverListComponent implements OnInit, OnDestroy {
       class: this.selectedSeriesId() ? this.selectedClassName() || undefined : undefined,
       showInactive: this.showInactive() ? "true" : undefined,
     };
-  }
-
-  private syncQueryParams(): void {
-    const currentQueryParams = this.route.snapshot.queryParams as Record<string, unknown>;
-    const queryParams = this.getMergedQueryParams(currentQueryParams);
-
-    if (this.areQueryParamsEqual(currentQueryParams, queryParams)) {
-      return;
-    }
-
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams,
-    });
-  }
-
-  private getMergedQueryParams(
-    currentQueryParams: Record<string, unknown>,
-  ): Record<string, string | undefined> {
-    const preservedParams: Record<string, string | undefined> = {};
-    const filterKeys = new Set(["search", "series", "class", "showInactive"]);
-
-    Object.entries(currentQueryParams).forEach(([key, value]) => {
-      if (!filterKeys.has(key) && typeof value === "string" && value) {
-        preservedParams[key] = value;
-      }
-    });
-
-    return {
-      ...preservedParams,
-      ...this.getFilterQueryParams(),
-    };
-  }
-
-  private areQueryParamsEqual(
-    current: Record<string, unknown>,
-    next: Record<string, string | undefined>,
-  ): boolean {
-    const normalize = (params: Record<string, unknown>): Record<string, string> => {
-      const normalized: Record<string, string> = {};
-
-      Object.entries(params).forEach(([key, value]) => {
-        if (typeof value === "string" && value) {
-          normalized[key] = value;
-        }
-      });
-
-      return normalized;
-    };
-
-    const normalizedCurrent = normalize(current);
-    const normalizedNext = normalize(next);
-    const currentKeys = Object.keys(normalizedCurrent).sort();
-    const nextKeys = Object.keys(normalizedNext).sort();
-
-    if (currentKeys.length !== nextKeys.length) {
-      return false;
-    }
-
-    return currentKeys.every(
-      (key, index) =>
-        key === nextKeys[index] && normalizedCurrent[key] === normalizedNext[key],
-    );
-  }
-
-  private getStringParam(params: Params, key: string): string {
-    const value = params[key];
-    return typeof value === "string" ? value : "";
-  }
-
-  private getBooleanParam(params: Params, key: string): boolean {
-    const value = params[key];
-    return value === "true" || value === "1";
   }
 }

@@ -13,6 +13,7 @@ import { FormsModule } from "@angular/forms";
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
 import { REPORT_TABS, ReportTabId } from "@core/models";
+import { syncQueryParams } from "@core/utils/query-params.utils";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
@@ -496,27 +497,29 @@ export class ReportListComponent implements OnInit, OnDestroy {
     this.unsubscribes.push(() => queryParamsSubscription.unsubscribe());
   }
 
+  private readonly reportFilterKeys = new Set(["series", "status", "event", "race"]);
+
   onSeriesChange(): void {
     this.selectedEvent = "";
     this.selectedRace = "";
     this.filterReports();
-    this.syncQueryParams();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.reportFilterKeys);
   }
 
   onEventChange(): void {
     this.selectedRace = "";
     this.filterReports();
-    this.syncQueryParams();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.reportFilterKeys);
   }
 
   onStatusChange(): void {
     this.filterReports();
-    this.syncQueryParams();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.reportFilterKeys);
   }
 
   onRaceChange(): void {
     this.filterReports();
-    this.syncQueryParams();
+    syncQueryParams(this.router, this.route, this.getFilterQueryParams(), this.reportFilterKeys);
   }
 
   filterReports(): void {
@@ -633,68 +636,5 @@ export class ReportListComponent implements OnInit, OnDestroy {
       event: this.selectedEvent || undefined,
       race: this.selectedRace || undefined,
     };
-  }
-
-  private syncQueryParams(): void {
-    const currentQueryParams = this.route.snapshot.queryParams as Record<string, unknown>;
-    const queryParams = this.getMergedQueryParams(currentQueryParams);
-
-    if (this.areQueryParamsEqual(currentQueryParams, queryParams)) {
-      return;
-    }
-
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams,
-    });
-  }
-
-  private getMergedQueryParams(
-    currentQueryParams: Record<string, unknown>,
-  ): Record<string, string | undefined> {
-    const preservedParams: Record<string, string | undefined> = {};
-    const filterKeys = new Set(["series", "status", "event", "race"]);
-
-    Object.entries(currentQueryParams).forEach(([key, value]) => {
-      if (!filterKeys.has(key) && typeof value === "string" && value) {
-        preservedParams[key] = value;
-      }
-    });
-
-    return {
-      ...preservedParams,
-      ...this.getFilterQueryParams(),
-    };
-  }
-
-  private areQueryParamsEqual(
-    current: Record<string, unknown>,
-    next: Record<string, string | undefined>,
-  ): boolean {
-    const normalize = (params: Record<string, unknown>): Record<string, string> => {
-      const normalized: Record<string, string> = {};
-
-      Object.entries(params).forEach(([key, value]) => {
-        if (typeof value === "string" && value) {
-          normalized[key] = value;
-        }
-      });
-
-      return normalized;
-    };
-
-    const normalizedCurrent = normalize(current);
-    const normalizedNext = normalize(next);
-    const currentKeys = Object.keys(normalizedCurrent).sort();
-    const nextKeys = Object.keys(normalizedNext).sort();
-
-    if (currentKeys.length !== nextKeys.length) {
-      return false;
-    }
-
-    return currentKeys.every(
-      (key, index) =>
-        key === nextKeys[index] && normalizedCurrent[key] === normalizedNext[key],
-    );
   }
 }

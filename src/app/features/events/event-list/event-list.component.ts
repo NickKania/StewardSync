@@ -5,6 +5,7 @@ import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ConvexService } from '@core/services/convex.service';
 import { Series } from '@core/models/series.model';
+import { getStringParam, syncQueryParams } from '@core/utils/query-params.utils';
 import { CardComponent } from '@shared/components/card/card.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { LoadingComponent } from '@shared/components/loading/loading.component';
@@ -133,15 +134,19 @@ export class EventListComponent implements OnInit, OnDestroy {
     let eventsLoaded = false;
     let seriesLoaded = false;
 
+    const markLoaded = () => {
+      if (eventsLoaded && seriesLoaded) {
+        this.loading.set(false);
+      }
+    };
+
     const eventsQuery = this.convex.createReactiveQuery(
       this.convex.api.events.list,
       {},
       (data) => {
         this.events.set(data);
         eventsLoaded = true;
-        if (eventsLoaded && seriesLoaded) {
-          this.loading.set(false);
-        }
+        markLoaded();
       }
     );
     this.unsubscribes.push(eventsQuery.unsubscribe);
@@ -152,23 +157,29 @@ export class EventListComponent implements OnInit, OnDestroy {
       (data) => {
         this.series.set(data);
         seriesLoaded = true;
-        if (eventsLoaded && seriesLoaded) {
-          this.loading.set(false);
-        }
+        markLoaded();
       }
     );
     this.unsubscribes.push(seriesQuery.unsubscribe);
+
+    const timeoutId = setTimeout(() => {
+      if (!eventsLoaded || !seriesLoaded) {
+        console.warn('Event list loading timed out');
+        this.loading.set(false);
+      }
+    }, 15000);
+    this.unsubscribes.push(() => clearTimeout(timeoutId));
   }
 
-  onSeriesChange(seriesId: string, syncQueryParams = true): void {
+  onSeriesChange(seriesId: string, doSync = true): void {
     this.selectedSeries.set(seriesId || '');
-    if (syncQueryParams) {
-      this.syncQueryParams();
+    if (doSync) {
+      syncQueryParams(this.router, this.route, this.getFilterQueryParams(), new Set(['series']));
     }
   }
 
   private applyQueryParams(params: Params): void {
-    const nextSeries = this.getStringParam(params, 'series');
+    const nextSeries = getStringParam(params, 'series');
     if (nextSeries !== this.selectedSeries()) {
       this.onSeriesChange(nextSeries, false);
     }
@@ -178,72 +189,6 @@ export class EventListComponent implements OnInit, OnDestroy {
     return {
       series: this.selectedSeries() || undefined,
     };
-  }
-
-  private syncQueryParams(): void {
-    const currentQueryParams = this.route.snapshot.queryParams as Record<string, unknown>;
-    const queryParams = this.getMergedQueryParams(currentQueryParams);
-    if (this.areQueryParamsEqual(currentQueryParams, queryParams)) {
-      return;
-    }
-
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams,
-    });
-  }
-
-  private getMergedQueryParams(
-    currentQueryParams: Record<string, unknown>,
-  ): Record<string, string | undefined> {
-    const preservedParams: Record<string, string | undefined> = {};
-
-    Object.entries(currentQueryParams).forEach(([key, value]) => {
-      if (key !== 'series' && typeof value === 'string' && value) {
-        preservedParams[key] = value;
-      }
-    });
-
-    return {
-      ...preservedParams,
-      ...this.getFilterQueryParams(),
-    };
-  }
-
-  private areQueryParamsEqual(
-    current: Record<string, unknown>,
-    next: Record<string, string | undefined>,
-  ): boolean {
-    const normalize = (params: Record<string, unknown>): Record<string, string> => {
-      const normalized: Record<string, string> = {};
-
-      Object.entries(params).forEach(([key, value]) => {
-        if (typeof value === 'string' && value) {
-          normalized[key] = value;
-        }
-      });
-
-      return normalized;
-    };
-
-    const normalizedCurrent = normalize(current);
-    const normalizedNext = normalize(next);
-    const currentKeys = Object.keys(normalizedCurrent).sort();
-    const nextKeys = Object.keys(normalizedNext).sort();
-
-    if (currentKeys.length !== nextKeys.length) {
-      return false;
-    }
-
-    return currentKeys.every(
-      (key, index) =>
-        key === nextKeys[index] && normalizedCurrent[key] === normalizedNext[key],
-    );
-  }
-
-  private getStringParam(params: Params, key: string): string {
-    const value = params[key];
-    return typeof value === 'string' ? value : '';
   }
 
   getEventStatus(eventDate: number): 'success' | 'warning' | 'info' {
