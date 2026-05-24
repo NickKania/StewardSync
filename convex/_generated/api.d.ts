@@ -38,6 +38,7 @@ import type * as reviews from "../reviews.js";
 import type * as scheduledImports from "../scheduledImports.js";
 import type * as seed from "../seed.js";
 import type * as series from "../series.js";
+import type * as seriesCopy from "../seriesCopy.js";
 import type * as seriesPenalties from "../seriesPenalties.js";
 import type * as seriesPenaltyThresholds from "../seriesPenaltyThresholds.js";
 import type * as statistics from "../statistics.js";
@@ -81,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   scheduledImports: typeof scheduledImports;
   seed: typeof seed;
   series: typeof series;
+  seriesCopy: typeof seriesCopy;
   seriesPenalties: typeof seriesPenalties;
   seriesPenaltyThresholds: typeof seriesPenaltyThresholds;
   statistics: typeof statistics;

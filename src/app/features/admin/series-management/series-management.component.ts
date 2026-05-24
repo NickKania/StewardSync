@@ -23,6 +23,8 @@ import {
   Penalty,
   SeriesPenalty,
   SeriesPenaltyThreshold,
+  SeriesCopyPreview,
+  SeriesCopyResult,
   ScheduledImportStatus,
 } from "@core/models/series.model";
 import { DriverClass } from "@core/models/driver.model";
@@ -80,27 +82,54 @@ import { Id } from "@convex/_generated/dataModel";
           @for (s of series(); track s._id) {
             <app-card>
               <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {{ s.name }}
-                      @if (s.isActive === false) {
-                        <app-badge variant="default" class="ml-2"
-                          >Inactive</app-badge
-                        >
-                      }
-                    </h3>
+                <div
+                  class="flex items-center justify-between gap-4"
+                >
+                  <div
+                    class="flex-1 cursor-pointer"
+                    role="button"
+                    tabindex="0"
+                    [attr.aria-expanded]="isSeriesExpanded(s._id)"
+                    (click)="toggleSeriesExpanded(s._id)"
+                    (keydown.enter)="toggleSeriesExpanded(s._id)"
+                    (keydown.space)="toggleSeriesExpanded(s._id); $event.preventDefault()"
+                  >
+                    <div class="flex items-center gap-2">
+                      <svg
+                        class="w-5 h-5 text-gray-400 transition-transform dark:text-gray-500"
+                        [class.rotate-90]="isSeriesExpanded(s._id)"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 5l7 7-7 7"
+                        ></path>
+                      </svg>
+                      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {{ s.name }}
+                        @if (s.isActive === false) {
+                          <app-badge variant="default" class="ml-2"
+                            >Inactive</app-badge
+                          >
+                        }
+                      </h3>
+                    </div>
                     @if (s.description) {
-                      <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">
+                      <p class="text-sm text-gray-500 mt-1 pl-7 dark:text-gray-400">
                         {{ s.description }}
                       </p>
                     }
-                    @if (s.simgridLink) {
+                    @if (s.simgridLink && isSeriesExpanded(s._id)) {
                       <a
                         [href]="s.simgridLink"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-sm text-primary-600 hover:text-primary-700 mt-1 inline-flex items-center gap-1"
+                        class="text-sm text-primary-600 hover:text-primary-700 mt-1 ml-7 inline-flex items-center gap-1"
+                        (click)="$event.stopPropagation()"
                       >
                         <svg
                           class="w-4 h-4"
@@ -119,13 +148,43 @@ import { Id } from "@convex/_generated/dataModel";
                       </a>
                     }
                   </div>
-                  <div class="flex gap-2">
+                  <div
+                    class="flex flex-wrap items-center justify-end gap-2"
+                  >
+                    @if (!isSeriesExpanded(s._id)) {
+                      <span class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ getSeriesPenalties(s._id).length }} penalties |
+                        {{ getSeriesPenaltiesBySeries(s._id).length }} series penalties |
+                        {{ getDriverClassesBySeries(s._id).length }} classes
+                      </span>
+                    }
                     <app-button
                       variant="secondary"
                       size="sm"
                       (click)="editSeries(s)"
                     >
                       Edit
+                    </app-button>
+                    <app-button
+                      variant="secondary"
+                      size="sm"
+                      (click)="openCopySeriesModal(s)"
+                      [disabled]="series().length < 2"
+                    >
+                      <svg
+                        class="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        ></path>
+                      </svg>
+                      Copy From
                     </app-button>
                     @if (s.simgridLink) {
                       <app-button
@@ -181,8 +240,9 @@ import { Id } from "@convex/_generated/dataModel";
                   </div>
                 </div>
 
-                <!-- Penalties for this series -->
-                <div class="border-t pt-4 dark:border-gray-700">
+                @if (isSeriesExpanded(s._id)) {
+                  <!-- Penalties for this series -->
+                  <div class="border-t pt-4 dark:border-gray-700">
                   <div class="flex items-center justify-between mb-3">
                     <h4
                       class="text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -308,10 +368,10 @@ import { Id } from "@convex/_generated/dataModel";
                       No penalties configured
                     </p>
                   }
-                </div>
+                  </div>
 
-                <!-- Series Penalties for this series -->
-                <div class="border-t pt-4 dark:border-gray-700">
+                  <!-- Series Penalties for this series -->
+                  <div class="border-t pt-4 dark:border-gray-700">
                   <div class="flex items-center justify-between mb-3">
                     <h4
                       class="text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -457,10 +517,10 @@ import { Id } from "@convex/_generated/dataModel";
                       No series penalties configured
                     </p>
                   }
-                </div>
+                  </div>
 
-                 <!-- Driver Classes Management -->
-                 <div class="border-t pt-4 dark:border-gray-700">
+                  <!-- Driver Classes Management -->
+                  <div class="border-t pt-4 dark:border-gray-700">
                    <div class="flex items-center justify-between mb-3">
                      <h4
                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -522,11 +582,11 @@ import { Id } from "@convex/_generated/dataModel";
                        No driver classes found
                      </p>
                    }
-                 </div>
+                  </div>
 
-                 <!-- Scheduled Import -->
-                 @if (s.simgridLink) {
-                   <div class="border-t pt-4 dark:border-gray-700">
+                  <!-- Scheduled Import -->
+                  @if (s.simgridLink) {
+                    <div class="border-t pt-4 dark:border-gray-700">
                      <div class="flex items-center justify-between mb-3">
                        <h4
                          class="text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -631,8 +691,9 @@ import { Id } from "@convex/_generated/dataModel";
                          </p>
                        }
                      }
-                   </div>
-                 }
+                    </div>
+                  }
+                }
               </div>
             </app-card>
           }
@@ -647,16 +708,235 @@ import { Id } from "@convex/_generated/dataModel";
         </app-card>
       }
 
+      <!-- Copy Series Modal -->
+      @if (showCopySeriesModal) {
+        <div
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          (click)="closeCopySeriesModal()"
+        >
+          <div
+            class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="p-6 border-b dark:border-gray-700">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Copy Series Configuration
+              </h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Target: {{ copyTargetSeries?.name }}
+              </p>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-5">
+              <div>
+                <label class="label">Source Series</label>
+                <select
+                  class="input w-full"
+                  [(ngModel)]="copySourceSeriesId"
+                  (ngModelChange)="copyPreview.set(null); copyResult.set(null)"
+                >
+                  <option value="">Select a series to copy from</option>
+                  @for (source of copySourceSeriesOptions(); track source._id) {
+                    <option [value]="source._id">{{ source.name }}</option>
+                  }
+                </select>
+              </div>
+
+              @if (copyLoading()) {
+                <app-loading text="Preparing copy preview..." />
+              }
+
+              @if (copyPreview(); as preview) {
+                <div class="grid md:grid-cols-4 gap-3">
+                  <div class="rounded-lg border p-3 dark:border-gray-700">
+                    <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                      {{ preview.penalties.toCreate.length }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      penalties to create
+                    </div>
+                  </div>
+                  <div class="rounded-lg border p-3 dark:border-gray-700">
+                    <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                      {{ copySeriesPenaltiesToCreate(preview) }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      series penalties to create
+                    </div>
+                  </div>
+                  <div class="rounded-lg border p-3 dark:border-gray-700">
+                    <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                      {{ copyThresholdCount(preview) }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      thresholds
+                    </div>
+                  </div>
+                  <div class="rounded-lg border p-3 dark:border-gray-700">
+                    <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                      {{ copySessionCount(preview) }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      sessions to create
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-4">
+                  <section class="border-t pt-4 dark:border-gray-700">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Penalties
+                    </h4>
+                    @if (preview.penalties.toCreate.length > 0) {
+                      <div class="flex flex-wrap gap-2">
+                        @for (penalty of preview.penalties.toCreate; track penalty.name) {
+                          <app-badge variant="success">{{ penalty.name }}</app-badge>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        No new penalties to create.
+                      </p>
+                    }
+                    @if (preview.penalties.alreadyExists.length > 0) {
+                      <p class="text-xs text-warning mt-2">
+                        Skipped existing: {{ preview.penalties.alreadyExists.join(", ") }}
+                      </p>
+                    }
+                  </section>
+
+                  <section class="border-t pt-4 dark:border-gray-700">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Series Penalties
+                    </h4>
+                    @if (preview.seriesPenalties.length > 0) {
+                      <div class="space-y-3">
+                        @for (seriesPenalty of preview.seriesPenalties; track seriesPenalty.penaltyName) {
+                          <div class="rounded-lg border p-3 dark:border-gray-700">
+                            <div class="flex flex-wrap items-center gap-2">
+                              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
+                                {{ seriesPenalty.penaltyName }}
+                              </span>
+                              @if (seriesPenalty.alreadyExists) {
+                                <app-badge variant="warning" size="sm">Skipped</app-badge>
+                              } @else {
+                                <app-badge variant="success" size="sm">Create</app-badge>
+                              }
+                            </div>
+                            @if (!seriesPenalty.alreadyExists && seriesPenalty.thresholds.length > 0) {
+                              <div class="mt-2 space-y-2">
+                                @for (threshold of seriesPenalty.thresholds; track threshold.threshold) {
+                                  <div class="text-xs text-gray-600 dark:text-gray-400">
+                                    <span class="font-medium">{{ threshold.threshold }} pts</span>
+                                    @if (threshold.requiresReview) {
+                                      <span> - review required</span>
+                                    }
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                      @for (driverClass of threshold.matchedClasses || []; track driverClass.id) {
+                                        <app-badge variant="success" size="sm">
+                                          {{ driverClass.displayName || driverClass.className }}
+                                        </app-badge>
+                                      }
+                                      @for (className of threshold.unmatchedClasses; track className) {
+                                        <app-badge variant="danger" size="sm">
+                                          Missing: {{ className }}
+                                        </app-badge>
+                                      }
+                                    </div>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        No series penalties found in the source series.
+                      </p>
+                    }
+                  </section>
+
+                  <section class="border-t pt-4 dark:border-gray-700">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Sessions
+                    </h4>
+                    @if (copySessionCount(preview) > 0) {
+                      <div class="space-y-2">
+                        @for (event of copySessionEvents(preview); track event.eventNumber) {
+                          <div class="text-sm text-gray-700 dark:text-gray-300">
+                            <span class="font-medium">Event {{ event.eventNumber }}:</span>
+                            {{ event.sessions.join(", ") }}
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        No new sessions to create.
+                      </p>
+                    }
+                    @if (preview.sessions.eventsNotFound.length > 0) {
+                      <p class="text-xs text-warning mt-2">
+                        Missing target events: {{ preview.sessions.eventsNotFound.join(", ") }}
+                      </p>
+                    }
+                  </section>
+                </div>
+              }
+
+              @if (copyResult(); as result) {
+                <div class="rounded-lg border border-success-border bg-success-bg p-4">
+                  <p class="text-sm font-medium text-success-text">
+                    Copied {{ result.penaltiesCreated }} penalties,
+                    {{ result.seriesPenaltiesCreated }} series penalties,
+                    {{ result.thresholdsCreated }} thresholds, and
+                    {{ result.sessionsCreated }} sessions.
+                  </p>
+                  @if (result.warnings.length > 0) {
+                    <ul class="mt-2 text-xs text-warning space-y-1">
+                      @for (warning of result.warnings; track warning) {
+                        <li>{{ warning }}</li>
+                      }
+                    </ul>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="p-6 border-t dark:border-gray-700 flex gap-2 justify-end">
+              <app-button variant="secondary" (click)="closeCopySeriesModal()">
+                Cancel
+              </app-button>
+              <app-button
+                variant="secondary"
+                (click)="previewCopySeries()"
+                [disabled]="!copySourceSeriesId || copyLoading()"
+              >
+                Preview Copy
+              </app-button>
+              <app-button
+                (click)="executeCopySeries()"
+                [disabled]="!copyPreview() || copyLoading()"
+              >
+                Execute Copy
+              </app-button>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Series Modal -->
       @if (showSeriesModal) {
         <div
-          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
         >
-          <div class="bg-white rounded-lg p-6 w-full max-w-md dark:bg-gray-800">
-            <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">
+          <div
+            class="bg-white rounded-lg w-full max-w-md max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden dark:bg-gray-800"
+          >
+            <h3 class="text-lg font-semibold px-6 pt-6 pb-4 dark:text-gray-100">
               {{ editingSeriesId ? "Edit" : "Add" }} Series
             </h3>
-            <div class="space-y-4">
+            <div class="space-y-4 flex-1 overflow-y-auto px-6 pb-4 min-h-0">
               <div>
                 <label
                   class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
@@ -800,17 +1080,19 @@ import { Id } from "@convex/_generated/dataModel";
                   placeholder="Add notes to display when changing driver classes in this series..."
                 ></textarea>
               </div>
-              <div class="flex gap-2 justify-end">
-                <app-button variant="secondary" (click)="closeSeriesModal()"
-                  >Cancel</app-button
-                >
-                <app-button
-                  (click)="saveSeries()"
-                  [disabled]="!seriesForm.name"
-                >
-                  {{ editingSeriesId ? "Update" : "Create" }}
-                </app-button>
-              </div>
+            </div>
+            <div
+              class="flex gap-2 justify-end border-t px-6 py-4 dark:border-gray-700"
+            >
+              <app-button variant="secondary" (click)="closeSeriesModal()"
+                >Cancel</app-button
+              >
+              <app-button
+                (click)="saveSeries()"
+                [disabled]="!seriesForm.name"
+              >
+                {{ editingSeriesId ? "Update" : "Create" }}
+              </app-button>
             </div>
           </div>
         </div>
@@ -1356,11 +1638,13 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   availableDriverClasses = signal<DriverClass[]>([]);
   seriesPenaltyThresholds = signal<Map<string, any[]>>(new Map());
   loading = signal(true);
+  expandedSeriesIds = signal<Set<Id<"series">>>(new Set());
 
   showSeriesModal = false;
   showPenaltyModal = false;
   showSeriesPenaltyModal = false;
   showSeriesPenaltyThresholdModal = false;
+  showCopySeriesModal = false;
   editingSeriesId: Id<"series"> | null = null;
   editingPenaltyId: Id<"penalties"> | null = null;
   editingSeriesPenaltyId: Id<"seriesPenalties"> | null = null;
@@ -1430,6 +1714,10 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     this.selectedDriverClasses().filter((opt) => opt.selected),
   );
 
+  copySourceSeriesOptions = computed(() =>
+    this.series().filter((series) => series._id !== this.copyTargetSeries?._id),
+  );
+
   timezoneDisplay = computed(() => {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const offset = new Date().getTimezoneOffset();
@@ -1442,6 +1730,11 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   private unsubscribes: (() => void)[] = [];
   importing = signal(false);
   importResult = signal<{ created: number; skipped: number } | null>(null);
+  copyLoading = signal(false);
+  copyPreview = signal<SeriesCopyPreview | null>(null);
+  copyResult = signal<SeriesCopyResult | null>(null);
+  copyTargetSeries: Series | null = null;
+  copySourceSeriesId: Id<"series"> | "" = "";
 
   scheduledImportStatuses = signal<Map<Id<"series">, ScheduledImportStatus>>(new Map());
   showScheduleModal = false;
@@ -1538,6 +1831,22 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
 
   getSeriesPenalties(seriesId: Id<"series">): Penalty[] {
     return this.penalties().filter((p) => p.seriesId === seriesId);
+  }
+
+  isSeriesExpanded(seriesId: Id<"series">): boolean {
+    return this.expandedSeriesIds().has(seriesId);
+  }
+
+  toggleSeriesExpanded(seriesId: Id<"series">): void {
+    this.expandedSeriesIds.update((expandedSeriesIds) => {
+      const next = new Set(expandedSeriesIds);
+      if (next.has(seriesId)) {
+        next.delete(seriesId);
+      } else {
+        next.add(seriesId);
+      }
+      return next;
+    });
   }
 
   editSeries(series: Series): void {
@@ -1939,6 +2248,104 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     };
     this.thresholds = [];
     this.availableDriverClasses.set([]);
+  }
+
+  openCopySeriesModal(targetSeries: Series): void {
+    this.copyTargetSeries = targetSeries;
+    this.copySourceSeriesId = "";
+    this.copyPreview.set(null);
+    this.copyResult.set(null);
+    this.showCopySeriesModal = true;
+  }
+
+  closeCopySeriesModal(): void {
+    this.showCopySeriesModal = false;
+    this.copyTargetSeries = null;
+    this.copySourceSeriesId = "";
+    this.copyPreview.set(null);
+    this.copyResult.set(null);
+    this.copyLoading.set(false);
+  }
+
+  async previewCopySeries(): Promise<void> {
+    if (!this.copyTargetSeries || !this.copySourceSeriesId) return;
+
+    this.copyLoading.set(true);
+    this.copyResult.set(null);
+
+    try {
+      const preview = await this.convex.query(
+        (this.convex.api as any).seriesCopy.preview,
+        {
+          currentUserId: this.authService.requireUserId(),
+          sourceSeriesId: this.copySourceSeriesId,
+          targetSeriesId: this.copyTargetSeries._id,
+        },
+      );
+      this.copyPreview.set(preview);
+    } catch (error: any) {
+      alert(`Failed to preview copy: ${error.message}`);
+    } finally {
+      this.copyLoading.set(false);
+    }
+  }
+
+  async executeCopySeries(): Promise<void> {
+    if (!this.copyTargetSeries || !this.copySourceSeriesId || !this.copyPreview()) {
+      return;
+    }
+
+    this.copyLoading.set(true);
+
+    try {
+      const result = await this.convex.mutation(
+        (this.convex.api as any).seriesCopy.execute,
+        {
+          currentUserId: this.authService.requireUserId(),
+          sourceSeriesId: this.copySourceSeriesId,
+          targetSeriesId: this.copyTargetSeries._id,
+        },
+      );
+      this.copyResult.set(result);
+      alert(
+        `Copied ${result.penaltiesCreated} penalties, ${result.seriesPenaltiesCreated} series penalties, ${result.thresholdsCreated} thresholds, and ${result.sessionsCreated} sessions.`,
+      );
+      this.closeCopySeriesModal();
+    } catch (error: any) {
+      alert(`Failed to copy series configuration: ${error.message}`);
+    } finally {
+      this.copyLoading.set(false);
+    }
+  }
+
+  copySeriesPenaltiesToCreate(preview: SeriesCopyPreview): number {
+    return preview.seriesPenalties.filter((seriesPenalty) => !seriesPenalty.alreadyExists).length;
+  }
+
+  copyThresholdCount(preview: SeriesCopyPreview): number {
+    return preview.seriesPenalties
+      .filter((seriesPenalty) => !seriesPenalty.alreadyExists)
+      .reduce((total, seriesPenalty) => total + seriesPenalty.thresholds.length, 0);
+  }
+
+  copySessionCount(preview: SeriesCopyPreview): number {
+    return Object.values(preview.sessions.byEvent).reduce(
+      (total, event) => total + event.toCreate.length,
+      0,
+    );
+  }
+
+  copySessionEvents(preview: SeriesCopyPreview): Array<{
+    eventNumber: number;
+    sessions: string[];
+  }> {
+    return Object.entries(preview.sessions.byEvent)
+      .map(([eventNumber, event]) => ({
+        eventNumber: Number(eventNumber),
+        sessions: event.toCreate.map((session) => session.sessionName || `Race ${session.raceNumber}`),
+      }))
+      .filter((event) => event.sessions.length > 0)
+      .sort((a, b) => a.eventNumber - b.eventNumber);
   }
 
   async importEvents(seriesId: Id<"series">): Promise<void> {
