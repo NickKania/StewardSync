@@ -27,6 +27,16 @@ function buildSessionName(race: {
   return "Session";
 }
 
+function getRaceNumberFromSessionName(sessionName: string): number | undefined {
+  const raceMatch = /^race\s+(\d+)$/i.exec(sessionName.trim());
+  if (!raceMatch) return undefined;
+
+  const raceNumber = Number(raceMatch[1]);
+  return Number.isInteger(raceNumber) && raceNumber > 0
+    ? raceNumber
+    : undefined;
+}
+
 async function assertValidCopyRequest(
   ctx: any,
   args: {
@@ -344,14 +354,37 @@ export const execute = mutation({
       const targetEvent = targetEventsByNumber.get(Number(eventNumber));
       if (!targetEvent) continue;
 
+      const targetRaces = await ctx.db
+        .query("races")
+        .withIndex("by_event", (q: any) => q.eq("eventId", targetEvent._id))
+        .collect();
+      const usedRaceNumbers = new Set(
+        targetRaces
+          .map((race: any) => race.raceNumber)
+          .filter(
+            (raceNumber: unknown): raceNumber is number =>
+              typeof raceNumber === "number" && raceNumber > 0,
+          ),
+      );
+
       sessionsSkipped += eventPreview.alreadyExists.length;
       for (const session of eventPreview.toCreate) {
+        const sessionName = session.sessionName ?? buildSessionName(session);
+        const parsedRaceNumber = getRaceNumberFromSessionName(sessionName);
+        const raceNumber =
+          parsedRaceNumber !== undefined && !usedRaceNumbers.has(parsedRaceNumber)
+            ? parsedRaceNumber
+            : 0;
+
         await ctx.db.insert("races", {
           eventId: targetEvent._id,
-          raceNumber: session.raceNumber ?? 0,
-          sessionName: session.sessionName ?? buildSessionName(session),
+          raceNumber,
+          sessionName,
           createdAt: now,
         });
+        if (raceNumber > 0) {
+          usedRaceNumbers.add(raceNumber);
+        }
         sessionsCreated += 1;
       }
     }
