@@ -17,13 +17,14 @@ import {
 import { ConvexService } from "@core/services/convex.service";
 import { AuthService } from "@core/services/auth.service";
 import { ToastService } from "@core/services/toast.service";
+import { Penalty } from "@core/models/series.model";
+import { getReportingWindow } from "@core/utils/reporting-window";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { SearchSelectComponent } from "@shared/components/search-select/search-select.component";
 import { ToggleComponent } from "@shared/components/toggle/toggle.component";
-import { Penalty } from "@core/models/series.model";
 import { SelectOption } from "@shared/components/select/select.component";
 
 @Component({
@@ -631,12 +632,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       return true;
     }
 
-    const eventDate = new Date(event.eventDate);
-    const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-
-    const openTime = new Date(eventDate);
-    openTime.setUTCHours(hours, minutes, 0, 0);
-
+    const { openTime } = getReportingWindow(
+      event.eventDate,
+      series.reportingOpenTime,
+      series.reportingCloseDuration,
+    );
     const now = new Date();
 
     return now >= openTime;
@@ -658,12 +658,11 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
       return "";
     }
 
-    const eventDate = new Date(event.eventDate);
-    const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-
-    const openTime = new Date(eventDate);
-    openTime.setUTCHours(hours, minutes, 0, 0);
-
+    const { openTime } = getReportingWindow(
+      event.eventDate,
+      series.reportingOpenTime,
+      series.reportingCloseDuration,
+    );
     const now = new Date();
 
     if (now < openTime) {

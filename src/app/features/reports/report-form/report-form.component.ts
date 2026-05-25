@@ -18,6 +18,7 @@ import {
 import { ConvexService } from "@core/services/convex.service";
 import { ToastService } from "@core/services/toast.service";
 import { AuthService } from "@core/services/auth.service";
+import { getReportingWindow } from "@core/utils/reporting-window";
 import { CardComponent } from "@shared/components/card/card.component";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { InputComponent } from "@shared/components/input/input.component";
@@ -422,15 +423,11 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       return true;
     }
 
-    const eventDate = new Date(event.eventDate);
-    const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-
-    const openTime = new Date(eventDate);
-    openTime.setUTCHours(hours, minutes, 0, 0);
-
-    const closeTime = new Date(openTime);
-    closeTime.setHours(closeTime.getHours() + series.reportingCloseDuration);
-
+    const { openTime, closeTime } = getReportingWindow(
+      event.eventDate,
+      series.reportingOpenTime,
+      series.reportingCloseDuration,
+    );
     const now = new Date();
 
     return now >= openTime && now <= closeTime;
@@ -452,15 +449,11 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       return "";
     }
 
-    const eventDate = new Date(event.eventDate);
-    const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-
-    const openTime = new Date(eventDate);
-    openTime.setUTCHours(hours, minutes, 0, 0);
-
-    const closeTime = new Date(openTime);
-    closeTime.setHours(closeTime.getHours() + series.reportingCloseDuration);
-
+    const { openTime, closeTime } = getReportingWindow(
+      event.eventDate,
+      series.reportingOpenTime,
+      series.reportingCloseDuration,
+    );
     const now = new Date();
 
     if (now < openTime) {

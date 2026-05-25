@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { checkUserDriverConflict } from "./lib/reports";
+import { checkUserDriverConflict, getReportingWindow } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { requireRole } from "./lib/auth";
@@ -435,15 +435,11 @@ export const create = mutation({
 
     // Check if reporting window has closed
     if (series && series.reportingOpenTime && series.reportingCloseDuration) {
-      const eventDate = new Date(event.eventDate);
-      const [hours, minutes] = series.reportingOpenTime.split(":").map(Number);
-
-      const openTime = new Date(eventDate);
-      openTime.setUTCHours(hours, minutes, 0, 0);
-
-      const closeTime = new Date(openTime);
-      closeTime.setHours(closeTime.getHours() + series.reportingCloseDuration);
-
+      const { closeTime } = getReportingWindow(
+        new Date(event.eventDate),
+        series.reportingOpenTime,
+        series.reportingCloseDuration,
+      );
       const now = new Date();
       if (now > closeTime) {
         throw new UserFacingError(
