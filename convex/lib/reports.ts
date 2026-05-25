@@ -50,8 +50,9 @@ export function getReportingWindow(
       );
     }) ?? candidates[1];
 
-  const closeTime = new Date(openTime);
-  closeTime.setHours(closeTime.getHours() + reportingCloseDuration);
+  const closeTime = new Date(
+    openTime.getTime() + reportingCloseDuration * 60 * 60 * 1000,
+  );
 
   return { openTime, closeTime };
 }
