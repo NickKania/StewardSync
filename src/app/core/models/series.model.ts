@@ -110,3 +110,63 @@ export interface Penalty {
   createdAt: number;
   series?: Series;
 }
+
+export interface SeriesCopyPenaltyPreview {
+  name: string;
+  timePenalty: number;
+  selfReportReduction?: number;
+  timePenaltyLap1: number;
+  licensePoints: number;
+  allowNoDriverAtFault?: boolean;
+}
+
+export interface SeriesCopyThresholdPreview {
+  threshold: number;
+  requiresReview: boolean;
+  sourceClasses: string[];
+  matchedClassIds: Id<'driverClasses'>[];
+  matchedClasses?: Array<{
+    id: Id<'driverClasses'>;
+    className: string;
+    displayName: string;
+  }>;
+  unmatchedClasses: string[];
+}
+
+export interface SeriesCopySeriesPenaltyPreview {
+  penaltyName: string;
+  penaltyDescription?: string;
+  alreadyExists: boolean;
+  thresholds: SeriesCopyThresholdPreview[];
+}
+
+export interface SeriesCopySessionPreview {
+  raceNumber?: number;
+  sessionName?: string;
+}
+
+export interface SeriesCopyPreview {
+  penalties: {
+    toCreate: SeriesCopyPenaltyPreview[];
+    alreadyExists: string[];
+  };
+  seriesPenalties: SeriesCopySeriesPenaltyPreview[];
+  sessions: {
+    byEvent: Record<string, {
+      toCreate: SeriesCopySessionPreview[];
+      alreadyExists: string[];
+    }>;
+    eventsNotFound: number[];
+  };
+}
+
+export interface SeriesCopyResult {
+  penaltiesCreated: number;
+  penaltiesSkipped: number;
+  seriesPenaltiesCreated: number;
+  seriesPenaltiesSkipped: number;
+  thresholdsCreated: number;
+  sessionsCreated: number;
+  sessionsSkipped: number;
+  warnings: string[];
+}
