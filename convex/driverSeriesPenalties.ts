@@ -2,6 +2,7 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { getCurrentUserRole } from "./lib/auth";
+import { getEffectiveLicensePoints } from "./lib/penalties";
 
 const getLinkedRaceBanReview = async (ctx: any, dsp: any) => {
   if (dsp.raceBanReviewId) {
@@ -166,7 +167,7 @@ export const checkAndAssignThresholds = mutation({
           penalty = await ctx.db.get(report.appliedPenalty as any);
         }
 
-        const points = penalty?.licensePoints ?? 0;
+        const points = getEffectiveLicensePoints(penalty, report.isSelfReport);
         const driverId =
           report.atFaultDriverId?.toString() ||
           report.reportedDriverId.toString();

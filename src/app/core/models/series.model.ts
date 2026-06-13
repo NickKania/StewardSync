@@ -106,6 +106,7 @@ export interface Penalty {
   selfReportReduction?: number;
   timePenaltyLap1: number;
   licensePoints: number;
+  selfReportLicensePointReduction?: number;
   allowNoDriverAtFault?: boolean;
   createdAt: number;
   series?: Series;
@@ -117,6 +118,7 @@ export interface SeriesCopyPenaltyPreview {
   selfReportReduction?: number;
   timePenaltyLap1: number;
   licensePoints: number;
+  selfReportLicensePointReduction?: number;
   allowNoDriverAtFault?: boolean;
 }
 

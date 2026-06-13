@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { UserFacingError } from "./lib/errors";
 import type { Id } from "./_generated/dataModel";
+import { getEffectiveLicensePoints } from "./lib/penalties";
 
 export const assignPenaltiesForSeries = internalMutation({
   args: { seriesId: v.id("series") },
@@ -45,7 +46,7 @@ export const assignPenaltiesForSeries = internalMutation({
           penalty = await ctx.db.get(report.appliedPenalty as any);
         }
 
-        const points = penalty?.licensePoints ?? 0;
+        const points = getEffectiveLicensePoints(penalty, report.isSelfReport);
         const driverId =
           report.atFaultDriverId?.toString() ||
           report.reportedDriverId.toString();

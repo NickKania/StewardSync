@@ -85,6 +85,7 @@ export default defineSchema({
     selfReportReduction: v.optional(v.number()),
     timePenaltyLap1: v.number(),
     licensePoints: v.number(),
+    selfReportLicensePointReduction: v.optional(v.number()),
     allowNoDriverAtFault: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_series", ["seriesId"]),

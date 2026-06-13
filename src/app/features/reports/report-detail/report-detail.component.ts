@@ -20,6 +20,9 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { ModalComponent } from "@shared/components/modal/modal.component";
 import { EditDecisionComponent } from "../edit-decision/edit-decision.component";
+import {
+  getEffectiveLicensePoints as calculateEffectiveLicensePoints,
+} from "@core/utils/penalties";
 
 @Component({
   selector: "app-report-detail",
@@ -303,7 +306,7 @@ import { EditDecisionComponent } from "../edit-decision/edit-decision.component"
                         {{
                           report()?.appliedPenaltyObj?.selfReportReduction ?? 0
                         }}s | License Points:
-                        {{ report()?.appliedPenaltyObj?.licensePoints }}
+                        {{ getEffectiveLicensePoints() }}
                       </dd>
                     </div>
                   }
@@ -757,6 +760,14 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
     if (race?.sessionName?.trim()) return race.sessionName.trim();
     if (typeof race?.raceNumber === "number") return `Race ${race.raceNumber}`;
     return "Session";
+  }
+
+  getEffectiveLicensePoints(): number {
+    const report = this.report();
+    return calculateEffectiveLicensePoints(
+      report?.appliedPenaltyObj,
+      report?.isSelfReport,
+    );
   }
 
   goBackToReports(): void {

@@ -131,6 +131,7 @@ async function buildPreview(
       selfReportReduction: penalty.selfReportReduction,
       timePenaltyLap1: penalty.timePenaltyLap1,
       licensePoints: penalty.licensePoints,
+      selfReportLicensePointReduction: penalty.selfReportLicensePointReduction,
       allowNoDriverAtFault: penalty.allowNoDriverAtFault,
     }));
 
@@ -297,6 +298,7 @@ export const execute = mutation({
         selfReportReduction: penalty.selfReportReduction ?? 0,
         timePenaltyLap1: penalty.timePenaltyLap1 ?? penalty.timePenalty,
         licensePoints: penalty.licensePoints,
+        selfReportLicensePointReduction: penalty.selfReportLicensePointReduction ?? 0,
         allowNoDriverAtFault: penalty.allowNoDriverAtFault ?? false,
         createdAt: now,
       });

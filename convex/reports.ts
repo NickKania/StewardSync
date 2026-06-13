@@ -7,6 +7,10 @@ import { Result, success, failure } from "./lib/result";
 import { requireRole } from "./lib/auth";
 import { reportCounter } from "./reportCounter";
 import { recordChanges, compareAndBuildChanges } from "./lib/audit";
+import {
+  getEffectiveLicensePoints,
+  recalculateSeriesLicensePoints,
+} from "./lib/penalties";
 
 const REPORT_AUDIT_FIELDS = [
   "isSelfReport",
@@ -17,16 +21,6 @@ const REPORT_AUDIT_FIELDS = [
   "finalDecision",
   "isNoDriverAtFault",
 ] as const;
-
-const comparePenaltySeverity = (
-  left: { threshold: number; assignedAt?: number },
-  right: { threshold: number; assignedAt?: number },
-): number => {
-  if (left.threshold !== right.threshold) {
-    return right.threshold - left.threshold;
-  }
-  return (right.assignedAt ?? 0) - (left.assignedAt ?? 0);
-};
 
 export const list = query({
   args: {
@@ -692,189 +686,9 @@ export const finalize = mutation({
       });
     }
 
-    if (effectiveAtFaultDriverId && appliedPenaltyDoc) {
-      const atFaultDriver = await ctx.db.get(effectiveAtFaultDriverId);
-      const pointsToAdd = appliedPenaltyDoc.licensePoints ?? 0;
-
-      if (atFaultDriver && pointsToAdd > 0) {
-        await ctx.db.patch(effectiveAtFaultDriverId, {
-          accumulatedLicensePoints:
-            (atFaultDriver.accumulatedLicensePoints || 0) + pointsToAdd,
-        });
-      }
-    }
-
     const event = await ctx.db.get(report.eventId);
     if (event) {
-      const events = await ctx.db
-        .query("events")
-        .withIndex("by_series", (q) => q.eq("seriesId", event.seriesId))
-        .collect();
-
-      const drivers = await ctx.db
-        .query("drivers")
-        .withIndex("by_championship", (q) =>
-          q.eq("championshipId", event.seriesId),
-        )
-        .collect();
-
-      const penaltyAccumulator: Record<string, number> = {};
-
-      for (const evt of events) {
-        const evtReports = await ctx.db
-          .query("reports")
-          .withIndex("by_event", (q) => q.eq("eventId", evt._id))
-          .collect();
-
-        const finalizedReports = evtReports.filter(
-          (r) => r.status === "finalized",
-        );
-
-        for (const finalizedReport of finalizedReports) {
-          if (finalizedReport.isNoDriverAtFault) {
-            continue;
-          }
-
-          let penalty: any = null;
-          if (finalizedReport.appliedPenalty) {
-            penalty = await ctx.db.get(finalizedReport.appliedPenalty as any);
-          }
-
-          const points = penalty?.licensePoints ?? 0;
-          const driverId =
-            finalizedReport.atFaultDriverId?.toString() ||
-            finalizedReport.reportedDriverId.toString();
-
-          if (penaltyAccumulator[driverId]) {
-            penaltyAccumulator[driverId] += points;
-          } else {
-            penaltyAccumulator[driverId] = points;
-          }
-        }
-      }
-
-      const seriesPenalties = await ctx.db
-        .query("seriesPenalties")
-        .withIndex("by_series", (q) => q.eq("seriesId", event.seriesId))
-        .collect();
-
-      for (const driver of drivers) {
-        const driverId = driver._id.toString();
-        const totalPoints = penaltyAccumulator[driverId] ?? 0;
-        const driverClassId = driver.driverClassId || null;
-
-        console.log(
-          `[FINALIZE] Checking driver ${driver.driverNumber} (${driverId}): totalPoints=${totalPoints}, driverClassId=${driverClassId}`,
-        );
-
-        const existingDriverSeriesPenalties = await ctx.db
-          .query("driverSeriesPenalties")
-          .withIndex("by_driver_and_series", (q) =>
-            q.eq("driverId", driver._id).eq("seriesId", event.seriesId),
-          )
-          .collect();
-
-        const existingBySeriesPenalty = new Map<string, any>();
-        for (const dsp of existingDriverSeriesPenalties) {
-          const key = dsp.seriesPenaltyId.toString();
-          const existing = existingBySeriesPenalty.get(key);
-          if (!existing) {
-            existingBySeriesPenalty.set(key, dsp);
-            continue;
-          }
-
-          if (existing.isServed !== dsp.isServed) {
-            if (!dsp.isServed) {
-              existingBySeriesPenalty.set(key, dsp);
-            }
-            continue;
-          }
-
-          if (dsp.assignedAt > existing.assignedAt) {
-            existingBySeriesPenalty.set(key, dsp);
-          }
-        }
-
-        console.log(
-          `[FINALIZE] Driver ${driver.driverNumber} has ${existingDriverSeriesPenalties.length} existing penalties`,
-        );
-
-        for (const seriesPenalty of seriesPenalties) {
-          const thresholds = await ctx.db
-            .query("seriesPenaltyThresholds")
-            .withIndex("by_series_penalty", (q) =>
-              q.eq("seriesPenaltyId", seriesPenalty._id),
-            )
-            .collect();
-
-          const matchedThresholds = thresholds
-            .filter((threshold) => {
-              const appliesToDriver =
-                driverClassId &&
-                threshold.driverClassIds &&
-                threshold.driverClassIds.includes(driverClassId as any);
-              return appliesToDriver && totalPoints >= threshold.threshold;
-            })
-            .sort((a, b) =>
-              comparePenaltySeverity(
-                { threshold: a.threshold },
-                { threshold: b.threshold },
-              ),
-            );
-
-          if (matchedThresholds.length === 0) {
-            continue;
-          }
-
-          const strongestMatchedThreshold = matchedThresholds[0];
-          const existingPenalty = existingBySeriesPenalty.get(
-            seriesPenalty._id.toString(),
-          );
-          const assignmentTimestamp = Date.now();
-
-          if (!existingPenalty) {
-            console.log(
-              `[FINALIZE] >>> ASSIGNING penalty ${seriesPenalty.penaltyName} to driver ${driver.driverNumber}`,
-            );
-            const insertedId = await ctx.db.insert("driverSeriesPenalties", {
-              driverId: driver._id,
-              seriesId: event.seriesId,
-              seriesPenaltyId: seriesPenalty._id,
-              seriesPenaltyThresholdId: strongestMatchedThreshold._id,
-              isServed: false,
-              requiresReview: strongestMatchedThreshold.requiresReview ?? false,
-              pointsAtAssignment: totalPoints,
-              assignedAt: assignmentTimestamp,
-            });
-            console.log(`[FINALIZE] >>> ASSIGNED with ID: ${insertedId}`);
-            continue;
-          }
-
-          if (existingPenalty.isServed) {
-            continue;
-          }
-
-          const isDifferentThreshold =
-            existingPenalty.seriesPenaltyThresholdId.toString() !==
-            strongestMatchedThreshold._id.toString();
-          const isDifferentPoints =
-            existingPenalty.pointsAtAssignment !== totalPoints;
-
-          if (!isDifferentThreshold && !isDifferentPoints) {
-            continue;
-          }
-
-          console.log(
-            `[FINALIZE] >>> UPDATING existing penalty ${existingPenalty._id} for driver ${driver.driverNumber} to ${seriesPenalty.penaltyName}`,
-          );
-          await ctx.db.patch(existingPenalty._id, {
-            seriesPenaltyThresholdId: strongestMatchedThreshold._id,
-            requiresReview: strongestMatchedThreshold.requiresReview ?? false,
-            pointsAtAssignment: totalPoints,
-            assignedAt: assignmentTimestamp,
-          });
-        }
-      }
+      await recalculateSeriesLicensePoints(ctx, event.seriesId);
     }
 
     return success(args.reportId);
@@ -942,6 +756,11 @@ export const updateFinalizedDecision = mutation({
         changedByUserId: args.userId,
         source: "manual",
       });
+    }
+
+    const event = await ctx.db.get(report.eventId);
+    if (event) {
+      await recalculateSeriesLicensePoints(ctx, event.seriesId);
     }
 
     return success(args.reportId);
@@ -1433,8 +1252,14 @@ export const getDriverIndividualPenalties = query({
     );
 
     return penaltiesWithPenalty.sort((a, b) => {
-      const pointsA = (a.appliedPenalty as any)?.licensePoints ?? 0;
-      const pointsB = (b.appliedPenalty as any)?.licensePoints ?? 0;
+      const pointsA = getEffectiveLicensePoints(
+        a.appliedPenalty as any,
+        a.isSelfReport,
+      );
+      const pointsB = getEffectiveLicensePoints(
+        b.appliedPenalty as any,
+        b.isSelfReport,
+      );
 
       if (pointsA !== pointsB) {
         return pointsB - pointsA;
@@ -1552,7 +1377,10 @@ export const getEventExportData = query({
             appliedPenalty && report.isSelfReport
               ? Math.max(0, baseTimePenalty - selfReportReduction)
               : baseTimePenalty;
-          licensePoints = appliedPenalty.licensePoints ?? null;
+          licensePoints = getEffectiveLicensePoints(
+            appliedPenalty,
+            report.isSelfReport,
+          );
         }
 
         const stewardNames: string[] = [];
