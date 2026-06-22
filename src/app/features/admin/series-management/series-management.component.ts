@@ -352,6 +352,12 @@ import { Id } from "@convex/_generated/dataModel";
                               }}</span>
                             </div>
                             <div class="flex justify-between">
+                              <span>Self-Report LP Reduction:</span>
+                              <span class="font-medium">{{
+                                penalty.selfReportLicensePointReduction ?? 0
+                              }}</span>
+                            </div>
+                            <div class="flex justify-between">
                               <span>Allows No Driver:</span>
                               <span class="font-medium">{{
                                 penalty.allowNoDriverAtFault ? "Yes" : "No"
@@ -1170,10 +1176,28 @@ import { Id } from "@convex/_generated/dataModel";
                 >
                 <input
                   type="number"
+                  step="any"
                   class="input w-full"
                   [(ngModel)]="penaltyForm.licensePoints"
-                  placeholder="e.g., 2"
+                  placeholder="e.g., 2.5"
                 />
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                  >Self-Report License Point Reduction</label
+                >
+                <input
+                  type="number"
+                  step="any"
+                  class="input w-full"
+                  [(ngModel)]="penaltyForm.selfReportLicensePointReduction"
+                  placeholder="e.g., 0.5"
+                  min="0"
+                />
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                  License points subtracted when the driver self-reported.
+                </p>
               </div>
               <div>
                 <label class="flex items-center gap-2">
@@ -1670,6 +1694,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     selfReportReduction: 0,
     timePenaltyLap1: 0,
     licensePoints: 0,
+    selfReportLicensePointReduction: 0,
     allowNoDriverAtFault: false,
   };
 
@@ -1970,6 +1995,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       selfReportReduction: penalty.selfReportReduction ?? 0,
       timePenaltyLap1: penalty.timePenaltyLap1,
       licensePoints: penalty.licensePoints,
+      selfReportLicensePointReduction:
+        penalty.selfReportLicensePointReduction ?? 0,
       allowNoDriverAtFault: penalty.allowNoDriverAtFault ?? false,
     };
     this.showPenaltyModal = true;
@@ -1985,6 +2012,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         selfReportReduction: this.penaltyForm.selfReportReduction,
         timePenaltyLap1: this.penaltyForm.timePenaltyLap1,
         licensePoints: this.penaltyForm.licensePoints,
+        selfReportLicensePointReduction:
+          this.penaltyForm.selfReportLicensePointReduction,
         allowNoDriverAtFault: this.penaltyForm.allowNoDriverAtFault,
       });
     } else {
@@ -1997,6 +2026,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         selfReportReduction: this.penaltyForm.selfReportReduction,
         timePenaltyLap1: this.penaltyForm.timePenaltyLap1,
         licensePoints: this.penaltyForm.licensePoints,
+        selfReportLicensePointReduction:
+          this.penaltyForm.selfReportLicensePointReduction,
         allowNoDriverAtFault: this.penaltyForm.allowNoDriverAtFault,
       });
     }
@@ -2022,6 +2053,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       selfReportReduction: 0,
       timePenaltyLap1: 0,
       licensePoints: 0,
+      selfReportLicensePointReduction: 0,
       allowNoDriverAtFault: false,
     };
   }

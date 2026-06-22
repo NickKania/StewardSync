@@ -57,6 +57,8 @@ interface EventRundownRow {
   timePenaltySeconds: number;
   licensePoints: number | null;
   isSelfReport: boolean;
+  hasTimePenaltyAdjustment: boolean;
+  hasLicensePointAdjustment: boolean;
   isFinalized: boolean;
 }
 
@@ -537,13 +539,13 @@ interface RaceTimePenaltySummary {
                                         @if (row.timePenaltySeconds > 0) {
                                           <app-badge
                                             [variant]="
-                                              row.isSelfReport
+                                              row.hasTimePenaltyAdjustment
                                                 ? 'success'
                                                 : 'default'
                                             "
                                           >
                                             {{ row.timePenaltySeconds }}s
-                                            @if (row.isSelfReport) {
+                                            @if (row.hasTimePenaltyAdjustment) {
                                               (SR)
                                             }
                                           </app-badge>
@@ -561,7 +563,18 @@ interface RaceTimePenaltySummary {
                                           row.licensePoints &&
                                           row.licensePoints > 0
                                         ) {
-                                          {{ row.licensePoints }}
+                                          <app-badge
+                                            [variant]="
+                                              row.hasLicensePointAdjustment
+                                                ? 'success'
+                                                : 'default'
+                                            "
+                                          >
+                                            {{ row.licensePoints }}
+                                            @if (row.hasLicensePointAdjustment) {
+                                              (SR)
+                                            }
+                                          </app-badge>
                                         } @else {
                                           <span
                                             class="text-gray-400 dark:text-gray-500"
@@ -1380,7 +1393,7 @@ export class StatisticsDashboardComponent implements OnInit, OnDestroy {
       return [
         {
           label: "🟢 (SR)",
-          description: "Self-reported incident (reduced time penalty)",
+          description: "Self-reported incident (penalty adjusted)",
         },
         {
           label: "🔴 Red row",

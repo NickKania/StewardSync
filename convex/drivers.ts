@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { getCurrentUserRole, hasMinimumRole, requireRole } from "./lib/auth";
 import { formatDriverName, getDriverDisplayName } from "./lib/formatting";
+import { getEffectiveLicensePoints } from "./lib/penalties";
 
 const normalizeUsername = (value?: string): string | undefined => {
   if (!value) return undefined;
@@ -46,6 +47,64 @@ const linkDriverToMatchedUser = async (
   }
 };
 
+const getReportsAgainstDriver = async (ctx: any, driverId: any) => {
+  const reportsByAtFaultDriver = await ctx.db
+    .query("reports")
+    .withIndex("by_at_fault_driver", (q: any) =>
+      q.eq("atFaultDriverId", driverId),
+    )
+    .collect();
+
+  const legacyReportsByReportedDriver = await ctx.db
+    .query("reports")
+    .withIndex("by_reported_driver", (q: any) =>
+      q.eq("reportedDriverId", driverId),
+    )
+    .collect();
+
+  const reportsById = new Map<string, any>();
+  for (const report of reportsByAtFaultDriver) {
+    reportsById.set(report._id.toString(), report);
+  }
+  for (const report of legacyReportsByReportedDriver) {
+    if (!report.atFaultDriverId) {
+      reportsById.set(report._id.toString(), report);
+    }
+  }
+
+  return Array.from(reportsById.values());
+};
+
+const calculateDriverLicensePoints = async (
+  ctx: any,
+  driver: { _id: any; championshipId?: any },
+): Promise<number> => {
+  const reports = await getReportsAgainstDriver(ctx, driver._id);
+
+  let total = 0;
+
+  for (const report of reports) {
+    if (report.status !== "finalized" || report.isNoDriverAtFault) {
+      continue;
+    }
+
+    const event = await ctx.db.get(report.eventId);
+    if (
+      !event ||
+      (driver.championshipId && event.seriesId !== driver.championshipId)
+    ) {
+      continue;
+    }
+
+    const penalty = report.appliedPenalty
+      ? await ctx.db.get(report.appliedPenalty as any)
+      : null;
+    total += getEffectiveLicensePoints(penalty as any, report.isSelfReport);
+  }
+
+  return total;
+};
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -74,6 +133,9 @@ export const getById = query({
 
     return {
       ...driver,
+      accumulatedLicensePoints:
+        driver.accumulatedLicensePoints ??
+        (await calculateDriverLicensePoints(ctx, driver)),
       displayName: getDriverDisplayName(
         driver,
         linkedUser ? { officialName: linkedUser.officialName } : undefined,
@@ -112,6 +174,9 @@ export const getByIdWithUser = query({
 
     return {
       ...driver,
+      accumulatedLicensePoints:
+        driver.accumulatedLicensePoints ??
+        (await calculateDriverLicensePoints(ctx, driver)),
       linkedUser,
       seriesId: series?._id ?? null,
       seriesName: series?.name ?? "No Series",
@@ -227,12 +292,7 @@ export const getPenaltyHistory = query({
     championshipId: v.optional(v.id("series")),
   },
   handler: async (ctx, args) => {
-    const reports = await ctx.db
-      .query("reports")
-      .withIndex("by_at_fault_driver", (q) =>
-        q.eq("atFaultDriverId", args.driverId),
-      )
-      .collect();
+    const reports = await getReportsAgainstDriver(ctx, args.driverId);
 
     const finalizedReports = reports.filter((report) => {
       if (report.status !== "finalized") return false;
@@ -251,26 +311,35 @@ export const getPenaltyHistory = query({
             : null,
         ]);
 
-        if (!event) return null;
-        if (args.championshipId && event.seriesId !== args.championshipId)
+        const eventData = event as any;
+        const raceData = race as any;
+
+        if (!eventData) return null;
+        if (
+          args.championshipId &&
+          eventData.seriesId !== args.championshipId
+        )
           return null;
 
         return {
           reportId: report._id,
           reportNumber: report.reportId ?? null,
-          eventId: event._id,
-          eventName: event.trackName,
-          eventNumber: event.eventNumber,
-          raceNumber: race?.raceNumber ?? null,
+          eventId: eventData._id,
+          eventName: eventData.trackName,
+          eventNumber: eventData.eventNumber,
+          raceNumber: raceData?.raceNumber ?? null,
           sessionName:
-            race?.sessionName?.trim() ||
-            (typeof race?.raceNumber === "number"
-              ? `Race ${race.raceNumber}`
+            raceData?.sessionName?.trim() ||
+            (typeof raceData?.raceNumber === "number"
+              ? `Race ${raceData.raceNumber}`
               : "Session"),
-          seriesId: event.seriesId,
+          seriesId: eventData.seriesId,
           penaltyId: report.appliedPenalty ?? null,
           penaltyName: (appliedPenalty as any)?.name ?? null,
-          licensePoints: (appliedPenalty as any)?.licensePoints ?? 0,
+          licensePoints: getEffectiveLicensePoints(
+            appliedPenalty as any,
+            report.isSelfReport,
+          ),
           finalizedAt:
             report.finalizedAt ?? report.updatedAt ?? report.createdAt,
         };
@@ -313,12 +382,7 @@ export const getUserProfile = query({
           driver.driverClassId
             ? ctx.db.get(driver.driverClassId)
             : Promise.resolve(null),
-          ctx.db
-            .query("reports")
-            .withIndex("by_at_fault_driver", (q) =>
-              q.eq("atFaultDriverId", driver._id),
-            )
-            .collect(),
+          getReportsAgainstDriver(ctx, driver._id),
         ]);
 
         const seriesId = driver.championshipId;
@@ -352,22 +416,28 @@ export const getUserProfile = query({
                   : null,
               ]);
 
-              if (!event) return null;
-              if (seriesId && event.seriesId !== seriesId) return null;
+              const eventData = event as any;
+              const raceData = race as any;
+
+              if (!eventData) return null;
+              if (seriesId && eventData.seriesId !== seriesId) return null;
 
               return {
                 reportId: report._id,
                 reportNumber: report.reportId ?? null,
-                eventName: event.trackName,
-                eventNumber: event.eventNumber,
-                raceNumber: race?.raceNumber ?? null,
+                eventName: eventData.trackName,
+                eventNumber: eventData.eventNumber,
+                raceNumber: raceData?.raceNumber ?? null,
                 sessionName:
-                  race?.sessionName?.trim() ||
-                  (typeof race?.raceNumber === "number"
-                    ? `Race ${race.raceNumber}`
+                  raceData?.sessionName?.trim() ||
+                  (typeof raceData?.raceNumber === "number"
+                    ? `Race ${raceData.raceNumber}`
                     : "Session"),
                 penaltyName: (penalty as any)?.name ?? null,
-                licensePoints: (penalty as any)?.licensePoints ?? 0,
+                licensePoints: getEffectiveLicensePoints(
+                  penalty as any,
+                  report.isSelfReport,
+                ),
                 finalizedAt:
                   report.finalizedAt ?? report.updatedAt ?? report.createdAt,
               };
@@ -377,6 +447,10 @@ export const getUserProfile = query({
         const penaltyHistory = penaltyHistoryRows
           .filter((row) => row !== null)
           .sort((a, b) => b!.finalizedAt - a!.finalizedAt);
+        const calculatedLicensePoints = penaltyHistory.reduce(
+          (sum, row) => sum + (row?.licensePoints ?? 0),
+          0,
+        );
 
         return {
           driverId: driver._id,
@@ -395,7 +469,8 @@ export const getUserProfile = query({
           steamId: driver.steamId,
           driverClassId: driver.driverClassId ?? null,
           driverClassName: driverClass?.displayName ?? null,
-          accumulatedLicensePoints: driver.accumulatedLicensePoints ?? 0,
+          accumulatedLicensePoints:
+            driver.accumulatedLicensePoints ?? calculatedLicensePoints,
           note: canViewNotes ? driver.note : undefined,
           penalties: penaltyHistory,
         };
@@ -567,12 +642,10 @@ export const getDriverStats = query({
     const driver = await ctx.db.get(args.driverId);
     if (!driver) return null;
 
-    const reportsFiledAgainst = await ctx.db
-      .query("reports")
-      .withIndex("by_at_fault_driver", (q) =>
-        q.eq("atFaultDriverId", args.driverId),
-      )
-      .collect();
+    const reportsFiledAgainst = await getReportsAgainstDriver(
+      ctx,
+      args.driverId,
+    );
 
     let reportsFiled = [];
     if (driver?.userId) {
@@ -592,7 +665,9 @@ export const getDriverStats = query({
       finalizedReports: reportsFiledAgainst.filter(
         (r) => r.status === "finalized",
       ).length,
-      accumulatedLicensePoints: driver.accumulatedLicensePoints || 0,
+      accumulatedLicensePoints:
+        driver.accumulatedLicensePoints ??
+        (await calculateDriverLicensePoints(ctx, driver)),
       isActive: driver.isActive ?? true,
     };
   },

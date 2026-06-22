@@ -1,6 +1,7 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 import { getDriverDisplayName } from "./lib/formatting";
+import { getEffectiveLicensePoints } from "./lib/penalties";
 
 interface EventRundownRow {
   reportId: number | null;
@@ -17,6 +18,8 @@ interface EventRundownRow {
   timePenaltySeconds: number;
   licensePoints: number | null;
   isSelfReport: boolean;
+  hasTimePenaltyAdjustment: boolean;
+  hasLicensePointAdjustment: boolean;
   isFinalized: boolean;
 }
 
@@ -154,6 +157,8 @@ export const getEventRundown = query({
             let penaltyName: string | null = null;
             let timePenaltySeconds = 0;
             let licensePoints: number | null = null;
+            let hasTimePenaltyAdjustment = false;
+            let hasLicensePointAdjustment = false;
 
             const lapNumber = parseInt(report.lap || "0", 10);
             const isLap1 = !isNaN(lapNumber) && lapNumber === 1;
@@ -165,11 +170,20 @@ export const getEventRundown = query({
                 : (appliedPenalty?.timePenalty ?? 0);
               const selfReportReduction =
                 appliedPenalty?.selfReportReduction ?? 0;
+              const selfReportLicensePointReduction =
+                appliedPenalty?.selfReportLicensePointReduction ?? 0;
+              hasTimePenaltyAdjustment =
+                Boolean(report.isSelfReport) && selfReportReduction > 0;
+              hasLicensePointAdjustment =
+                Boolean(report.isSelfReport) &&
+                selfReportLicensePointReduction > 0;
               timePenaltySeconds =
-                appliedPenalty && report.isSelfReport
+                appliedPenalty && hasTimePenaltyAdjustment
                   ? Math.max(0, baseTimePenalty - selfReportReduction)
                   : baseTimePenalty;
-              licensePoints = appliedPenalty?.licensePoints ?? null;
+              licensePoints = appliedPenalty
+                ? getEffectiveLicensePoints(appliedPenalty, report.isSelfReport)
+                : null;
             } else {
               penaltyName = recommendedPenaltyObj?.name ?? null;
               const baseTimePenalty = isLap1
@@ -177,11 +191,23 @@ export const getEventRundown = query({
                 : (recommendedPenaltyObj?.timePenalty ?? 0);
               const selfReportReduction =
                 recommendedPenaltyObj?.selfReportReduction ?? 0;
+              const selfReportLicensePointReduction =
+                recommendedPenaltyObj?.selfReportLicensePointReduction ?? 0;
+              hasTimePenaltyAdjustment =
+                Boolean(report.isSelfReport) && selfReportReduction > 0;
+              hasLicensePointAdjustment =
+                Boolean(report.isSelfReport) &&
+                selfReportLicensePointReduction > 0;
               timePenaltySeconds =
-                recommendedPenaltyObj && report.isSelfReport
+                recommendedPenaltyObj && hasTimePenaltyAdjustment
                   ? Math.max(0, baseTimePenalty - selfReportReduction)
                   : baseTimePenalty;
-              licensePoints = recommendedPenaltyObj?.licensePoints ?? null;
+              licensePoints = recommendedPenaltyObj
+                ? getEffectiveLicensePoints(
+                  recommendedPenaltyObj,
+                  report.isSelfReport,
+                )
+                : null;
             }
 
             let incidentDescription: string;
@@ -216,6 +242,8 @@ export const getEventRundown = query({
               timePenaltySeconds,
               licensePoints,
               isSelfReport: report.isSelfReport ?? false,
+              hasTimePenaltyAdjustment,
+              hasLicensePointAdjustment,
               isFinalized: report.status === "finalized",
             };
           }),
@@ -384,7 +412,7 @@ export const getSeriesLicensePoints = query({
           penalty = await ctx.db.get(report.appliedPenalty as any);
         }
 
-        const points = penalty?.licensePoints ?? 0;
+        const points = getEffectiveLicensePoints(penalty, report.isSelfReport);
         const atFaultDriverId = report.atFaultDriverId;
         if (!atFaultDriverId) {
           continue;
@@ -468,7 +496,7 @@ export const getSeriesLicensePointsWithPenalties = query({
           penalty = await ctx.db.get(report.appliedPenalty as any);
         }
 
-        const points = penalty?.licensePoints ?? 0;
+        const points = getEffectiveLicensePoints(penalty, report.isSelfReport);
         const atFaultDriverId = report.atFaultDriverId;
         if (!atFaultDriverId) {
           continue;

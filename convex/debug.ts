@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { checkUserDriverConflict } from "./lib/reports";
 import { requireRole } from "./lib/auth";
 import { Id } from "./_generated/dataModel";
+import { getEffectiveLicensePoints } from "./lib/penalties";
 
 export const debugReportConflict = query({
   args: {
@@ -106,7 +107,10 @@ export const debugPenaltyAssignment = query({
           penalty = await ctx.db.get(finalizedReport.appliedPenalty as any);
         }
 
-        const points = penalty?.licensePoints ?? 0;
+        const points = getEffectiveLicensePoints(
+          penalty,
+          finalizedReport.isSelfReport,
+        );
         const driverId = finalizedReport.atFaultDriverId?.toString() || finalizedReport.reportedDriverId.toString();
 
         if (penaltyAccumulator[driverId]) {
@@ -272,7 +276,10 @@ export const manuallyAssignPenaltiesForReport = mutation({
           penalty = await ctx.db.get(finalizedReport.appliedPenalty as any);
         }
 
-        const points = penalty?.licensePoints ?? 0;
+        const points = getEffectiveLicensePoints(
+          penalty,
+          finalizedReport.isSelfReport,
+        );
         const driverId = finalizedReport.atFaultDriverId?.toString() || finalizedReport.reportedDriverId.toString();
 
         if (penaltyAccumulator[driverId]) {

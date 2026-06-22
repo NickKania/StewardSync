@@ -11,6 +11,7 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
 import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 import { Id } from "@convex/_generated/dataModel";
 import { Penalty } from "@app/core/models";
+import { getEffectiveLicensePoints } from "@core/utils/penalties";
 
 @Component({
   selector: "app-driver-dashboard",
@@ -301,7 +302,7 @@ import { Penalty } from "@app/core/models";
                             <td class="py-3">
                               <app-badge variant="warning"
                                 >{{
-                                  penalty.appliedPenalty?.licensePoints
+                                  getLicensePoints(penalty)
                                 }}
                                 pts</app-badge
                               >
@@ -526,6 +527,13 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     }
 
     return timePenalty;
+  }
+
+  getLicensePoints(penalty: any): number {
+    return getEffectiveLicensePoints(
+      penalty.appliedPenalty,
+      penalty.isSelfReport,
+    );
   }
 
   getPenaltyStatusLabel(penalty: any): string {

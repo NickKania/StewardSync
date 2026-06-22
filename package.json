@@ -28,7 +28,8 @@
     "convex:local:stop": "docker compose -f docker-compose.local.yml down",
     "convex:local:logs": "docker compose -f docker-compose.local.yml logs -f backend dashboard",
     "convex:local:push": "CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 bun x convex deploy --admin-key $CONVEX_SELF_HOSTED_ADMIN_KEY",
-    "convex:local:admin-key": "docker compose -f docker-compose.local.yml exec backend ./generate_admin_key.sh"
+    "convex:local:admin-key": "docker compose -f docker-compose.local.yml exec backend ./generate_admin_key.sh",
+    "convex:sync-prod-to-dev": "./scripts/sync-prod-data-to-dev.sh"
   },
   "private": true,
   "dependencies": {

@@ -2,6 +2,8 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
 import { Id } from "./_generated/dataModel";
+import { recalculateSeriesLicensePoints } from "./lib/penalties";
+import { UserFacingError } from "./lib/errors";
 
 export const list = query({
   handler: async (ctx) => {
@@ -47,6 +49,7 @@ export const create = mutation({
     selfReportReduction: v.optional(v.number()),
     timePenaltyLap1: v.optional(v.number()),
     licensePoints: v.number(),
+    selfReportLicensePointReduction: v.optional(v.number()),
     allowNoDriverAtFault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -55,7 +58,7 @@ export const create = mutation({
 
     const series = await ctx.db.get(data.seriesId);
     if (!series) {
-      throw new Error("Series not found");
+      throw new UserFacingError("Series not found");
     }
 
     const penaltyId = await ctx.db.insert("penalties", {
@@ -65,6 +68,7 @@ export const create = mutation({
       selfReportReduction: data.selfReportReduction ?? 0,
       timePenaltyLap1: data.timePenaltyLap1 ?? data.timePenalty,
       licensePoints: data.licensePoints,
+      selfReportLicensePointReduction: data.selfReportLicensePointReduction ?? 0,
       allowNoDriverAtFault: data.allowNoDriverAtFault ?? false,
       createdAt: Date.now(),
     });
@@ -82,17 +86,23 @@ export const update = mutation({
     selfReportReduction: v.optional(v.number()),
     timePenaltyLap1: v.optional(v.number()),
     licensePoints: v.number(),
+    selfReportLicensePointReduction: v.optional(v.number()),
     allowNoDriverAtFault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.currentUserId as Id<"users">, ["event_manager", "league_manager"]);
     const { id, currentUserId, ...updates } = args;
+    const existingPenalty = await ctx.db.get(id);
+    if (!existingPenalty) {
+      throw new UserFacingError("Penalty not found");
+    }
 
     const cleanUpdates = {
       name: updates.name,
       timePenalty: updates.timePenalty,
       selfReportReduction: updates.selfReportReduction ?? 0,
       licensePoints: updates.licensePoints,
+      selfReportLicensePointReduction: updates.selfReportLicensePointReduction ?? 0,
       ...(updates.allowNoDriverAtFault !== undefined && {
         allowNoDriverAtFault: updates.allowNoDriverAtFault,
       }),
@@ -100,6 +110,15 @@ export const update = mutation({
     };
 
     await ctx.db.patch(id, cleanUpdates);
+
+    const licenseFieldsChanged =
+      existingPenalty.licensePoints !== cleanUpdates.licensePoints ||
+      existingPenalty.selfReportLicensePointReduction !== cleanUpdates.selfReportLicensePointReduction;
+
+    if (licenseFieldsChanged) {
+      await recalculateSeriesLicensePoints(ctx, existingPenalty.seriesId);
+    }
+
     return id;
   },
 });
@@ -108,6 +127,11 @@ export const remove = mutation({
   args: { id: v.id("penalties"), currentUserId: v.id("users") },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.currentUserId as Id<"users">, ["event_manager", "league_manager"]);
+    const existing = await ctx.db.get(args.id);
+    if (!existing) {
+      throw new UserFacingError("Penalty not found");
+    }
     await ctx.db.delete(args.id);
+    await recalculateSeriesLicensePoints(ctx, existing.seriesId);
   },
 });
