@@ -727,6 +727,10 @@ export const getDashboardPenaltyGroups = query({
           getSeriesPenalty(dsp.seriesPenaltyId),
           getThreshold(dsp.seriesPenaltyThresholdId),
         ]);
+        if (series?.isActive === false) {
+          return null;
+        }
+
         const linkedReview = await getLinkedRaceBanReview(ctx, dsp);
         const requiresReview =
           dsp.requiresReview ?? threshold?.requiresReview ?? false;
