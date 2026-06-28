@@ -241,14 +241,19 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes["report"] && this.report) {
+      this.loadDrivers();
       this.loadPenalties();
     }
   }
 
   private loadDrivers(): void {
+    if (!this.report?.event?.seriesId) {
+      return;
+    }
+
     const driversQuery = this.convex.createReactiveQuery(
-      this.convex.api.drivers.list,
-      {},
+      this.convex.api.drivers.getByChampionship,
+      { championshipId: this.report.event.seriesId as any },
       (data) => {
         this.drivers.set(data);
         this.initializeForm();

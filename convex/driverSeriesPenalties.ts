@@ -2,7 +2,10 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { getCurrentUserRole } from "./lib/auth";
-import { getEffectiveLicensePoints } from "./lib/penalties";
+import {
+  getEffectiveLicensePoints,
+  isSeriesPenaltyThresholdMet,
+} from "./lib/penalties";
 
 const getLinkedRaceBanReview = async (ctx: any, dsp: any) => {
   if (dsp.raceBanReviewId) {
@@ -238,7 +241,10 @@ export const checkAndAssignThresholds = mutation({
             const appliesToDriver = driverClassId
               ? threshold.driverClassIds.includes(driverClassId)
               : false;
-            return appliesToDriver && totalPoints >= threshold.threshold;
+            return (
+              appliesToDriver &&
+              isSeriesPenaltyThresholdMet(totalPoints, threshold.threshold)
+            );
           })
           .sort((a, b) =>
             comparePenaltySeverity(

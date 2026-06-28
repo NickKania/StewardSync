@@ -4,6 +4,7 @@ import { checkUserDriverConflict } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { recordChanges, compareAndBuildChanges } from "./lib/audit";
+import { validateAtFaultDriverForReport } from "./lib/reportValidation";
 
 const REVIEW_AUDIT_FIELDS = [
   "isSelfReport",
@@ -244,6 +245,18 @@ export const create = mutation({
 
     const now = Date.now();
     const isNoDriverAtFault = args.isNoDriverAtFault ?? false;
+    const effectiveAtFaultDriverId = isNoDriverAtFault
+      ? undefined
+      : args.atFaultDriverId;
+
+    const atFaultDriverError = await validateAtFaultDriverForReport(
+      ctx,
+      report,
+      effectiveAtFaultDriverId,
+    );
+    if (atFaultDriverError) {
+      return failure(atFaultDriverError);
+    }
 
     const reviewData = {
       userId: args.userId,
@@ -252,7 +265,7 @@ export const create = mutation({
       reviewNotes: args.reviewNotes,
       candidateForStandardization: args.candidateForStandardization,
       recommendedPenalty: args.recommendedPenalty,
-      atFaultDriverId: isNoDriverAtFault ? undefined : args.atFaultDriverId,
+      atFaultDriverId: effectiveAtFaultDriverId,
       isNoDriverAtFault,
       videoTimestamp: args.videoTimestamp,
       isSelfReport: args.isSelfReport,
@@ -420,6 +433,15 @@ export const update = mutation({
       cleanUpdates["atFaultDriverId"] = undefined;
     }
 
+    const atFaultDriverError = await validateAtFaultDriverForReport(
+      ctx,
+      report,
+      cleanUpdates["atFaultDriverId"],
+    );
+    if (atFaultDriverError) {
+      return failure(atFaultDriverError);
+    }
+
     const auditChanges = compareAndBuildChanges(
       review as any,
       cleanUpdates,
@@ -516,6 +538,15 @@ export const updateWithSecondSteward = mutation({
       isAdjusted: args.isAdjusted,
       adjustedReason: args.adjustedReason,
     };
+
+    const atFaultDriverError = await validateAtFaultDriverForReport(
+      ctx,
+      report,
+      updates.atFaultDriverId,
+    );
+    if (atFaultDriverError) {
+      return failure(atFaultDriverError);
+    }
 
     const cleanUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, v]) => v !== undefined),

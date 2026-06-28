@@ -3,7 +3,74 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { UserFacingError } from "./lib/errors";
 import type { Id } from "./_generated/dataModel";
-import { getEffectiveLicensePoints } from "./lib/penalties";
+import {
+  getEffectiveLicensePoints,
+  recalculateSeriesLicensePoints,
+} from "./lib/penalties";
+
+const sameId = (left: unknown, right: unknown): boolean =>
+  left != null && right != null && String(left) === String(right);
+
+const normalizeMatchText = (value?: string): string =>
+  (value ?? "").trim().toLowerCase();
+
+const findMatchingDriverInSeries = async (
+  ctx: any,
+  sourceDriver: any,
+  seriesId: Id<"series">,
+) => {
+  const seriesDrivers = await ctx.db
+    .query("drivers")
+    .withIndex("by_championship", (q: any) => q.eq("championshipId", seriesId))
+    .collect();
+
+  const findUniqueBy = (predicate: (driver: any) => boolean) => {
+    const matches = seriesDrivers.filter(
+      (driver: any) =>
+        !sameId(driver._id, sourceDriver._id) && predicate(driver),
+    );
+    return matches.length === 1 ? matches[0] : null;
+  };
+
+  if (sourceDriver.steamId) {
+    const match = findUniqueBy(
+      (driver) => driver.steamId === sourceDriver.steamId,
+    );
+    if (match) return { driver: match, matchType: "steamId" };
+  }
+
+  if (sourceDriver.userId) {
+    const match = findUniqueBy((driver) =>
+      sameId(driver.userId, sourceDriver.userId),
+    );
+    if (match) return { driver: match, matchType: "userId" };
+  }
+
+  const sourceUsername = normalizeMatchText(sourceDriver.username);
+  if (sourceUsername) {
+    const match = findUniqueBy(
+      (driver) => normalizeMatchText(driver.username) === sourceUsername,
+    );
+    if (match) return { driver: match, matchType: "username" };
+  }
+
+  const sourceNames = new Set(
+    [sourceDriver.officialName, sourceDriver.driverName]
+      .map(normalizeMatchText)
+      .filter(Boolean),
+  );
+  if (sourceNames.size > 0 && typeof sourceDriver.driverNumber === "number") {
+    const match = findUniqueBy((driver) => {
+      if (driver.driverNumber !== sourceDriver.driverNumber) return false;
+      return [driver.officialName, driver.driverName]
+        .map(normalizeMatchText)
+        .some((name) => sourceNames.has(name));
+    });
+    if (match) return { driver: match, matchType: "driverNumberAndName" };
+  }
+
+  return null;
+};
 
 export const assignPenaltiesForSeries = internalMutation({
   args: { seriesId: v.id("series") },
@@ -329,6 +396,228 @@ export const cleanupIncorrectDriverSeriesPenalties = internalMutation({
       errorCount: errors.length,
       toRemove,
       kept,
+      errors,
+    };
+  },
+});
+
+/**
+ * Fixes reports and reviews whose atFaultDriverId points to a driver from a
+ * different series than the report event.
+ *
+ * The migration attempts to map the incorrect driver record to the same driver
+ * in the event's series. If no unambiguous match can be found, the report's
+ * public ticket number is returned for manual intervention.
+ */
+export const fixCrossSeriesAtFaultDrivers = mutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun ?? true;
+    const reports = await ctx.db.query("reports").collect();
+
+    const reportPatches: any[] = [];
+    const reviewPatches: any[] = [];
+    const manualIntervention: any[] = [];
+    const skipped: any[] = [];
+    const errors: any[] = [];
+    const affectedSeriesIds = new Set<string>();
+
+    const addManual = (entry: any) => {
+      manualIntervention.push({
+        reportDocumentId: entry.report._id,
+        ticketNumber: entry.report.reportId ?? null,
+        eventId: entry.event?._id ?? entry.report.eventId,
+        eventSeriesId: entry.event?.seriesId ?? null,
+        badDriverId: entry.badDriver?._id ?? entry.badDriverId,
+        badDriverName: entry.badDriver?.driverName ?? null,
+        badDriverNumber: entry.badDriver?.driverNumber ?? null,
+        reason: entry.reason,
+        source: entry.source,
+      });
+    };
+
+    for (const report of reports) {
+      try {
+        const event = await ctx.db.get(report.eventId);
+        if (!event) {
+          addManual({
+            report,
+            event: null,
+            badDriverId: report.atFaultDriverId,
+            reason: "Report event not found",
+            source: "report",
+          });
+          continue;
+        }
+
+        if (report.atFaultDriverId) {
+          const atFaultDriver = await ctx.db.get(report.atFaultDriverId);
+
+          if (!atFaultDriver) {
+            addManual({
+              report,
+              event,
+              badDriverId: report.atFaultDriverId,
+              reason: "Report at-fault driver not found",
+              source: "report",
+            });
+          } else if (!sameId(atFaultDriver.championshipId, event.seriesId)) {
+            const match = await findMatchingDriverInSeries(
+              ctx,
+              atFaultDriver,
+              event.seriesId,
+            );
+
+            if (!match) {
+              addManual({
+                report,
+                event,
+                badDriver: atFaultDriver,
+                reason: "No unambiguous matching driver found in event series",
+                source: "report",
+              });
+            } else {
+              reportPatches.push({
+                reportDocumentId: report._id,
+                ticketNumber: report.reportId ?? null,
+                fromDriverId: report.atFaultDriverId,
+                fromDriverName: atFaultDriver.driverName,
+                fromDriverNumber: atFaultDriver.driverNumber,
+                toDriverId: match.driver._id,
+                toDriverName: match.driver.driverName,
+                toDriverNumber: match.driver.driverNumber,
+                matchType: match.matchType,
+                eventId: event._id,
+                seriesId: event.seriesId,
+              });
+
+              if (!dryRun) {
+                await ctx.db.patch(report._id, {
+                  atFaultDriverId: match.driver._id,
+                  updatedAt: Date.now(),
+                });
+              }
+
+              affectedSeriesIds.add(String(event.seriesId));
+              if (atFaultDriver.championshipId) {
+                affectedSeriesIds.add(String(atFaultDriver.championshipId));
+              }
+            }
+          } else {
+            skipped.push({
+              reportDocumentId: report._id,
+              ticketNumber: report.reportId ?? null,
+              reason: "Report at-fault driver already belongs to event series",
+              source: "report",
+            });
+          }
+        }
+
+        const reviews = await ctx.db
+          .query("reviews")
+          .withIndex("by_report", (q) => q.eq("reportId", report._id))
+          .collect();
+
+        for (const review of reviews) {
+          if (!review.atFaultDriverId) {
+            continue;
+          }
+
+          const reviewDriver = await ctx.db.get(review.atFaultDriverId);
+          if (!reviewDriver) {
+            addManual({
+              report,
+              event,
+              badDriverId: review.atFaultDriverId,
+              reason: "Review at-fault driver not found",
+              source: "review",
+            });
+            continue;
+          }
+
+          if (sameId(reviewDriver.championshipId, event.seriesId)) {
+            skipped.push({
+              reportDocumentId: report._id,
+              reviewDocumentId: review._id,
+              ticketNumber: report.reportId ?? null,
+              reason: "Review at-fault driver already belongs to event series",
+              source: "review",
+            });
+            continue;
+          }
+
+          const match = await findMatchingDriverInSeries(
+            ctx,
+            reviewDriver,
+            event.seriesId,
+          );
+
+          if (!match) {
+            addManual({
+              report,
+              event,
+              badDriver: reviewDriver,
+              reason: "No unambiguous matching driver found in event series",
+              source: "review",
+            });
+            continue;
+          }
+
+          reviewPatches.push({
+            reportDocumentId: report._id,
+            reviewDocumentId: review._id,
+            ticketNumber: report.reportId ?? null,
+            fromDriverId: review.atFaultDriverId,
+            fromDriverName: reviewDriver.driverName,
+            fromDriverNumber: reviewDriver.driverNumber,
+            toDriverId: match.driver._id,
+            toDriverName: match.driver.driverName,
+            toDriverNumber: match.driver.driverNumber,
+            matchType: match.matchType,
+            eventId: event._id,
+            seriesId: event.seriesId,
+          });
+
+          if (!dryRun) {
+            await ctx.db.patch(review._id, {
+              atFaultDriverId: match.driver._id,
+              updatedAt: Date.now(),
+            });
+          }
+
+          affectedSeriesIds.add(String(event.seriesId));
+          if (reviewDriver.championshipId) {
+            affectedSeriesIds.add(String(reviewDriver.championshipId));
+          }
+        }
+      } catch (error) {
+        errors.push({
+          reportDocumentId: report._id,
+          ticketNumber: report.reportId ?? null,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    const recalculatedSeriesIds: string[] = [];
+    if (!dryRun) {
+      for (const seriesId of affectedSeriesIds) {
+        await recalculateSeriesLicensePoints(ctx, seriesId as Id<"series">);
+        recalculatedSeriesIds.push(seriesId);
+      }
+    }
+
+    return {
+      dryRun,
+      reportPatchCount: reportPatches.length,
+      reviewPatchCount: reviewPatches.length,
+      manualInterventionCount: manualIntervention.length,
+      skippedCount: skipped.length,
+      errorCount: errors.length,
+      recalculatedSeriesIds,
+      reportPatches,
+      reviewPatches,
+      manualIntervention,
       errors,
     };
   },

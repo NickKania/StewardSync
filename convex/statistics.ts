@@ -106,11 +106,10 @@ export const getEventRundown = query({
               report.status === "reviewed"
                 ? Boolean(review?.isNoDriverAtFault)
                 : Boolean(report.isNoDriverAtFault);
-            if (isNoDriverAtFault) {
-              return null;
-            }
 
-            const atFaultDriverId = report.atFaultDriverId;
+            const atFaultDriverId = isNoDriverAtFault
+              ? null
+              : report.atFaultDriverId;
             const reportedDriver = atFaultDriverId
               ? await ctx.db.get(atFaultDriverId)
               : null;
