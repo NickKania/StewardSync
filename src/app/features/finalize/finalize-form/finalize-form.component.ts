@@ -627,8 +627,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     }
 
     const driversQuery = this.convex.createReactiveQuery(
-      this.convex.api.drivers.list,
-      {},
+      this.convex.api.drivers.getByChampionship,
+      { championshipId: report.event.seriesId as any },
       (data) => {
         this.drivers.set(data);
       }
@@ -655,6 +655,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       (data) => {
         this.report.set(data);
         this.loading.set(false);
+        this.loadDrivers();
 
         // Auto-fill incident description and isSelfReport from latest review
         if (data?.reviews && data.reviews.length > 0) {

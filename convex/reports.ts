@@ -11,6 +11,7 @@ import {
   getEffectiveLicensePoints,
   recalculateSeriesLicensePoints,
 } from "./lib/penalties";
+import { validateAtFaultDriverForReport } from "./lib/reportValidation";
 
 const REPORT_AUDIT_FIELDS = [
   "isSelfReport",
@@ -641,6 +642,15 @@ export const finalize = mutation({
       ? undefined
       : (args.atFaultDriverId ?? report.reportedDriverId);
 
+    const atFaultDriverError = await validateAtFaultDriverForReport(
+      ctx,
+      report,
+      effectiveAtFaultDriverId,
+    );
+    if (atFaultDriverError) {
+      return failure(atFaultDriverError);
+    }
+
     let appliedPenaltyDoc: any = null;
     if (args.appliedPenalty) {
       appliedPenaltyDoc = await ctx.db.get(args.appliedPenalty as any);
@@ -732,6 +742,15 @@ export const updateFinalizedDecision = mutation({
       officialNotes: args.officialNotes,
       isSelfReport: args.isSelfReport,
     };
+
+    const atFaultDriverError = await validateAtFaultDriverForReport(
+      ctx,
+      report,
+      updates.atFaultDriverId,
+    );
+    if (atFaultDriverError) {
+      return failure(atFaultDriverError);
+    }
 
     const now = Date.now();
     await ctx.db.patch(args.reportId, {

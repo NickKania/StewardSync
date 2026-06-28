@@ -25,6 +25,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_formatting from "../lib/formatting.js";
 import type * as lib_penalties from "../lib/penalties.js";
+import type * as lib_reportValidation from "../lib/reportValidation.js";
 import type * as lib_reports from "../lib/reports.js";
 import type * as lib_result from "../lib/result.js";
 import type * as migrations from "../migrations.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   "lib/errors": typeof lib_errors;
   "lib/formatting": typeof lib_formatting;
   "lib/penalties": typeof lib_penalties;
+  "lib/reportValidation": typeof lib_reportValidation;
   "lib/reports": typeof lib_reports;
   "lib/result": typeof lib_result;
   migrations: typeof migrations;
