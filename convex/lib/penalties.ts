@@ -20,26 +20,19 @@ const comparePenaltySeverity = (
   return (right.assignedAt ?? 0) - (left.assignedAt ?? 0);
 };
 
-const sameId = (left: unknown, right: unknown): boolean =>
+export const sameId = (left: unknown, right: unknown): boolean =>
   left != null && right != null && String(left) === String(right);
 
-export const recalculateSeriesLicensePoints = async (
+export const getSeriesLicensePointTotals = async (
   ctx: any,
   seriesId: unknown,
-): Promise<void> => {
+): Promise<Map<string, number>> => {
   const events = await ctx.db
     .query("events")
     .withIndex("by_series", (q: any) => q.eq("seriesId", seriesId))
     .collect();
 
-  const drivers = await ctx.db
-    .query("drivers")
-    .withIndex("by_championship", (q: any) =>
-      q.eq("championshipId", seriesId),
-    )
-    .collect();
-
-  const penaltyAccumulator: Record<string, number> = {};
+  const pointTotals = new Map<string, number>();
 
   for (const event of events) {
     const reports = await ctx.db
@@ -71,10 +64,25 @@ export const recalculateSeriesLicensePoints = async (
         : null;
       const points = getEffectiveLicensePoints(penalty, report.isSelfReport);
       const driverKey = driverId.toString();
-      penaltyAccumulator[driverKey] =
-        (penaltyAccumulator[driverKey] ?? 0) + points;
+      pointTotals.set(driverKey, (pointTotals.get(driverKey) ?? 0) + points);
     }
   }
+
+  return pointTotals;
+};
+
+export const recalculateSeriesLicensePoints = async (
+  ctx: any,
+  seriesId: unknown,
+): Promise<void> => {
+  const drivers = await ctx.db
+    .query("drivers")
+    .withIndex("by_championship", (q: any) =>
+      q.eq("championshipId", seriesId),
+    )
+    .collect();
+
+  const pointTotals = await getSeriesLicensePointTotals(ctx, seriesId);
 
   const seriesPenalties = await ctx.db
     .query("seriesPenalties")
@@ -82,10 +90,7 @@ export const recalculateSeriesLicensePoints = async (
     .collect();
 
   for (const driver of drivers) {
-    const calculatedReportPoints =
-      penaltyAccumulator[driver._id.toString()] ?? 0;
-    const totalPoints =
-      driver.accumulatedLicensePoints ?? calculatedReportPoints;
+    const totalPoints = pointTotals.get(driver._id.toString()) ?? 0;
 
     const existingDriverSeriesPenalties = await ctx.db
       .query("driverSeriesPenalties")
