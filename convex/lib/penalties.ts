@@ -23,6 +23,11 @@ const comparePenaltySeverity = (
 const sameId = (left: unknown, right: unknown): boolean =>
   left != null && right != null && String(left) === String(right);
 
+export const isSeriesPenaltyThresholdMet = (
+  totalPoints: number,
+  threshold: number,
+): boolean => totalPoints >= threshold;
+
 export const recalculateSeriesLicensePoints = async (
   ctx: any,
   seriesId: unknown,
@@ -130,7 +135,10 @@ export const recalculateSeriesLicensePoints = async (
             threshold.driverClassIds?.some((driverClassId: unknown) =>
               sameId(driverClassId, driver.driverClassId),
             );
-          return appliesToDriver && totalPoints >= threshold.threshold;
+          return (
+            appliesToDriver &&
+            isSeriesPenaltyThresholdMet(totalPoints, threshold.threshold)
+          );
         })
         .sort((a: any, b: any) =>
           comparePenaltySeverity(
