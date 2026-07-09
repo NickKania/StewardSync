@@ -1,6 +1,34 @@
 import { internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
+import type { Id } from "./_generated/dataModel";
+import { validateAtFaultDriverForReport } from "./lib/reportValidation";
+
+const isReportParticipant = (
+  atFaultDriverId: Id<"drivers">,
+  report: {
+    reportingDriverId?: Id<"drivers"> | null;
+    reportedDriverId: Id<"drivers">;
+    atFaultDriverId?: Id<"drivers"> | null;
+  },
+  reviews: Array<{ atFaultDriverId?: Id<"drivers"> | null }>,
+) => {
+  const driverId = String(atFaultDriverId);
+
+  if (String(report.reportingDriverId ?? "") === driverId) {
+    return true;
+  }
+  if (String(report.reportedDriverId) === driverId) {
+    return true;
+  }
+  if (String(report.atFaultDriverId ?? "") === driverId) {
+    return true;
+  }
+
+  return reviews.some(
+    (review) => String(review.atFaultDriverId ?? "") === driverId,
+  );
+};
 
 export const getSelfReportContext = internalQuery({
   args: {
@@ -44,6 +72,20 @@ export const getSelfReportContext = internalQuery({
             return currentDate > latestDate ? current : latest;
           })
         : null;
+
+    if (
+      args.atFaultDriverId &&
+      !isReportParticipant(args.atFaultDriverId, report, reviews)
+    ) {
+      const atFaultDriverError = await validateAtFaultDriverForReport(
+        ctx,
+        report,
+        args.atFaultDriverId,
+      );
+      if (atFaultDriverError) {
+        throw new Error(atFaultDriverError);
+      }
+    }
 
     const effectiveAtFaultDriverId =
       args.atFaultDriverId ??
