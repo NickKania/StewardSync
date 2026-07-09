@@ -7,6 +7,12 @@ import {
   ThreadAutoArchiveDuration,
   type ThreadChannel,
 } from "discord.js";
+import {
+  discordMessageUrl,
+  normalizeDiscordChannelId,
+} from "./lib/discordEvidence";
+
+export { discordMessageUrl, normalizeDiscordChannelId };
 
 export const getEnvOrThrow = (key: string) => {
   const value = process.env[key];
@@ -16,12 +22,22 @@ export const getEnvOrThrow = (key: string) => {
   return value;
 };
 
+/**
+ * Shared Discord bot client for race-ban threads, meetings, and self-report
+ * evidence. Requires the bot to have Message Content Intent enabled in the
+ * Discord Developer Portal (privileged intent) so channel history includes
+ * message bodies for self-report evidence loading.
+ */
 export const withDiscordClient = async <T>(
   callback: (client: Client) => Promise<T>,
 ) => {
   const token = getEnvOrThrow("DISCORD_BOT_TOKEN");
   const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+    ],
   });
   await client.login(token);
   try {

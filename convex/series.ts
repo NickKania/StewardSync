@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { getCurrentUserRole, hasMinimumRole, requireRole } from "./lib/auth";
+import { normalizeDiscordChannelId } from "./lib/discordEvidence";
 
 export const list = query({
   handler: async (ctx) => {
@@ -75,6 +76,7 @@ export const create = mutation({
     isReportingLocked: v.optional(v.boolean()),
     requireVideoEvidence: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
+    discordIncidentChannelId: v.optional(v.string()),
     seriesPenaltyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -96,6 +98,9 @@ export const create = mutation({
       reportingOpenTime: data.reportingOpenTime,
       reportingCloseDuration: data.reportingCloseDuration,
       requireVideoEvidence: data.requireVideoEvidence,
+      discordIncidentChannelId: normalizeDiscordChannelId(
+        data.discordIncidentChannelId,
+      ),
       seriesPenaltyNotes: data.seriesPenaltyNotes,
       createdAt: Date.now(),
     };
@@ -125,6 +130,7 @@ export const update = mutation({
     isReportingLocked: v.optional(v.boolean()),
     requireVideoEvidence: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
+    discordIncidentChannelId: v.optional(v.string()),
     seriesPenaltyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -154,6 +160,11 @@ export const update = mutation({
     if (updates.isReportingLocked !== undefined) cleanUpdates.isReportingLocked = updates.isReportingLocked;
     if (updates.requireVideoEvidence !== undefined) cleanUpdates.requireVideoEvidence = updates.requireVideoEvidence;
     if (updates.isActive !== undefined) cleanUpdates.isActive = updates.isActive;
+    if (updates.discordIncidentChannelId !== undefined) {
+      cleanUpdates.discordIncidentChannelId = normalizeDiscordChannelId(
+        updates.discordIncidentChannelId,
+      );
+    }
     if (updates.seriesPenaltyNotes !== undefined) cleanUpdates.seriesPenaltyNotes = updates.seriesPenaltyNotes;
 
     await ctx.db.patch(id, cleanUpdates);

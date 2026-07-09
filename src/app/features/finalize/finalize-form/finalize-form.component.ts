@@ -30,6 +30,7 @@ import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
 import { User } from "@app/core/models";
+import { DiscordEvidenceComponent } from "../../reviews/discord-evidence/discord-evidence.component";
 
 @Component({
   selector: "app-finalize-form",
@@ -46,6 +47,7 @@ import { User } from "@app/core/models";
     ModalComponent,
     SearchSelectComponent,
     ToggleComponent,
+    DiscordEvidenceComponent,
     DateFormatPipe,
     TimeAgoPipe,
   ],
@@ -411,6 +413,11 @@ import { User } from "@app/core/models";
               </dl>
             </app-card>
 
+            <app-discord-evidence
+              [report]="report()"
+              [atFaultDriverId]="selectedAtFaultDriverIdForEvidence()"
+            />
+
             <app-card title="Original Description">
               <p
                 class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300"
@@ -505,6 +512,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   report = signal<any>(null);
   availablePenalties = signal<Penalty[]>([]);
   selectedAppliedPenaltyId = signal<string>("");
+  /** Tracks at-fault select for Discord evidence (kept in sync via valueChanges). */
+  private readonly atFaultDriverFormValue = signal<string>("");
   drivers = signal<any[]>([]);
   loading = signal(true);
   submitting = signal(false);
@@ -532,6 +541,18 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       (penalty) => String(penalty._id) === String(selectedPenaltyId),
     );
     return Boolean(selectedPenalty?.allowNoDriverAtFault);
+  });
+
+  selectedAtFaultDriverIdForEvidence = computed(() => {
+    const selectedDriverId = this.atFaultDriverFormValue();
+    if (selectedDriverId === this.NO_DRIVER_OPTION_VALUE) {
+      return null;
+    }
+    if (selectedDriverId) {
+      return selectedDriverId;
+    }
+    const reportedDriverId = this.report()?.reportedDriverId;
+    return reportedDriverId ? String(reportedDriverId) : null;
   });
 
   showRejectModal = false;
@@ -589,6 +610,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       .get("candidateForStandardization")
       ?.valueChanges.subscribe((candidate: boolean) => {
         this.updateOfficialNotesValidation(candidate);
+      });
+    this.form
+      .get("atFaultDriverId")
+      ?.valueChanges.subscribe((driverId: string) => {
+        this.atFaultDriverFormValue.set(String(driverId || ""));
       });
   }
 

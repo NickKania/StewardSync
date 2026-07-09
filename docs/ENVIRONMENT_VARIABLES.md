@@ -19,7 +19,7 @@ The StewardSync application now reads environment variables directly from the sy
 - `PUBLIC_ENABLE_DEV_LOGIN`: Enable/disable the developer login page (`true`/`false`)
 - `DISCORD_CLIENT_ID`: Discord OAuth 2.0 client ID
 - `DISCORD_CLIENT_SECRET`: Discord OAuth 2.0 client secret
-- `DISCORD_BOT_TOKEN`: Discord bot token used for race ban review meeting notifications
+- `DISCORD_BOT_TOKEN`: Discord bot token used for race ban review meeting notifications and self-report evidence loading. The bot application must enable the privileged **Message Content Intent** in the Discord Developer Portal, plus channel permissions: View Channel and Read Message History on each series incident channel.
 - `DISCORD_RACE_REVIEW_CHANNEL_ID`: Parent Discord **text channel** ID used to create private meeting threads
 
 ## Using with Docker

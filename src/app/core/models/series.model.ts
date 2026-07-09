@@ -11,6 +11,7 @@ export interface Series {
   isReportingLocked?: boolean;
   requireVideoEvidence?: boolean;
   isActive?: boolean;
+  discordIncidentChannelId?: string;
   seriesPenaltyNotes?: string;
   scheduledImportTime?: string;
   scheduledImportDays?: number[];

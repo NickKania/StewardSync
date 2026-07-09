@@ -70,6 +70,7 @@ export default defineSchema({
     isReportingLocked: v.optional(v.boolean()),
     requireVideoEvidence: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
+    discordIncidentChannelId: v.optional(v.string()),
     seriesPenaltyNotes: v.optional(v.string()),
     scheduledImportTime: v.optional(v.string()),
     scheduledImportDays: v.optional(v.array(v.number())),

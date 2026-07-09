@@ -156,6 +156,9 @@ import { Id } from "@convex/_generated/dataModel";
                         {{ getSeriesPenalties(s._id).length }} penalties |
                         {{ getSeriesPenaltiesBySeries(s._id).length }} series penalties |
                         {{ getDriverClassesBySeries(s._id).length }} classes
+                        @if (s.discordIncidentChannelId) {
+                          | Discord self reporting configured
+                        }
                       </span>
                     }
                     <app-button
@@ -982,6 +985,24 @@ import { Id } from "@convex/_generated/dataModel";
               <div>
                 <label
                   class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                  >Discord Incident Channel (optional)</label
+                >
+                <input
+                  type="text"
+                  class="input w-full"
+                  [(ngModel)]="seriesForm.discordIncidentChannelId"
+                  placeholder="Channel ID or Discord channel link"
+                />
+                <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                  Used by steward review/finalization to load self-report
+                  evidence. Bot needs View Channel, Read Message History, and
+                  Message Content Intent enabled. Clear the field and save to
+                  unset.
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
                   >Reporting Opens At (optional) - {{ timezoneDisplay() }}</label
                 >
                 <div class="flex gap-2">
@@ -1679,6 +1700,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     name: "",
     description: "",
     simgridLink: "",
+    discordIncidentChannelId: "",
     reportingOpenTime: "",
     reportingCloseDuration: 0,
     isReportingLocked: false,
@@ -1880,6 +1902,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       name: series.name,
       description: series.description || "",
       simgridLink: series.simgridLink || "",
+      discordIncidentChannelId: series.discordIncidentChannelId || "",
       reportingOpenTime: this.utcToLocalTime(series.reportingOpenTime || ""),
       reportingCloseDuration: series.reportingCloseDuration || 0,
       isReportingLocked: series.isReportingLocked || false,
@@ -1902,6 +1925,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         name: this.seriesForm.name,
         description: this.seriesForm.description || undefined,
         simgridLink: this.seriesForm.simgridLink || undefined,
+        // Always send (including "") so an emptied field clears the stored channel.
+        discordIncidentChannelId: this.seriesForm.discordIncidentChannelId,
         reportingOpenTime: utcTime,
         reportingCloseDuration:
           this.seriesForm.reportingCloseDuration || undefined,
@@ -1916,6 +1941,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         name: this.seriesForm.name,
         description: this.seriesForm.description || undefined,
         simgridLink: this.seriesForm.simgridLink || undefined,
+        discordIncidentChannelId:
+          this.seriesForm.discordIncidentChannelId || undefined,
         reportingOpenTime: utcTime,
         reportingCloseDuration:
           this.seriesForm.reportingCloseDuration || undefined,
@@ -1952,6 +1979,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       name: "",
       description: "",
       simgridLink: "",
+      discordIncidentChannelId: "",
       reportingOpenTime: "",
       reportingCloseDuration: 0,
       isReportingLocked: false,

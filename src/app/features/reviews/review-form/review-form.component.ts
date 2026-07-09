@@ -31,6 +31,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
 import { SelectOption } from "@shared/components/select/select.component";
 import { User } from "@app/core/models";
+import { DiscordEvidenceComponent } from "../discord-evidence/discord-evidence.component";
 
 @Component({
   selector: "app-review-form",
@@ -47,6 +48,7 @@ import { User } from "@app/core/models";
     ModalComponent,
     SearchSelectComponent,
     ToggleComponent,
+    DiscordEvidenceComponent,
     DateFormatPipe,
     TimeAgoPipe,
   ],
@@ -468,6 +470,11 @@ import { User } from "@app/core/models";
               </dl>
             </app-card>
 
+            <app-discord-evidence
+              [report]="report()"
+              [atFaultDriverId]="selectedAtFaultDriverIdForEvidence()"
+            />
+
             <app-card title="Original Description">
               <p
                 class="text-gray-700 text-sm whitespace-pre-wrap dark:text-gray-300"
@@ -548,6 +555,8 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   isReportingUser = signal(false);
   availablePenalties = signal<Penalty[]>([]);
   selectedRecommendedPenaltyId = signal<string>("");
+  /** Tracks at-fault select for Discord evidence (kept in sync via valueChanges). */
+  private readonly atFaultDriverFormValue = signal<string>("");
   existingReviews = signal<any[]>([]);
   stewards = signal<any[]>([]);
   drivers = signal<any[]>([]);
@@ -569,6 +578,18 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       (penalty) => String(penalty._id) === String(selectedPenaltyId),
     );
     return Boolean(selectedPenalty?.allowNoDriverAtFault);
+  });
+
+  selectedAtFaultDriverIdForEvidence = computed(() => {
+    const selectedDriverId = this.atFaultDriverFormValue();
+    if (selectedDriverId === this.NO_DRIVER_OPTION_VALUE) {
+      return null;
+    }
+    if (selectedDriverId) {
+      return selectedDriverId;
+    }
+    const reportedDriverId = this.report()?.reportedDriverId;
+    return reportedDriverId ? String(reportedDriverId) : null;
   });
 
   availableStewards = computed(() => {
@@ -649,6 +670,11 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       .get("candidateForStandardization")
       ?.valueChanges.subscribe((candidate: boolean) => {
         this.updateReviewNotesValidation(candidate);
+      });
+    this.form
+      .get("atFaultDriverId")
+      ?.valueChanges.subscribe((driverId: string) => {
+        this.atFaultDriverFormValue.set(String(driverId || ""));
       });
   }
 
