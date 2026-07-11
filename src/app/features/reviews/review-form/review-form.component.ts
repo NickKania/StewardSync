@@ -167,20 +167,12 @@ import { User } from "@app/core/models";
 
                   <!-- At fault driver -->
                   <div>
-                    <label class="label">At Fault Driver</label>
-                    <select formControlName="atFaultDriverId" class="input">
-                      <option value="">Select driver</option>
-                      @if (selectedPenaltyAllowsNoDriver()) {
-                        <option [value]="NO_DRIVER_OPTION_VALUE">
-                          No Driver
-                        </option>
-                      }
-                      @for (driver of drivers(); track driver._id) {
-                        <option [value]="driver._id">
-                          {{ driver.driverName }} ({{ driver.driverNumber }})
-                        </option>
-                      }
-                    </select>
+                    <app-search-select
+                      formControlName="atFaultDriverId"
+                      label="At Fault Driver"
+                      [options]="driverOptions()"
+                      placeholder="Search drivers by name or number..."
+                    />
                     <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
                       Pre-selected to reported driver, change if different
                     </p>
@@ -689,14 +681,36 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
     }
 
     const driversQuery = this.convex.createReactiveQuery(
-      this.convex.api.drivers.list,
-      {},
+      this.convex.api.drivers.getByChampionship,
+      { championshipId: report.event.seriesId as any },
       (data) => {
         this.drivers.set(data);
       }
     );
     this.unsubscribes.push(driversQuery.unsubscribe);
   }
+
+  readonly seriesDrivers = computed(() => {
+    const seriesId = this.report()?.event?.seriesId;
+    if (!seriesId) {
+      return [];
+    }
+
+    return this.drivers().filter(
+      (driver) => String(driver.championshipId) === String(seriesId),
+    );
+  });
+
+  readonly driverOptions = computed<SelectOption[]>(() => {
+    const options = this.seriesDrivers().map((driver) => ({
+      value: String(driver._id),
+      label: `${driver.driverName} (#${driver.driverNumber})`,
+    }));
+
+    return this.selectedPenaltyAllowsNoDriver()
+      ? [{ value: this.NO_DRIVER_OPTION_VALUE, label: "No Driver" }, ...options]
+      : options;
+  });
 
   ngOnDestroy(): void {
     this.unsubscribes.forEach((unsub) => unsub());

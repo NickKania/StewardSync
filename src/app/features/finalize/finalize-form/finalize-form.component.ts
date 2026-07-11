@@ -510,10 +510,16 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   submitting = signal(false);
 
   driverOptions = computed(() => {
-    const options = this.drivers().map((driver) => ({
-      value: String(driver._id),
-      label: `${driver.driverName} (#${driver.driverNumber})`,
-    }));
+    const seriesId = this.report()?.event?.seriesId;
+    const options = this.drivers()
+      .filter(
+        (driver) =>
+          seriesId && String(driver.championshipId) === String(seriesId),
+      )
+      .map((driver) => ({
+        value: String(driver._id),
+        label: `${driver.driverName} (#${driver.driverNumber})`,
+      }));
     if (this.selectedPenaltyAllowsNoDriver()) {
       return [
         { value: this.NO_DRIVER_OPTION_VALUE, label: "No Driver" },
