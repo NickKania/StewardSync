@@ -8,7 +8,7 @@ import {
   getOldestMessageInPage,
   normalizeDiscordChannelId,
   shouldStopDiscordPagination,
-} from "./discordEvidence";
+} from "./discordSelfReport";
 
 describe("normalizeDiscordChannelId", () => {
   it("accepts a raw channel ID", () => {

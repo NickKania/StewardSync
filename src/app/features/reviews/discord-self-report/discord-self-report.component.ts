@@ -14,13 +14,13 @@ import { ButtonComponent } from "@shared/components/button/button.component";
 import { CardComponent } from "@shared/components/card/card.component";
 import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 
-type DiscordEvidenceReason =
+type DiscordSelfReportReason =
   | "missing_channel"
   | "missing_driver_discord"
   | "discord_access_error"
   | "no_at_fault_driver";
 
-type DiscordEvidenceMessage = {
+type DiscordSelfReportMessage = {
   id: string;
   authorName: string;
   authorAvatarUrl?: string;
@@ -30,20 +30,20 @@ type DiscordEvidenceMessage = {
   attachmentUrls: string[];
 };
 
-type DiscordEvidenceResult = {
+type DiscordSelfReportResult = {
   ok: boolean;
-  reason?: DiscordEvidenceReason;
+  reason?: DiscordSelfReportReason;
   channelName?: string;
   driverLabel?: string;
   windowStart: number;
   windowEnd: number;
-  messages: DiscordEvidenceMessage[];
+  messages: DiscordSelfReportMessage[];
   hasMore: boolean;
   contentAccessWarning?: boolean;
 };
 
-/** Minimal report shape needed for the evidence panel. */
-export type DiscordEvidenceReport = {
+/** Minimal report shape needed for the Discord self-report panel. */
+export type DiscordSelfReportReport = {
   _id: string;
   event?: {
     eventDate?: number;
@@ -51,7 +51,7 @@ export type DiscordEvidenceReport = {
 };
 
 @Component({
-  selector: "app-discord-evidence",
+  selector: "app-discord-self-report",
   standalone: true,
   imports: [CommonModule, CardComponent, ButtonComponent, DateFormatPipe],
   template: `
@@ -86,21 +86,21 @@ export type DiscordEvidenceReport = {
           </app-button>
         }
 
-        @if (displayResult(); as evidence) {
-          @if (!evidence.ok) {
+        @if (displayResult(); as selfReport) {
+          @if (!selfReport.ok) {
             <div
               class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
-              {{ reasonText(evidence.reason) }}
+              {{ reasonText(selfReport.reason) }}
             </div>
-          } @else if (evidence.messages.length === 0) {
+          } @else if (selfReport.messages.length === 0) {
             <div
               class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
               No messages from this driver in the selected window.
             </div>
           } @else {
-            @if (evidence.contentAccessWarning) {
+            @if (selfReport.contentAccessWarning) {
               <div
                 class="rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-sm text-warning-text"
               >
@@ -113,7 +113,7 @@ export type DiscordEvidenceReport = {
             <div
               class="max-h-96 overflow-y-auto rounded-md border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900"
             >
-              @for (message of evidence.messages; track message.id) {
+              @for (message of selfReport.messages; track message.id) {
                 <article
                   class="border-b border-gray-200 p-3 last:border-b-0 dark:border-gray-700"
                 >
@@ -177,7 +177,7 @@ export type DiscordEvidenceReport = {
                 </article>
               }
             </div>
-            @if (evidence.hasMore) {
+            @if (selfReport.hasMore) {
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 Showing a partial result (message, page, or time cap). Load
                 again after narrowing the channel history if needed.
@@ -189,8 +189,8 @@ export type DiscordEvidenceReport = {
     </app-card>
   `,
 })
-export class DiscordEvidenceComponent {
-  readonly report = input.required<DiscordEvidenceReport | null | undefined>();
+export class DiscordSelfReportComponent {
+  readonly report = input.required<DiscordSelfReportReport | null | undefined>();
   readonly atFaultDriverId = input<string | null | undefined>();
 
   private readonly convex = inject(ConvexService);
@@ -198,15 +198,15 @@ export class DiscordEvidenceComponent {
   private readonly toast = inject(ToastService);
 
   readonly loading = signal(false);
-  readonly result = signal<DiscordEvidenceResult | null>(null);
+  readonly result = signal<DiscordSelfReportResult | null>(null);
   /** Driver id the current `result` was loaded for (avoids stale UI). */
   private readonly resultDriverId = signal<string | null>(null);
-  /** Last report+driver key used to decide when to drop cached evidence. */
-  private lastEvidenceKey: string | null = null;
+  /** Last report+driver key used to decide when to drop cached self-report data. */
+  private lastSelfReportKey: string | null = null;
 
   readonly noDriverSelected = computed(() => !this.atFaultDriverId());
 
-  /** Only surface evidence that matches the currently selected at-fault driver. */
+  /** Only surface self-report data that matches the currently selected at-fault driver. */
   readonly displayResult = computed(() => {
     if (this.noDriverSelected()) {
       return null;
@@ -228,11 +228,11 @@ export class DiscordEvidenceComponent {
         // Key on report id + driver only — ignore report object identity so
         // Convex subscription refreshes do not wipe a successful load.
         const key = `${this.report()?._id ?? ""}:${this.atFaultDriverId() ?? ""}`;
-        if (this.lastEvidenceKey !== null && this.lastEvidenceKey !== key) {
+        if (this.lastSelfReportKey !== null && this.lastSelfReportKey !== key) {
           this.result.set(null);
           this.resultDriverId.set(null);
         }
-        this.lastEvidenceKey = key;
+        this.lastSelfReportKey = key;
       },
       { allowSignalWrites: true },
     );
@@ -257,7 +257,7 @@ export class DiscordEvidenceComponent {
           reportId: report._id,
           atFaultDriverId: selectedDriverId,
         },
-      )) as DiscordEvidenceResult;
+      )) as DiscordSelfReportResult;
 
       // Drop late responses if the steward switched drivers mid-flight.
       if (this.atFaultDriverId() !== selectedDriverId) {
@@ -274,7 +274,7 @@ export class DiscordEvidenceComponent {
     }
   }
 
-  reasonText(reason: DiscordEvidenceReason | undefined): string {
+  reasonText(reason: DiscordSelfReportReason | undefined): string {
     if (reason === "missing_channel") {
       return "No Discord incident channel configured for this series.";
     }

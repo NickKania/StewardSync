@@ -31,7 +31,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
 import { SelectOption } from "@shared/components/select/select.component";
 import { User } from "@app/core/models";
-import { DiscordEvidenceComponent } from "../discord-evidence/discord-evidence.component";
+import { DiscordSelfReportComponent } from "../discord-self-report/discord-self-report.component";
 
 @Component({
   selector: "app-review-form",
@@ -48,7 +48,7 @@ import { DiscordEvidenceComponent } from "../discord-evidence/discord-evidence.c
     ModalComponent,
     SearchSelectComponent,
     ToggleComponent,
-    DiscordEvidenceComponent,
+    DiscordSelfReportComponent,
     DateFormatPipe,
     TimeAgoPipe,
   ],
@@ -470,7 +470,7 @@ import { DiscordEvidenceComponent } from "../discord-evidence/discord-evidence.c
               </dl>
             </app-card>
 
-            <app-discord-evidence
+            <app-discord-self-report
               [report]="report()"
               [atFaultDriverId]="selectedAtFaultDriverIdForEvidence()"
             />
@@ -555,7 +555,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
   isReportingUser = signal(false);
   availablePenalties = signal<Penalty[]>([]);
   selectedRecommendedPenaltyId = signal<string>("");
-  /** Tracks at-fault select for Discord evidence (kept in sync via valueChanges). */
+  /** Tracks at-fault select for Discord self-report (kept in sync via valueChanges). */
   private readonly atFaultDriverFormValue = signal<string>("");
   existingReviews = signal<any[]>([]);
   stewards = signal<any[]>([]);

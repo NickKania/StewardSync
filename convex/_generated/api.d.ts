@@ -22,7 +22,7 @@ import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
-import type * as lib_discordEvidence from "../lib/discordEvidence.js";
+import type * as lib_discordSelfReport from "../lib/discordSelfReport.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_formatting from "../lib/formatting.js";
 import type * as lib_penalties from "../lib/penalties.js";
@@ -71,7 +71,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
-  "lib/discordEvidence": typeof lib_discordEvidence;
+  "lib/discordSelfReport": typeof lib_discordSelfReport;
   "lib/errors": typeof lib_errors;
   "lib/formatting": typeof lib_formatting;
   "lib/penalties": typeof lib_penalties;

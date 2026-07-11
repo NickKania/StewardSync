@@ -2,7 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { getCurrentUserRole, hasMinimumRole, requireRole } from "./lib/auth";
-import { normalizeDiscordChannelId } from "./lib/discordEvidence";
+import { normalizeDiscordChannelId } from "./lib/discordSelfReport";
 
 export const list = query({
   handler: async (ctx) => {

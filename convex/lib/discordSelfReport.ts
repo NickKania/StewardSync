@@ -2,7 +2,7 @@ import { UserFacingError } from "./errors";
 
 export const DISCORD_CHANNEL_ID_PATTERN = /^\d{17,20}$/;
 
-export interface DiscordEvidenceMessageLike {
+export interface DiscordSelfReportMessageLike {
   id: string;
   authorId: string;
   authorName: string;
@@ -64,7 +64,7 @@ export const formatDiscordMentions = (
   });
 
 export const filterDriverMessagesForWindow = <
-  T extends DiscordEvidenceMessageLike,
+  T extends DiscordSelfReportMessageLike,
 >(
   messages: T[],
   driverDiscordId: string,

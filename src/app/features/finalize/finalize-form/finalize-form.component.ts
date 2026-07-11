@@ -30,7 +30,7 @@ import { ToggleComponent } from "@shared/components/toggle/toggle.component";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
 import { User } from "@app/core/models";
-import { DiscordEvidenceComponent } from "../../reviews/discord-evidence/discord-evidence.component";
+import { DiscordSelfReportComponent } from "../../reviews/discord-self-report/discord-self-report.component";
 
 @Component({
   selector: "app-finalize-form",
@@ -47,7 +47,7 @@ import { DiscordEvidenceComponent } from "../../reviews/discord-evidence/discord
     ModalComponent,
     SearchSelectComponent,
     ToggleComponent,
-    DiscordEvidenceComponent,
+    DiscordSelfReportComponent,
     DateFormatPipe,
     TimeAgoPipe,
   ],
@@ -413,7 +413,7 @@ import { DiscordEvidenceComponent } from "../../reviews/discord-evidence/discord
               </dl>
             </app-card>
 
-            <app-discord-evidence
+            <app-discord-self-report
               [report]="report()"
               [atFaultDriverId]="selectedAtFaultDriverIdForEvidence()"
             />
@@ -512,7 +512,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   report = signal<any>(null);
   availablePenalties = signal<Penalty[]>([]);
   selectedAppliedPenaltyId = signal<string>("");
-  /** Tracks at-fault select for Discord evidence (kept in sync via valueChanges). */
+  /** Tracks at-fault select for Discord self-report (kept in sync via valueChanges). */
   private readonly atFaultDriverFormValue = signal<string>("");
   drivers = signal<any[]>([]);
   loading = signal(true);

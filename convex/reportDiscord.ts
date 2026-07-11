@@ -10,7 +10,7 @@ import {
   formatDiscordMentions,
   getOldestMessageInPage,
   shouldStopDiscordPagination,
-} from "./lib/discordEvidence";
+} from "./lib/discordSelfReport";
 import { withDiscordClient } from "./discord";
 
 const GET_SELF_REPORT_CONTEXT = "reportDiscordContext:getSelfReportContext" as any;

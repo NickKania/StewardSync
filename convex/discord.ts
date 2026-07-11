@@ -10,7 +10,7 @@ import {
 import {
   discordMessageUrl,
   normalizeDiscordChannelId,
-} from "./lib/discordEvidence";
+} from "./lib/discordSelfReport";
 
 export { discordMessageUrl, normalizeDiscordChannelId };
 
