@@ -97,6 +97,16 @@ export const recalculateSeriesLicensePoints = async (
   for (const driver of drivers) {
     const totalPoints = pointTotals.get(driver._id.toString()) ?? 0;
 
+    // Keep denormalized license-point total in sync with finalized penalties.
+    // Drivers are created with accumulatedLicensePoints: 0, so readers that
+    // prefer the stored field over a live calculation stay correct only if we
+    // update this field whenever series points change.
+    if (driver.accumulatedLicensePoints !== totalPoints) {
+      await ctx.db.patch(driver._id, {
+        accumulatedLicensePoints: totalPoints,
+      });
+    }
+
     const existingDriverSeriesPenalties = await ctx.db
       .query("driverSeriesPenalties")
       .withIndex("by_driver_and_series", (q: any) =>

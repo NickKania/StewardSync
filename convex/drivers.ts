@@ -3,7 +3,10 @@ import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { getCurrentUserRole, hasMinimumRole, requireRole } from "./lib/auth";
 import { formatDriverName, getDriverDisplayName } from "./lib/formatting";
-import { getEffectiveLicensePoints } from "./lib/penalties";
+import {
+  getEffectiveLicensePoints,
+  getSeriesLicensePointTotals,
+} from "./lib/penalties";
 
 const normalizeUsername = (value?: string): string | undefined => {
   if (!value) return undefined;
@@ -79,6 +82,16 @@ const calculateDriverLicensePoints = async (
   ctx: any,
   driver: { _id: any; championshipId?: any },
 ): Promise<number> => {
+  // Prefer series-wide aggregation when the driver belongs to a series so
+  // totals stay consistent with getSeriesLicensePointTotals / recalculate.
+  if (driver.championshipId) {
+    const pointTotals = await getSeriesLicensePointTotals(
+      ctx,
+      driver.championshipId,
+    );
+    return pointTotals.get(driver._id.toString()) ?? 0;
+  }
+
   const reports = await getReportsAgainstDriver(ctx, driver._id);
 
   let total = 0;
@@ -89,10 +102,7 @@ const calculateDriverLicensePoints = async (
     }
 
     const event = await ctx.db.get(report.eventId);
-    if (
-      !event ||
-      (driver.championshipId && event.seriesId !== driver.championshipId)
-    ) {
+    if (!event) {
       continue;
     }
 
@@ -133,9 +143,11 @@ export const getById = query({
 
     return {
       ...driver,
-      accumulatedLicensePoints:
-        driver.accumulatedLicensePoints ??
-        (await calculateDriverLicensePoints(ctx, driver)),
+      // Live calculation: stored field is initialized to 0 and can be stale.
+      accumulatedLicensePoints: await calculateDriverLicensePoints(
+        ctx,
+        driver,
+      ),
       displayName: getDriverDisplayName(
         driver,
         linkedUser ? { officialName: linkedUser.officialName } : undefined,
@@ -174,9 +186,11 @@ export const getByIdWithUser = query({
 
     return {
       ...driver,
-      accumulatedLicensePoints:
-        driver.accumulatedLicensePoints ??
-        (await calculateDriverLicensePoints(ctx, driver)),
+      // Live calculation: stored field is initialized to 0 and can be stale.
+      accumulatedLicensePoints: await calculateDriverLicensePoints(
+        ctx,
+        driver,
+      ),
       linkedUser,
       seriesId: series?._id ?? null,
       seriesName: series?.name ?? "No Series",
@@ -237,6 +251,12 @@ export const getByChampionship = query({
       )
       .collect();
 
+    // Live series totals — stored accumulatedLicensePoints is often stale (0).
+    const pointTotals = await getSeriesLicensePointTotals(
+      ctx,
+      args.championshipId,
+    );
+
     // Enrich with display names and driver class data
     const enrichedDrivers = await Promise.all(
       drivers.map(async (driver) => {
@@ -264,6 +284,8 @@ export const getByChampionship = query({
 
         return {
           ...driver,
+          accumulatedLicensePoints:
+            pointTotals.get(driver._id.toString()) ?? 0,
           linkedUser,
           displayName: getDriverDisplayName(
             driver,
@@ -296,6 +318,7 @@ export const getPenaltyHistory = query({
 
     const finalizedReports = reports.filter((report) => {
       if (report.status !== "finalized") return false;
+      if (report.isNoDriverAtFault) return false;
       if (report.atFaultDriverId)
         return report.atFaultDriverId === args.driverId;
       return report.reportedDriverId === args.driverId;
@@ -403,6 +426,8 @@ export const getUserProfile = query({
           reportsAgainst
             .filter((report) => {
               if (report.status !== "finalized") return false;
+              // Match getSeriesLicensePointTotals / calculateDriverLicensePoints
+              if (report.isNoDriverAtFault) return false;
               if (report.atFaultDriverId)
                 return report.atFaultDriverId === driver._id;
               return report.reportedDriverId === driver._id;
@@ -447,6 +472,10 @@ export const getUserProfile = query({
         const penaltyHistory = penaltyHistoryRows
           .filter((row) => row !== null)
           .sort((a, b) => b!.finalizedAt - a!.finalizedAt);
+        // Always derive the total from the same penalty rows shown in history.
+        // Preferring driver.accumulatedLicensePoints is unsafe: create/import
+        // initialize it to 0, and a stale 0 would hide the real total forever
+        // under nullish coalescing (0 is not nullish).
         const calculatedLicensePoints = penaltyHistory.reduce(
           (sum, row) => sum + (row?.licensePoints ?? 0),
           0,
@@ -469,8 +498,7 @@ export const getUserProfile = query({
           steamId: driver.steamId,
           driverClassId: driver.driverClassId ?? null,
           driverClassName: driverClass?.displayName ?? null,
-          accumulatedLicensePoints:
-            driver.accumulatedLicensePoints ?? calculatedLicensePoints,
+          accumulatedLicensePoints: calculatedLicensePoints,
           note: canViewNotes ? driver.note : undefined,
           penalties: penaltyHistory,
         };
@@ -665,9 +693,11 @@ export const getDriverStats = query({
       finalizedReports: reportsFiledAgainst.filter(
         (r) => r.status === "finalized",
       ).length,
-      accumulatedLicensePoints:
-        driver.accumulatedLicensePoints ??
-        (await calculateDriverLicensePoints(ctx, driver)),
+      // Live calculation: stored field is initialized to 0 and can be stale.
+      accumulatedLicensePoints: await calculateDriverLicensePoints(
+        ctx,
+        driver,
+      ),
       isActive: driver.isActive ?? true,
     };
   },
