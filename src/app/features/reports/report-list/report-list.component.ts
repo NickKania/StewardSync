@@ -156,9 +156,10 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                         }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        #{{
-                          report.atFaultDriver?.driverNumber ||
-                            report.reportedDriver?.driverNumber
+                        {{
+                          (report.atFaultDriver?.driverNumber ?? report.reportedDriver?.driverNumber) !== undefined
+                            ? "#" + (report.atFaultDriver?.driverNumber ?? report.reportedDriver?.driverNumber)
+                            : "No car number"
                         }}
                       </p>
                     </td>
@@ -235,7 +236,9 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                     <span class="text-gray-500 dark:text-gray-400">At Fault</span>
                     <span class="text-gray-900 dark:text-gray-100 font-medium">
                       {{ report.atFaultDriver?.displayName || report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
-                      #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                      @if ((report.atFaultDriver?.driverNumber ?? report.reportedDriver?.driverNumber) !== undefined) {
+                        #{{ report.atFaultDriver?.driverNumber ?? report.reportedDriver?.driverNumber }}
+                      }
                     </span>
                   </div>
                   <div class="flex justify-between">

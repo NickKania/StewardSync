@@ -25,7 +25,7 @@ interface EventRundownRow {
 
 interface DriverTimePenaltyRow {
   driverId: string;
-  carNumber: number;
+  carNumber: number | null;
   driverName: string;
   driverClass: string;
   totalTimePenaltySeconds: number;
@@ -772,7 +772,7 @@ export const getEventTimePenaltySummary = query({
 
         const driverPenaltyMap = new Map<string, {
           driverId: string;
-          carNumber: number;
+          carNumber: number | null;
           driverName: string;
           driverClass: string;
           totalTimePenaltySeconds: number;
@@ -844,7 +844,7 @@ export const getEventTimePenaltySummary = query({
           } else {
             driverPenaltyMap.set(driverId, {
               driverId,
-              carNumber: reportedDriver?.driverNumber ?? 0,
+              carNumber: reportedDriver?.driverNumber ?? null,
               driverName: displayName || "",
               driverClass: driverClassDisplayName || "",
               totalTimePenaltySeconds: timePenaltySeconds,

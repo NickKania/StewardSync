@@ -42,7 +42,7 @@
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
     "@convex-dev/sharded-counter": "^0.2.0",
-    "convex": "^1.10.0",
+    "convex": "^1.43.0",
     "date-fns": "^3.6.0",
     "discord.js": "^14.25.1",
     "html-to-image": "^1.11.13",

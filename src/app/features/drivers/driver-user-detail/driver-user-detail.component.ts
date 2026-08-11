@@ -191,7 +191,7 @@ interface SeriesPenaltyGroup {
                 {{ detailFullName() }}
               </dd>
             </div>
-            @if (detailDriverNumber()) {
+            @if (detailDriverNumber() !== null) {
               <div>
                 <dt class="text-sm text-gray-500 dark:text-gray-400">
                   Driver Number
@@ -373,10 +373,13 @@ interface SeriesPenaltyGroup {
                     "
                     (change)="toggleDriverSelection(seriesProfile.driverId)"
                   />
-                  <span
-                    >#{{ seriesProfile.driverNumber }} -
-                    {{ seriesProfile.seriesName }}</span
-                  >
+                  <span>
+                    {{
+                      seriesProfile.driverNumber === undefined
+                        ? ""
+                        : "#" + seriesProfile.driverNumber + " - "
+                    }}{{ seriesProfile.seriesName }}
+                  </span>
                 </label>
               }
             </div>
@@ -392,8 +395,11 @@ interface SeriesPenaltyGroup {
                   <h3
                     class="text-lg font-semibold text-gray-900 dark:text-gray-100"
                   >
-                    {{ profile.seriesName || "No Series" }} - #{{
-                      profile.driverNumber
+                    {{ profile.seriesName || "No Series"
+                    }}{{
+                      profile.driverNumber === undefined
+                        ? ""
+                        : " - #" + profile.driverNumber
                     }}
                   </h3>
                   <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -1219,7 +1225,7 @@ export class DriverUserDetailComponent implements OnInit {
 
     for (const profile of profiles) {
       if (profile.note && profile.note.trim()) {
-        parts.push(`[[DRIVER_NOTE:${profile.driverNumber}:${profile.seriesName}]]\n${profile.note.trim()}`);
+        parts.push(`[[DRIVER_NOTE_ID:${profile.driverId}]]\n${profile.note.trim()}`);
       }
     }
 
@@ -1250,14 +1256,19 @@ export class DriverUserDetailComponent implements OnInit {
         continue;
       }
 
-      const driverMatch = trimmedLine.match(/^\[\[DRIVER_NOTE:(\d+):(.+)\]\]$/);
-      if (driverMatch) {
+      const driverIdMatch = trimmedLine.match(/^\[\[DRIVER_NOTE_ID:([^\]]+)\]\]$/);
+      const legacyDriverMatch = trimmedLine.match(
+        /^\[\[DRIVER_NOTE:(\d+):(.+)\]\]$/,
+      );
+      if (driverIdMatch || legacyDriverMatch) {
         if (currentDriverKey) {
           driverNotes.set(currentDriverKey, currentNote.join("\n").trim());
         } else if (currentNote.length > 0) {
           userNote.push(...currentNote);
         }
-        currentDriverKey = `${driverMatch[1]}-${driverMatch[2].trim()}`;
+        currentDriverKey = driverIdMatch
+          ? driverIdMatch[1]
+          : `${legacyDriverMatch![1]}-${legacyDriverMatch![2].trim()}`;
         currentNote = [];
         continue;
       }
@@ -1313,8 +1324,11 @@ export class DriverUserDetailComponent implements OnInit {
 
         const profiles = this.profile()?.profiles || [];
         for (const profile of profiles) {
-          const driverKey = `${profile.driverNumber}-${profile.seriesName}`;
-          const driverNote = driverNotes.get(driverKey) ?? "";
+          const legacyDriverKey = `${profile.driverNumber}-${profile.seriesName}`;
+          const driverNote =
+            driverNotes.get(profile.driverId) ??
+            driverNotes.get(legacyDriverKey) ??
+            "";
 
           mutations.push(
             this.convex.mutation(this.convex.api.drivers.updateNote, {

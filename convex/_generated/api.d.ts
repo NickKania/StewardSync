@@ -28,6 +28,7 @@ import type * as lib_penalties from "../lib/penalties.js";
 import type * as lib_reportValidation from "../lib/reportValidation.js";
 import type * as lib_reports from "../lib/reports.js";
 import type * as lib_result from "../lib/result.js";
+import type * as lib_simgridCsv from "../lib/simgridCsv.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_backfillReportIds from "../migrations/backfillReportIds.js";
 import type * as penalties from "../penalties.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "lib/reportValidation": typeof lib_reportValidation;
   "lib/reports": typeof lib_reports;
   "lib/result": typeof lib_result;
+  "lib/simgridCsv": typeof lib_simgridCsv;
   migrations: typeof migrations;
   "migrations/backfillReportIds": typeof migrations_backfillReportIds;
   penalties: typeof penalties;
@@ -121,28 +123,5 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
-  shardedCounter: {
-    public: {
-      add: FunctionReference<
-        "mutation",
-        "internal",
-        { count: number; name: string; shard?: number; shards?: number },
-        number
-      >;
-      count: FunctionReference<"query", "internal", { name: string }, number>;
-      estimateCount: FunctionReference<
-        "query",
-        "internal",
-        { name: string; readFromShards?: number; shards?: number },
-        any
-      >;
-      rebalance: FunctionReference<
-        "mutation",
-        "internal",
-        { name: string; shards?: number },
-        any
-      >;
-      reset: FunctionReference<"mutation", "internal", { name: string }, any>;
-    };
-  };
+  shardedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"shardedCounter">;
 };

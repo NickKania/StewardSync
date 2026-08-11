@@ -186,7 +186,11 @@ export class EditDecisionComponent implements OnInit, OnDestroy, OnChanges {
   driverOptions = computed(() => {
     const options = this.drivers().map((driver) => ({
       value: String(driver._id),
-      label: `${driver.driverName} (#${driver.driverNumber})`,
+      label:
+        driver.driverName +
+        (driver.driverNumber === undefined
+          ? ""
+          : " (#" + driver.driverNumber + ")"),
     }));
     if (this.selectedPenaltyAllowsNoDriver()) {
       return [

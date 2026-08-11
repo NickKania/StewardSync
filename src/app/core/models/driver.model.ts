@@ -10,7 +10,7 @@ export interface DriverClass {
 
 export interface Driver {
   _id: Id<'drivers'>;
-  driverNumber: number;
+  driverNumber?: number;
   driverName: string;
   officialName?: string;
   username?: string;

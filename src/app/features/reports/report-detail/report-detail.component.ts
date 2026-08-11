@@ -173,7 +173,9 @@ import {
                     }}
                   </dd>
                   <dd class="text-sm text-gray-500 dark:text-gray-400">
-                    #{{ report()?.reportedDriver?.driverNumber }} -
+                    @if (report()?.reportedDriver?.driverNumber !== undefined) {
+                      #{{ report()?.reportedDriver?.driverNumber }} -
+                    }
                     {{ report()?.reportedDriver?.driverClass }}
                   </dd>
                 </div>
@@ -279,7 +281,9 @@ import {
                         }}
                       </dd>
                       <dd class="text-sm text-gray-500 dark:text-gray-400">
-                        #{{ report()?.atFaultDriver?.driverNumber }} -
+                        @if (report()?.atFaultDriver?.driverNumber !== undefined) {
+                          #{{ report()?.atFaultDriver?.driverNumber }} -
+                        }
                         {{ report()?.atFaultDriver?.driverClass }}
                       </dd>
                     } @else {

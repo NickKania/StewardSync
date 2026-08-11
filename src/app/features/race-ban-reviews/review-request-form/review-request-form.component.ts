@@ -74,7 +74,10 @@ interface AvailabilityRow {
                 {{ requirement()!.penalty.penaltyName }}
               </p>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                Driver: {{ requirement()!.driver.driverName }} #{{ requirement()!.driver.driverNumber }}
+                Driver: {{ requirement()!.driver.driverName }}
+                @if (requirement()!.driver.driverNumber != null) {
+                  #{{ requirement()!.driver.driverNumber }}
+                }
               </p>
               @if (requirement()!.existingRequest?.status === "scheduled") {
                 <p class="mt-2 text-sm text-info">

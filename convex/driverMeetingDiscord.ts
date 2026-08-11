@@ -10,7 +10,7 @@ import {
 
 interface CreateDriverMeetingThreadArgs {
   driverLabel: string;
-  driverNumber: number;
+  driverNumber?: number;
   seriesName: string;
   driverDiscordId: string;
   creatorDiscordId: string;
@@ -21,7 +21,7 @@ interface CreateDriverMeetingThreadArgs {
 export const createDriverMeetingThreadAction = internalAction({
   args: {
     driverLabel: v.string(),
-    driverNumber: v.number(),
+    driverNumber: v.optional(v.number()),
     seriesName: v.string(),
     driverDiscordId: v.string(),
     creatorDiscordId: v.string(),
@@ -33,7 +33,9 @@ export const createDriverMeetingThreadAction = internalAction({
       const parentChannelId = getEnvOrThrow("DISCORD_RACE_REVIEW_CHANNEL_ID");
 
       // Build thread name
-      const threadName = `Driver Meeting: ${args.driverLabel} (#${args.driverNumber})`;
+      const numberLabel =
+        args.driverNumber === undefined ? "" : ` (#${args.driverNumber})`;
+      const threadName = `Driver Meeting: ${args.driverLabel}${numberLabel}`;
 
       // Collect unique participants
       const participants = [args.driverDiscordId];

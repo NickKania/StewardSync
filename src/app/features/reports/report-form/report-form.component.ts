@@ -391,7 +391,10 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   driverOptions = computed<SelectOption[]>(() => {
     return this.drivers().map((driver) => ({
       value: driver._id,
-      label: `#${driver.driverNumber} - ${driver.driverName}`,
+      label:
+        (driver.driverNumber === undefined
+          ? ""
+          : "#" + driver.driverNumber + " - ") + driver.driverName,
     }));
   });
 

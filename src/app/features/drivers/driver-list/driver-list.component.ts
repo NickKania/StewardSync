@@ -140,7 +140,9 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
                         class="rounded-lg border border-gray-200 dark:border-gray-700 p-3"
                       >
                         <p class="font-medium text-gray-900 dark:text-gray-100">
-                          #{{ driver.driverNumber }} -
+                          @if (driver.driverNumber !== undefined) {
+                            #{{ driver.driverNumber }} -
+                          }
                           {{ driver.seriesName || "No Series" }}
                         </p>
                         <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -175,7 +177,7 @@ import { TruncateTextComponent } from "@shared/components/truncate-text/truncate
                     >
                       <span
                         class="font-bold text-primary-700 dark:text-primary-100"
-                        >{{ driver.driverNumber }}</span
+                        >{{ driver.driverNumber ?? "—" }}</span
                       >
                     </div>
                     <div class="min-w-0">
@@ -256,7 +258,7 @@ export class DriverListComponent implements OnInit, OnDestroy {
         const driverClass = (driver.driverClassName || "").toLowerCase();
         const seriesName = (driver.seriesName || "").toLowerCase();
         return (
-          String(driver.driverNumber).includes(term) ||
+          driver.driverNumber?.toString().includes(term) ||
           (driver.driverName || "").toLowerCase().includes(term) ||
           driverClass.includes(term) ||
           seriesName.includes(term)
@@ -385,14 +387,19 @@ export class DriverListComponent implements OnInit, OnDestroy {
         const linkedUser = (driver.linkedUser?.name || "").toLowerCase();
         return (
           (driver.driverName || "").toLowerCase().includes(term) ||
-          String(driver.driverNumber).includes(term) ||
+          driver.driverNumber?.toString().includes(term) ||
           className.includes(term) ||
           linkedUser.includes(term)
         );
       });
     }
 
-    rows.sort((a, b) => a.driverNumber - b.driverNumber);
+    rows.sort((a, b) => {
+      const numberDifference =
+        (a.driverNumber ?? Number.MAX_SAFE_INTEGER) -
+        (b.driverNumber ?? Number.MAX_SAFE_INTEGER);
+      return numberDifference || a.driverName.localeCompare(b.driverName);
+    });
     this.filteredSeriesDrivers.set(rows);
   }
 
