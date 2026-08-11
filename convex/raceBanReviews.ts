@@ -108,7 +108,7 @@ export const getDriverRequirement = query({
       driver: {
         _id: driver._id,
         driverName: driver.driverName,
-        driverNumber: driver.driverNumber,
+        driverNumber: driver.driverNumber ?? null,
       },
       penalty: {
         _id: seriesPenalty._id,
@@ -348,7 +348,7 @@ export const listOutstandingRequirements = query({
           reviewRequestId: linkedRequest?._id ?? null,
           seriesName: series.name,
           driverName,
-          driverNumber: driver.driverNumber,
+          driverNumber: driver.driverNumber ?? null,
           penaltyName: seriesPenalty.penaltyName,
           threshold: threshold.threshold,
           isServed: penalty.isServed,
@@ -504,7 +504,7 @@ export const getMeetingNotificationContext = internalQuery({
     }
 
     const driverLabel = driver
-      ? `${driver.driverName} #${driver.driverNumber}`
+      ? `${driver.driverName}${driver.driverNumber === undefined ? "" : ` #${driver.driverNumber}`}`
       : "Unknown Driver";
     const requesterName = requester.officialName || requester.name || "Requester";
     const schedulerName = scheduler.officialName || scheduler.name || "Steward";

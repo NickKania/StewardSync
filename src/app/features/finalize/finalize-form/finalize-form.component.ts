@@ -353,7 +353,7 @@ import { User } from "@app/core/models";
                     {{ report()?.reportedDriver?.driverName }}
                   </dd>
                   <dd class="text-sm text-gray-500 dark:text-gray-400">
-                    #{{ report()?.reportedDriver?.driverNumber }}
+                    {{ report()?.reportedDriver?.driverNumber !== undefined ? "#" + report()?.reportedDriver?.driverNumber : "No car number" }}
                   </dd>
                 </div>
                 <div>
@@ -518,7 +518,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       )
       .map((driver) => ({
         value: String(driver._id),
-        label: `${driver.driverName} (#${driver.driverNumber})`,
+        label:
+          driver.driverName +
+          (driver.driverNumber === undefined
+            ? ""
+            : " (#" + driver.driverNumber + ")"),
       }));
     if (this.selectedPenaltyAllowsNoDriver()) {
       return [

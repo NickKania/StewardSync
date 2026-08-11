@@ -39,7 +39,7 @@ export default defineSchema({
     .index("by_series_class", ["seriesId", "className"]),
 
   drivers: defineTable({
-    driverNumber: v.number(),
+    driverNumber: v.optional(v.number()),
     driverName: v.string(),
     officialName: v.optional(v.string()),
     username: v.optional(v.string()),

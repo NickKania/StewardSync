@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { getCurrentUserRole, hasMinimumRole, requireRole } from "./lib/auth";
@@ -525,7 +526,7 @@ export const getUserProfile = query({
 
 export const create = mutation({
   args: {
-    driverNumber: v.number(),
+    driverNumber: v.optional(v.number()),
     driverName: v.string(),
     username: v.optional(v.string()),
     externalId: v.optional(v.string()),
@@ -534,16 +535,17 @@ export const create = mutation({
     championshipId: v.optional(v.id("series")),
   },
   handler: async (ctx, args) => {
-    // Check if driver number already exists
-    const existing = await ctx.db
-      .query("drivers")
-      .withIndex("by_number", (q) => q.eq("driverNumber", args.driverNumber))
-      .first();
+    if (args.driverNumber !== undefined) {
+      const existing = await ctx.db
+        .query("drivers")
+        .withIndex("by_number", (q) => q.eq("driverNumber", args.driverNumber))
+        .first();
 
-    if (existing) {
-      throw new UserFacingError(
-        `Driver with number ${args.driverNumber} already exists`,
-      );
+      if (existing) {
+        throw new UserFacingError(
+          `Driver with number ${args.driverNumber} already exists`,
+        );
+      }
     }
 
     // Auto-generate officialName using "F. Name" format
@@ -706,26 +708,52 @@ export const getDriverStats = query({
 export const importOrUpdateDriver = mutation({
   args: {
     championshipId: v.id("series"),
-    driverNumber: v.number(),
+    driverNumber: v.optional(v.number()),
     driverName: v.string(),
     username: v.optional(v.string()),
     steamId: v.optional(v.string()),
     driverClassId: v.optional(v.id("driverClasses")),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("drivers")
-      .withIndex("by_number", (q) => q.eq("driverNumber", args.driverNumber))
-      .collect();
+    const candidates = new Map<Id<"drivers">, Doc<"drivers">>();
+
+    if (args.steamId) {
+      const steamMatches = await ctx.db
+        .query("drivers")
+        .withIndex("by_steam_id", (q) => q.eq("steamId", args.steamId))
+        .collect();
+      for (const driver of steamMatches) candidates.set(driver._id, driver);
+    }
+
+    if (args.username) {
+      const usernameMatches = await ctx.db
+        .query("drivers")
+        .withIndex("by_username", (q) => q.eq("username", args.username))
+        .collect();
+      for (const driver of usernameMatches) candidates.set(driver._id, driver);
+    }
+
+    if (args.driverNumber !== undefined) {
+      const numberMatches = await ctx.db
+        .query("drivers")
+        .withIndex("by_number", (q) => q.eq("driverNumber", args.driverNumber))
+        .collect();
+      for (const driver of numberMatches) candidates.set(driver._id, driver);
+    }
+
+    const existing = Array.from(candidates.values());
 
     const driverInThisChampionship = existing.find(
       (driver) => driver.championshipId === args.championshipId,
     );
 
     const officialName = formatDriverName(args.driverName);
+    const importedNumber =
+      args.driverNumber === undefined ? {} : { driverNumber: args.driverNumber };
 
     if (driverInThisChampionship) {
       await ctx.db.patch(driverInThisChampionship._id, {
+        ...importedNumber,
         driverName: args.driverName,
         officialName,
         username: args.username,
@@ -749,6 +777,7 @@ export const importOrUpdateDriver = mutation({
 
     if (unassignedDriver) {
       await ctx.db.patch(unassignedDriver._id, {
+        ...importedNumber,
         driverName: args.driverName,
         officialName,
         username: args.username,
@@ -768,7 +797,7 @@ export const importOrUpdateDriver = mutation({
     }
 
     const driverId = await ctx.db.insert("drivers", {
-      driverNumber: args.driverNumber,
+      ...importedNumber,
       driverName: args.driverName,
       officialName,
       username: args.username,
@@ -793,7 +822,7 @@ export const importOrUpdateDriver = mutation({
 export const markInactiveDrivers = mutation({
   args: {
     championshipId: v.id("series"),
-    activeDriverNumbers: v.array(v.number()),
+    activeDriverIds: v.array(v.id("drivers")),
   },
   handler: async (ctx, args) => {
     const allDrivers = await ctx.db
@@ -807,7 +836,7 @@ export const markInactiveDrivers = mutation({
 
     for (const driver of allDrivers) {
       if (
-        !args.activeDriverNumbers.includes(driver.driverNumber) &&
+        !args.activeDriverIds.includes(driver._id) &&
         driver.isActive !== false
       ) {
         await ctx.db.patch(driver._id, { isActive: false });

@@ -13,7 +13,7 @@ interface ReviewRequirementRow {
   reviewRequestId: string | null;
   seriesName: string;
   driverName: string;
-  driverNumber: number;
+  driverNumber: number | null;
   penaltyName: string;
   threshold: number;
   isServed: boolean;
@@ -70,7 +70,7 @@ interface ReviewRequirementRow {
                       {{ row.driverName }}
                     </p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                      #{{ row.driverNumber }}
+                      {{ row.driverNumber === null ? "No car number" : "#" + row.driverNumber }}
                     </p>
                   </td>
                   <td class="px-6 py-4 text-gray-700 dark:text-gray-300">

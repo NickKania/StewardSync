@@ -54,7 +54,10 @@ interface SlotOption {
               Race Review Management
             </h1>
             <p class="mt-1 text-gray-500 dark:text-gray-400">
-              {{ review()!.driver?.driverName }} #{{ review()!.driver?.driverNumber }}
+              {{ review()!.driver?.driverName }}
+              @if (review()!.driver?.driverNumber != null) {
+                #{{ review()!.driver?.driverNumber }}
+              }
               - {{ review()!.seriesPenalty?.penaltyName }}
             </p>
           </div>

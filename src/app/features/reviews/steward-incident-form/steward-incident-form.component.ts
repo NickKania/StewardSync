@@ -329,7 +329,12 @@ import { SelectOption } from "@shared/components/select/select.component";
                       }
                       @for (driver of drivers(); track driver._id) {
                         <option [value]="driver._id">
-                          {{ driver.driverName }} ({{ driver.driverNumber }})
+                          {{ driver.driverName
+                          }}{{
+                            driver.driverNumber === undefined
+                              ? ""
+                              : " (#" + driver.driverNumber + ")"
+                          }}
                         </option>
                       }
                     </select>
@@ -541,7 +546,10 @@ export class StewardIncidentFormComponent implements OnInit, OnDestroy {
   driverOptions = computed(() => {
     return this.drivers().map((driver) => ({
       value: driver._id,
-      label: `#${driver.driverNumber} - ${driver.driverName}`,
+      label:
+        (driver.driverNumber === undefined
+          ? ""
+          : "#" + driver.driverNumber + " - ") + driver.driverName,
     }));
   });
   selectedPenaltyAllowsNoDriver = computed(() => {

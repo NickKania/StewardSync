@@ -106,7 +106,7 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
                               <p
                                 class="text-sm text-gray-500 dark:text-gray-400"
                               >
-                                #{{ penalty.driver?.driverNumber || "-" }}
+                                #{{ penalty.driver?.driverNumber ?? "-" }}
                               </p>
                             </td>
                             <td class="py-3 text-gray-700 dark:text-gray-300">

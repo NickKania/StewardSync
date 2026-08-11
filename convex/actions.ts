@@ -1,104 +1,24 @@
 import { action } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
-
-interface SimGridDriver {
-  username: string;
-  realName: string;
-  identifier: string;
-  steam64Id: string;
-  platform: string;
-  carNumber: string;
-  carClass: string;
-  carName: string;
-  fiaEsportsLicenceNumber: string;
-  registeredAt: string;
-}
-
-function parseCSV(csvText: string): SimGridDriver[] {
-  const lines = csvText.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
-  
-  const drivers: SimGridDriver[] = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
-    
-    const values: string[] = [];
-    let inQuotes = false;
-    let current = '';
-    
-    for (let char of line) {
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    values.push(current.trim());
-    
-    const driver: Partial<SimGridDriver> = {};
-    headers.forEach((header, index) => {
-      const value = values[index] || '';
-      switch (header.toLowerCase()) {
-        case 'username':
-          driver.username = value;
-          break;
-        case 'real name':
-          driver.realName = value;
-          break;
-        case 'identifier':
-          driver.identifier = value;
-          break;
-        case 'steam64_id':
-          driver.steam64Id = value;
-          break;
-        case 'platform':
-          driver.platform = value;
-          break;
-        case 'car number':
-          driver.carNumber = value;
-          break;
-        case 'car class':
-          driver.carClass = value;
-          break;
-        case 'car name':
-          driver.carName = value;
-          break;
-        case 'fia esports licence number':
-          driver.fiaEsportsLicenceNumber = value;
-          break;
-        case 'registered at':
-          driver.registeredAt = value;
-          break;
-      }
-    });
-    
-    drivers.push(driver as SimGridDriver);
-  }
-  
-  return drivers;
-}
+import { parseSimGridDriversCsv } from "./lib/simgridCsv";
 
 interface ImportOrUpdateDriverResult {
   action: "created" | "updated";
-  driverId: string;
+  driverId: Id<"drivers">;
 }
 
 // Helper function to avoid circular type inference in Convex
 async function runImportOrUpdateDriver(
   ctx: any,
   args: {
-    championshipId: string;
-    driverNumber: number;
+    championshipId: Id<"series">;
+    driverNumber?: number;
     driverName: string;
     username?: string;
     steamId?: string;
-    driverClassId?: string;
+    driverClassId?: Id<"driverClasses">;
   },
 ): Promise<ImportOrUpdateDriverResult> {
   // @ts-ignore - Circular type inference in Convex API
@@ -130,18 +50,21 @@ export const importDriversFromSimGrid = action({
       }
       
       const csvText = await response.text();
-      const simgridDrivers = parseCSV(csvText);
+      const simgridDrivers = parseSimGridDriversCsv(csvText);
 
-      const results: Array<{ action: string; driverId: string; name: string }> = [];
+      const results: Array<{
+        action: string;
+        driverId: Id<"drivers">;
+        name: string;
+      }> = [];
 
       for (const simgridDriver of simgridDrivers) {
-        const carNumber = parseInt(simgridDriver.carNumber, 10);
-        if (isNaN(carNumber)) {
-          continue;
-        }
+        const carNumber = simgridDriver.carNumber?.trim()
+          ? Number(simgridDriver.carNumber)
+          : undefined;
 
         // Get or create driver class based on carClass from SimGrid
-        let driverClassId: string | undefined;
+        let driverClassId: Id<"driverClasses"> | undefined;
         if (simgridDriver.carClass) {
           const classResult: any = await ctx.runMutation(api.driverClasses.getOrCreate, {
             seriesId: args.championshipId,
@@ -152,7 +75,7 @@ export const importDriversFromSimGrid = action({
 
         const result = await runImportOrUpdateDriver(ctx, {
           championshipId: args.championshipId,
-          driverNumber: carNumber,
+          ...(carNumber === undefined ? {} : { driverNumber: carNumber }),
           driverName: simgridDriver.realName,
           username: simgridDriver.username,
           steamId: simgridDriver.steam64Id || undefined,
@@ -166,10 +89,9 @@ export const importDriversFromSimGrid = action({
         });
       }
 
-      const activeNumbers = simgridDrivers.map((d) => parseInt(d.carNumber, 10));
       const inactiveResult: any = await ctx.runMutation(api.drivers.markInactiveDrivers, {
         championshipId: args.championshipId,
-        activeDriverNumbers: activeNumbers,
+        activeDriverIds: results.map((result) => result.driverId),
       });
 
       return {

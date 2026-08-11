@@ -38,8 +38,10 @@ export const createDriverMeetingThread = mutation({
 
     // 6. Create Discord thread via scheduler
     await ctx.scheduler.runAfter(0, CREATE_THREAD_FN, {
-      driverLabel: driver.officialName || driver.driverName || `#${driver.driverNumber}`,
-      driverNumber: driver.driverNumber,
+      driverLabel: driver.officialName || driver.driverName || "Unknown Driver",
+      ...(driver.driverNumber === undefined
+        ? {}
+        : { driverNumber: driver.driverNumber }),
       seriesName,
       driverDiscordId: linkedUser.discordId,
       creatorDiscordId: creatingUser.discordId,

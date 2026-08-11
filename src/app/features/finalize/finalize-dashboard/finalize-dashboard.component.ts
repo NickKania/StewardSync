@@ -135,9 +135,13 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                         }}
                       </p>
                       <p class="text-sm text-gray-500 dark:text-gray-400">
-                        #{{
-                          report.atFaultDriver?.driverNumber ||
-                            report.reportedDriver?.driverNumber
+                        {{
+                          (report.atFaultDriver?.driverNumber ??
+                            report.reportedDriver?.driverNumber) !== undefined
+                            ? "#" +
+                              (report.atFaultDriver?.driverNumber ??
+                                report.reportedDriver?.driverNumber)
+                            : "No car number"
                         }}
                       </p>
                     </td>
@@ -188,7 +192,9 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
                   <div class="min-w-0 flex-1">
                     <p class="font-medium text-gray-900 dark:text-gray-100">
                       {{ report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
-                      #{{ report.atFaultDriver?.driverNumber || report.reportedDriver?.driverNumber }}
+                      @if ((report.atFaultDriver?.driverNumber ?? report.reportedDriver?.driverNumber) !== undefined) {
+                        #{{ report.atFaultDriver?.driverNumber ?? report.reportedDriver?.driverNumber }}
+                      }
                     </p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
                       {{ report.event?.trackName }} - {{ getSessionName(report.race) }}

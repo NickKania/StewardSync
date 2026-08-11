@@ -92,7 +92,7 @@ export interface DriverSeriesPenaltyDetails {
 
 export interface SeriesLicensePointsWithPenalties {
   driverId: string;
-  driverNumber: number;
+  driverNumber?: number;
   driverName: string;
   totalLicensePoints: number;
   seriesPenalties: DriverSeriesPenalty[];

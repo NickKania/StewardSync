@@ -71,7 +71,7 @@ interface RaceRundown {
 
 interface DriverPointsRow {
   driverId: string;
-  driverNumber: number;
+  driverNumber?: number;
   driverName: string;
   driverClass: string;
   totalLicensePoints: number;
@@ -91,7 +91,7 @@ interface SeriesPenaltyDefinition {
 
 interface DriverTimePenaltyRow {
   driverId: string;
-  carNumber: number;
+  carNumber: number | null;
   driverName: string;
   driverClass: string;
   totalTimePenaltySeconds: number;
@@ -814,7 +814,7 @@ interface RaceTimePenaltySummary {
                                   <td
                                     class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                   >
-                                    {{ row.driverNumber }}
+                                    {{ row.driverNumber ?? "—" }}
                                   </td>
                                   <td
                                     class="w-[18%] border-r border-gray-300 px-3 py-2 font-medium text-left align-middle leading-tight text-xs dark:border-gray-700"
@@ -1162,7 +1162,7 @@ interface RaceTimePenaltySummary {
                                         <td
                                           class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
                                         >
-                                          {{ row.carNumber }}
+                                          {{ row.carNumber ?? "—" }}
                                         </td>
                                         <td
                                           class="w-[18%] border-r border-gray-300 px-3 py-2 font-medium text-left align-middle leading-tight text-xs dark:border-gray-700"
