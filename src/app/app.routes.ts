@@ -353,8 +353,6 @@ export const routes: Routes = [
     children: [
       {
         path: "request/:driverSeriesPenaltyId",
-        canActivate: [roleGuard],
-        data: { roles: ["driver"] },
         loadComponent: () =>
           import(
             "@features/race-ban-reviews/review-request-form/review-request-form.component"
