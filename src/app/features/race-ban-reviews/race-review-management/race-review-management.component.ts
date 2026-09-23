@@ -81,7 +81,9 @@ interface SlotOption {
               </p>
             </div>
             <div>
-              <p class="text-gray-500 dark:text-gray-400">Submitted</p>
+              <p class="text-gray-500 dark:text-gray-400">
+                {{ review()!.userId ? "Submitted" : "Record Created" }}
+              </p>
               <p class="font-medium text-gray-900 dark:text-gray-100">
                 {{ review()!.createdAt | dateFormat: "PPp" }}
               </p>
@@ -93,6 +95,16 @@ interface SlotOption {
               </p>
             </div>
           </div>
+
+          @if (review()!.status === "completed" && review()!.completedAt) {
+            <div class="mt-4 rounded-lg border border-success-border bg-success-bg p-3">
+              <p class="text-sm text-success-text">
+                {{ review()!.manuallyCompleted ? "Manually completed" : "Completed" }}
+                by {{ review()!.completedBy?.officialName || review()!.completedBy?.name || "Unknown" }}
+                on {{ review()!.completedAt | dateFormat: "PPp" }}.
+              </p>
+            </div>
+          }
 
           @if (review()!.selectedMeetingStartAt) {
             <div class="mt-4 rounded-lg border border-info-border bg-info-bg p-3">

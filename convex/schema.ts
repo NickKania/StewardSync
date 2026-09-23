@@ -157,7 +157,7 @@ export default defineSchema({
   raceBanReviews: defineTable({
     driverSeriesPenaltyId: v.id("driverSeriesPenalties"),
     driverId: v.id("drivers"),
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
     seriesId: v.id("series"),
     seriesPenaltyId: v.id("seriesPenalties"),
     seriesPenaltyThresholdId: v.id("seriesPenaltyThresholds"),
@@ -182,6 +182,7 @@ export default defineSchema({
     meetingReminderError: v.optional(v.string()),
     completedBy: v.optional(v.id("users")),
     completedAt: v.optional(v.number()),
+    manuallyCompleted: v.optional(v.boolean()),
     notificationSentAt: v.optional(v.number()),
     notificationError: v.optional(v.string()),
     notes: v.optional(v.string()),

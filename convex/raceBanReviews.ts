@@ -1,6 +1,8 @@
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserRole } from "./lib/auth";
+import { Doc, Id } from "./_generated/dataModel";
+import { MutationCtx } from "./_generated/server";
+import { getCurrentUserRole, requireRole } from "./lib/auth";
 import { UserFacingError } from "./lib/errors";
 
 const STAFF_ROLES = new Set([
@@ -49,6 +51,42 @@ const getLinkedReviewForPenalty = async (ctx: any, penalty: any) => {
       q.eq("driverSeriesPenaltyId", penalty._id),
     )
     .first();
+};
+
+const completeExistingReview = async (
+  ctx: MutationCtx,
+  request: Doc<"raceBanReviews">,
+  completedBy: Id<"users">,
+  manuallyCompleted: boolean,
+) => {
+  if (request.status === "completed") {
+    throw new UserFacingError("This race review is already completed.");
+  }
+
+  if (request.meetingReminderJobId) {
+    await ctx.scheduler.cancel(request.meetingReminderJobId);
+  }
+
+  const now = Date.now();
+  await ctx.db.patch(request._id, {
+    status: "completed",
+    completedBy,
+    completedAt: now,
+    manuallyCompleted,
+    meetingReminderJobId: undefined,
+    updatedAt: now,
+  });
+
+  const penalty = await ctx.db.get(request.driverSeriesPenaltyId);
+  if (penalty && penalty.raceBanReviewId !== request._id) {
+    await ctx.db.patch(penalty._id, { raceBanReviewId: request._id });
+  }
+
+  if (request.meetingThreadId) {
+    await ctx.scheduler.runAfter(0, CLOSE_MEETING_THREAD_FN, { id: request._id });
+  }
+
+  return request._id;
 };
 
 const canManageReview = (role: string) => REVIEW_MANAGER_ROLES.has(role);
@@ -391,7 +429,7 @@ export const getById = query({
     const [driver, requester, series, seriesPenalty, threshold, driverPenalty] =
       await Promise.all([
         ctx.db.get(request.driverId),
-        ctx.db.get(request.userId),
+        request.userId ? ctx.db.get(request.userId) : null,
         ctx.db.get(request.seriesId),
         ctx.db.get(request.seriesPenaltyId),
         ctx.db.get(request.seriesPenaltyThresholdId),
@@ -493,7 +531,7 @@ export const getMeetingNotificationContext = internalQuery({
 
     const [driver, requester, scheduler, series, seriesPenalty] = await Promise.all([
       ctx.db.get(request.driverId),
-      ctx.db.get(request.userId),
+      request.userId ? ctx.db.get(request.userId) : null,
       ctx.db.get(request.scheduledBy),
       ctx.db.get(request.seriesId),
       ctx.db.get(request.seriesPenaltyId),
@@ -653,30 +691,67 @@ export const markCompleted = mutation({
       throw new UserFacingError("Race review request not found.");
     }
 
-    if (request.meetingReminderJobId) {
-      await ctx.scheduler.cancel(request.meetingReminderJobId);
+    return await completeExistingReview(ctx, request, args.completedBy, false);
+  },
+});
+
+export const forceCompleteForPenalty = mutation({
+  args: {
+    currentUserId: v.id("users"),
+    driverSeriesPenaltyId: v.id("driverSeriesPenalties"),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["league_manager"]);
+
+    const penalty = await ctx.db.get(args.driverSeriesPenaltyId);
+    if (!penalty) {
+      throw new UserFacingError("Penalty assignment not found.");
     }
 
-    await ctx.db.patch(args.id, {
+    const [driver, threshold] = await Promise.all([
+      ctx.db.get(penalty.driverId),
+      ctx.db.get(penalty.seriesPenaltyThresholdId),
+    ]);
+    if (!driver || !threshold) {
+      throw new UserFacingError("Unable to load penalty details.");
+    }
+
+    const requiresReview = penalty.requiresReview ?? threshold.requiresReview ?? false;
+    if (!requiresReview) {
+      throw new UserFacingError("This penalty does not require a race review.");
+    }
+
+    const existingReview = await getLinkedReviewForPenalty(ctx, penalty);
+    if (existingReview) {
+      return await completeExistingReview(
+        ctx,
+        existingReview,
+        args.currentUserId,
+        true,
+      );
+    }
+
+    const now = Date.now();
+    const reviewId = await ctx.db.insert("raceBanReviews", {
+      driverSeriesPenaltyId: penalty._id,
+      driverId: penalty.driverId,
+      seriesId: penalty.seriesId,
+      seriesPenaltyId: penalty.seriesPenaltyId,
+      seriesPenaltyThresholdId: penalty.seriesPenaltyThresholdId,
       status: "completed",
-      completedBy: args.completedBy,
-      completedAt: Date.now(),
-      meetingReminderJobId: undefined,
-      updatedAt: Date.now(),
+      availabilityWindows: [],
+      completedBy: args.currentUserId,
+      completedAt: now,
+      manuallyCompleted: true,
+      createdAt: now,
+      updatedAt: now,
     });
 
-    const driverPenalty = await ctx.db.get(request.driverSeriesPenaltyId);
-    if (driverPenalty && driverPenalty.raceBanReviewId !== request._id) {
-      await ctx.db.patch(driverPenalty._id, {
-        raceBanReviewId: request._id,
-      });
-    }
-
-    await ctx.scheduler.runAfter(0, CLOSE_MEETING_THREAD_FN, {
-      id: args.id,
+    await ctx.db.patch(penalty._id, {
+      raceBanReviewId: reviewId,
+      requiresReview,
     });
-
-    return args.id;
+    return reviewId;
   },
 });
 

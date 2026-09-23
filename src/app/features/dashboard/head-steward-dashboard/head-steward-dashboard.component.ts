@@ -59,9 +59,11 @@ import { EventStatusCardComponent } from "../event-status-card/event-status-card
         [limit]="15"
       />
 
-      <app-dashboard-race-review-request-list />
+      <app-dashboard-race-review-request-list #pendingRequests />
 
-      <app-dashboard-race-review-requirements />
+      <app-dashboard-race-review-requirements
+        (reviewCompleted)="pendingRequests.loadRequests()"
+      />
 
       <app-dashboard-series-penalty-list />
     </div>

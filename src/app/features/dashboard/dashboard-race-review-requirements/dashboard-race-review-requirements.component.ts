@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from "@angular/core";
+import { Component, OnInit, inject, output, signal } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { ConvexService } from "@core/services/convex.service";
@@ -7,6 +7,7 @@ import { CardComponent } from "@shared/components/card/card.component";
 import { BadgeComponent } from "@shared/components/badge/badge.component";
 import { LoadingComponent } from "@shared/components/loading/loading.component";
 import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
+import { Id } from "@convex/_generated/dataModel";
 
 interface ReviewRequirementRow {
   driverSeriesPenaltyId: string;
@@ -56,7 +57,10 @@ interface ReviewRequirementRow {
                 <th class="px-6 py-3 font-medium">Penalty</th>
                 <th class="px-6 py-3 font-medium">Served</th>
                 <th class="px-6 py-3 font-medium">Review Status</th>
-                <th class="px-6 py-3 font-medium"></th>
+                <th class="px-6 py-3 font-medium">Review</th>
+                @if (canForceComplete()) {
+                  <th class="px-6 py-3 font-medium">Force Complete</th>
+                }
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -119,6 +123,18 @@ interface ReviewRequirementRow {
                       </span>
                     }
                   </td>
+                  @if (canForceComplete()) {
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <button
+                        type="button"
+                        class="text-sm font-medium text-success hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                        [disabled]="forceCompletingId() !== null"
+                        (click)="forceComplete(row)"
+                      >
+                        {{ forceCompletingId() === row.driverSeriesPenaltyId ? "Completing..." : "Force Complete" }}
+                      </button>
+                    </td>
+                  }
                 </tr>
               }
             </tbody>
@@ -134,9 +150,44 @@ export class DashboardRaceReviewRequirementsComponent implements OnInit {
 
   readonly loading = signal(true);
   readonly requirements = signal<ReviewRequirementRow[]>([]);
+  readonly forceCompletingId = signal<string | null>(null);
+  readonly reviewCompleted = output<void>();
+
+  canForceComplete(): boolean {
+    return this.authService.hasRole("league_manager");
+  }
 
   ngOnInit(): void {
     void this.loadRequirements();
+  }
+
+  async forceComplete(row: ReviewRequirementRow): Promise<void> {
+    const currentUserId = this.authService.getUserId();
+    if (!currentUserId || this.forceCompletingId()) {
+      return;
+    }
+
+    if (!confirm(`Force complete ${row.driverName}'s ${row.penaltyName} race review? Any pending meeting reminder will be canceled.`)) {
+      return;
+    }
+
+    this.forceCompletingId.set(row.driverSeriesPenaltyId);
+    try {
+      await this.convex.mutation(
+        this.convex.api.raceBanReviews.forceCompleteForPenalty,
+        {
+          currentUserId,
+          driverSeriesPenaltyId: row.driverSeriesPenaltyId as Id<"driverSeriesPenalties">,
+        },
+      );
+      this.reviewCompleted.emit();
+      await this.loadRequirements();
+    } catch (error) {
+      console.error("Failed to force complete race review:", error);
+      alert(error instanceof Error ? error.message : "Failed to complete race review.");
+    } finally {
+      this.forceCompletingId.set(null);
+    }
   }
 
   async loadRequirements(): Promise<void> {
