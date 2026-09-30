@@ -3,6 +3,7 @@ import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
+import { fetchSimGridRaces } from "./lib/simgridRaces";
 
 interface ImportOrUpdateEventResult {
   action: "created" | "updated";
@@ -289,25 +290,13 @@ export const importFromSimGrid = action({
       throw new Error("Could not extract championship ID from simgridLink");
     }
 
-    const response = await fetch(
-      `https://www.thesimgrid.com/api/v1/races?championship_id=${championshipId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      },
-    );
-    if (!response.ok) {
-      throw new Error(`SimGrid API error: ${response.statusText}`);
-    }
-
-    const races = await response.json();
+    const races = await fetchSimGridRaces(championshipId, apiKey);
 
     let created = 0;
     let skipped = 0;
 
     const sortedRaces = races.sort(
-      (a: any, b: any) =>
+      (a, b) =>
         new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
     );
 

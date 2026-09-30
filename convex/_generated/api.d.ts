@@ -29,6 +29,7 @@ import type * as lib_reportValidation from "../lib/reportValidation.js";
 import type * as lib_reports from "../lib/reports.js";
 import type * as lib_result from "../lib/result.js";
 import type * as lib_simgridCsv from "../lib/simgridCsv.js";
+import type * as lib_simgridRaces from "../lib/simgridRaces.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_backfillReportIds from "../migrations/backfillReportIds.js";
 import type * as penalties from "../penalties.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   "lib/reports": typeof lib_reports;
   "lib/result": typeof lib_result;
   "lib/simgridCsv": typeof lib_simgridCsv;
+  "lib/simgridRaces": typeof lib_simgridRaces;
   migrations: typeof migrations;
   "migrations/backfillReportIds": typeof migrations_backfillReportIds;
   penalties: typeof penalties;
