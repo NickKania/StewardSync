@@ -30,7 +30,6 @@ const runtimeConfig = (
       convexUrl?: string;
       enableDevLogin?: boolean | string;
       discordClientId?: string;
-      discordClientSecret?: string;
     };
   }
 ).__STEWARDSYNC_CONFIG__;
@@ -40,5 +39,4 @@ export const appRuntimeConfig = {
   enableDevLogin:
     coerceBoolean(runtimeConfig?.enableDevLogin) || environment.enableDevLogin,
   discordClientId: runtimeConfig?.discordClientId || environment.discordClientId,
-  discordClientSecret: runtimeConfig?.discordClientSecret || environment.discordClientSecret
 } as const;

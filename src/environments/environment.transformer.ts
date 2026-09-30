@@ -18,10 +18,6 @@ export function environmentTransformer(env: any) {
       .replace(
         /discordClientId: typeof process !== 'undefined' && process.env\?\.DISCORD_CLIENT_ID \|\| '([^']+)'/,
         `discordClientId: typeof process !== 'undefined' && process.env?.DISCORD_CLIENT_ID || '${env.rawVariables.DISCORD_CLIENT_ID || ''}'`
-      )
-      .replace(
-        /discordClientSecret: typeof process !== 'undefined' && process.env\?\.DISCORD_CLIENT_SECRET \|\| '([^']+)'/,
-        `discordClientSecret: typeof process !== 'undefined' && process.env?.DISCORD_CLIENT_SECRET || '${env.rawVariables.DISCORD_CLIENT_SECRET || ''}'`
       ),
   };
 }

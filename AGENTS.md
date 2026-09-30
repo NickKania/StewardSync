@@ -470,7 +470,7 @@ bun run convex:deploy
 #### Authentication Issues
 - Check that Discord OAuth is properly configured in `convex/auth.ts`
 - Ensure user creation is handled in auth flow
-- Verify Discord Client ID and Secret are set in environment config
+- Verify the public Discord Client ID is configured; PKCE does not require a client secret, and no secret may enter frontend configuration
 
 #### Styling Issues
 - Clear Tailwind cache: `rm -rf .angular/cache`

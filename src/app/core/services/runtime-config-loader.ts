@@ -10,14 +10,12 @@ export interface RuntimeConfig {
   convexUrl: string;
   enableDevLogin: boolean;
   discordClientId: string;
-  discordClientSecret: string;
 }
 
 const DEFAULT_CONFIG: RuntimeConfig = {
   convexUrl: 'http://127.0.0.1:3210',
   enableDevLogin: false,
   discordClientId: '',
-  discordClientSecret: ''
 };
 
 let config: RuntimeConfig | null = null;
@@ -32,7 +30,7 @@ export async function loadRuntimeConfig(): Promise<RuntimeConfig | null> {
     const response = await fetch('/runtime-config');
     if (response.ok) {
       const serverConfig = await response.json();
-      config = { ...DEFAULT_CONFIG, ...serverConfig };
+      config = publicConfig(serverConfig);
       return config;
     }
   } catch (error) {
@@ -44,7 +42,6 @@ export async function loadRuntimeConfig(): Promise<RuntimeConfig | null> {
     convexUrl: (typeof process !== 'undefined' && (process.env as any)['PUBLIC_CONVEX_URL']) || DEFAULT_CONFIG.convexUrl,
     enableDevLogin: coerceBoolean((typeof process !== 'undefined' && (process.env as any)['PUBLIC_ENABLE_DEV_LOGIN']) || 'false'),
     discordClientId: (typeof process !== 'undefined' && (process.env as any)['DISCORD_CLIENT_ID']) || DEFAULT_CONFIG.discordClientId,
-    discordClientSecret: (typeof process !== 'undefined' && (process.env as any)['DISCORD_CLIENT_SECRET']) || DEFAULT_CONFIG.discordClientSecret
   };
 
   return config;
@@ -58,11 +55,20 @@ export function getConfig(): RuntimeConfig {
 }
 
 export function setConfig(newConfig: RuntimeConfig): void {
-  config = newConfig;
+  config = publicConfig(newConfig);
 }
 
 function coerceBoolean(value: string | undefined): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
   return normalized === 'true';
+}
+
+// Never retain unexpected fields from an older runtime-config endpoint.
+function publicConfig(value: Partial<RuntimeConfig>): RuntimeConfig {
+  return {
+    convexUrl: value.convexUrl ?? DEFAULT_CONFIG.convexUrl,
+    enableDevLogin: value.enableDevLogin ?? DEFAULT_CONFIG.enableDevLogin,
+    discordClientId: value.discordClientId ?? DEFAULT_CONFIG.discordClientId,
+  };
 }

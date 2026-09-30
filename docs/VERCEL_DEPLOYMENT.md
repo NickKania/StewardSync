@@ -54,9 +54,8 @@ Add the following variables:
 |----------|-------|-------------|
 | `PUBLIC_ENABLE_DEV_LOGIN` | `false` (recommended) | Enable dev login bypass for testing |
 | `DISCORD_CLIENT_ID` | Your Discord application client ID | Required for Discord login |
-| `DISCORD_CLIENT_SECRET` | Your Discord application client secret | Required for Discord login |
 
-**Note:** For security, `DISCORD_CLIENT_SECRET` should only be added to Production environment, not Preview/Development.
+**Security:** Discord login uses public-client PKCE. Do not add `DISCORD_CLIENT_SECRET` to any frontend hosting environment. A secret required by a future confidential OAuth flow must remain exclusively on its backend.
 
 ### 3. Deploy to Vercel
 
@@ -114,8 +113,8 @@ The build process (`scripts/vercel-build.sh`) automatically:
 **Solution:**
 1. Create Discord application at [discord.com/developers](https://discord.com/developers)
 2. Add redirect URL: `https://your-vercel-domain.com/auth/callback`
-3. Copy Client ID and Client Secret
-4. Add `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` to Vercel environment variables
+3. Copy the public Client ID
+4. Add only `DISCORD_CLIENT_ID` to Vercel environment variables
 
 ### Automatic Detection Fails
 
@@ -140,7 +139,6 @@ bun run detect:convex-url
 | `PUBLIC_CONVEX_URL` | Yes | - | Convex deployment URL |
 | `PUBLIC_ENABLE_DEV_LOGIN` | No | `false` | Dev login bypass (set to `true` only for testing) |
 | `DISCORD_CLIENT_ID` | No | - | Discord OAuth client ID |
-| `DISCORD_CLIENT_SECRET` | No | - | Discord OAuth client secret (Production only) |
 
 ## Production Best Practices
 

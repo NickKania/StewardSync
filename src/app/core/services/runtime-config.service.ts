@@ -52,10 +52,6 @@ export class RuntimeConfigService implements OnDestroy {
     return this.config()?.discordClientId;
   }
 
-  get discordClientSecret(): string | undefined {
-    return this.config()?.discordClientSecret;
-  }
-
   ngOnDestroy(): void {
     this.initialized = false;
   }

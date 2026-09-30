@@ -18,7 +18,6 @@ The StewardSync application now reads environment variables directly from the sy
 
 - `PUBLIC_ENABLE_DEV_LOGIN`: Enable/disable the developer login page (`true`/`false`)
 - `DISCORD_CLIENT_ID`: Discord OAuth 2.0 client ID
-- `DISCORD_CLIENT_SECRET`: Discord OAuth 2.0 client secret
 - `DISCORD_BOT_TOKEN`: Discord bot token used for race ban review meeting notifications
 - `DISCORD_RACE_REVIEW_CHANNEL_ID`: Parent Discord **text channel** ID used to create private meeting threads
 
@@ -44,7 +43,6 @@ Create a `.env` file in the project root:
 PUBLIC_CONVEX_URL=http://127.0.0.1:3210
 PUBLIC_ENABLE_DEV_LOGIN=true
 DISCORD_CLIENT_ID=your-discord-client-id
-DISCORD_CLIENT_SECRET=your-discord-client-secret
 DISCORD_BOT_TOKEN=your-discord-bot-token
 DISCORD_RACE_REVIEW_CHANNEL_ID=your-discord-text-channel-id
 ```
@@ -68,7 +66,7 @@ The application supports three build configurations:
 ### Local
 - Uses `environment.local.ts`
 - Local Convex URL
-- Developer Discord credentials
+- Public Discord client ID
 
 ## Runtime Configuration
 
@@ -96,6 +94,9 @@ The application uses a hybrid approach:
 
 - Never commit `.env` files to version control
 - Use `.env.example` or `.env.docker.example` as templates
-- Keep `DISCORD_CLIENT_SECRET` secure
+- Discord login uses public-client PKCE; no client secret is needed
+- Never put `DISCORD_CLIENT_SECRET` in Angular environments, browser runtime configuration, or frontend hosting variables
+- Backend-only credentials, including `DISCORD_BOT_TOKEN`, belong in the Convex deployment environment and must never enter frontend configuration
+- Rotate any previously exposed client secret; removing it from current files does not remove Git history or already published assets
 - Keep `DISCORD_BOT_TOKEN` secure
 - Rotate secrets regularly

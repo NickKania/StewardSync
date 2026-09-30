@@ -17,7 +17,6 @@ fi
 CONVEX_URL=$(grep "convexUrl:" "$ENV_FILE" | sed "s/.*convexUrl: '\(.*\)'.*/\1/")
 ENABLE_DEV_LOGIN=$(grep "enableDevLogin:" "$ENV_FILE" | sed "s/.*enableDevLogin: \(.*\),/\1/")
 DISCORD_CLIENT_ID=$(grep "discordClientId:" "$ENV_FILE" | sed "s/.*discordClientId: '\(.*\)'.*/\1/")
-DISCORD_CLIENT_SECRET=$(grep "discordClientSecret:" "$ENV_FILE" | sed "s/.*discordClientSecret: '\(.*\)'.*/\1/")
 
 # Generate runtime-config.js
 cat > src/runtime-config.js <<EOF
@@ -25,7 +24,6 @@ window.__STEWARDSYNC_CONFIG__ = {
   convexUrl: '$CONVEX_URL',
   enableDevLogin: $ENABLE_DEV_LOGIN,
   discordClientId: '$DISCORD_CLIENT_ID',
-  discordClientSecret: '$DISCORD_CLIENT_SECRET'
 };
 EOF
 
