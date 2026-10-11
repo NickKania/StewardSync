@@ -2441,8 +2441,13 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         const updatedCount = result.results.filter(
           (r: any) => r.action === "updated",
         ).length;
+        const nicknameSync = result.nicknameSync;
+        const nicknameSummary = nicknameSync
+          ? `\nDiscord nicknames: ${nicknameSync.updated} updated, ${nicknameSync.unchanged} already correct, ${nicknameSync.skipped} skipped, ${nicknameSync.failed} failed.` +
+            (nicknameSync.errors.length > 0 ? `\n${nicknameSync.errors.join("\n")}` : "")
+          : "";
         alert(
-          `Successfully imported ${result.imported} drivers (${createdCount} created, ${updatedCount} updated)`,
+          `Successfully imported ${result.imported} drivers (${createdCount} created, ${updatedCount} updated)${nicknameSummary}`,
         );
       } else {
         alert(`Failed to import drivers: ${result.error}`);

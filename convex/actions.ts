@@ -1,7 +1,8 @@
 import { action } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
+import type { NicknameSyncResult } from "./lib/discordNicknames";
 import { parseSimGridDriversCsv } from "./lib/simgridCsv";
 
 interface ImportOrUpdateDriverResult {
@@ -94,10 +95,27 @@ export const importDriversFromSimGrid = action({
         activeDriverIds: results.map((result) => result.driverId),
       });
 
+      // Check nicknames after the complete roster has been updated. Discord
+      // failures must not turn an already-completed roster import into a failure.
+      let nicknameSync: NicknameSyncResult;
+      try {
+        nicknameSync = await ctx.runAction(internal.driverNicknameDiscord.syncForSeries, {
+          championshipId: args.championshipId,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Discord nickname sync could not run:", error);
+        nicknameSync = {
+          updated: 0, unchanged: 0, skipped: 0, failed: 1,
+          errors: [`Discord nickname sync could not run: ${message}`],
+        };
+      }
+
       return {
         success: true,
         imported: results.length,
         markedInactive: inactiveResult.markedInactive,
+        nicknameSync,
         results,
       };
     } catch (error) {
