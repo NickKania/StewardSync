@@ -1,5 +1,19 @@
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireRole } from "./lib/auth";
+import { UserFacingError } from "./lib/errors";
+
+export const requireImportPermission = internalQuery({
+  args: { currentUserId: v.id("users"), discordId: v.string() },
+  handler: async (ctx, args): Promise<null> => {
+    const user = await ctx.db.get(args.currentUserId);
+    if (!user || user.discordId !== args.discordId) {
+      throw new UserFacingError("Discord identity does not match the current user.");
+    }
+    await requireRole(ctx, args.currentUserId, ["league_manager"]);
+    return null;
+  },
+});
 
 export const getOrCreateUser = mutation({
   args: {

@@ -47,7 +47,13 @@ export function matchesDriverNickname(
   // Match complete digit groups so number 1 cannot be satisfied by #12.
   const numbers = new Set(normalizedNickname.match(/\d+/g) ?? []);
   return (
-    nameParts.every((part) => normalizedNickname.includes(part)) &&
+    nameParts.every((part) => {
+      const escapedPart = part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // Unicode boundaries keep Ann distinct from Joanne without rejecting
+      // punctuation, initials, or extra nickname text between official parts.
+      return new RegExp(`(^|[^\\p{L}\\p{M}\\p{N}])${escapedPart}(?=$|[^\\p{L}\\p{M}\\p{N}])`, "u")
+        .test(normalizedNickname);
+    }) &&
     target.driverNumbers.every((number) => numbers.has(String(number)))
   );
 }

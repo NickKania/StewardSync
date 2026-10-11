@@ -36,12 +36,19 @@ Edit `.env` and set:
 - `DISCORD_CLIENT_ID` — Discord application client ID
 - `DISCORD_CLIENT_SECRET` — Discord application client secret
 
+Manual driver imports and schedule management require a league manager signed
+in through Discord. The backend verifies their Discord OAuth token against their
+StewardSync account before checking the role. Existing sessions and development
+logins must sign in through Discord again to manage imports. Scheduled imports
+use an internal backend entry point and do not require an interactive login.
+
 Driver imports also check linked users' Discord server nicknames after updating
 the roster. Nicknames use the StewardSync official name and unique car numbers
 from active registrations in active series (for example, `Jane Smith #12/34`).
-Existing nicknames are preserved when they contain every name part and complete
-car number, ignoring case and allowing extra nickname text. Users without a
-linked Discord account are skipped; drivers without a car number use their name.
+Existing nicknames are preserved when they contain every complete name part and
+car number (so `Joanne` does not match `Ann`), ignoring case and allowing extra
+nickname text. Users without a linked Discord account are skipped; drivers
+without a car number use their name.
 
 Set `DISCORD_BOT_TOKEN` on the Convex backend and optionally `DISCORD_GUILD_ID`.
 When no guild ID is set, the server containing `DISCORD_RACE_REVIEW_CHANNEL_ID`

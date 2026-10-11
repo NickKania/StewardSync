@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
@@ -705,7 +705,7 @@ export const getDriverStats = query({
   },
 });
 
-export const importOrUpdateDriver = mutation({
+export const importOrUpdateDriver = internalMutation({
   args: {
     championshipId: v.id("series"),
     driverNumber: v.optional(v.number()),
@@ -768,7 +768,7 @@ export const importOrUpdateDriver = mutation({
         fallbackOfficialName: args.driverName,
       });
 
-      return { action: "updated", driverId: driverInThisChampionship._id };
+      return { action: "updated" as const, driverId: driverInThisChampionship._id };
     }
 
     const unassignedDriver = existing.find(
@@ -793,7 +793,7 @@ export const importOrUpdateDriver = mutation({
         fallbackOfficialName: args.driverName,
       });
 
-      return { action: "updated", driverId: unassignedDriver._id };
+      return { action: "updated" as const, driverId: unassignedDriver._id };
     }
 
     const driverId = await ctx.db.insert("drivers", {
@@ -815,11 +815,11 @@ export const importOrUpdateDriver = mutation({
       fallbackOfficialName: args.driverName,
     });
 
-    return { action: "created", driverId };
+    return { action: "created" as const, driverId };
   },
 });
 
-export const markInactiveDrivers = mutation({
+export const markInactiveDrivers = internalMutation({
   args: {
     championshipId: v.id("series"),
     activeDriverIds: v.array(v.id("drivers")),

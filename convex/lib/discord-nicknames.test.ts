@@ -33,6 +33,23 @@ describe("Discord driver nicknames", () => {
     expect(matchesDriverNickname(null, target)).toBe(false);
   });
 
+  it("rejects name parts embedded inside other names", () => {
+    const ann = { ...target, officialName: "Ann Smith", driverNumbers: [12] };
+    expect(matchesDriverNickname("Joanne Smith #12", ann)).toBe(false);
+    expect(matchesDriverNickname("Ann Smithson #12", ann)).toBe(false);
+    expect(matchesDriverNickname('Ann "Speedy" Smith #12', ann)).toBe(true);
+    expect(matchesDriverNickname("(ANN) Smith #12", ann)).toBe(true);
+  });
+
+  it("matches Unicode names, hyphenated names, apostrophes, and initials as complete parts", () => {
+    for (const officialName of ["李 王", "Anne-Marie O'Neil", "J. Smith", "María García"]) {
+      expect(matchesDriverNickname(`${officialName} #12`, { ...target, officialName, driverNumbers: [12] }))
+        .toBe(true);
+      expect(matchesDriverNickname(`X${officialName} #12`, { ...target, officialName, driverNumbers: [12] }))
+        .toBe(false);
+    }
+  });
+
   it("handles numberless drivers and Unicode name parts", () => {
     expect(matchesDriverNickname("María Fast García", {
       ...target, officialName: "Mari\u0301a García", driverNumbers: [],

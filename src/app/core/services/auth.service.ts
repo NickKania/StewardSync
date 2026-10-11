@@ -14,6 +14,7 @@ const DISCORD_VERIFIER_KEY = "steward_sync_discord_verifier";
 const DISCORD_AUTH_SUCCESS = "discord-auth-success";
 const DISCORD_AUTH_ERROR = "discord-auth-error";
 const DISCORD_AUTH_RESULT_KEY = "steward_sync_discord_auth_result";
+const DISCORD_ACCESS_TOKEN_KEY = "steward_sync_discord_access_token";
 const AUTH_DEBUG = !environment.production;
 
 @Injectable({
@@ -304,12 +305,16 @@ export class AuthService {
       this._user.set(user as User);
       this._userId.set(userId);
       localStorage.setItem(STORAGE_KEY, userId);
+      // Keep the OAuth credential in this tab for backend ownership checks on
+      // privileged imports. A stored user ID alone cannot authenticate a caller.
+      sessionStorage.setItem(DISCORD_ACCESS_TOKEN_KEY, tokenData.access_token);
       this.router.navigate(["/"]);
       this.logAuth("loginWithDiscord:complete", { userId });
     }
   }
 
   async mockLogin(): Promise<void> {
+    sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_KEY);
     // Create a demo user for development
     const userId = await this.convex.mutation(
       this.convex.api.auth.getOrCreateUser,
@@ -339,6 +344,7 @@ export class AuthService {
   }
 
   async loginWithDiscordId(discordId: string): Promise<void> {
+    sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_KEY);
     // Get user by Discord ID
     const user = await this.convex.query(
       this.convex.api.auth.getUserByDiscordId,
@@ -359,6 +365,7 @@ export class AuthService {
     this._user.set(null);
     this._userId.set(null);
     localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_KEY);
     this.router.navigate(["/login"]);
   }
 
@@ -372,6 +379,14 @@ export class AuthService {
       throw new Error("Session expired. Please log in again.");
     }
     return userId;
+  }
+
+  requireDiscordAccessToken(): string {
+    const token = sessionStorage.getItem(DISCORD_ACCESS_TOKEN_KEY);
+    if (!token) {
+      throw new Error("Please sign in with Discord again to manage driver imports.");
+    }
+    return token;
   }
 
   hasRole(...roles: RoleName[]): boolean {

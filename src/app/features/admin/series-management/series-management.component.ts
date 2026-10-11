@@ -212,7 +212,7 @@ import { Id } from "@convex/_generated/dataModel";
                         variant="secondary"
                         size="sm"
                         (click)="importDrivers(s._id)"
-                        [disabled]="importing()"
+                        [disabled]="importing() || !canManageDriverImports()"
                       >
                         <svg
                           class="w-4 h-4 mr-1"
@@ -605,6 +605,7 @@ import { Id } from "@convex/_generated/dataModel";
                              variant="danger"
                              size="sm"
                              (click)="cancelScheduledImport(s._id)"
+                             [disabled]="!canManageDriverImports()"
                            >
                              Cancel Schedule
                            </app-button>
@@ -613,6 +614,7 @@ import { Id } from "@convex/_generated/dataModel";
                              variant="secondary"
                              size="sm"
                              (click)="openScheduleModal(s._id)"
+                             [disabled]="!canManageDriverImports()"
                            >
                              <svg
                                class="w-4 h-4 mr-1"
@@ -1655,6 +1657,7 @@ import { Id } from "@convex/_generated/dataModel";
 export class SeriesManagementComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+  readonly canManageDriverImports = computed(() => this.authService.hasRole("league_manager"));
 
   series = signal<Series[]>([]);
   penalties = signal<Penalty[]>([]);
@@ -2429,6 +2432,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       const result = await this.convex.action(
         (this.convex.api as any).actions.importDriversFromSimGrid,
         {
+          currentUserId: this.authService.requireUserId(),
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
           championshipId: seriesId,
           simgridChampionshipId: championshipId,
         },
@@ -2548,9 +2553,11 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     try {
       const utcTime = this.localToUtcTime(this.scheduleForm.scheduledImportTime);
       
-      await this.convex.mutation(
-        (this.convex.api as any).scheduledImports.scheduleImport,
+      await this.convex.action(
+        (this.convex.api as any).actions.scheduleDriverImport,
         {
+          currentUserId: this.authService.requireUserId(),
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
           seriesId: this.scheduleForm.seriesId,
           scheduledImportTime: utcTime,
           scheduledImportDays: this.scheduleForm.scheduledImportDays,
@@ -2571,9 +2578,13 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     }
     
     try {
-      await this.convex.mutation(
-        (this.convex.api as any).scheduledImports.cancelScheduledImport,
-        { seriesId },
+      await this.convex.action(
+        (this.convex.api as any).actions.cancelScheduledDriverImport,
+        {
+          currentUserId: this.authService.requireUserId(),
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
+          seriesId,
+        },
       );
     } catch (error: any) {
       alert(`Failed to cancel scheduled import: ${error.message}`);

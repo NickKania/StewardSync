@@ -24,6 +24,7 @@ import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_discordAuth from "../lib/discordAuth.js";
 import type * as lib_discordNicknames from "../lib/discordNicknames.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_formatting from "../lib/formatting.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
+  "lib/discordAuth": typeof lib_discordAuth;
   "lib/discordNicknames": typeof lib_discordNicknames;
   "lib/errors": typeof lib_errors;
   "lib/formatting": typeof lib_formatting;

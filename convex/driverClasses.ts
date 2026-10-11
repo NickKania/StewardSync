@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
 import { requireRole } from "./lib/auth";
@@ -38,7 +38,7 @@ export const getBySeriesAndClassName = query({
   },
 });
 
-export const getOrCreate = mutation({
+export const getOrCreate = internalMutation({
   args: {
     seriesId: v.id("series"),
     className: v.string(),
