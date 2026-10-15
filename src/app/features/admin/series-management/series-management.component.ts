@@ -74,6 +74,24 @@ import { Id } from "@convex/_generated/dataModel";
         </app-button>
       </div>
 
+      @if (canRunImportsButNeedsDiscord()) {
+        <div
+          class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <p class="text-sm">
+            SimGrid imports need a fresh Discord sign-in in this tab.
+            Reconnect Discord to enable import and schedule controls.
+          </p>
+          <app-button
+            variant="secondary"
+            size="sm"
+            (click)="reconnectDiscord()"
+          >
+            Reconnect Discord
+          </app-button>
+        </div>
+      }
+
       <!-- Series List -->
       @if (loading()) {
         <app-loading text="Loading series..." />
@@ -191,7 +209,7 @@ import { Id } from "@convex/_generated/dataModel";
                         variant="secondary"
                         size="sm"
                         (click)="importEvents(s._id)"
-                        [disabled]="importing()"
+                        [disabled]="importing() || !canManageDriverImports()"
                       >
                         <svg
                           class="w-4 h-4 mr-1"
@@ -1657,7 +1675,16 @@ import { Id } from "@convex/_generated/dataModel";
 export class SeriesManagementComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
-  readonly canManageDriverImports = computed(() => this.authService.hasRole("league_manager"));
+  readonly canManageDriverImports = computed(
+    () =>
+      this.authService.hasRole("event_manager", "league_manager") &&
+      this.authService.hasDiscordAccessToken(),
+  );
+  readonly canRunImportsButNeedsDiscord = computed(
+    () =>
+      this.authService.hasRole("event_manager", "league_manager") &&
+      !this.authService.hasDiscordAccessToken(),
+  );
 
   series = signal<Series[]>([]);
   penalties = signal<Penalty[]>([]);
@@ -2383,6 +2410,14 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       .sort((a, b) => a.eventNumber - b.eventNumber);
   }
 
+  async reconnectDiscord(): Promise<void> {
+    try {
+      await this.authService.reconnectDiscord();
+    } catch (error: any) {
+      alert("Failed to reconnect Discord: " + error.message);
+    }
+  }
+
   async importEvents(seriesId: Id<"series">): Promise<void> {
     this.importing.set(true);
     this.importResult.set(null);
@@ -2390,7 +2425,11 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     try {
       const result = await this.convex.action(
         this.convex.api.events.importFromSimGrid,
-        { seriesId },
+        {
+          currentUserId: this.authService.requireUserId(),
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
+          seriesId,
+        },
       );
       this.importResult.set(result);
 
@@ -2449,7 +2488,12 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         const nicknameSync = result.nicknameSync;
         const nicknameSummary = nicknameSync
           ? `\nDiscord nicknames: ${nicknameSync.updated} updated, ${nicknameSync.unchanged} already correct, ${nicknameSync.skipped} skipped, ${nicknameSync.failed} failed.` +
-            (nicknameSync.errors.length > 0 ? `\n${nicknameSync.errors.join("\n")}` : "")
+            (nicknameSync.errors.length > 0
+              ? `\n${nicknameSync.errors.slice(0, 5).join("\n")}` +
+                (nicknameSync.errors.length > 5
+                  ? `\n...and ${nicknameSync.errors.length - 5} more (see Convex logs)`
+                  : "")
+              : "")
           : "";
         alert(
           `Successfully imported ${result.imported} drivers (${createdCount} created, ${updatedCount} updated)${nicknameSummary}`,

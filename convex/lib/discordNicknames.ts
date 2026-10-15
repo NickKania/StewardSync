@@ -19,6 +19,8 @@ export interface NicknameSyncResult {
 
 interface NicknameMember {
   nickname: string | null;
+  /** False when Discord forbids the bot from renaming this member (owner/higher role). */
+  manageable?: boolean;
   setNickname(nickname: string, reason: string): Promise<unknown>;
 }
 
@@ -26,8 +28,20 @@ interface NicknameGuild {
   members: { fetch(discordId: string): Promise<NicknameMember> };
 }
 
+// Fold accents, curly apostrophes, and hyphen/space variants so equivalent
+// nicknames ("Maria Garcia", "Anne Marie", "O’Neil") are not rewritten.
 const normalize = (value: string): string =>
-  value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
+  value
+    .normalize("NFKC")
+    .replace(/[\u2018\u2019\u02BC]/g, "'")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/-/g, " ")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .normalize("NFC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 
 export function buildDriverNickname(target: DriverNicknameTarget): string {
   const name = target.officialName.trim().replace(/\s+/g, " ");
@@ -44,8 +58,13 @@ export function matchesDriverNickname(
 
   const normalizedNickname = normalize(nickname);
   const nameParts = normalize(target.officialName).split(" ");
-  // Match complete digit groups so number 1 cannot be satisfied by #12.
-  const numbers = new Set(normalizedNickname.match(/\d+/g) ?? []);
+  // Match complete digit groups that are not glued to letters, so number 1
+  // cannot be satisfied by #12 and number 3 cannot be satisfied by "GT3".
+  // Leading zeros are ignored so #07 satisfies car number 7.
+  const numbers = new Set(
+    [...normalizedNickname.matchAll(/(?:^|[^\p{L}\p{M}\p{N}])(\d+)(?=$|[^\p{L}\p{M}\p{N}])/gu)]
+      .map((match) => match[1].replace(/^0+(?=\d)/, "")),
+  );
   return (
     nameParts.every((part) => {
       const escapedPart = part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -78,6 +97,12 @@ export async function syncDriverNicknames(
         result.unchanged++;
         continue;
       }
+      // The bot can never rename the guild owner or higher-roled members;
+      // counting them as failures on every import would just create noise.
+      if (member.manageable === false) {
+        result.skipped++;
+        continue;
+      }
 
       const nickname = buildDriverNickname(target);
       if (Array.from(nickname).length > 32) {
@@ -88,6 +113,12 @@ export async function syncDriverNicknames(
       result.updated++;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      // Linked users who are not in the Discord server are skipped, not failed.
+      const code = (error as { code?: unknown } | null)?.code;
+      if (code === 10007 || message.includes("Unknown Member")) {
+        result.skipped++;
+        continue;
+      }
       result.failed++;
       result.errors.push(`${target.officialName} (${target.discordId}): ${message}`);
     }

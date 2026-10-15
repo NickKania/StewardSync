@@ -10,7 +10,7 @@ export const requireImportPermission = internalQuery({
     if (!user || user.discordId !== args.discordId) {
       throw new UserFacingError("Discord identity does not match the current user.");
     }
-    await requireRole(ctx, args.currentUserId, ["league_manager"]);
+    await requireRole(ctx, args.currentUserId, ["event_manager", "league_manager"]);
     return null;
   },
 });

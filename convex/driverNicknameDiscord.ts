@@ -10,6 +10,27 @@ import {
   type NicknameSyncResult,
 } from "./lib/discordNicknames";
 
+interface GuildResolutionClient {
+  guilds: { fetch(guildId: string): Promise<unknown> };
+  channels: { fetch(channelId: string): Promise<unknown> };
+}
+
+/** Use DISCORD_GUILD_ID when set, otherwise the race review channel's server. */
+export async function resolveNicknameGuild(
+  client: GuildResolutionClient,
+  guildId: string | undefined,
+  raceReviewChannelId: () => string,
+): Promise<Parameters<typeof syncDriverNicknames>[0]> {
+  if (guildId) {
+    return (await client.guilds.fetch(guildId)) as Parameters<typeof syncDriverNicknames>[0];
+  }
+  const channel = await client.channels.fetch(raceReviewChannelId());
+  if (!channel || typeof channel !== "object" || !("guild" in channel) || !channel.guild) {
+    throw new Error("Discord race review channel must belong to a server");
+  }
+  return channel.guild as Parameters<typeof syncDriverNicknames>[0];
+}
+
 export const syncForSeries = internalAction({
   args: { championshipId: v.id("series") },
   handler: async (ctx, args): Promise<NicknameSyncResult> => {
@@ -22,17 +43,11 @@ export const syncForSeries = internalAction({
 
     try {
       const result = await withDiscordClient(async (client) => {
-        const guildId = process.env["DISCORD_GUILD_ID"];
-        let guild;
-        if (guildId) {
-          guild = await client.guilds.fetch(guildId);
-        } else {
-          const channel = await client.channels.fetch(getEnvOrThrow("DISCORD_RACE_REVIEW_CHANNEL_ID"));
-          if (!channel || !("guild" in channel)) {
-            throw new Error("Discord race review channel must belong to a server");
-          }
-          guild = channel.guild;
-        }
+        const guild = await resolveNicknameGuild(
+          client,
+          process.env["DISCORD_GUILD_ID"],
+          () => getEnvOrThrow("DISCORD_RACE_REVIEW_CHANNEL_ID"),
+        );
         return syncDriverNicknames(guild, targets);
       });
       if (result.failed > 0) console.error("Discord nickname sync failures:", result.errors);

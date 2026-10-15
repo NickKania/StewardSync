@@ -15,6 +15,7 @@ const DISCORD_AUTH_SUCCESS = "discord-auth-success";
 const DISCORD_AUTH_ERROR = "discord-auth-error";
 const DISCORD_AUTH_RESULT_KEY = "steward_sync_discord_auth_result";
 const DISCORD_ACCESS_TOKEN_KEY = "steward_sync_discord_access_token";
+const DISCORD_ACCESS_TOKEN_EXPIRY_KEY = "steward_sync_discord_access_token_expiry";
 const AUTH_DEBUG = !environment.production;
 
 @Injectable({
@@ -27,8 +28,10 @@ export class AuthService {
   private _user = signal<User | null>(null);
   private _isLoading = signal(true);
   private _userId = signal<Id<"users"> | null>(null);
+  private _hasDiscordAccessToken = signal(false);
 
   readonly user = this._user.asReadonly();
+  readonly hasDiscordAccessToken = this._hasDiscordAccessToken.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
   readonly userRole = computed(
@@ -61,7 +64,44 @@ export class AuthService {
     }
   }
 
+  private storeDiscordAccessToken(accessToken: string, expiresInSeconds?: number): void {
+    sessionStorage.setItem(DISCORD_ACCESS_TOKEN_KEY, accessToken);
+    if (typeof expiresInSeconds === "number" && expiresInSeconds > 0) {
+      sessionStorage.setItem(
+        DISCORD_ACCESS_TOKEN_EXPIRY_KEY,
+        String(Date.now() + expiresInSeconds * 1000),
+      );
+    } else {
+      sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_EXPIRY_KEY);
+    }
+    this._hasDiscordAccessToken.set(true);
+  }
+
+  private clearDiscordAccessToken(): void {
+    sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_EXPIRY_KEY);
+    this._hasDiscordAccessToken.set(false);
+  }
+
+  private readValidDiscordAccessToken(): string | null {
+    const token = sessionStorage.getItem(DISCORD_ACCESS_TOKEN_KEY);
+    if (!token) {
+      this._hasDiscordAccessToken.set(false);
+      return null;
+    }
+    const expiry = Number(sessionStorage.getItem(DISCORD_ACCESS_TOKEN_EXPIRY_KEY));
+    if (expiry && Date.now() >= expiry) {
+      this.clearDiscordAccessToken();
+      return null;
+    }
+    this._hasDiscordAccessToken.set(true);
+    return token;
+  }
+
   async initialize(): Promise<void> {
+    // The Discord token lives in sessionStorage (per tab), unlike the login
+    // itself, so reflect its presence for UI gating after a tab restore.
+    this.readValidDiscordAccessToken();
     // Try to restore session from localStorage
     const storedUserId = localStorage.getItem(STORAGE_KEY);
 
@@ -87,7 +127,13 @@ export class AuthService {
     this._isLoading.set(false);
   }
 
-  async loginWithDiscord(): Promise<void> {
+  /** Re-run Discord sign-in to refresh this tab's access token (e.g. after
+   * the login was restored in a new tab) without leaving the current page. */
+  async reconnectDiscord(): Promise<void> {
+    await this.loginWithDiscord({ navigate: false });
+  }
+
+  async loginWithDiscord(options?: { navigate?: boolean }): Promise<void> {
     const clientId = environment.discordClientId || appRuntimeConfig.discordClientId;
     this.logAuth("loginWithDiscord:start", {
       hasClientId: Boolean(clientId),
@@ -307,14 +353,16 @@ export class AuthService {
       localStorage.setItem(STORAGE_KEY, userId);
       // Keep the OAuth credential in this tab for backend ownership checks on
       // privileged imports. A stored user ID alone cannot authenticate a caller.
-      sessionStorage.setItem(DISCORD_ACCESS_TOKEN_KEY, tokenData.access_token);
-      this.router.navigate(["/"]);
+      this.storeDiscordAccessToken(tokenData.access_token, tokenData.expires_in);
+      if (options?.navigate !== false) {
+        this.router.navigate(["/"]);
+      }
       this.logAuth("loginWithDiscord:complete", { userId });
     }
   }
 
   async mockLogin(): Promise<void> {
-    sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_KEY);
+    this.clearDiscordAccessToken();
     // Create a demo user for development
     const userId = await this.convex.mutation(
       this.convex.api.auth.getOrCreateUser,
@@ -344,7 +392,7 @@ export class AuthService {
   }
 
   async loginWithDiscordId(discordId: string): Promise<void> {
-    sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_KEY);
+    this.clearDiscordAccessToken();
     // Get user by Discord ID
     const user = await this.convex.query(
       this.convex.api.auth.getUserByDiscordId,
@@ -365,7 +413,7 @@ export class AuthService {
     this._user.set(null);
     this._userId.set(null);
     localStorage.removeItem(STORAGE_KEY);
-    sessionStorage.removeItem(DISCORD_ACCESS_TOKEN_KEY);
+    this.clearDiscordAccessToken();
     this.router.navigate(["/login"]);
   }
 
@@ -382,7 +430,7 @@ export class AuthService {
   }
 
   requireDiscordAccessToken(): string {
-    const token = sessionStorage.getItem(DISCORD_ACCESS_TOKEN_KEY);
+    const token = this.readValidDiscordAccessToken();
     if (!token) {
       throw new Error("Please sign in with Discord again to manage driver imports.");
     }

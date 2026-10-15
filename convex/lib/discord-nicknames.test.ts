@@ -57,6 +57,50 @@ describe("Discord driver nicknames", () => {
     expect(matchesDriverNickname("anything", { ...target, officialName: " " })).toBe(false);
   });
 
+  it("does not satisfy car numbers with letter-glued digits", () => {
+    expect(matchesDriverNickname("Jane Marie Smith GT3", { ...target, driverNumbers: [3] })).toBe(false);
+    expect(matchesDriverNickname("Jane Marie Smith MX5", { ...target, driverNumbers: [5] })).toBe(false);
+    expect(matchesDriverNickname("Jane Marie Smith 12h", { ...target, driverNumbers: [12] })).toBe(false);
+  });
+
+  it("ignores leading zeros in car numbers", () => {
+    expect(matchesDriverNickname("Jane Marie Smith #07", { ...target, driverNumbers: [7] })).toBe(true);
+  });
+
+  it("matches accent-stripped nicknames to accented official names", () => {
+    expect(matchesDriverNickname("Maria Garcia #12", {
+      ...target, officialName: "María García", driverNumbers: [12],
+    })).toBe(true);
+  });
+
+  it("matches spaced nicknames to hyphenated official names", () => {
+    expect(matchesDriverNickname("Anne Marie O'Neil #12", {
+      ...target, officialName: "Anne-Marie O'Neil", driverNumbers: [12],
+    })).toBe(true);
+  });
+
+  it("matches curly-apostrophe nicknames to straight-apostrophe official names", () => {
+    expect(matchesDriverNickname("Anne-Marie O’Neil #12", {
+      ...target, officialName: "Anne-Marie O'Neil", driverNumbers: [12],
+    })).toBe(true);
+  });
+
+  it("skips unmanageable members without calling setNickname", async () => {
+    let setNicknameCalled = false;
+    const result = await syncDriverNicknames({
+      members: {
+        fetch: async () => ({
+          nickname: null,
+          manageable: false,
+          setNickname: async () => { setNicknameCalled = true; },
+        }),
+      },
+    }, { targets: [target], skipped: 0 });
+
+    expect(setNicknameCalled).toBe(false);
+    expect(result).toEqual({ updated: 0, unchanged: 0, skipped: 1, failed: 0, errors: [] });
+  });
+
   it("preserves compliant nicknames and sets missing or incorrect nicknames", async () => {
     const updates: Array<{ id: string; nickname: string }> = [];
     const nicknames: Record<string, string | null> = {
@@ -104,9 +148,9 @@ describe("Discord driver nicknames", () => {
     });
 
     expect(updated).toEqual(["allowed"]);
-    expect(result.failed).toBe(2);
+    expect(result.skipped).toBe(1);
+    expect(result.failed).toBe(1);
     expect(result.errors).toEqual([
-      "Jane Marie Smith (missing): Unknown Member",
       "Jane Marie Smith (forbidden): Missing Permissions",
     ]);
   });

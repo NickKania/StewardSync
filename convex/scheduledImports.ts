@@ -126,7 +126,7 @@ export const scheduleImport = internalMutation({
     scheduledImportDays: v.array(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.currentUserId, ["league_manager"]);
+    await requireRole(ctx, args.currentUserId, ["event_manager", "league_manager"]);
     const series = await ctx.db.get(args.seriesId);
     if (!series) {
       throw new Error("Series not found");
@@ -198,7 +198,7 @@ export const scheduleImport = internalMutation({
 export const cancelScheduledImport = internalMutation({
   args: { currentUserId: v.id("users"), seriesId: v.id("series") },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.currentUserId, ["league_manager"]);
+    await requireRole(ctx, args.currentUserId, ["event_manager", "league_manager"]);
     const series = await ctx.db.get(args.seriesId);
     if (!series) {
       throw new Error("Series not found");
@@ -221,6 +221,8 @@ export const cancelScheduledImport = internalMutation({
   },
 });
 
+// Manual utility (Convex dashboard/CLI): re-derive the next run after event
+// dates change. Nothing calls it automatically yet.
 export const updateScheduleWithNewDates = internalMutation({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {

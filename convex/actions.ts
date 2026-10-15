@@ -2,7 +2,7 @@ import { action, internalAction, type ActionCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { requireDiscordLeagueManager } from "./lib/discordAuth";
+import { requireDiscordImportManager } from "./lib/discordAuth";
 import type { NicknameSyncResult } from "./lib/discordNicknames";
 import { parseSimGridDriversCsv } from "./lib/simgridCsv";
 
@@ -42,7 +42,7 @@ export const importDriversFromSimGrid = action({
     simgridChampionshipId: v.string(),
   },
   handler: async (ctx, args): Promise<DriverImportResult> => {
-    await requireDiscordLeagueManager(ctx, args);
+    await requireDiscordImportManager(ctx, args);
     return ctx.runAction(internal.actions.importDriversFromSimGridInternal, {
       championshipId: args.championshipId,
       simgridChampionshipId: args.simgridChampionshipId,
@@ -59,7 +59,7 @@ export const scheduleDriverImport = action({
     scheduledImportDays: v.array(v.number()),
   },
   handler: async (ctx, args): Promise<{ success: boolean; nextRun: number | null }> => {
-    await requireDiscordLeagueManager(ctx, args);
+    await requireDiscordImportManager(ctx, args);
     const { discordAccessToken, ...scheduleArgs } = args;
     return ctx.runMutation(internal.scheduledImports.scheduleImport, scheduleArgs);
   },
@@ -72,7 +72,7 @@ export const cancelScheduledDriverImport = action({
     seriesId: v.id("series"),
   },
   handler: async (ctx, args): Promise<{ success: boolean }> => {
-    await requireDiscordLeagueManager(ctx, args);
+    await requireDiscordImportManager(ctx, args);
     return ctx.runMutation(internal.scheduledImports.cancelScheduledImport, {
       currentUserId: args.currentUserId,
       seriesId: args.seriesId,
@@ -80,7 +80,7 @@ export const cancelScheduledDriverImport = action({
   },
 });
 
-// Only verified league managers and backend scheduled jobs reach this path.
+// Only verified event/league managers and backend scheduled jobs reach this path.
 export const importDriversFromSimGridInternal = internalAction({
   args: {
     championshipId: v.id("series"),

@@ -55,8 +55,8 @@ describe("Driver import scheduling authorization", () => {
       expect(test.writes).toEqual([]);
     });
 
-    it(`rejects schedule ${name} requests from non-league managers`, async () => {
-      const test = createScheduleAction("event_manager");
+    it(`rejects schedule ${name} requests from non-managers`, async () => {
+      const test = createScheduleAction("head_steward");
       await expect(test.run(action, args)).rejects.toThrow("Unauthorized");
       expect(test.writes).toEqual([]);
     });
@@ -73,6 +73,24 @@ describe("Driver import scheduling authorization", () => {
 
   it("allows verified league managers to cancel schedules", async () => {
     const test = createScheduleAction();
+    await test.run(cancelScheduledDriverImport, { seriesId: "series-1" });
+    expect(test.writes).toEqual([{
+      name: "scheduledImports:cancelScheduledImport",
+      args: { currentUserId: "manager", seriesId: "series-1" },
+    }]);
+  });
+
+  it("allows verified event managers to schedule without forwarding the OAuth credential", async () => {
+    const test = createScheduleAction("event_manager");
+    await test.run(scheduleDriverImport, scheduleArgs);
+    expect(test.writes).toEqual([{
+      name: "scheduledImports:scheduleImport",
+      args: { currentUserId: "manager", ...scheduleArgs },
+    }]);
+  });
+
+  it("allows verified event managers to cancel schedules", async () => {
+    const test = createScheduleAction("event_manager");
     await test.run(cancelScheduledDriverImport, { seriesId: "series-1" });
     expect(test.writes).toEqual([{
       name: "scheduledImports:cancelScheduledImport",

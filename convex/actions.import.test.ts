@@ -106,7 +106,7 @@ describe("Driver import Discord integration", () => {
     expect(test.requests).toHaveLength(1);
   });
 
-  for (const role of ["driver", "steward", "head_steward", "event_manager"]) {
+  for (const role of ["driver", "steward", "head_steward"]) {
     it(`rejects a verified ${role} before importing or renaming`, async () => {
       const test = createImport({ role });
       await expect(test.run()).rejects.toThrow("Unauthorized");
@@ -114,6 +114,12 @@ describe("Driver import Discord integration", () => {
       expect(test.requests).toHaveLength(1);
     });
   }
+
+  it("allows verified event managers to import", async () => {
+    const test = createImport({ role: "event_manager" });
+    const result = await test.run();
+    expect(result["success"]).toBe(true);
+  });
 
   it("verifies league managers, then syncs once after all roster updates", async () => {
     const test = createImport();

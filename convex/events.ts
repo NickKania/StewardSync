@@ -1,8 +1,9 @@
-import { mutation, query, action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internalMutation, mutation, query, action, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
+import { requireDiscordImportManager } from "./lib/discordAuth";
 import { fetchSimGridRaces } from "./lib/simgridRaces";
 
 interface ImportOrUpdateEventResult {
@@ -20,8 +21,7 @@ async function runImportOrUpdateEvent(
     eventDate: number;
   },
 ): Promise<ImportOrUpdateEventResult> {
-  // @ts-ignore - Circular type inference in Convex API
-  return ctx.runMutation(api.events.importOrUpdateEvent, args);
+  return ctx.runMutation(internal.events.importOrUpdateEvent, args);
 }
 
 export const list = query({
@@ -184,7 +184,7 @@ export const update = mutation({
   },
 });
 
-export const importOrUpdateEvent = mutation({
+export const importOrUpdateEvent = internalMutation({
   args: {
     seriesId: v.id("series"),
     eventNumber: v.number(),
@@ -271,6 +271,20 @@ async function runGetSeriesByIdWithSimgridLink(
 }
 
 export const importFromSimGrid = action({
+  args: {
+    currentUserId: v.id("users"),
+    discordAccessToken: v.string(),
+    seriesId: v.id("series"),
+  },
+  handler: async (ctx, args): Promise<{ created: number; skipped: number }> => {
+    await requireDiscordImportManager(ctx, args);
+    return ctx.runAction(internal.events.importFromSimGridInternal, {
+      seriesId: args.seriesId,
+    });
+  },
+});
+
+export const importFromSimGridInternal = internalAction({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
     const apiKey = process.env["SIMGRID_API_KEY"];

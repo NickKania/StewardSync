@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internalQuery } from "./_generated/server";
 import type { DriverNicknameTargets } from "./lib/discordNicknames";
-import { getDriverDisplayName } from "./lib/formatting";
 
 export const getForSeries = internalQuery({
   args: { championshipId: v.id("series") },
@@ -44,7 +43,13 @@ export const getForSeries = internalQuery({
         continue;
       }
 
-      const officialName = getDriverDisplayName(activeDrivers[0], user).trim();
+      // Prefer the driver's row from the series just imported for a stable
+      // name source. Fall back to the full driverName, not the abbreviated
+      // "F. Lastname" officialName, so nicknames keep the driver's full name.
+      const nameDriver =
+        activeDrivers.find((driver) => driver.championshipId === args.championshipId) ??
+        activeDrivers[0];
+      const officialName = (user.officialName?.trim() || nameDriver.driverName).trim();
       if (!officialName) {
         result.skipped++;
         continue;

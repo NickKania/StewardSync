@@ -85,7 +85,7 @@ describe("Driver nickname roster", () => {
 
   it("falls back to StewardSync's driver display name for users without an official name", async () => {
     expect((await getTargets([driver], [{ ...user, officialName: undefined }])).targets[0].officialName)
-      .toBe("I. Name");
+      .toBe("Imported Name");
     expect((await getTargets([{ ...driver, officialName: undefined }], [{ ...user, officialName: undefined }]))
       .targets[0].officialName).toBe("Imported Name");
   });
