@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { getFunctionName } from "convex/server";
 import before from "../docs/sample_requests/before.json";
 import current from "../docs/sample_requests/current.json";
-import { importFromSimGrid } from "./events";
+import { requireImportPermission } from "./auth";
+import { importFromSimGrid, importFromSimGridInternal, importOrUpdateEvent } from "./events";
 
 interface ImportedEvent {
   seriesId: string;
@@ -34,11 +36,44 @@ async function runImport(pages: unknown[]) {
       return { action: events.length === 1 ? 'created' : 'updated', eventId: 'event-id' };
     },
   };
-  const action = importFromSimGrid as unknown as {
+  const action = importFromSimGridInternal as unknown as {
     _handler: (context: typeof ctx, args: { seriesId: string }) => Promise<unknown>;
   };
   const result = await action._handler(ctx, { seriesId: 'series-1' });
   return { events, requests, result };
+}
+
+function createEventImportAction(role = 'league_manager', discordAccessToken = 'oauth-token') {
+  const actionCalls: Array<{ name: string; args: unknown }> = [];
+  globalThis.fetch = (async () => Response.json({ id: 'discord-manager' })) as typeof fetch;
+  const db = {
+    get: async (id: string) => id === 'manager'
+      ? { discordId: 'discord-manager', roleId: 'role' }
+      : { name: role },
+  };
+  const ctx = {
+    runQuery: async (_reference: unknown, args: unknown) => {
+      const query = requireImportPermission as unknown as {
+        _handler: (context: { db: typeof db }, args: unknown) => Promise<null>;
+      };
+      return query._handler({ db }, args);
+    },
+    runAction: async (reference: Parameters<typeof getFunctionName>[0], args: unknown) => {
+      actionCalls.push({ name: getFunctionName(reference), args });
+      return { created: 1, skipped: 0 };
+    },
+  };
+  return {
+    actionCalls,
+    run: () => {
+      const action = importFromSimGrid as unknown as {
+        _handler: (context: typeof ctx, args: unknown) => Promise<unknown>;
+      };
+      return action._handler(ctx, {
+        currentUserId: 'manager', discordAccessToken, seriesId: 'series-1',
+      });
+    },
+  };
 }
 
 describe('SimGrid event imports', () => {
@@ -91,6 +126,34 @@ describe('SimGrid event imports', () => {
       { data: current.data.slice(0, 2), pagination: { limit: 2, offset: 0, total_count: 6 } },
       { data: current.data.slice(0, 2), pagination: { limit: 2, offset: 0, total_count: 6 } },
     ])).rejects.toThrow('SimGrid returned invalid pagination');
+  });
+
+  it('rejects event imports without a Discord credential before delegating', async () => {
+    const test = createEventImportAction('league_manager', '');
+    await expect(test.run()).rejects.toThrow('sign in with Discord');
+    expect(test.actionCalls).toEqual([]);
+  });
+
+  it('rejects event imports from head stewards before delegating', async () => {
+    const test = createEventImportAction('head_steward');
+    await expect(test.run()).rejects.toThrow('Unauthorized');
+    expect(test.actionCalls).toEqual([]);
+  });
+
+  it('delegates verified event-manager imports to the internal action', async () => {
+    const test = createEventImportAction('event_manager');
+    const result = await test.run();
+    expect(result).toEqual({ created: 1, skipped: 0 });
+    expect(test.actionCalls).toEqual([{
+      name: 'events:importFromSimGridInternal',
+      args: { seriesId: 'series-1' },
+    }]);
+  });
+
+  it('keeps event roster writes and imports inaccessible to clients', () => {
+    for (const registeredFunction of [importOrUpdateEvent, importFromSimGridInternal]) {
+      expect((registeredFunction as unknown as { isInternal: boolean }).isInternal).toBe(true);
+    }
   });
 
 });

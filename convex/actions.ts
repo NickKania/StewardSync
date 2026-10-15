@@ -1,7 +1,9 @@
-import { action } from "./_generated/server";
+import { action, internalAction, type ActionCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
+import { requireDiscordImportManager } from "./lib/discordAuth";
+import type { NicknameSyncResult } from "./lib/discordNicknames";
 import { parseSimGridDriversCsv } from "./lib/simgridCsv";
 
 interface ImportOrUpdateDriverResult {
@@ -9,9 +11,17 @@ interface ImportOrUpdateDriverResult {
   driverId: Id<"drivers">;
 }
 
+type DriverImportResult = {
+  success: true;
+  imported: number;
+  markedInactive: number;
+  nicknameSync: NicknameSyncResult;
+  results: Array<ImportOrUpdateDriverResult & { name: string }>;
+} | { success: false; error: string };
+
 // Helper function to avoid circular type inference in Convex
 async function runImportOrUpdateDriver(
-  ctx: any,
+  ctx: ActionCtx,
   args: {
     championshipId: Id<"series">;
     driverNumber?: number;
@@ -21,16 +31,64 @@ async function runImportOrUpdateDriver(
     driverClassId?: Id<"driverClasses">;
   },
 ): Promise<ImportOrUpdateDriverResult> {
-  // @ts-ignore - Circular type inference in Convex API
-  return ctx.runMutation(api.drivers.importOrUpdateDriver, args);
+  return ctx.runMutation(internal.drivers.importOrUpdateDriver, args);
 }
 
 export const importDriversFromSimGrid = action({
   args: {
+    currentUserId: v.id("users"),
+    discordAccessToken: v.string(),
     championshipId: v.id("series"),
     simgridChampionshipId: v.string(),
   },
-  handler: async (ctx: any, args) => {
+  handler: async (ctx, args): Promise<DriverImportResult> => {
+    await requireDiscordImportManager(ctx, args);
+    return ctx.runAction(internal.actions.importDriversFromSimGridInternal, {
+      championshipId: args.championshipId,
+      simgridChampionshipId: args.simgridChampionshipId,
+      changedByUserId: args.currentUserId,
+    });
+  },
+});
+
+export const scheduleDriverImport = action({
+  args: {
+    currentUserId: v.id("users"),
+    discordAccessToken: v.string(),
+    seriesId: v.id("series"),
+    scheduledImportTime: v.string(),
+    scheduledImportDays: v.array(v.number()),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; nextRun: number | null }> => {
+    await requireDiscordImportManager(ctx, args);
+    const { discordAccessToken, ...scheduleArgs } = args;
+    return ctx.runMutation(internal.scheduledImports.scheduleImport, scheduleArgs);
+  },
+});
+
+export const cancelScheduledDriverImport = action({
+  args: {
+    currentUserId: v.id("users"),
+    discordAccessToken: v.string(),
+    seriesId: v.id("series"),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean }> => {
+    await requireDiscordImportManager(ctx, args);
+    return ctx.runMutation(internal.scheduledImports.cancelScheduledImport, {
+      currentUserId: args.currentUserId,
+      seriesId: args.seriesId,
+    });
+  },
+});
+
+// Only verified event/league managers and backend scheduled jobs reach this path.
+export const importDriversFromSimGridInternal = internalAction({
+  args: {
+    championshipId: v.id("series"),
+    simgridChampionshipId: v.string(),
+    changedByUserId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args): Promise<DriverImportResult> => {
     const apiKey = process.env["SIMGRID_API_KEY"];
     if (!apiKey) {
       throw new Error("SIMGRID_API_KEY environment variable not configured");
@@ -53,7 +111,7 @@ export const importDriversFromSimGrid = action({
       const simgridDrivers = parseSimGridDriversCsv(csvText);
 
       const results: Array<{
-        action: string;
+        action: "created" | "updated";
         driverId: Id<"drivers">;
         name: string;
       }> = [];
@@ -66,7 +124,7 @@ export const importDriversFromSimGrid = action({
         // Get or create driver class based on carClass from SimGrid
         let driverClassId: Id<"driverClasses"> | undefined;
         if (simgridDriver.carClass) {
-          const classResult: any = await ctx.runMutation(api.driverClasses.getOrCreate, {
+          const classResult = await ctx.runMutation(internal.driverClasses.getOrCreate, {
             seriesId: args.championshipId,
             className: simgridDriver.carClass,
           });
@@ -89,15 +147,33 @@ export const importDriversFromSimGrid = action({
         });
       }
 
-      const inactiveResult: any = await ctx.runMutation(api.drivers.markInactiveDrivers, {
+      const inactiveResult = await ctx.runMutation(internal.drivers.markInactiveDrivers, {
         championshipId: args.championshipId,
         activeDriverIds: results.map((result) => result.driverId),
       });
+
+      // Check nicknames after the complete roster has been updated. Discord
+      // failures must not turn an already-completed roster import into a failure.
+      let nicknameSync: NicknameSyncResult;
+      try {
+        nicknameSync = await ctx.runAction(internal.driverNicknameDiscord.syncForSeries, {
+          championshipId: args.championshipId,
+          ...(args.changedByUserId ? { changedByUserId: args.changedByUserId } : {}),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Discord nickname sync could not run:", error);
+        nicknameSync = {
+          updated: 0, unchanged: 0, skipped: 0, failed: 1,
+          errors: [`Discord nickname sync could not run: ${message}`],
+        };
+      }
 
       return {
         success: true,
         imported: results.length,
         markedInactive: inactiveResult.markedInactive,
+        nicknameSync,
         results,
       };
     } catch (error) {

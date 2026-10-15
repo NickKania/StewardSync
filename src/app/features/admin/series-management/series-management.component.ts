@@ -74,6 +74,24 @@ import { Id } from "@convex/_generated/dataModel";
         </app-button>
       </div>
 
+      @if (canRunImportsButNeedsDiscord()) {
+        <div
+          class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <p class="text-sm">
+            SimGrid imports need a fresh Discord sign-in in this tab.
+            Reconnect Discord to enable import and schedule controls.
+          </p>
+          <app-button
+            variant="secondary"
+            size="sm"
+            (click)="reconnectDiscord()"
+          >
+            Reconnect Discord
+          </app-button>
+        </div>
+      }
+
       <!-- Series List -->
       @if (loading()) {
         <app-loading text="Loading series..." />
@@ -191,7 +209,7 @@ import { Id } from "@convex/_generated/dataModel";
                         variant="secondary"
                         size="sm"
                         (click)="importEvents(s._id)"
-                        [disabled]="importing()"
+                        [disabled]="importing() || !canManageDriverImports()"
                       >
                         <svg
                           class="w-4 h-4 mr-1"
@@ -212,7 +230,7 @@ import { Id } from "@convex/_generated/dataModel";
                         variant="secondary"
                         size="sm"
                         (click)="importDrivers(s._id)"
-                        [disabled]="importing()"
+                        [disabled]="importing() || !canManageDriverImports()"
                       >
                         <svg
                           class="w-4 h-4 mr-1"
@@ -605,6 +623,7 @@ import { Id } from "@convex/_generated/dataModel";
                              variant="danger"
                              size="sm"
                              (click)="cancelScheduledImport(s._id)"
+                             [disabled]="!canManageDriverImports()"
                            >
                              Cancel Schedule
                            </app-button>
@@ -613,6 +632,7 @@ import { Id } from "@convex/_generated/dataModel";
                              variant="secondary"
                              size="sm"
                              (click)="openScheduleModal(s._id)"
+                             [disabled]="!canManageDriverImports()"
                            >
                              <svg
                                class="w-4 h-4 mr-1"
@@ -1655,6 +1675,16 @@ import { Id } from "@convex/_generated/dataModel";
 export class SeriesManagementComponent implements OnInit, OnDestroy {
   private convex = inject(ConvexService);
   private authService = inject(AuthService);
+  readonly canManageDriverImports = computed(
+    () =>
+      this.authService.hasRole("event_manager", "league_manager") &&
+      this.authService.hasDiscordAccessToken(),
+  );
+  readonly canRunImportsButNeedsDiscord = computed(
+    () =>
+      this.authService.hasRole("event_manager", "league_manager") &&
+      !this.authService.hasDiscordAccessToken(),
+  );
 
   series = signal<Series[]>([]);
   penalties = signal<Penalty[]>([]);
@@ -2380,6 +2410,27 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       .sort((a, b) => a.eventNumber - b.eventNumber);
   }
 
+  /** If Discord rejected the saved token, forget it so the reconnect
+   * prompt appears instead of leaving repeated inscrutable failures. */
+  private clearDiscordTokenIfRejected(error: any): void {
+    const message = String(error?.message ?? "");
+    if (
+      /Discord (authentication failed|identity does not match|returned an invalid)|sign in with Discord/i.test(
+        message,
+      )
+    ) {
+      this.authService.invalidateDiscordAccessToken();
+    }
+  }
+
+  async reconnectDiscord(): Promise<void> {
+    try {
+      await this.authService.reconnectDiscord();
+    } catch (error: any) {
+      alert("Failed to reconnect Discord: " + error.message);
+    }
+  }
+
   async importEvents(seriesId: Id<"series">): Promise<void> {
     this.importing.set(true);
     this.importResult.set(null);
@@ -2387,7 +2438,11 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     try {
       const result = await this.convex.action(
         this.convex.api.events.importFromSimGrid,
-        { seriesId },
+        {
+          currentUserId: this.authService.requireUserId(),
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
+          seriesId,
+        },
       );
       this.importResult.set(result);
 
@@ -2403,6 +2458,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         alert("No events found on SimGrid.");
       }
     } catch (error: any) {
+      this.clearDiscordTokenIfRejected(error);
       alert(`Failed to import events: ${error.message}`);
     } finally {
       this.importing.set(false);
@@ -2429,6 +2485,8 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       const result = await this.convex.action(
         (this.convex.api as any).actions.importDriversFromSimGrid,
         {
+          currentUserId: this.authService.requireUserId(),
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
           championshipId: seriesId,
           simgridChampionshipId: championshipId,
         },
@@ -2441,13 +2499,24 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         const updatedCount = result.results.filter(
           (r: any) => r.action === "updated",
         ).length;
+        const nicknameSync = result.nicknameSync;
+        const nicknameSummary = nicknameSync
+          ? `\nDiscord nicknames: ${nicknameSync.updated} updated, ${nicknameSync.unchanged} already correct, ${nicknameSync.skipped} skipped, ${nicknameSync.failed} failed.` +
+            (nicknameSync.errors.length > 0
+              ? `\n${nicknameSync.errors.slice(0, 5).join("\n")}` +
+                (nicknameSync.errors.length > 5
+                  ? `\n...and ${nicknameSync.errors.length - 5} more (see Convex logs)`
+                  : "")
+              : "")
+          : "";
         alert(
-          `Successfully imported ${result.imported} drivers (${createdCount} created, ${updatedCount} updated)`,
+          `Successfully imported ${result.imported} drivers (${createdCount} created, ${updatedCount} updated)${nicknameSummary}`,
         );
       } else {
         alert(`Failed to import drivers: ${result.error}`);
       }
     } catch (error: any) {
+      this.clearDiscordTokenIfRejected(error);
       alert(`Failed to import drivers: ${error.message}`);
     } finally {
       this.importing.set(false);
@@ -2543,9 +2612,11 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     try {
       const utcTime = this.localToUtcTime(this.scheduleForm.scheduledImportTime);
       
-      await this.convex.mutation(
-        (this.convex.api as any).scheduledImports.scheduleImport,
+      await this.convex.action(
+        (this.convex.api as any).actions.scheduleDriverImport,
         {
+          currentUserId: this.authService.requireUserId(),
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
           seriesId: this.scheduleForm.seriesId,
           scheduledImportTime: utcTime,
           scheduledImportDays: this.scheduleForm.scheduledImportDays,
@@ -2554,6 +2625,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       
       this.closeScheduleModal();
     } catch (error: any) {
+      this.clearDiscordTokenIfRejected(error);
       alert(`Failed to schedule import: ${error.message}`);
     } finally {
       this.scheduleSaving.set(false);
@@ -2566,11 +2638,16 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     }
     
     try {
-      await this.convex.mutation(
-        (this.convex.api as any).scheduledImports.cancelScheduledImport,
-        { seriesId },
+      await this.convex.action(
+        (this.convex.api as any).actions.cancelScheduledDriverImport,
+        {
+          currentUserId: this.authService.requireUserId(),
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
+          seriesId,
+        },
       );
     } catch (error: any) {
+      this.clearDiscordTokenIfRejected(error);
       alert(`Failed to cancel scheduled import: ${error.message}`);
     }
   }

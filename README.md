@@ -36,6 +36,33 @@ Edit `.env` and set:
 - `DISCORD_CLIENT_ID` — Discord application client ID
 - `DISCORD_CLIENT_SECRET` — Discord application client secret
 
+Manual driver/event imports and schedule management require an event manager or
+league manager signed in through Discord. The backend verifies their Discord
+OAuth token against their StewardSync account before checking the role. The
+token is kept per browser tab, so a login restored in a new tab must use the
+**Reconnect Discord** prompt on the Series Management page before import
+controls enable. Scheduled imports use an internal backend entry point and do
+not require an interactive login.
+
+Driver imports also check linked users' Discord server nicknames after updating
+the roster. Nicknames use the StewardSync official name and unique car numbers
+from active registrations in active series (for example, `Jane Smith #12/34`).
+Existing nicknames are preserved when they contain every complete name part and
+car number (so `Joanne` does not match `Ann`, and `GT3` does not satisfy car
+number 3), ignoring case, accents, hyphen/space differences, and leading zeros
+in car numbers, and allowing extra nickname text. Users without a linked
+Discord account, users not in the Discord server, and members the bot cannot
+rename (such as the server owner) are skipped; drivers without a car number
+use their name. Every successful rename is recorded in the change history
+against the user (field `discordNickname`), attributed to the manager who ran
+a manual import.
+
+Set `DISCORD_BOT_TOKEN` on the Convex backend and optionally `DISCORD_GUILD_ID`.
+When no guild ID is set, the server containing `DISCORD_RACE_REVIEW_CHANNEL_ID`
+is used. The bot needs **Manage Nicknames** and a role above the drivers it
+renames. Nickname failures are reported separately from successful roster imports.
+Names exceeding Discord's 32-character limit are reported rather than truncated.
+
 ### 3. Set up Convex
 
 **Option A: Convex Cloud (recommended for getting started)**
