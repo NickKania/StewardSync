@@ -429,6 +429,12 @@ export class AuthService {
     return userId;
   }
 
+  /** Drop this tab's token after Discord rejects it (e.g. revoked before its
+   * saved expiry) so the UI surfaces the reconnect prompt again. */
+  invalidateDiscordAccessToken(): void {
+    this.clearDiscordAccessToken();
+  }
+
   requireDiscordAccessToken(): string {
     const token = this.readValidDiscordAccessToken();
     if (!token) {

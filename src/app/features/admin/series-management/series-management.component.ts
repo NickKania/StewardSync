@@ -2410,6 +2410,19 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       .sort((a, b) => a.eventNumber - b.eventNumber);
   }
 
+  /** If Discord rejected the saved token, forget it so the reconnect
+   * prompt appears instead of leaving repeated inscrutable failures. */
+  private clearDiscordTokenIfRejected(error: any): void {
+    const message = String(error?.message ?? "");
+    if (
+      /Discord (authentication failed|identity does not match|returned an invalid)|sign in with Discord/i.test(
+        message,
+      )
+    ) {
+      this.authService.invalidateDiscordAccessToken();
+    }
+  }
+
   async reconnectDiscord(): Promise<void> {
     try {
       await this.authService.reconnectDiscord();
@@ -2445,6 +2458,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         alert("No events found on SimGrid.");
       }
     } catch (error: any) {
+      this.clearDiscordTokenIfRejected(error);
       alert(`Failed to import events: ${error.message}`);
     } finally {
       this.importing.set(false);
@@ -2502,6 +2516,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         alert(`Failed to import drivers: ${result.error}`);
       }
     } catch (error: any) {
+      this.clearDiscordTokenIfRejected(error);
       alert(`Failed to import drivers: ${error.message}`);
     } finally {
       this.importing.set(false);
@@ -2610,6 +2625,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       
       this.closeScheduleModal();
     } catch (error: any) {
+      this.clearDiscordTokenIfRejected(error);
       alert(`Failed to schedule import: ${error.message}`);
     } finally {
       this.scheduleSaving.set(false);
@@ -2631,6 +2647,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
         },
       );
     } catch (error: any) {
+      this.clearDiscordTokenIfRejected(error);
       alert(`Failed to cancel scheduled import: ${error.message}`);
     }
   }
