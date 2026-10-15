@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
+import { recordChange } from "./lib/audit";
 import type { DriverNicknameTargets } from "./lib/discordNicknames";
 
 export const getForSeries = internalQuery({
@@ -56,6 +57,7 @@ export const getForSeries = internalQuery({
       }
 
       result.targets.push({
+        userId,
         discordId: user.discordId,
         officialName,
         driverNumbers: [...new Set(activeDrivers.flatMap(
@@ -65,5 +67,31 @@ export const getForSeries = internalQuery({
     }
 
     return result;
+  },
+});
+
+/** Audit each successful Discord rename in changeHistory against the user. */
+export const recordNicknameChanges = internalMutation({
+  args: {
+    changedByUserId: v.optional(v.id("users")),
+    changes: v.array(v.object({
+      userId: v.id("users"),
+      fromNickname: v.optional(v.string()),
+      toNickname: v.string(),
+    })),
+  },
+  handler: async (ctx, args): Promise<null> => {
+    for (const change of args.changes) {
+      await recordChange(ctx, {
+        tableName: "users",
+        documentId: String(change.userId),
+        fieldName: "discordNickname",
+        fromValue: change.fromNickname,
+        toValue: change.toNickname,
+        changedByUserId: args.changedByUserId,
+        source: "simgrid",
+      });
+    }
+    return null;
   },
 });

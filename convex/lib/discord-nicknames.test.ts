@@ -7,6 +7,7 @@ import {
 } from "./discordNicknames";
 
 const target: DriverNicknameTarget = {
+  userId: "user-1",
   discordId: "discord-1",
   officialName: "Jane Marie Smith",
   driverNumbers: [34, 12, 34],
@@ -98,7 +99,7 @@ describe("Discord driver nicknames", () => {
     }, { targets: [target], skipped: 0 });
 
     expect(setNicknameCalled).toBe(false);
-    expect(result).toEqual({ updated: 0, unchanged: 0, skipped: 1, failed: 0, errors: [] });
+    expect(result).toEqual({ updated: 0, unchanged: 0, skipped: 1, failed: 0, errors: [], changes: [] });
   });
 
   it("preserves compliant nicknames and sets missing or incorrect nicknames", async () => {
@@ -124,7 +125,13 @@ describe("Discord driver nicknames", () => {
       { id: "discord-2", nickname: "Jane Marie Smith #12/34" },
       { id: "discord-3", nickname: "Jane Marie Smith #12/34" },
     ]);
-    expect(result).toEqual({ updated: 2, unchanged: 1, skipped: 2, failed: 0, errors: [] });
+    expect(result).toEqual({
+      updated: 2, unchanged: 1, skipped: 2, failed: 0, errors: [],
+      changes: [
+        { userId: "user-1", fromNickname: "Jane Smith #12", toNickname: "Jane Marie Smith #12/34" },
+        { userId: "user-1", fromNickname: null, toNickname: "Jane Marie Smith #12/34" },
+      ],
+    });
   });
 
   it("reports Discord failures and continues to later members", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { getForSeries } from "./driverNicknames";
+import { getForSeries, recordNicknameChanges } from "./driverNicknames";
 import type { DriverNicknameTargets } from "./lib/discordNicknames";
 
 interface TestDocument {
@@ -56,7 +56,7 @@ describe("Driver nickname roster", () => {
     ]);
 
     expect(result).toEqual({
-      targets: [{ discordId: "discord-1", officialName: "Jane Marie Smith", driverNumbers: [12, 34] }],
+      targets: [{ userId: "user-1", discordId: "discord-1", officialName: "Jane Marie Smith", driverNumbers: [12, 34] }],
       skipped: 0,
     });
   });
@@ -93,5 +93,50 @@ describe("Driver nickname roster", () => {
   it("handles numberless drivers and car number zero", async () => {
     expect((await getTargets([{ ...driver, driverNumber: undefined }])).targets[0].driverNumbers).toEqual([]);
     expect((await getTargets([{ ...driver, driverNumber: 0 }])).targets[0].driverNumbers).toEqual([0]);
+  });
+});
+
+describe("Driver nickname audit records", () => {
+  it("writes one changeHistory row per rename against the user", async () => {
+    const rows: Array<{ table: string; doc: Record<string, unknown> }> = [];
+    const ctx = {
+      db: {
+        insert: async (table: string, doc: Record<string, unknown>) => {
+          rows.push({ table, doc });
+          return `change-${rows.length}`;
+        },
+      },
+    };
+    const mutation = recordNicknameChanges as unknown as {
+      _handler: (context: typeof ctx, args: unknown) => Promise<null>;
+    };
+    await mutation._handler(ctx, {
+      changedByUserId: "manager-1",
+      changes: [
+        { userId: "user-1", fromNickname: "Old Nick", toNickname: "Jane Marie Smith #12" },
+        { userId: "user-2", toNickname: "John Smith #34" },
+      ],
+    });
+
+    expect(rows.map((row) => row.table)).toEqual(["changeHistory", "changeHistory"]);
+    expect(rows[0].doc).toMatchObject({
+      tableName: "users",
+      documentId: "user-1",
+      fieldName: "discordNickname",
+      fromValue: "Old Nick",
+      toValue: "Jane Marie Smith #12",
+      changedByUserId: "manager-1",
+      source: "simgrid",
+    });
+    expect(typeof rows[0].doc["changedAt"]).toBe("number");
+    expect(rows[1].doc).toMatchObject({
+      documentId: "user-2",
+      toValue: "John Smith #34",
+    });
+    expect(rows[1].doc["fromValue"]).toBeUndefined();
+  });
+
+  it("keeps renames internal-only", () => {
+    expect((recordNicknameChanges as unknown as { isInternal: boolean }).isInternal).toBe(true);
   });
 });

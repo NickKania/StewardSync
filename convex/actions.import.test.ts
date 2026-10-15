@@ -129,9 +129,9 @@ describe("Driver import Discord integration", () => {
       "drivers:importOrUpdateDriver", "drivers:importOrUpdateDriver",
       "drivers:markInactiveDrivers", "driverNicknameDiscord:syncForSeries",
     ]);
-    expect(test.calls[1].args).toEqual({ championshipId: "series-1", simgridChampionshipId: "123" });
+    expect(test.calls[1].args).toEqual({ championshipId: "series-1", simgridChampionshipId: "123", changedByUserId: "manager" });
     expect(test.calls[4].args).toEqual({ championshipId: "series-1", activeDriverIds: ["driver-1", "driver-2"] });
-    expect(test.calls[5].args).toEqual({ championshipId: "series-1" });
+    expect(test.calls[5].args).toEqual({ championshipId: "series-1", changedByUserId: "manager" });
     expect(result["success"]).toBe(true);
     expect(result["nicknameSync"]).toEqual(test.nicknameSync);
   });

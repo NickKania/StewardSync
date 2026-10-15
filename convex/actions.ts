@@ -46,6 +46,7 @@ export const importDriversFromSimGrid = action({
     return ctx.runAction(internal.actions.importDriversFromSimGridInternal, {
       championshipId: args.championshipId,
       simgridChampionshipId: args.simgridChampionshipId,
+      changedByUserId: args.currentUserId,
     });
   },
 });
@@ -85,6 +86,7 @@ export const importDriversFromSimGridInternal = internalAction({
   args: {
     championshipId: v.id("series"),
     simgridChampionshipId: v.string(),
+    changedByUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args): Promise<DriverImportResult> => {
     const apiKey = process.env["SIMGRID_API_KEY"];
@@ -156,6 +158,7 @@ export const importDriversFromSimGridInternal = internalAction({
       try {
         nicknameSync = await ctx.runAction(internal.driverNicknameDiscord.syncForSeries, {
           championshipId: args.championshipId,
+          ...(args.changedByUserId ? { changedByUserId: args.changedByUserId } : {}),
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";

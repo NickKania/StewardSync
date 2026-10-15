@@ -1,4 +1,5 @@
 export interface DriverNicknameTarget {
+  userId: string;
   discordId: string;
   officialName: string;
   driverNumbers: number[];
@@ -15,6 +16,17 @@ export interface NicknameSyncResult {
   skipped: number;
   failed: number;
   errors: string[];
+}
+
+/** One successful rename, for writing an audit record after the sync. */
+export interface NicknameChange {
+  userId: string;
+  fromNickname: string | null;
+  toNickname: string;
+}
+
+export interface NicknameSyncOutcome extends NicknameSyncResult {
+  changes: NicknameChange[];
 }
 
 interface NicknameMember {
@@ -80,20 +92,23 @@ export function matchesDriverNickname(
 export async function syncDriverNicknames(
   guild: NicknameGuild,
   { targets, skipped }: DriverNicknameTargets,
-): Promise<NicknameSyncResult> {
-  const result: NicknameSyncResult = {
+): Promise<NicknameSyncOutcome> {
+  const result: NicknameSyncOutcome = {
     updated: 0,
     unchanged: 0,
     skipped,
     failed: 0,
     errors: [],
+    changes: [],
   };
 
   // Sequential requests let discord.js handle rate limits for the import batch.
   for (const target of targets) {
     try {
       const member = await guild.members.fetch(target.discordId);
-      if (matchesDriverNickname(member.nickname, target)) {
+      // Capture before renaming: discord.js patches the member in place.
+      const previousNickname = member.nickname;
+      if (matchesDriverNickname(previousNickname, target)) {
         result.unchanged++;
         continue;
       }
@@ -111,6 +126,11 @@ export async function syncDriverNicknames(
 
       await member.setNickname(nickname, "StewardSync driver import");
       result.updated++;
+      result.changes.push({
+        userId: target.userId,
+        fromNickname: previousNickname,
+        toNickname: nickname,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       // Linked users who are not in the Discord server are skipped, not failed.

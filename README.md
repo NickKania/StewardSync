@@ -53,7 +53,9 @@ number 3), ignoring case, accents, hyphen/space differences, and leading zeros
 in car numbers, and allowing extra nickname text. Users without a linked
 Discord account, users not in the Discord server, and members the bot cannot
 rename (such as the server owner) are skipped; drivers without a car number
-use their name.
+use their name. Every successful rename is recorded in the change history
+against the user (field `discordNickname`), attributed to the manager who ran
+a manual import.
 
 Set `DISCORD_BOT_TOKEN` on the Convex backend and optionally `DISCORD_GUILD_ID`.
 When no guild ID is set, the server containing `DISCORD_RACE_REVIEW_CHANNEL_ID`
