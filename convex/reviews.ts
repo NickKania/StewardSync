@@ -5,6 +5,7 @@ import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { recordChanges, compareAndBuildChanges } from "./lib/audit";
 import { validateAtFaultDriverForReport } from "./lib/reportValidation";
+import { requireRole } from "./lib/auth";
 
 const REVIEW_AUDIT_FIELDS = [
   "isSelfReport",
@@ -369,6 +370,75 @@ export const create = mutation({
     await maybeMarkReviewed();
 
     return success(reviewId);
+  },
+});
+
+/** Correct a recorded assessment without changing authorship or the final ruling. */
+export const correct = mutation({
+  args: {
+    currentUserId: v.id("users"),
+    reviewId: v.id("reviews"),
+    incidentDescription: v.string(),
+    atFaultDriverId: v.optional(v.id("drivers")),
+    isNoDriverAtFault: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["league_manager"]);
+    const review = await ctx.db.get(args.reviewId);
+    if (!review) throw new UserFacingError("Review not found");
+    const report = await ctx.db.get(review.reportId);
+    if (!report) throw new UserFacingError("Report not found");
+
+    const incidentDescription = args.incidentDescription.trim();
+    if (!incidentDescription) {
+      return failure("Incident description is required");
+    }
+    if (!args.isNoDriverAtFault && !args.atFaultDriverId) {
+      return failure("Select an at-fault driver");
+    }
+    const atFaultDriverId = args.isNoDriverAtFault
+      ? undefined
+      : args.atFaultDriverId;
+    const driverError = await validateAtFaultDriverForReport(ctx, report, atFaultDriverId);
+    if (driverError) return failure(driverError);
+
+    const linkedReview = review.linkedReviewId
+      ? await ctx.db.get(review.linkedReviewId)
+      : null;
+    if (review.linkedReviewId && (!linkedReview ||
+      linkedReview.reportId !== review.reportId || linkedReview.linkedReviewId !== review._id)) {
+      return failure("Joint review link is invalid; repair it before editing");
+    }
+    const reviews = linkedReview ? [review, linkedReview] : [review];
+    if (args.isNoDriverAtFault) {
+      for (const assessment of reviews) {
+        const penaltyId = assessment.recommendedPenalty
+          ? ctx.db.normalizeId("penalties", assessment.recommendedPenalty)
+          : null;
+        const penalty = penaltyId ? await ctx.db.get(penaltyId) : null;
+        if (!penalty?.allowNoDriverAtFault) {
+          return failure("The recommended penalty requires an at-fault driver");
+        }
+      }
+    }
+
+    const updates = { incidentDescription, atFaultDriverId, isNoDriverAtFault: args.isNoDriverAtFault };
+    const updatedAt = Date.now();
+    for (const assessment of reviews) {
+      const changes = compareAndBuildChanges(assessment, updates, [
+        "incidentDescription", "atFaultDriverId", "isNoDriverAtFault",
+      ]);
+      if (changes.length === 0) continue;
+      await ctx.db.patch(assessment._id, { ...updates, updatedAt });
+      await recordChanges(ctx, {
+        tableName: "reviews",
+        documentId: assessment._id,
+        changes,
+        changedByUserId: args.currentUserId,
+        source: "manual",
+      });
+    }
+    return success(review._id);
   },
 });
 

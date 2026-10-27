@@ -6,6 +6,7 @@ import {
   signal,
   computed,
   Input,
+  viewChild,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
@@ -20,6 +21,7 @@ import { HasRoleDirective } from "@shared/directives/has-role.directive";
 import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { ModalComponent } from "@shared/components/modal/modal.component";
 import { EditDecisionComponent } from "../edit-decision/edit-decision.component";
+import { EditableReview, EditReviewComponent } from "../../reviews/edit-review.component";
 import {
   getEffectiveLicensePoints as calculateEffectiveLicensePoints,
 } from "@core/utils/penalties";
@@ -39,6 +41,7 @@ import {
     TimeAgoPipe,
     ModalComponent,
     EditDecisionComponent,
+    EditReviewComponent,
   ],
   template: `
     <div class="space-y-6">
@@ -64,7 +67,7 @@ import {
             </p>
           </div>
           <div class="flex gap-3">
-            @if (!report()?.isFinalized) {
+            @if (!report()?.isFinalized || authService.hasRole('league_manager')) {
               <a [routerLink]="['/reports', report()?._id, 'edit']">
                 <app-button variant="secondary">
                   <svg
@@ -272,7 +275,9 @@ import {
                     <dt class="text-sm text-gray-500 dark:text-gray-400">
                       At Fault Driver
                     </dt>
-                    @if (report()?.atFaultDriver) {
+                    @if (report()?.isNoDriverAtFault) {
+                      <dd class="font-medium text-gray-900 dark:text-gray-100">No Driver</dd>
+                    } @else if (report()?.atFaultDriver) {
                       <dd class="font-medium text-gray-900 dark:text-gray-100">
                         {{
                           report()?.atFaultDriver?.displayName ||
@@ -430,11 +435,17 @@ import {
                             {{ review.reviewDate | timeAgo }}
                           </p>
                         </div>
+                        <div class="flex items-center gap-2">
                         @if (review.recommendedPenaltyObj) {
                           <app-badge variant="info">
                             {{ review.recommendedPenaltyObj.name }}
                           </app-badge>
                         }
+                        <app-button *appHasRole="['league_manager']" variant="secondary" size="sm"
+                          (onClick)="openEditReview(review)">
+                          Edit Review
+                        </app-button>
+                        </div>
                       </div>
                       <div
                         *appHasRole="[
@@ -443,6 +454,16 @@ import {
                           'league_manager',
                         ]"
                       >
+                        <p class="text-gray-700 text-sm whitespace-pre-line mb-2 dark:text-gray-300">
+                          {{ review.incidentDescription }}
+                        </p>
+                        <p class="text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                          At-Fault Driver: {{ review.isNoDriverAtFault ? 'No Driver' :
+                            (review.atFaultDriver?.driverName || 'Not assigned') }}
+                          @if (!review.isNoDriverAtFault && review.atFaultDriver && review.atFaultDriver.driverNumber !== undefined) {
+                            (#{{ review.atFaultDriver.driverNumber }})
+                          }
+                        </p>
                         <p class="text-gray-700 text-sm dark:text-gray-300">
                           {{ review.reviewNotes }}
                         </p>
@@ -606,6 +627,16 @@ import {
       }
     </div>
 
+    <app-modal [isOpen]="selectedReview() !== null" title="Edit Review" size="lg"
+      [closeOnBackdrop]="!reviewEditor()?.submitting()" [showClose]="!reviewEditor()?.submitting()"
+      (close)="selectedReview.set(null)">
+      @if (selectedReview(); as review) {
+        <app-edit-review [review]="review" [seriesId]="report().event.seriesId"
+          [isFinalized]="report().isFinalized" (success)="selectedReview.set(null)"
+          (close)="selectedReview.set(null)" />
+      }
+    </app-modal>
+
     <!-- Edit decision modal -->
     <app-modal
       [isOpen]="showEditDecisionModal()"
@@ -633,6 +664,12 @@ export class ReportDetailComponent implements OnInit, OnDestroy {
   report = signal<any>(null);
   loading = signal(true);
   showEditDecisionModal = signal(false);
+  readonly selectedReview = signal<EditableReview | null>(null);
+  readonly reviewEditor = viewChild(EditReviewComponent);
+
+  openEditReview(review: EditableReview): void {
+    if (this.authService.hasRole("league_manager")) this.selectedReview.set(review);
+  }
 
   hasUserReviewed = computed(() => {
     const reportData = this.report();

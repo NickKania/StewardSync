@@ -74,7 +74,7 @@ export const list = query({
           ? await ctx.db.get(report.atFaultDriverId)
           : null;
 
-        if (!atFaultDriver && reviews.length > 0) {
+        if (!report.isFinalized && !report.isNoDriverAtFault && !atFaultDriver && reviews.length > 0) {
           const latestReview = reviews.reduce((latest, current) => {
             const latestDate = latest.reviewDate || latest.createdAt || 0;
             const currentDate = current.reviewDate || current.createdAt || 0;
@@ -149,7 +149,7 @@ export const getById = query({
 
     let atFaultDriver = await populateDriverWithClass(report.atFaultDriverId);
 
-    if (!atFaultDriver && reportReviews.length > 0) {
+    if (!report.isFinalized && !report.isNoDriverAtFault && !atFaultDriver && reportReviews.length > 0) {
       const latestReview = reportReviews.reduce((latest, current) => {
         const latestDate = latest.reviewDate || latest.createdAt || 0;
         const currentDate = current.reviewDate || current.createdAt || 0;
@@ -206,6 +206,7 @@ export const getById = query({
         return {
           ...review,
           reviewer: user,
+          atFaultDriver: await populateDriverWithClass(review.atFaultDriverId),
           recommendedPenaltyObj,
           secondSteward,
           linkedReview: linkedReviewWithReviewer,
@@ -564,6 +565,58 @@ export const update = mutation({
     });
 
     return reportId;
+  },
+});
+
+/** Correct incident details while preserving the finalized ruling and penalty context. */
+export const updateFinalizedDetails = mutation({
+  args: {
+    currentUserId: v.id("users"),
+    reportId: v.id("reports"),
+    lap: v.string(),
+    turn: v.string(),
+    description: v.string(),
+    videoLink: v.string(),
+    videoTimestamp: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["league_manager"]);
+    const report = await ctx.db.get(args.reportId);
+    if (!report) throw new UserFacingError("Report not found");
+    if (!report.isFinalized) {
+      throw new UserFacingError("Use the standard editor for reports that are not finalized");
+    }
+    const updates = {
+      lap: args.lap.trim(),
+      turn: args.turn.trim(),
+      description: args.description.trim(),
+      videoLink: args.videoLink.trim(),
+      videoTimestamp: args.videoTimestamp.trim(),
+    };
+    if (!updates.lap || !updates.turn || updates.description.length < 20) {
+      throw new UserFacingError("Lap, turn, and a description of at least 20 characters are required");
+    }
+    const event = await ctx.db.get(report.eventId);
+    if (!event) throw new UserFacingError("Event not found");
+    const series = await ctx.db.get(event.seriesId);
+    if (!series) throw new UserFacingError("Series not found");
+    if (series.requireVideoEvidence && (!updates.videoLink || !updates.videoTimestamp)) {
+      throw new UserFacingError("Video link and video timestamp are required for this series");
+    }
+    const changes = compareAndBuildChanges(report, updates, [
+      "lap", "turn", "description", "videoLink", "videoTimestamp",
+    ]);
+    if (changes.length > 0) {
+      await ctx.db.patch(report._id, { ...updates, updatedAt: Date.now() });
+      await recordChanges(ctx, {
+        tableName: "reports",
+        documentId: report._id,
+        changes,
+        changedByUserId: args.currentUserId,
+        source: "manual",
+      });
+    }
+    return report._id;
   },
 });
 

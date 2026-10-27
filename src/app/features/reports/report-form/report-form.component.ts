@@ -83,6 +83,12 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
         </app-card>
       } @else {
         <form [formGroup]="form" (ngSubmit)="onSubmit()">
+          @if (isFinalized()) {
+            <p class="mb-4 p-3 rounded-lg bg-info-bg border border-info-border text-sm text-info-text">
+              Editing finalized incident details. Series, event, session, and reported driver are locked.
+              To correct the at-fault driver or ruling, use the decision editor on the report.
+            </p>
+          }
           @if (reportingStatusMessage()) {
             <div class="mb-4 p-3 rounded-lg bg-info-bg border border-info-border">
               <p class="text-sm text-info-text flex items-center gap-2">
@@ -119,7 +125,7 @@ import { SearchSelectComponent } from "@shared/components/search-select/search-s
                   (change)="onSeriesChange(form.get('seriesId')?.value)"
                 >
                   <option value="">Select series</option>
-                  @for (s of series(); track s._id) {
+                  @for (s of availableSeries(); track s._id) {
                     <option [value]="s._id">
                       {{ s.name }}
                     </option>
@@ -378,8 +384,17 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
   form: FormGroup;
   isEdit = false;
+  readonly isFinalized = signal(false);
+  private readonly editedEvent = signal<{ _id: string; series?: { _id: string; requireVideoEvidence?: boolean } } | null>(null);
 
   series = signal<any[]>([]);
+  readonly availableSeries = computed(() => {
+    const series = this.series();
+    const originalSeries = this.editedEvent()?.series;
+    return originalSeries && !series.some(item => item._id === originalSeries._id)
+      ? [...series, originalSeries]
+      : series;
+  });
   drivers = signal<any[]>([]);
   events = signal<any[]>([]);
   races = signal<any[]>([]);
@@ -403,7 +418,10 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     if (!selectedSeriesId) {
       return [];
     }
-    const filtered = this.events().filter((event) => {
+    const events = [...this.events()];
+    const originalEvent = this.editedEvent();
+    if (originalEvent && !events.some(event => event._id === originalEvent._id)) events.push(originalEvent);
+    const filtered = events.filter((event) => {
       const match = String(event.seriesId) === String(selectedSeriesId);
       return match;
     });
@@ -411,6 +429,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   });
 
   isReportingOpen = computed(() => {
+    if (this.isEdit && this.isFinalized() && this.authService.hasRole("league_manager")) return true;
     const event = this.selectedEvent();
     if (!event || !event.series) {
       return true;
@@ -437,6 +456,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   });
 
   reportingStatusMessage = computed(() => {
+    if (this.isEdit && this.isFinalized() && this.authService.hasRole("league_manager")) return "";
     const event = this.selectedEvent();
     if (!event || !event.series) {
       return "";
@@ -472,7 +492,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     const selectedSeriesId = this.selectedSeriesId();
     if (!selectedSeriesId) return null;
     return (
-      this.series().find(
+      this.availableSeries().find(
         (series) => String(series._id) === String(selectedSeriesId),
       ) || null
     );
@@ -566,6 +586,12 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         );
 
         if (report) {
+          if (report.isFinalized && !this.authService.hasRole("league_manager")) {
+            this.toast.error("Only league managers can edit finalized reports");
+            await this.router.navigate(["/reports", this.id]);
+            return;
+          }
+          this.isFinalized.set(report.isFinalized);
           // Load event details to get series
           const event = await this.convex.query(
             this.convex.api.events.getById,
@@ -573,6 +599,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
               eventId: report.eventId,
             },
           );
+
+          this.editedEvent.set(event);
 
           if (event && event.seriesId) {
             this.selectedSeriesId.set(event.seriesId);
@@ -594,6 +622,11 @@ export class ReportFormComponent implements OnInit, OnDestroy {
 
           // Load races for the event
           await this.loadRaces(report.eventId);
+          if (report.isFinalized) {
+            for (const control of ["seriesId", "eventId", "raceId", "reportedDriverId"]) {
+              this.form.get(control)?.disable();
+            }
+          }
         }
       } catch (error) {
         this.toast.error("Failed to load report");
@@ -737,13 +770,30 @@ export class ReportFormComponent implements OnInit, OnDestroy {
     this.submitting.set(true);
 
     try {
-      const formValue = this.form.value;
+      const formValue = this.form.getRawValue();
       const lap = String(formValue.lap ?? "").trim();
       const turn = String(formValue.turn ?? "").trim();
       const videoLink = String(formValue.videoLink ?? "").trim();
       const videoTimestamp = String(formValue.videoTimestamp ?? "").trim();
 
-      if (this.isEdit && this.id) {
+      if (this.isEdit && this.id && this.isFinalized()) {
+        const currentUserId = this.authService.getUserId();
+        if (!currentUserId || !this.authService.hasRole("league_manager")) {
+          throw new Error("League manager access is required");
+        }
+        await this.convex.mutation(this.convex.api.reports.updateFinalizedDetails, {
+          currentUserId,
+          reportId: this.id,
+          lap,
+          turn,
+          description: formValue.description,
+          videoLink,
+          videoTimestamp,
+        });
+        this.toast.success("Finalized report updated successfully");
+        await this.router.navigate(["/reports", this.id]);
+        return;
+      } else if (this.isEdit && this.id) {
         await this.convex.mutation(this.convex.api.reports.update, {
           reportId: this.id as any,
           eventId: formValue.eventId,
@@ -813,7 +863,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   }
 
   private applyVideoFieldValidators(seriesId: string): void {
-    const selectedSeries = this.series().find(
+    const selectedSeries = this.availableSeries().find(
       (series) => String(series._id) === String(seriesId),
     );
     const videoLinkControl = this.form.get("videoLink");
