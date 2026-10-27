@@ -1,7 +1,13 @@
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { checkUserDriverConflict, getReportingWindow } from "./lib/reports";
+import {
+  checkUserDriverConflict,
+  getReportingWindow,
+  isReviewForCurrentTarget,
+  latestReviewForCurrentTarget,
+  listReviewsForCurrentTarget,
+} from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { requireRole } from "./lib/auth";
@@ -11,7 +17,10 @@ import {
   getEffectiveLicensePoints,
   recalculateSeriesLicensePoints,
 } from "./lib/penalties";
-import { validateAtFaultDriverForReport } from "./lib/reportValidation";
+import {
+  validateAtFaultDriverForReport,
+  validateReportedDriverForReport,
+} from "./lib/reportValidation";
 
 const REPORT_AUDIT_FIELDS = [
   "isSelfReport",
@@ -74,14 +83,9 @@ export const list = query({
           ? await ctx.db.get(report.atFaultDriverId)
           : null;
 
-        if (!atFaultDriver && reviews.length > 0) {
-          const latestReview = reviews.reduce((latest, current) => {
-            const latestDate = latest.reviewDate || latest.createdAt || 0;
-            const currentDate = current.reviewDate || current.createdAt || 0;
-            return currentDate > latestDate ? current : latest;
-          });
-
-          if (latestReview.atFaultDriverId) {
+        if (!atFaultDriver) {
+          const latestReview = latestReviewForCurrentTarget(reviews, report);
+          if (latestReview?.atFaultDriverId) {
             atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
           }
         }
@@ -149,14 +153,12 @@ export const getById = query({
 
     let atFaultDriver = await populateDriverWithClass(report.atFaultDriverId);
 
-    if (!atFaultDriver && reportReviews.length > 0) {
-      const latestReview = reportReviews.reduce((latest, current) => {
-        const latestDate = latest.reviewDate || latest.createdAt || 0;
-        const currentDate = current.reviewDate || current.createdAt || 0;
-        return currentDate > latestDate ? current : latest;
-      });
-
-      if (latestReview.atFaultDriverId) {
+    if (!atFaultDriver) {
+      const latestReview = latestReviewForCurrentTarget(
+        reportReviews,
+        report,
+      );
+      if (latestReview?.atFaultDriverId) {
         atFaultDriver = await populateDriverWithClass(
           latestReview.atFaultDriverId,
         );
@@ -257,20 +259,17 @@ export const getPendingForReview = query({
           .withIndex("by_report", (q) => q.eq("reportId", report._id))
           .collect();
 
-        const reviewCount = reviews.length;
+        const reviewCount = reviews.filter((review) =>
+          isReviewForCurrentTarget(review, report),
+        ).length;
 
         let atFaultDriver = report.atFaultDriverId
           ? await ctx.db.get(report.atFaultDriverId)
           : null;
 
-        if (!atFaultDriver && reviews.length > 0) {
-          const latestReview = reviews.reduce((latest, current) => {
-            const latestDate = latest.reviewDate || latest.createdAt || 0;
-            const currentDate = current.reviewDate || current.createdAt || 0;
-            return currentDate > latestDate ? current : latest;
-          });
-
-          if (latestReview.atFaultDriverId) {
+        if (!atFaultDriver) {
+          const latestReview = latestReviewForCurrentTarget(reviews, report);
+          if (latestReview?.atFaultDriverId) {
             atFaultDriver = await ctx.db.get(latestReview.atFaultDriverId);
           }
         }
@@ -337,21 +336,18 @@ export const getReadyForFinalization = query({
           .withIndex("by_report", (q) => q.eq("reportId", report._id))
           .collect();
 
-        const reviewCount = reviews.length;
+        const reviewCount = reviews.filter((review) =>
+          isReviewForCurrentTarget(review, report),
+        ).length;
 
-        // Get atFaultDriverId from latest review if not set on report
+        // Get atFaultDriverId from latest current-target review if not set
         let atFaultDriver = await populateDriverWithClass(
           report.atFaultDriverId,
         );
 
-        if (!atFaultDriver && reviews.length > 0) {
-          const latestReview = reviews.reduce((latest, current) => {
-            const latestDate = latest.reviewDate || latest.createdAt || 0;
-            const currentDate = current.reviewDate || current.createdAt || 0;
-            return currentDate > latestDate ? current : latest;
-          });
-
-          if (latestReview.atFaultDriverId) {
+        if (!atFaultDriver) {
+          const latestReview = latestReviewForCurrentTarget(reviews, report);
+          if (latestReview?.atFaultDriverId) {
             atFaultDriver = await populateDriverWithClass(
               latestReview.atFaultDriverId,
             );
@@ -484,7 +480,9 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
+    currentUserId: v.id("users"),
     reportId: v.id("reports"),
+    reportedDriverId: v.optional(v.id("drivers")),
     eventId: v.optional(v.id("events")),
     raceId: v.optional(v.id("races")),
     lap: v.optional(v.string()),
@@ -494,7 +492,7 @@ export const update = mutation({
     videoTimestamp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { reportId, ...updates } = args;
+    const { currentUserId, reportId, ...updates } = args;
 
     const report = await ctx.db.get(reportId);
     if (!report) {
@@ -503,6 +501,14 @@ export const update = mutation({
 
     if (report.isFinalized) {
       throw new UserFacingError("Cannot edit a finalized report");
+    }
+
+    const caller = await ctx.db.get(currentUserId);
+    if (!caller) {
+      throw new UserFacingError("User not found");
+    }
+    if (String(report.reportingUserId ?? "") !== String(currentUserId)) {
+      await requireRole(ctx, currentUserId as Id<"users">, ["steward"]);
     }
 
     const nextEventId = updates.eventId ?? report.eventId;
@@ -530,6 +536,61 @@ export const update = mutation({
       throw new UserFacingError("Event not found");
     }
     const nextSeries = await ctx.db.get(nextEvent.seriesId);
+
+    const reportedDriverChanged =
+      updates.reportedDriverId !== undefined &&
+      String(updates.reportedDriverId) !== String(report.reportedDriverId);
+    const eventChanged =
+      updates.eventId !== undefined &&
+      String(nextEventId) !== String(report.eventId);
+    let seriesChanged = false;
+    if (eventChanged) {
+      const previousEvent = await ctx.db.get(report.eventId);
+      seriesChanged =
+        String(previousEvent?.seriesId ?? "") !== String(nextEvent.seriesId);
+    }
+
+    // Only re-validate the reported driver when the target itself changes or
+    // the report moves to another series. An unchanged legacy driver (e.g.
+    // one without a championship) must not block unrelated edits.
+    if (reportedDriverChanged || seriesChanged) {
+      const effectiveReportedDriverId =
+        updates.reportedDriverId ?? report.reportedDriverId;
+      const reportedDriverError = await validateReportedDriverForReport(
+        ctx,
+        { eventId: nextEventId, reportingDriverId: report.reportingDriverId },
+        effectiveReportedDriverId,
+      );
+      if (reportedDriverError) {
+        throw new UserFacingError(reportedDriverError);
+      }
+    }
+
+    let existingReviews: any[] = [];
+    if (reportedDriverChanged) {
+      existingReviews = await ctx.db
+        .query("reviews")
+        .withIndex("by_report", (q) => q.eq("reportId", reportId))
+        .collect();
+
+      const nextReportedDriver = await ctx.db.get(
+        updates.reportedDriverId as Id<"drivers">,
+      );
+      if (nextReportedDriver?.userId) {
+        const reviewerConflict = existingReviews.some(
+          (review: any) =>
+            String(review.userId) === String(nextReportedDriver.userId) ||
+            (review.secondStewardId &&
+              String(review.secondStewardId) ===
+                String(nextReportedDriver.userId)),
+        );
+        if (reviewerConflict) {
+          throw new UserFacingError(
+            "Cannot change the reported driver: the new reported driver authored an existing review on this report",
+          );
+        }
+      }
+    }
 
     const nextVideoLink =
       updates.videoLink !== undefined
@@ -560,8 +621,38 @@ export const update = mutation({
 
     await ctx.db.patch(reportId, {
       ...cleanUpdates,
+      ...(reportedDriverChanged && report.status === "reviewed"
+        ? { status: "pending" as const }
+        : {}),
       updatedAt: Date.now(),
     });
+
+    if (reportedDriverChanged) {
+      // Reviews written before assessed-driver tracking assessed the previous
+      // driver (the target could not change before this mutation supported
+      // it). Stamp that provenance so they no longer count as current.
+      for (const review of existingReviews) {
+        if ((review as any).assessedReportedDriverId === undefined) {
+          await ctx.db.patch(review._id, {
+            assessedReportedDriverId: report.reportedDriverId,
+          });
+        }
+      }
+
+      await recordChanges(ctx, {
+        tableName: "reports",
+        documentId: reportId.toString(),
+        changes: [
+          {
+            fieldName: "reportedDriverId",
+            fromValue: report.reportedDriverId,
+            toValue: updates.reportedDriverId,
+          },
+        ],
+        changedByUserId: currentUserId as Id<"users">,
+        source: "manual",
+      });
+    }
 
     return reportId;
   },
@@ -575,15 +666,17 @@ export const markAsReviewed = mutation({
       throw new Error("Report not found");
     }
 
-    // Check if there's at least one review
-    const reviews = await ctx.db
-      .query("reviews")
-      .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
-      .collect();
+    // Require at least one review of the current reported driver. Reviews
+    // of a previous reported driver are preserved as history but do not
+    // make the report ready again.
+    const currentTargetReviews = await listReviewsForCurrentTarget(
+      ctx,
+      report,
+    );
 
-    if (reviews.length === 0) {
+    if (currentTargetReviews.length === 0) {
       throw new UserFacingError(
-        "Report must have at least one review before marking as reviewed",
+        "Report must have at least one review of the current reported driver before marking as reviewed",
       );
     }
 
@@ -617,6 +710,16 @@ export const finalize = mutation({
 
     if (report.isFinalized) {
       return failure("Report is already finalized");
+    }
+
+    const currentTargetReviews = await listReviewsForCurrentTarget(
+      ctx,
+      report,
+    );
+    if (currentTargetReviews.length === 0) {
+      return failure(
+        "Report must be re-reviewed for the current reported driver before finalization",
+      );
     }
 
     // Check if finalizing user has driver conflict
@@ -1315,13 +1418,7 @@ export const getEventExportData = query({
           .withIndex("by_report", (q) => q.eq("reportId", report._id))
           .collect();
 
-        if (reviews.length > 0) {
-          review = reviews.reduce((latest, current) => {
-            const latestDate = latest.reviewDate || latest.createdAt || 0;
-            const currentDate = current.reviewDate || current.createdAt || 0;
-            return currentDate > latestDate ? current : latest;
-          });
-        }
+        review = latestReviewForCurrentTarget(reviews, report);
 
         if (report.status === "reviewed" && !review?.recommendedPenalty) {
           return null;

@@ -114,3 +114,70 @@ export async function checkUserDriverConflict(
 
   return { hasConflict: false, conflictType: null };
 }
+
+/**
+ * A review counts toward readiness only if it assessed the report's current
+ * reported driver. Reviews created before reported-driver edits existed have
+ * no assessedReportedDriverId; reports.update backfills that provenance with
+ * the previous driver when the target changes, so a missing value means the
+ * target has not changed since the review was written.
+ */
+export function isReviewForCurrentTarget(
+  review: { assessedReportedDriverId?: unknown },
+  report: { reportedDriverId: unknown },
+): boolean {
+  return (
+    review.assessedReportedDriverId === undefined ||
+    String(review.assessedReportedDriverId) === String(report.reportedDriverId)
+  );
+}
+
+export function latestReviewForCurrentTarget(
+  reviews: Doc<"reviews">[],
+  report: { reportedDriverId: unknown },
+): Doc<"reviews"> | null {
+  const current = reviews.filter((review) =>
+    isReviewForCurrentTarget(review, report),
+  );
+  if (current.length === 0) return null;
+  return current.reduce((latest, review) => {
+    const latestDate = latest.reviewDate || latest.createdAt || 0;
+    const currentDate = review.reviewDate || review.createdAt || 0;
+    return currentDate > latestDate ? review : latest;
+  });
+}
+
+export async function listReviewsForCurrentTarget(
+  ctx: any,
+  report: Doc<"reports">,
+): Promise<any[]> {
+  const reviews = await ctx.db
+    .query("reviews")
+    .withIndex("by_report", (q: any) => q.eq("reportId", report._id))
+    .collect();
+  return reviews.filter((review: any) =>
+    isReviewForCurrentTarget(review, report),
+  );
+}
+
+/**
+ * Marks a report as reviewed once at least two reviews assess the current
+ * reported driver. Returns the number of current-target reviews.
+ */
+export async function maybeMarkReportReviewed(
+  ctx: any,
+  report: Doc<"reports">,
+): Promise<number> {
+  const currentTargetReviews = await listReviewsForCurrentTarget(ctx, report);
+  if (
+    currentTargetReviews.length >= 2 &&
+    report.status !== "reviewed" &&
+    report.status !== "finalized"
+  ) {
+    await ctx.db.patch(report._id, {
+      status: "reviewed",
+      updatedAt: Date.now(),
+    });
+  }
+  return currentTargetReviews.length;
+}

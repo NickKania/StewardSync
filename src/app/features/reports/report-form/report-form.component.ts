@@ -744,8 +744,15 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       const videoTimestamp = String(formValue.videoTimestamp ?? "").trim();
 
       if (this.isEdit && this.id) {
+        const currentUserId = this.authService.getUserId();
+        if (!currentUserId) {
+          this.toast.error("User not authenticated");
+          return;
+        }
         await this.convex.mutation(this.convex.api.reports.update, {
+          currentUserId: currentUserId as any,
           reportId: this.id as any,
+          reportedDriverId: formValue.reportedDriverId,
           eventId: formValue.eventId,
           raceId: formValue.raceId,
           lap,
