@@ -116,9 +116,10 @@ export async function checkUserDriverConflict(
 }
 
 /**
- * A review counts toward readiness only if it assessed the report's current
- * reported driver. Reviews created before reported-driver edits existed have
- * no assessedReportedDriverId; reports.update backfills that provenance with
+ * Whether a review assessed the report's current reported driver. Used only
+ * to pick accurate latest-review defaults; all reviews still count toward
+ * readiness. Reviews created before reported-driver edits existed have no
+ * assessedReportedDriverId; reports.update backfills that provenance with
  * the previous driver when the target changes, so a missing value means the
  * target has not changed since the review was written.
  */
@@ -161,16 +162,20 @@ export async function listReviewsForCurrentTarget(
 }
 
 /**
- * Marks a report as reviewed once at least two reviews assess the current
- * reported driver. Returns the number of current-target reviews.
+ * Marks a report as reviewed once it has at least two reviews. Correcting
+ * the reported driver does not invalidate existing reviews, so all reviews
+ * count. Returns the review count.
  */
 export async function maybeMarkReportReviewed(
   ctx: any,
   report: Doc<"reports">,
 ): Promise<number> {
-  const currentTargetReviews = await listReviewsForCurrentTarget(ctx, report);
+  const reviews = await ctx.db
+    .query("reviews")
+    .withIndex("by_report", (q: any) => q.eq("reportId", report._id))
+    .collect();
   if (
-    currentTargetReviews.length >= 2 &&
+    reviews.length >= 2 &&
     report.status !== "reviewed" &&
     report.status !== "finalized"
   ) {
@@ -179,5 +184,5 @@ export async function maybeMarkReportReviewed(
       updatedAt: Date.now(),
     });
   }
-  return currentTargetReviews.length;
+  return reviews.length;
 }

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import { create, update, updateWithSecondSteward } from "./reviews";
-import { finalize } from "./reports";
 
 const createHandler = (create as any)._handler as (
   ctx: any,
@@ -11,10 +10,6 @@ const updateHandler = (update as any)._handler as (
   args: any,
 ) => Promise<any>;
 const updateSecondHandler = (updateWithSecondSteward as any)._handler as (
-  ctx: any,
-  args: any,
-) => Promise<any>;
-const finalizeHandler = (finalize as any)._handler as (
   ctx: any,
   args: any,
 ) => Promise<any>;
@@ -124,8 +119,8 @@ const seedBase = (reviews: any[]) => ({
   events: [{ _id: "e1", seriesId: "s1" }],
 });
 
-describe("review freshness after a reported-driver change", () => {
-  it("does not count a stale review toward reviewed on create", async () => {
+describe("review provenance after a reported-driver change", () => {
+  it("counts a previous-driver review toward reviewed on create", async () => {
     const { ctx, byId } = makeDb(
       seedBase([
         {
@@ -148,7 +143,7 @@ describe("review freshness after a reported-driver change", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(byId.get("rep1").status).toBe("pending");
+    expect(byId.get("rep1").status).toBe("reviewed");
     expect(byId.get(result.data).assessedReportedDriverId).toBe("dNew");
   });
 
@@ -178,7 +173,7 @@ describe("review freshness after a reported-driver change", () => {
     expect(byId.get("rep1").status).toBe("reviewed");
   });
 
-  it("restores reviewed only after both stale reviewers resubmit via update", async () => {
+  it("stamps resubmitted reviews with the current driver via update", async () => {
     const { ctx, byId } = makeDb(
       seedBase([
         {
@@ -204,7 +199,7 @@ describe("review freshness after a reported-driver change", () => {
       atFaultDriverId: "dNew",
     });
     expect(byId.get("revA").assessedReportedDriverId).toBe("dNew");
-    expect(byId.get("rep1").status).toBe("pending");
+    expect(byId.get("rep1").status).toBe("reviewed");
 
     await updateHandler(ctx, {
       reviewId: "revB",
@@ -214,7 +209,7 @@ describe("review freshness after a reported-driver change", () => {
     expect(byId.get("rep1").status).toBe("reviewed");
   });
 
-  it("does not refresh assessments on metadata-only updates", async () => {
+  it("does not refresh provenance on metadata-only updates", async () => {
     const { ctx, byId } = makeDb(
       seedBase([
         {
@@ -248,7 +243,6 @@ describe("review freshness after a reported-driver change", () => {
     expect(byId.get("revA").assessedReportedDriverId).toBe("dOld");
     expect(byId.get("revB").assessedReportedDriverId).toBe("dOld");
     expect(byId.get("revA").reviewDate).toBe(100);
-    expect(byId.get("rep1").status).toBe("pending");
   });
 
   it("copies the joint assessment to a linked second review on resubmission", async () => {
@@ -289,30 +283,4 @@ describe("review freshness after a reported-driver change", () => {
     expect(byId.get("rep1").status).toBe("reviewed");
   });
 
-  it("blocks finalization without a current-target review", async () => {
-    const { ctx, byId } = makeDb(
-      seedBase([
-        {
-          _id: "revA",
-          reportId: "rep1",
-          userId: "stewardA",
-          atFaultDriverId: "dOld",
-          assessedReportedDriverId: "dOld",
-        },
-      ]),
-    );
-
-    const result = await finalizeHandler(ctx, {
-      reportId: "rep1",
-      userId: "finalizer",
-      finalDecision: "decision",
-      appliedPenalty: "pen1",
-      atFaultDriverId: "dOld",
-      officialNotes: "notes",
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("re-reviewed");
-    expect(byId.get("rep1").isFinalized).toBe(false);
-  });
 });

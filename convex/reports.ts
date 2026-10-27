@@ -4,9 +4,7 @@ import { v } from "convex/values";
 import {
   checkUserDriverConflict,
   getReportingWindow,
-  isReviewForCurrentTarget,
   latestReviewForCurrentTarget,
-  listReviewsForCurrentTarget,
 } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
@@ -259,9 +257,7 @@ export const getPendingForReview = query({
           .withIndex("by_report", (q) => q.eq("reportId", report._id))
           .collect();
 
-        const reviewCount = reviews.filter((review) =>
-          isReviewForCurrentTarget(review, report),
-        ).length;
+        const reviewCount = reviews.length;
 
         let atFaultDriver = report.atFaultDriverId
           ? await ctx.db.get(report.atFaultDriverId)
@@ -336,9 +332,7 @@ export const getReadyForFinalization = query({
           .withIndex("by_report", (q) => q.eq("reportId", report._id))
           .collect();
 
-        const reviewCount = reviews.filter((review) =>
-          isReviewForCurrentTarget(review, report),
-        ).length;
+        const reviewCount = reviews.length;
 
         // Get atFaultDriverId from latest current-target review if not set
         let atFaultDriver = await populateDriverWithClass(
@@ -507,9 +501,8 @@ export const update = mutation({
     if (!caller) {
       throw new UserFacingError("User not found");
     }
-    if (String(report.reportingUserId ?? "") !== String(currentUserId)) {
-      await requireRole(ctx, currentUserId as Id<"users">, ["steward"]);
-    }
+    // Report edits are league-manager-only data-integrity corrections.
+    await requireRole(ctx, currentUserId as Id<"users">, ["league_manager"]);
 
     const nextEventId = updates.eventId ?? report.eventId;
     const nextRaceId = updates.raceId ?? report.raceId;
@@ -621,16 +614,13 @@ export const update = mutation({
 
     await ctx.db.patch(reportId, {
       ...cleanUpdates,
-      ...(reportedDriverChanged && report.status === "reviewed"
-        ? { status: "pending" as const }
-        : {}),
       updatedAt: Date.now(),
     });
 
     if (reportedDriverChanged) {
       // Reviews written before assessed-driver tracking assessed the previous
       // driver (the target could not change before this mutation supported
-      // it). Stamp that provenance so they no longer count as current.
+      // it). Stamp that provenance so latest-review defaults stay accurate.
       for (const review of existingReviews) {
         if ((review as any).assessedReportedDriverId === undefined) {
           await ctx.db.patch(review._id, {
@@ -666,17 +656,15 @@ export const markAsReviewed = mutation({
       throw new Error("Report not found");
     }
 
-    // Require at least one review of the current reported driver. Reviews
-    // of a previous reported driver are preserved as history but do not
-    // make the report ready again.
-    const currentTargetReviews = await listReviewsForCurrentTarget(
-      ctx,
-      report,
-    );
+    // Check if there's at least one review
+    const reviews = await ctx.db
+      .query("reviews")
+      .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
+      .collect();
 
-    if (currentTargetReviews.length === 0) {
+    if (reviews.length === 0) {
       throw new UserFacingError(
-        "Report must have at least one review of the current reported driver before marking as reviewed",
+        "Report must have at least one review before marking as reviewed",
       );
     }
 
@@ -710,16 +698,6 @@ export const finalize = mutation({
 
     if (report.isFinalized) {
       return failure("Report is already finalized");
-    }
-
-    const currentTargetReviews = await listReviewsForCurrentTarget(
-      ctx,
-      report,
-    );
-    if (currentTargetReviews.length === 0) {
-      return failure(
-        "Report must be re-reviewed for the current reported driver before finalization",
-      );
     }
 
     // Check if finalizing user has driver conflict

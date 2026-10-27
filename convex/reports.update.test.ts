@@ -14,10 +14,12 @@ const markReviewedHandler = (markAsReviewed as any)._handler as (
 const baseDocs = (): Record<string, any> => ({
   owner: { _id: "owner", roleId: "roleDriver" },
   stewardUser: { _id: "stewardUser", roleId: "roleSteward" },
+  leagueManager: { _id: "leagueManager", roleId: "roleLeagueManager" },
   otherDriver: { _id: "otherDriver", roleId: "roleDriver" },
   reviewerUser: { _id: "reviewerUser", roleId: "roleSteward" },
   roleDriver: { _id: "roleDriver", name: "driver" },
   roleSteward: { _id: "roleSteward", name: "steward" },
+  roleLeagueManager: { _id: "roleLeagueManager", name: "league_manager" },
   s1: { _id: "s1" },
   s2: { _id: "s2" },
   e1: { _id: "e1", seriesId: "s1" },
@@ -70,11 +72,11 @@ const createCtx = (
 };
 
 describe("reports.update reportedDriverId", () => {
-  it("persists a changed reported driver for the reporting user", async () => {
+  it("persists a changed reported driver for a league manager", async () => {
     const { ctx, docs } = createCtx();
 
     await handler(ctx, {
-      currentUserId: "owner",
+      currentUserId: "leagueManager",
       reportId: "rep1",
       reportedDriverId: "dNew",
     });
@@ -82,16 +84,26 @@ describe("reports.update reportedDriverId", () => {
     expect(docs["rep1"].reportedDriverId).toBe("dNew");
   });
 
-  it("persists a changed reported driver for a steward", async () => {
+  it("rejects the reporting user (edits are league-manager only)", async () => {
     const { ctx, docs } = createCtx();
 
-    await handler(ctx, {
-      currentUserId: "stewardUser",
-      reportId: "rep1",
-      reportedDriverId: "dNew",
-    });
+    await expect(
+      handler(ctx, {
+        currentUserId: "owner",
+        reportId: "rep1",
+        reportedDriverId: "dNew",
+      }),
+    ).rejects.toThrow("Unauthorized");
+    await expect(
+      handler(ctx, {
+        currentUserId: "stewardUser",
+        reportId: "rep1",
+        description: "steward edit attempt",
+      }),
+    ).rejects.toThrow("Unauthorized");
 
-    expect(docs["rep1"].reportedDriverId).toBe("dNew");
+    expect(docs["rep1"].reportedDriverId).toBe("dOld");
+    expect(docs["rep1"].description).toBe("original description");
   });
 
   it("rejects an unrelated driver changing the reported driver", async () => {
@@ -135,7 +147,7 @@ describe("reports.update reportedDriverId", () => {
     });
 
     await handler(ctx, {
-      currentUserId: "owner",
+      currentUserId: "leagueManager",
       reportId: "rep1",
       reportedDriverId: "dLegacy",
       description: "edited description",
@@ -150,7 +162,7 @@ describe("reports.update reportedDriverId", () => {
 
     await expect(
       handler(ctx, {
-        currentUserId: "owner",
+        currentUserId: "leagueManager",
         reportId: "rep1",
         reportedDriverId: "dOtherSeries",
       }),
@@ -165,7 +177,7 @@ describe("reports.update reportedDriverId", () => {
     const { ctx, docs } = createCtx();
 
     await handler(ctx, {
-      currentUserId: "owner",
+      currentUserId: "leagueManager",
       reportId: "rep1",
       eventId: "e2",
       raceId: "r2",
@@ -181,7 +193,7 @@ describe("reports.update reportedDriverId", () => {
 
     await expect(
       handler(ctx, {
-        currentUserId: "owner",
+        currentUserId: "leagueManager",
         reportId: "rep1",
         eventId: "e2",
         raceId: "r2",
@@ -192,7 +204,7 @@ describe("reports.update reportedDriverId", () => {
     );
   });
 
-  it("resets a reviewed report to pending and audits a target change", async () => {
+  it("keeps reviewed status and audits a target change", async () => {
     const { ctx, docs, inserts } = createCtx({
       rep1: {
         _id: "rep1",
@@ -207,17 +219,17 @@ describe("reports.update reportedDriverId", () => {
     });
 
     await handler(ctx, {
-      currentUserId: "stewardUser",
+      currentUserId: "leagueManager",
       reportId: "rep1",
       reportedDriverId: "dNew",
     });
 
-    expect(docs["rep1"].status).toBe("pending");
+    expect(docs["rep1"].status).toBe("reviewed");
     const audit = inserts.find((i) => i.table === "changeHistory");
     expect(audit?.doc.fieldName).toBe("reportedDriverId");
     expect(audit?.doc.fromValue).toBe("dOld");
     expect(audit?.doc.toValue).toBe("dNew");
-    expect(audit?.doc.changedByUserId).toBe("stewardUser");
+    expect(audit?.doc.changedByUserId).toBe("leagueManager");
   });
 
   it("backfills legacy reviews with the previous driver on a target change", async () => {
@@ -238,16 +250,16 @@ describe("reports.update reportedDriverId", () => {
     );
 
     await handler(ctx, {
-      currentUserId: "stewardUser",
+      currentUserId: "leagueManager",
       reportId: "rep1",
       reportedDriverId: "dNew",
     });
 
-    expect(docs["rep1"].status).toBe("pending");
+    expect(docs["rep1"].status).toBe("reviewed");
     expect(docs["rev1"].assessedReportedDriverId).toBe("dOld");
   });
 
-  it("markAsReviewed requires a review of the current reported driver", async () => {
+  it("markAsReviewed counts reviews of a previous reported driver", async () => {
     const { ctx, docs } = createCtx({}, [
       {
         _id: "rev1",
@@ -257,12 +269,6 @@ describe("reports.update reportedDriverId", () => {
       },
     ]);
 
-    await expect(
-      markReviewedHandler(ctx, { reportId: "rep1" }),
-    ).rejects.toThrow("current reported driver");
-    expect(docs["rep1"].status).toBe("pending");
-
-    docs["rev1"] = { ...docs["rev1"], assessedReportedDriverId: "dOld" };
     await markReviewedHandler(ctx, { reportId: "rep1" });
     expect(docs["rep1"].status).toBe("reviewed");
   });
@@ -277,7 +283,7 @@ describe("reports.update reportedDriverId", () => {
 
     await expect(
       handler(ctx, {
-        currentUserId: "stewardUser",
+        currentUserId: "leagueManager",
         reportId: "rep1",
         reportedDriverId: "dNew",
       }),

@@ -479,8 +479,6 @@ export const update = mutation({
       });
     }
 
-    // A resubmitted assessment can restore readiness after a
-    // reported-driver change reset the report.
     await maybeMarkReportReviewed(ctx, report);
 
     return reviewId;
