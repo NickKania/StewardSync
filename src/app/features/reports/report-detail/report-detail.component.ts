@@ -65,7 +65,10 @@ import {
           </div>
           <div class="flex gap-3">
             @if (!report()?.isFinalized) {
-              <a [routerLink]="['/reports', report()?._id, 'edit']">
+              <a
+                *appHasRole="['league_manager']"
+                [routerLink]="['/reports', report()?._id, 'edit']"
+              >
                 <app-button variant="secondary">
                   <svg
                     class="w-4 h-4 mr-2"

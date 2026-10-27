@@ -249,6 +249,7 @@ export default defineSchema({
     candidateForStandardization: v.optional(v.boolean()),
     recommendedPenalty: v.optional(v.string()),
     atFaultDriverId: v.optional(v.id("drivers")),
+    assessedReportedDriverId: v.optional(v.id("drivers")),
     isNoDriverAtFault: v.optional(v.boolean()),
     videoTimestamp: v.optional(v.string()),
     linkedReviewId: v.optional(v.id("reviews")),

@@ -1,6 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { checkUserDriverConflict } from "./lib/reports";
+import {
+  checkUserDriverConflict,
+  maybeMarkReportReviewed,
+} from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { recordChanges, compareAndBuildChanges } from "./lib/audit";
@@ -14,6 +17,20 @@ const REVIEW_AUDIT_FIELDS = [
   "atFaultDriverId",
   "isNoDriverAtFault",
 ] as const;
+
+// Fields whose submission constitutes a (re-)assessment of the incident.
+// Metadata-only updates (e.g. candidateForStandardization from the finalize
+// form) must not mark a review as assessing the current reported driver.
+const ASSESSMENT_FIELDS = [
+  "incidentDescription",
+  "reviewNotes",
+  "recommendedPenalty",
+  "atFaultDriverId",
+  "isNoDriverAtFault",
+] as const;
+
+const hasAssessmentFields = (updates: Record<string, unknown>): boolean =>
+  ASSESSMENT_FIELDS.some((field) => updates[field] !== undefined);
 
 export const list = query({
   args: {},
@@ -266,6 +283,7 @@ export const create = mutation({
       candidateForStandardization: args.candidateForStandardization,
       recommendedPenalty: args.recommendedPenalty,
       atFaultDriverId: effectiveAtFaultDriverId,
+      assessedReportedDriverId: report.reportedDriverId,
       isNoDriverAtFault,
       videoTimestamp: args.videoTimestamp,
       isSelfReport: args.isSelfReport,
@@ -277,17 +295,7 @@ export const create = mutation({
     };
 
     const maybeMarkReviewed = async () => {
-      const reviewCount = await ctx.db
-        .query("reviews")
-        .withIndex("by_report", (q) => q.eq("reportId", args.reportId))
-        .collect();
-
-      if (reviewCount.length >= 2 && report.status !== "reviewed") {
-        await ctx.db.patch(args.reportId, {
-          status: "reviewed",
-          updatedAt: Date.now(),
-        });
-      }
+      await maybeMarkReportReviewed(ctx, report);
     };
 
     // If second steward is provided, create two linked reviews
@@ -448,9 +456,17 @@ export const update = mutation({
       REVIEW_AUDIT_FIELDS as any,
     );
 
+    const isAssessment = hasAssessmentFields(updates);
+    const now = Date.now();
     await ctx.db.patch(reviewId, {
       ...cleanUpdates,
-      updatedAt: Date.now(),
+      ...(isAssessment
+        ? {
+            assessedReportedDriverId: report.reportedDriverId,
+            reviewDate: now,
+          }
+        : {}),
+      updatedAt: now,
     });
 
     if (auditChanges.length > 0) {
@@ -462,6 +478,8 @@ export const update = mutation({
         source: "manual",
       });
     }
+
+    await maybeMarkReportReviewed(ctx, report);
 
     return reviewId;
   },
@@ -561,9 +579,19 @@ export const updateWithSecondSteward = mutation({
       REVIEW_AUDIT_FIELDS as any,
     );
 
+    const isAssessment = hasAssessmentFields(updates);
+    const now = Date.now();
+    const assessmentStamp = isAssessment
+      ? {
+          assessedReportedDriverId: report.reportedDriverId,
+          reviewDate: now,
+        }
+      : {};
+
     await ctx.db.patch(args.reviewId, {
       ...cleanUpdates,
-      updatedAt: Date.now(),
+      ...assessmentStamp,
+      updatedAt: now,
     });
 
     if (auditChanges.length > 0) {
@@ -580,9 +608,13 @@ export const updateWithSecondSteward = mutation({
     if (linkedReviewId) {
       const linkedReview = await ctx.db.get(linkedReviewId);
       if (linkedReview) {
+        // Linked reviews share the jointly submitted assessment (mirroring
+        // create-with-second-steward), so copy it before stamping freshness.
         await ctx.db.patch(linkedReviewId, {
+          ...(isAssessment ? cleanUpdates : {}),
           userId: args.secondStewardId,
-          updatedAt: Date.now(),
+          ...assessmentStamp,
+          updatedAt: now,
         });
 
         // Update video timestamp on report if provided
@@ -592,13 +624,7 @@ export const updateWithSecondSteward = mutation({
           });
         }
 
-        // Mark report as reviewed if there are 2+ reviews
-        if (report.status !== "reviewed") {
-          await ctx.db.patch(review.reportId, {
-            status: "reviewed",
-            updatedAt: Date.now(),
-          });
-        }
+        await maybeMarkReportReviewed(ctx, report);
 
         return args.reviewId;
       }
@@ -613,8 +639,10 @@ export const updateWithSecondSteward = mutation({
 
     if (existingSecondReview) {
       await ctx.db.patch(existingSecondReview._id, {
+        ...(isAssessment ? cleanUpdates : {}),
         linkedReviewId: args.reviewId,
-        updatedAt: Date.now(),
+        ...assessmentStamp,
+        updatedAt: now,
       });
       await ctx.db.patch(args.reviewId, {
         linkedReviewId: existingSecondReview._id,
@@ -628,13 +656,7 @@ export const updateWithSecondSteward = mutation({
         });
       }
 
-      // Mark report as reviewed if there are 2+ reviews
-      if (report.status !== "reviewed") {
-        await ctx.db.patch(review.reportId, {
-          status: "reviewed",
-          updatedAt: Date.now(),
-        });
-      }
+      await maybeMarkReportReviewed(ctx, report);
 
       return args.reviewId;
     }
@@ -648,13 +670,16 @@ export const updateWithSecondSteward = mutation({
       candidateForStandardization: updates.candidateForStandardization,
       recommendedPenalty: updates.recommendedPenalty,
       atFaultDriverId: updates.atFaultDriverId,
+      assessedReportedDriverId: isAssessment
+        ? report.reportedDriverId
+        : (review as any).assessedReportedDriverId,
       isNoDriverAtFault: updates.isNoDriverAtFault,
       videoTimestamp: updates.videoTimestamp,
       isSelfReport: updates.isSelfReport,
       isAdjusted: updates.isAdjusted,
       adjustedReason: updates.adjustedReason,
       linkedReviewId: args.reviewId,
-      reviewDate: review.reviewDate ?? Date.now(),
+      reviewDate: isAssessment ? now : (review.reviewDate ?? now),
       createdAt: review.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     });
@@ -668,18 +693,7 @@ export const updateWithSecondSteward = mutation({
       });
     }
 
-    // Mark report as reviewed if there are now 2+ reviews
-    const reviewCount = await ctx.db
-      .query("reviews")
-      .withIndex("by_report", (q) => q.eq("reportId", review.reportId))
-      .collect();
-
-    if (reviewCount.length >= 2 && report.status !== "reviewed") {
-      await ctx.db.patch(review.reportId, {
-        status: "reviewed",
-        updatedAt: Date.now(),
-      });
-    }
+    await maybeMarkReportReviewed(ctx, report);
 
     return args.reviewId;
   },
