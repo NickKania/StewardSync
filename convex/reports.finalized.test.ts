@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { updateFinalizedDetails } from "./reports";
+import { updateFinalizedDetailsVerified } from "./reports";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
@@ -26,7 +26,7 @@ function fixture(role = "league_manager") {
     currentUserId: "manager" as Id<"users">, reportId: "report" as Id<"reports">,
     lap: "3", turn: "4", description: "Corrected finalized incident description", videoLink: "https://example.com/evidence", videoTimestamp: "00:25",
   };
-  return { documents, audit, args, ctx, save: () => updateFinalizedDetails._handler(ctx, args) };
+  return { documents, audit, args, ctx, save: () => updateFinalizedDetailsVerified._handler(ctx, args) };
 }
 
 describe("finalized report detail corrections", () => {

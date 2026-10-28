@@ -1,5 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { requireDiscordUser } from "./lib/discordAuth";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { checkUserDriverConflict } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
@@ -373,15 +376,25 @@ export const create = mutation({
   },
 });
 
-/** Correct a recorded assessment without changing authorship or the final ruling. */
-export const correct = mutation({
-  args: {
-    currentUserId: v.id("users"),
-    reviewId: v.id("reviews"),
-    incidentDescription: v.string(),
-    atFaultDriverId: v.optional(v.id("drivers")),
-    isNoDriverAtFault: v.boolean(),
+const reviewCorrectionArgs = {
+  reviewId: v.id("reviews"),
+  incidentDescription: v.string(),
+  atFaultDriverId: v.optional(v.id("drivers")),
+  isNoDriverAtFault: v.boolean(),
+};
+
+/** Verify the Discord actor before correcting a recorded assessment. */
+export const correct = action({
+  args: { discordAccessToken: v.string(), ...reviewCorrectionArgs },
+  handler: async (ctx, args): Promise<Result<Id<"reviews">>> => {
+    const { discordAccessToken, ...updates } = args;
+    const currentUserId = await requireDiscordUser(ctx, discordAccessToken);
+    return await ctx.runMutation(internal.reviews.correctVerified, { ...updates, currentUserId });
   },
+});
+
+export const correctVerified = internalMutation({
+  args: { currentUserId: v.id("users"), ...reviewCorrectionArgs },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.currentUserId, ["league_manager"]);
     const review = await ctx.db.get(args.reviewId);

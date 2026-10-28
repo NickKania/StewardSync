@@ -781,8 +781,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         if (!currentUserId || !this.authService.hasRole("league_manager")) {
           throw new Error("League manager access is required");
         }
-        await this.convex.mutation(this.convex.api.reports.updateFinalizedDetails, {
-          currentUserId,
+        await this.convex.action(this.convex.api.reports.updateFinalizedDetails, {
+          discordAccessToken: this.authService.requireDiscordAccessToken(),
           reportId: this.id,
           lap,
           turn,

@@ -117,8 +117,8 @@ export class EditReviewComponent implements OnInit, OnDestroy {
       if (!currentUserId || !this.auth.hasRole("league_manager")) throw new Error("League manager access is required");
       const { incidentDescription, atFaultDriverId } = this.form.getRawValue();
       const isNoDriverAtFault = atFaultDriverId === this.noDriverValue;
-      const result = await this.convex.mutation(this.convex.api.reviews.correct, {
-        currentUserId,
+      const result = await this.convex.action(this.convex.api.reviews.correct, {
+        discordAccessToken: this.auth.requireDiscordAccessToken(),
         reviewId: this.review()._id,
         incidentDescription,
         atFaultDriverId: isNoDriverAtFault ? undefined : atFaultDriverId as Id<"drivers">,

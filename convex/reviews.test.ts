@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { correct } from "./reviews";
+import { correctVerified } from "./reviews";
 import { getById, list } from "./reports";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
@@ -37,7 +37,7 @@ function fixture(role = "league_manager", joint = false) {
     incidentDescription: "Corrected description", atFaultDriverId: "otherDriver" as Id<"drivers">,
     isNoDriverAtFault: false,
   };
-  return { ctx, args, documents, changes, save: () => correct._handler(ctx, args) };
+  return { ctx, args, documents, changes, save: () => correctVerified._handler(ctx, args) };
 }
 
 describe("league manager review corrections", () => {
@@ -92,6 +92,30 @@ describe("league manager review corrections", () => {
     expect(result[0].isNoDriverAtFault).toBe(true);
   });
 
+  it("preserves an explicitly stored finalized driver over the corrected review driver", async () => {
+    const state = fixture();
+    state.documents.get("driver")!.driverName = "Final ruling driver";
+    state.documents.get("otherDriver")!.driverName = "Corrected assessment driver";
+    await state.save();
+    const detail = await getById._handler(state.ctx as unknown as QueryCtx, { reportId: "report" as Id<"reports"> });
+    const reports = await list._handler(state.ctx as unknown as QueryCtx, {});
+    expect(detail?.atFaultDriver?.driverName).toBe("Final ruling driver");
+    expect(reports[0].atFaultDriver?.driverName).toBe("Final ruling driver");
+  });
+
+  for (const status of ["finalized", "rejected"]) {
+    it(`retains the latest review driver for legacy ${status} reports without outcome fields`, async () => {
+      const state = fixture();
+      const report = state.documents.get("report")!;
+      Object.assign(report, { status, atFaultDriverId: undefined });
+      delete report.isNoDriverAtFault;
+      const detail = await getById._handler(state.ctx as unknown as QueryCtx, { reportId: "report" as Id<"reports"> });
+      const reports = await list._handler(state.ctx as unknown as QueryCtx, {});
+      expect(detail?.atFaultDriver).toMatchObject({ championshipId: "series" });
+      expect(reports[0].atFaultDriver).toMatchObject({ championshipId: "series" });
+    });
+  }
+
   it("retains the review-driver fallback for unfinalized reports", async () => {
     const state = fixture();
     Object.assign(state.documents.get("report")!, { atFaultDriverId: undefined, isFinalized: false });
@@ -129,7 +153,7 @@ describe("league manager review corrections", () => {
     const state = fixture();
     state.args.incidentDescription = "   ";
     expect(await state.save()).toMatchObject({ success: false, error: "Incident description is required" });
-    expect(await correct._handler(state.ctx, { ...state.args, incidentDescription: "Description", atFaultDriverId: undefined })).toMatchObject({ success: false, error: "Select an at-fault driver" });
+    expect(await correctVerified._handler(state.ctx, { ...state.args, incidentDescription: "Description", atFaultDriverId: undefined })).toMatchObject({ success: false, error: "Select an at-fault driver" });
     expect(state.changes).toHaveLength(0);
   });
 

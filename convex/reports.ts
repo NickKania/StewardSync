@@ -1,4 +1,6 @@
-import { mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { requireDiscordUser } from "./lib/discordAuth";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { checkUserDriverConflict, getReportingWindow } from "./lib/reports";
@@ -74,7 +76,7 @@ export const list = query({
           ? await ctx.db.get(report.atFaultDriverId)
           : null;
 
-        if (!report.isFinalized && !report.isNoDriverAtFault && !atFaultDriver && reviews.length > 0) {
+        if (!report.isNoDriverAtFault && !atFaultDriver && reviews.length > 0) {
           const latestReview = reviews.reduce((latest, current) => {
             const latestDate = latest.reviewDate || latest.createdAt || 0;
             const currentDate = current.reviewDate || current.createdAt || 0;
@@ -149,7 +151,7 @@ export const getById = query({
 
     let atFaultDriver = await populateDriverWithClass(report.atFaultDriverId);
 
-    if (!report.isFinalized && !report.isNoDriverAtFault && !atFaultDriver && reportReviews.length > 0) {
+    if (!report.isNoDriverAtFault && !atFaultDriver && reportReviews.length > 0) {
       const latestReview = reportReviews.reduce((latest, current) => {
         const latestDate = latest.reviewDate || latest.createdAt || 0;
         const currentDate = current.reviewDate || current.createdAt || 0;
@@ -568,17 +570,27 @@ export const update = mutation({
   },
 });
 
-/** Correct incident details while preserving the finalized ruling and penalty context. */
-export const updateFinalizedDetails = mutation({
-  args: {
-    currentUserId: v.id("users"),
-    reportId: v.id("reports"),
-    lap: v.string(),
-    turn: v.string(),
-    description: v.string(),
-    videoLink: v.string(),
-    videoTimestamp: v.string(),
+const finalizedDetailArgs = {
+  reportId: v.id("reports"),
+  lap: v.string(),
+  turn: v.string(),
+  description: v.string(),
+  videoLink: v.string(),
+  videoTimestamp: v.string(),
+};
+
+/** Verify the Discord actor before correcting finalized incident details. */
+export const updateFinalizedDetails = action({
+  args: { discordAccessToken: v.string(), ...finalizedDetailArgs },
+  handler: async (ctx, args): Promise<Id<"reports">> => {
+    const { discordAccessToken, ...updates } = args;
+    const currentUserId = await requireDiscordUser(ctx, discordAccessToken);
+    return await ctx.runMutation(internal.reports.updateFinalizedDetailsVerified, { ...updates, currentUserId });
   },
+});
+
+export const updateFinalizedDetailsVerified = internalMutation({
+  args: { currentUserId: v.id("users"), ...finalizedDetailArgs },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.currentUserId, ["league_manager"]);
     const report = await ctx.db.get(args.reportId);

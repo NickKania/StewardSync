@@ -27,7 +27,7 @@
       "@convex/*": ["convex/*"],
     },
   },
-  "exclude": ["node_modules", "dist", "convex", ".angular"],
+  "exclude": ["node_modules", "dist", "convex", ".angular", "**/*.test.ts"],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
