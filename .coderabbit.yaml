@@ -3,7 +3,7 @@
 reviews:
   auto_review:
     enabled: true
-    auto_incremental_review: true
+    auto_incremental_review: false
     drafts: false
     # The default branch is always included; explicitly include main as well.
     base_branches:
