@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+reviews:
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    # The default branch is always included; explicitly include main as well.
+    base_branches:
+      - '^main$'
