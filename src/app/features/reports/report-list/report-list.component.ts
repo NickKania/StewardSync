@@ -145,6 +145,9 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                       {{ report.reportId || "-" }}
                     </td>
                     <td class="px-6 py-4">
+                      @if (report.isNoDriverAtFault) {
+                        <p class="font-medium text-gray-900 dark:text-gray-100">No Driver</p>
+                      } @else {
                       <p class="font-medium text-gray-900 dark:text-gray-100">
                         {{
                           report.atFaultDriver?.displayName ||
@@ -162,6 +165,7 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                             : "No car number"
                         }}
                       </p>
+                      }
                     </td>
                     @if (canViewReportingUser()) {
                       <td class="px-6 py-4">
@@ -235,9 +239,13 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">At Fault</span>
                     <span class="text-gray-900 dark:text-gray-100 font-medium">
+                      @if (report.isNoDriverAtFault) {
+                        No Driver
+                      } @else {
                       {{ report.atFaultDriver?.displayName || report.atFaultDriver?.driverName || report.reportedDriver?.driverName }}
                       @if ((report.atFaultDriver?.driverNumber ?? report.reportedDriver?.driverNumber) !== undefined) {
                         #{{ report.atFaultDriver?.driverNumber ?? report.reportedDriver?.driverNumber }}
+                      }
                       }
                     </span>
                   </div>
