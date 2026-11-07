@@ -17,6 +17,10 @@
       ],
       "plugins": ["@typescript-eslint", "@angular-eslint"],
       "rules": {
+        "@angular-eslint/no-host-metadata-property": [
+          "error",
+          { "allowStatic": true }
+        ],
         "@angular-eslint/directive-selector": [
           "error",
           {
