@@ -62,6 +62,7 @@ interface DashboardPenaltyGroup {
 @Component({
   selector: "app-dashboard-series-penalty-list",
   standalone: true,
+  host: { class: "block min-w-0" },
   imports: [
     CommonModule,
     RouterLink,

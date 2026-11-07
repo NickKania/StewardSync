@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-card',
   standalone: true,
+  host: { class: 'block min-w-0' },
   imports: [CommonModule],
   template: `
     <div [class]="getCardClasses()">

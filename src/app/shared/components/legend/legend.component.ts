@@ -10,6 +10,7 @@ export interface LegendItem {
 @Component({
   selector: 'app-legend',
   standalone: true,
+  host: { class: 'block min-w-0' },
   imports: [CommonModule],
   template: `
     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 dark:bg-gray-800 dark:border-gray-700">

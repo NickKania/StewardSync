@@ -167,7 +167,7 @@ interface RaceTimePenaltySummary {
         >
           @if (activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
             <div class="space-y-6">
-              <app-card>
+              <app-card [noPadding]="true">
                 <div
                   class="px-6 py-4 border-b border-gray-200 flex items-center justify-between dark:border-gray-700"
                 >
@@ -217,8 +217,8 @@ interface RaceTimePenaltySummary {
 
                   @if (eventRundown().length > 0) {
                     @if (!isExportMode()) {
-                      <div class="flex items-center justify-between mb-4 gap-4">
-                        <div class="flex-1 max-w-md">
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+                        <div class="w-full min-w-0 sm:flex-1 sm:max-w-md">
                           <input
                             type="text"
                             class="input w-full"
@@ -655,7 +655,7 @@ interface RaceTimePenaltySummary {
 
           @if (activeTab() === STATISTICS_TABS.SERIES_OVERVIEW && canViewSeriesStats()) {
             <div class="space-y-6">
-              <app-card>
+              <app-card [noPadding]="true">
                 <div
                   class="px-6 py-4 border-b border-gray-200 flex items-center justify-between dark:border-gray-700"
                 >
@@ -930,7 +930,7 @@ interface RaceTimePenaltySummary {
 
           @if (activeTab() === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
             <div class="space-y-6">
-              <app-card>
+              <app-card [noPadding]="true">
                 <div
                   class="px-6 py-4 border-b border-gray-200 flex items-center justify-between dark:border-gray-700"
                 >

@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-loading',
   standalone: true,
+  host: { class: 'block min-w-0' },
   imports: [CommonModule],
   template: `
     <div [class]="getContainerClasses()">

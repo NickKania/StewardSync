@@ -14,6 +14,7 @@ export interface Tab {
 @Component({
   selector: "app-tabs",
   standalone: true,
+  host: { class: "block min-w-0" },
   imports: [CommonModule, RouterLink],
   template: `
     <div class="border-b border-gray-200 dark:border-gray-700">

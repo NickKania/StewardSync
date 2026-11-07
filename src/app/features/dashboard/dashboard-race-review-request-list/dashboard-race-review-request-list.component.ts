@@ -25,6 +25,7 @@ interface PendingRaceReviewRow {
 @Component({
   selector: "app-dashboard-race-review-request-list",
   standalone: true,
+  host: { class: "block min-w-0" },
   imports: [
     CommonModule,
     RouterLink,
