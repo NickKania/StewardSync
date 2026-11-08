@@ -22,10 +22,12 @@ type ReviewTabId = "queue" | "my-reviews" | "search" | "finalization";
     RouterOutlet,
   ],
   template: `
-    <div class="space-y-6">
+    <div class="flex flex-col gap-6">
       <app-tabs [tabs]="tabs()" [activeTab]="activeTab()" />
 
-      <router-outlet />
+      <div class="min-w-0">
+        <router-outlet />
+      </div>
     </div>
   `,
 })

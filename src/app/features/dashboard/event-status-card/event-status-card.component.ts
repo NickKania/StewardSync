@@ -26,6 +26,7 @@ interface LatestEventStatusRow {
 @Component({
   selector: "app-event-status-card",
   standalone: true,
+  host: { class: "block min-w-0" },
   imports: [CommonModule, CardComponent, DateFormatPipe],
   template: `
     <app-card

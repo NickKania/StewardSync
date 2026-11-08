@@ -32,7 +32,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
     TimeAgoPipe,
   ],
   template: `
-    <div class="space-y-6">
+    <div class="flex flex-col gap-6">
       <div
         class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
       >
@@ -87,7 +87,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
       </div>
 
       <!-- Stats -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 [&>app-card>div]:h-full">
         <app-card>
           <div class="text-center">
             <p class="text-2xl sm:text-3xl font-bold text-warning">

@@ -5,6 +5,7 @@ import { User, RoleName } from "@core/models";
 import { Id } from "@convex/_generated/dataModel";
 import { environment } from "../../../environments/environment";
 import { appRuntimeConfig } from '@core/config/runtime-config';
+import { DISCORD_SESSION_KEY, readDiscordAccessToken, storeDiscordSession } from '@core/utils/discord-session';
 
 declare const google: any;
 
@@ -63,6 +64,7 @@ export class AuthService {
   async initialize(): Promise<void> {
     // Try to restore session from localStorage
     const storedUserId = localStorage.getItem(STORAGE_KEY);
+    if (!storedUserId) sessionStorage.removeItem(DISCORD_SESSION_KEY);
 
     if (storedUserId) {
       try {
@@ -75,10 +77,12 @@ export class AuthService {
           this._user.set(user as User);
           this._userId.set(storedUserId as Id<"users">);
         } else {
+          sessionStorage.removeItem(DISCORD_SESSION_KEY);
           localStorage.removeItem(STORAGE_KEY);
         }
       } catch (error) {
         console.error("Failed to restore session:", error);
+        sessionStorage.removeItem(DISCORD_SESSION_KEY);
         localStorage.removeItem(STORAGE_KEY);
       }
     }
@@ -301,6 +305,7 @@ export class AuthService {
     });
 
     if (user) {
+      storeDiscordSession(sessionStorage, userId, tokenData.access_token, tokenData.expires_in);
       this._user.set(user as User);
       this._userId.set(userId);
       localStorage.setItem(STORAGE_KEY, userId);
@@ -310,6 +315,7 @@ export class AuthService {
   }
 
   async mockLogin(): Promise<void> {
+    sessionStorage.removeItem(DISCORD_SESSION_KEY);
     // Create a demo user for development
     const userId = await this.convex.mutation(
       this.convex.api.auth.getOrCreateUser,
@@ -339,6 +345,7 @@ export class AuthService {
   }
 
   async loginWithDiscordId(discordId: string): Promise<void> {
+    sessionStorage.removeItem(DISCORD_SESSION_KEY);
     // Get user by Discord ID
     const user = await this.convex.query(
       this.convex.api.auth.getUserByDiscordId,
@@ -356,10 +363,17 @@ export class AuthService {
   }
 
   logout(): void {
+    sessionStorage.removeItem(DISCORD_SESSION_KEY);
     this._user.set(null);
     this._userId.set(null);
     localStorage.removeItem(STORAGE_KEY);
     this.router.navigate(["/login"]);
+  }
+
+  requireDiscordAccessToken(): string {
+    const accessToken = readDiscordAccessToken(sessionStorage, this.getUserId());
+    if (!accessToken) throw new Error("Sign in with Discord again to make corrections");
+    return accessToken;
   }
 
   getUserId(): Id<"users"> | null {

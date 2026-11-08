@@ -55,7 +55,7 @@ import { DateFormatPipe } from '@shared/pipes/date-format.pipe';
       } @else if (filteredEvents().length > 0) {
         <div class="space-y-4">
           @for (event of filteredEvents(); track event._id) {
-            <a [routerLink]="['/events', event._id]">
+            <a [routerLink]="['/events', event._id]" class="block">
               <app-card [hover]="true">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div class="flex items-center gap-4">

@@ -82,6 +82,15 @@ bun run convex:deploy    # Deploy Convex functions
 | **Event Manager** | All head steward actions + manage series/events |
 | **League Manager** | Full administrative access + user/role management |
 
+Review corrections and finalized report detail edits require a current Discord OAuth sign-in.
+The browser keeps the access token in this tab's session storage until it expires or the user
+logs out. The backend verifies the token with Discord, derives the acting user, and calls an
+internal mutation for role checks and auditing. User-ID-only sessions and demo logins must
+sign in with Discord again before making these corrections.
+
+Deploy the frontend and backend together: `reviews.correct` and
+`reports.updateFinalizedDetails` are actions, not client-callable mutations.
+
 ## Project Structure
 
 ```
