@@ -15,6 +15,7 @@ interface DashboardReportStats {
 @Component({
   selector: "app-dashboard-report-statistics",
   standalone: true,
+  host: { class: "block min-w-0" },
   imports: [CommonModule, CardComponent],
   template: `
     @if (loading()) {

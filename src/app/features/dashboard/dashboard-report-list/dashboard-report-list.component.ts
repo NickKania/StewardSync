@@ -27,6 +27,7 @@ interface DashboardReportRow {
 @Component({
   selector: "app-dashboard-report-list",
   standalone: true,
+  host: { class: "block min-w-0" },
   imports: [
     CommonModule,
     RouterLink,

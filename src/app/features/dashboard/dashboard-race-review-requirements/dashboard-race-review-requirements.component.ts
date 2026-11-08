@@ -25,6 +25,7 @@ interface ReviewRequirementRow {
 @Component({
   selector: "app-dashboard-race-review-requirements",
   standalone: true,
+  host: { class: "block min-w-0" },
   imports: [
     CommonModule,
     RouterLink,

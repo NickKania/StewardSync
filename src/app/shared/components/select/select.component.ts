@@ -11,6 +11,7 @@ export interface SelectOption {
 @Component({
   selector: 'app-select',
   standalone: true,
+  host: { class: 'block min-w-0' },
   imports: [CommonModule, FormsModule],
   providers: [
     {
