@@ -5,6 +5,7 @@
 - **Use bun instead of npm for all commands**
 - **Use node 20 through node version manager by running `nvm use 20`**
 - **Do not run build commands** - I will tell you if there are build issues
+- **Do not commit screenshots or proof images** - Screenshots taken as verification evidence are for review only, never for source control. Keep them in the gitignored `screenshots/` directory (or in the thread/PR description) and never stage or commit image files from it.
 
 ---
 

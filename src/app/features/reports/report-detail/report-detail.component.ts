@@ -67,7 +67,7 @@ import {
             </p>
           </div>
           <div class="flex gap-3">
-            @if (!report()?.isFinalized || authService.hasRole('league_manager')) {
+            @if (authService.hasRole('league_manager')) {
               <a [routerLink]="['/reports', report()?._id, 'edit']">
                 <app-button variant="secondary">
                   <svg

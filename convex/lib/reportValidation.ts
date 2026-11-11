@@ -31,3 +31,39 @@ export const validateAtFaultDriverForReport = async (
 
   return null;
 };
+
+export const validateReportedDriverForReport = async (
+  ctx: any,
+  report: {
+    eventId: Id<"events">;
+    reportingDriverId?: Id<"drivers"> | null;
+  },
+  reportedDriverId: Id<"drivers"> | undefined,
+): Promise<string | null> => {
+  if (!reportedDriverId) {
+    return null;
+  }
+
+  if (sameId(reportedDriverId, report.reportingDriverId)) {
+    return "Reporting and reported driver cannot be the same";
+  }
+
+  const [event, driver] = await Promise.all([
+    ctx.db.get(report.eventId),
+    ctx.db.get(reportedDriverId),
+  ]);
+
+  if (!event) {
+    return "Report event not found";
+  }
+
+  if (!driver) {
+    return "Reported driver not found";
+  }
+
+  if (!sameId(driver.championshipId, event.seriesId)) {
+    return "Reported driver must belong to the report event's series";
+  }
+
+  return null;
+};

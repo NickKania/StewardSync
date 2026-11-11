@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { ReactiveFormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { of } from "rxjs";
 
 import { ReportFormComponent } from "./report-form.component";
@@ -62,6 +62,7 @@ describe("ReportFormComponent", () => {
         { provide: ConvexService, useValue: mockConvexService },
         { provide: AuthService, useValue: mockAuthService },
         { provide: Router, useValue: mockRouter },
+        { provide: ActivatedRoute, useValue: {} },
         { provide: ToastService, useValue: mockToastService },
       ],
     }).compileComponents();
@@ -229,6 +230,40 @@ describe("ReportFormComponent", () => {
       fixture.detectChanges();
 
       expect(component.reportingStatusMessage()).toBe("");
+    });
+  });
+
+  describe("onSubmit in edit mode", () => {
+    it("sends reportedDriverId to reports.update", async () => {
+      (mockConvexService as any).api = {
+        reports: { update: "reports:update", create: "reports:create" },
+      };
+      mockConvexService.mutation.and.resolveTo("report1" as any);
+
+      component.id = "report1";
+      component.isEdit = true;
+      component.form.setValue({
+        seriesId: "series1",
+        reportedDriverId: "driver2",
+        eventId: "event1",
+        raceId: "race1",
+        lap: "3",
+        turn: "2-3",
+        description: "Updated incident description text",
+        videoLink: "",
+        videoTimestamp: "",
+        createAnother: false,
+      });
+
+      await component.onSubmit();
+
+      expect(mockConvexService.mutation).toHaveBeenCalledWith(
+        "reports:update" as any,
+        jasmine.objectContaining({
+          currentUserId: "user1",
+          reportedDriverId: "driver2",
+        })
+      );
     });
   });
 

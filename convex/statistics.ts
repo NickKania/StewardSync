@@ -2,6 +2,7 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 import { getDriverDisplayName } from "./lib/formatting";
 import { getEffectiveLicensePoints } from "./lib/penalties";
+import { latestReviewForCurrentTarget } from "./lib/reports";
 
 interface EventRundownRow {
   reportId: number | null;
@@ -89,13 +90,7 @@ export const getEventRundown = query({
                 .withIndex("by_report", (q) => q.eq("reportId", report._id))
                 .collect();
 
-              if (reviews.length > 0) {
-                review = reviews.reduce((latest, current) => {
-                  const latestDate = latest.reviewDate || latest.createdAt || 0;
-                  const currentDate = current.reviewDate || current.createdAt || 0;
-                  return currentDate > latestDate ? current : latest;
-                });
-              }
+              review = latestReviewForCurrentTarget(reviews, report);
 
               if (!review?.recommendedPenalty) {
                 return null;

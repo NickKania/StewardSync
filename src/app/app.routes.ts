@@ -104,6 +104,8 @@ export const routes: Routes = [
       },
       {
         path: ":id/edit",
+        canActivate: [roleGuard],
+        data: { roles: ["league_manager"] },
         loadComponent: () =>
           import("@features/reports/report-form/report-form.component").then(
             (m) => m.ReportFormComponent,

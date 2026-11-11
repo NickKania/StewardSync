@@ -571,6 +571,60 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
 
   private unsubscribes: (() => void)[] = [];
   private penaltiesUnsubscribe: (() => void) | null = null;
+  private lastReportedDriverId: string | null = null;
+  private suppressAtFaultEnforcement = false;
+
+  private currentTargetReviews(
+    reviews: any[] | undefined,
+    reportedDriverId: any,
+  ): any[] {
+    return (reviews ?? []).filter(
+      (review: any) =>
+        review.assessedReportedDriverId === undefined ||
+        String(review.assessedReportedDriverId) === String(reportedDriverId),
+    );
+  }
+
+  private latestCurrentTargetReview(
+    reviews: any[] | undefined,
+    reportedDriverId: any,
+  ): any | null {
+    const current = this.currentTargetReviews(reviews, reportedDriverId);
+    if (current.length === 0) return null;
+    return current.reduce((latest: any, review: any) => {
+      const latestDate = latest.reviewDate || latest.createdAt || 0;
+      const currentDate = review.reviewDate || review.createdAt || 0;
+      return currentDate > latestDate ? review : latest;
+    });
+  }
+
+  private resetTargetDependentDefaults(): void {
+    const defaults: Record<string, any> = {
+      incidentDescription: "",
+      appliedPenalty: "",
+      atFaultDriverId: "",
+      isSelfReport: false,
+      isAdjusted: false,
+      candidateForStandardization: false,
+      adjustedReason: "",
+    };
+    for (const [name, value] of Object.entries(defaults)) {
+      const control = this.form.get(name);
+      if (control?.pristine) {
+        if (name === "appliedPenalty") {
+          // Silent penalty reset: emitting here would run penalty
+          // enforcement against the temporarily empty penalty and overwrite
+          // a dirty "No Driver" choice that the final penalty may allow.
+          // Other controls keep emitting so their validator subscriptions
+          // (officialNotes / adjustedReason requirements) stay in sync.
+          control.setValue(value, { emitEvent: false });
+          this.selectedAppliedPenaltyId.set("");
+        } else {
+          control.setValue(value);
+        }
+      }
+    }
+  }
 
   constructor() {
     this.form = this.fb.group({
@@ -665,17 +719,33 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       (data) => {
         this.report.set(data);
         this.loading.set(false);
+
+        // If the reported driver changed while this form is open, drop
+        // defaults derived from the previous driver's reviews before
+        // re-applying defaults for the new driver.
+        const targetId = data?.reportedDriverId
+          ? String(data.reportedDriverId)
+          : null;
+        if (
+          this.lastReportedDriverId &&
+          targetId &&
+          this.lastReportedDriverId !== targetId
+        ) {
+          this.resetTargetDependentDefaults();
+        }
+        if (targetId) {
+          this.lastReportedDriverId = targetId;
+        }
+
         this.loadDrivers();
 
-        // Auto-fill incident description and isSelfReport from latest review
-        if (data?.reviews && data.reviews.length > 0) {
-          const latestReview = data.reviews.reduce(
-            (latest: any, current: any) => {
-              const latestDate = latest.reviewDate || latest.createdAt || 0;
-              const currentDate = current.reviewDate || current.createdAt || 0;
-              return currentDate > latestDate ? current : latest;
-            },
-          );
+        // Auto-fill from the latest review of the current reported driver;
+        // reviews of a previous reported driver are stale after an edit.
+        const latestReview = this.latestCurrentTargetReview(
+          data?.reviews,
+          data?.reportedDriverId,
+        );
+        if (latestReview) {
 
           const incidentControl = this.form.get("incidentDescription");
           const selfReportControl = this.form.get("isSelfReport");
@@ -796,17 +866,16 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       { seriesId: seriesId as any },
       (data) => {
         this.availablePenalties.set(data);
-        this.enforceAtFaultDriverSelection();
+        // Defer enforcement until the recommended penalty default below has
+        // been applied, so it runs against the final penalty.
+        this.suppressAtFaultEnforcement = true;
 
         const report = this.report();
-        if (report?.reviews && report.reviews.length > 0) {
-          const latestReview = report.reviews.reduce(
-            (latest: any, current: any) => {
-              const latestDate = latest.reviewDate || latest.createdAt || 0;
-              const currentDate = current.reviewDate || current.createdAt || 0;
-              return currentDate > latestDate ? current : latest;
-            },
-          );
+        const latestReview = this.latestCurrentTargetReview(
+          report?.reviews,
+          report?.reportedDriverId,
+        );
+        if (latestReview) {
 
           if (latestReview?.recommendedPenaltyObj && data.length > 0) {
             const appliedPenaltyControl = this.form.get("appliedPenalty");
@@ -824,6 +893,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
             }
           }
         }
+
+        this.suppressAtFaultEnforcement = false;
+        this.enforceAtFaultDriverSelection();
       }
     );
     this.penaltiesUnsubscribe = penaltiesQuery.unsubscribe;
@@ -835,6 +907,9 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   }
 
   private enforceAtFaultDriverSelection(): void {
+    if (this.suppressAtFaultEnforcement) {
+      return;
+    }
     const atFaultDriverControl = this.form.get("atFaultDriverId");
     if (!atFaultDriverControl) {
       return;
@@ -860,7 +935,10 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
     penaltyName: string;
     count: number;
   }[] {
-    const reviews = this.report()?.reviews || [];
+    const reviews = this.currentTargetReviews(
+      this.report()?.reviews,
+      this.report()?.reportedDriverId,
+    );
     const counts: Record<string, { name: string; count: number }> = {};
 
     reviews.forEach((r: any) => {
@@ -949,14 +1027,11 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       const isNoDriverAtFault =
         formValue.atFaultDriverId === this.NO_DRIVER_OPTION_VALUE;
 
-      if (reportData?.reviews && reportData.reviews.length > 0) {
-        const latestReview = reportData.reviews.reduce(
-          (latest: any, current: any) => {
-            const latestDate = latest.reviewDate || latest.createdAt || 0;
-            const currentDate = current.reviewDate || current.createdAt || 0;
-            return currentDate > latestDate ? current : latest;
-          },
-        );
+      const latestReview = this.latestCurrentTargetReview(
+        reportData?.reviews,
+        reportData?.reportedDriverId,
+      );
+      if (latestReview) {
 
         if (latestReview?._id) {
           await this.convex.mutation(this.convex.api.reviews.update, {

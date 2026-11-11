@@ -114,3 +114,75 @@ export async function checkUserDriverConflict(
 
   return { hasConflict: false, conflictType: null };
 }
+
+/**
+ * Whether a review assessed the report's current reported driver. Used only
+ * to pick accurate latest-review defaults; all reviews still count toward
+ * readiness. Reviews created before reported-driver edits existed have no
+ * assessedReportedDriverId; reports.update backfills that provenance with
+ * the previous driver when the target changes, so a missing value means the
+ * target has not changed since the review was written.
+ */
+export function isReviewForCurrentTarget(
+  review: { assessedReportedDriverId?: unknown },
+  report: { reportedDriverId: unknown },
+): boolean {
+  return (
+    review.assessedReportedDriverId === undefined ||
+    String(review.assessedReportedDriverId) === String(report.reportedDriverId)
+  );
+}
+
+export function latestReviewForCurrentTarget(
+  reviews: Doc<"reviews">[],
+  report: { reportedDriverId: unknown },
+): Doc<"reviews"> | null {
+  const current = reviews.filter((review) =>
+    isReviewForCurrentTarget(review, report),
+  );
+  if (current.length === 0) return null;
+  return current.reduce((latest, review) => {
+    const latestDate = latest.reviewDate || latest.createdAt || 0;
+    const currentDate = review.reviewDate || review.createdAt || 0;
+    return currentDate > latestDate ? review : latest;
+  });
+}
+
+export async function listReviewsForCurrentTarget(
+  ctx: any,
+  report: Doc<"reports">,
+): Promise<any[]> {
+  const reviews = await ctx.db
+    .query("reviews")
+    .withIndex("by_report", (q: any) => q.eq("reportId", report._id))
+    .collect();
+  return reviews.filter((review: any) =>
+    isReviewForCurrentTarget(review, report),
+  );
+}
+
+/**
+ * Marks a report as reviewed once it has at least two reviews. Correcting
+ * the reported driver does not invalidate existing reviews, so all reviews
+ * count. Returns the review count.
+ */
+export async function maybeMarkReportReviewed(
+  ctx: any,
+  report: Doc<"reports">,
+): Promise<number> {
+  const reviews = await ctx.db
+    .query("reviews")
+    .withIndex("by_report", (q: any) => q.eq("reportId", report._id))
+    .collect();
+  if (
+    reviews.length >= 2 &&
+    report.status !== "reviewed" &&
+    report.status !== "finalized"
+  ) {
+    await ctx.db.patch(report._id, {
+      status: "reviewed",
+      updatedAt: Date.now(),
+    });
+  }
+  return reviews.length;
+}

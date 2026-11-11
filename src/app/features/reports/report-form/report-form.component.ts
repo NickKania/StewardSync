@@ -794,8 +794,15 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         await this.router.navigate(["/reports", this.id]);
         return;
       } else if (this.isEdit && this.id) {
+        const currentUserId = this.authService.getUserId();
+        if (!currentUserId) {
+          this.toast.error("User not authenticated");
+          return;
+        }
         await this.convex.mutation(this.convex.api.reports.update, {
+          currentUserId: currentUserId as any,
           reportId: this.id as any,
+          reportedDriverId: formValue.reportedDriverId,
           eventId: formValue.eventId,
           raceId: formValue.raceId,
           lap,

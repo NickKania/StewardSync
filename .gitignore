@@ -31,6 +31,9 @@ src/runtime-config.js
 coverage/
 .nyc_output/
 
+# Verification evidence (proof screenshots are never committed)
+screenshots/
+
 # Misc
 *.log
 npm-debug.log*
