@@ -105,6 +105,12 @@ export function sortDriverDashboardSeriesGroups<T extends SortableSeriesGroup>(
 
     const aSeasonNumber = extractSeasonNumber(a.seriesName);
     const bSeasonNumber = extractSeasonNumber(b.seriesName);
+    const aHasSeasonNumber = aSeasonNumber !== null;
+    const bHasSeasonNumber = bSeasonNumber !== null;
+    if (aHasSeasonNumber !== bHasSeasonNumber) {
+      return aHasSeasonNumber ? -1 : 1;
+    }
+
     if (
       aSeasonNumber !== null &&
       bSeasonNumber !== null &&

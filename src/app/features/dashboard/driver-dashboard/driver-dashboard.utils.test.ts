@@ -170,6 +170,43 @@ describe("driver dashboard series ordering", () => {
     ]);
   });
 
+  it("orders numbered and unnumbered series consistently across all permutations when timestamps tie", () => {
+    const sameTimestamp = 1_720_000_000_000;
+    const s10 = {
+      seriesId: "s10",
+      seriesName: "S10",
+      seriesLastEventDate: sameTimestamp,
+      seriesCreatedAt: sameTimestamp,
+    };
+    const season2 = {
+      seriesId: "s2",
+      seriesName: "Season 2",
+      seriesLastEventDate: sameTimestamp,
+      seriesCreatedAt: sameTimestamp,
+    };
+    const scCup = {
+      seriesId: "sc",
+      seriesName: "SC Cup",
+      seriesLastEventDate: sameTimestamp,
+      seriesCreatedAt: sameTimestamp,
+    };
+
+    const permutations = [
+      [s10, season2, scCup],
+      [s10, scCup, season2],
+      [season2, s10, scCup],
+      [season2, scCup, s10],
+      [scCup, s10, season2],
+      [scCup, season2, s10],
+    ];
+
+    for (const input of permutations) {
+      expect(
+        sortDriverDashboardSeriesGroups(input).map((g) => g.seriesName),
+      ).toEqual(["S10", "Season 2", "SC Cup"]);
+    }
+  });
+
   it("deterministically breaks ties by seriesId when timestamps and names match", () => {
     const groupsA = [
       {

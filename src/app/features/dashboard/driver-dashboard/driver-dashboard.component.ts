@@ -414,9 +414,17 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
           this.convex.query(this.convex.api.series.getById, {
             id: seriesId,
           }),
-          this.convex.query(this.convex.api.events.getBySeriesId, {
-            seriesId,
-          }),
+          this.convex
+            .query(this.convex.api.events.getBySeriesId, {
+              seriesId,
+            })
+            .catch((error) => {
+              console.error(
+                `Failed to load events for series ${seriesId}:`,
+                error,
+              );
+              return null;
+            }),
         ]);
 
         if (series) {
