@@ -12,6 +12,23 @@ import { DateFormatPipe } from "@shared/pipes/date-format.pipe";
 import { Id } from "@convex/_generated/dataModel";
 import { Penalty } from "@app/core/models";
 import { getEffectiveLicensePoints } from "@core/utils/penalties";
+import {
+  getLatestEventDate,
+  getSeriesCreatedTimestamp,
+  SortableSeriesGroup,
+  sortDriverDashboardSeriesGroups,
+} from "./driver-dashboard.utils";
+
+interface DriverDashboardSeriesGroup extends SortableSeriesGroup {
+  seriesKey: string;
+  seriesId: Id<"series"> | null;
+  driverIds: Id<"drivers">[];
+  loadingSeriesPenalties: boolean;
+  loadingIndividualPenalties: boolean;
+  seriesPenalties: any[];
+  pendingReviewPenalties: any[];
+  individualPenalties: any[];
+}
 
 @Component({
   selector: "app-driver-dashboard",
@@ -348,7 +365,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
 
   loading = signal(true);
-  seriesGroups = signal<any[]>([]);
+  seriesGroups = signal<DriverDashboardSeriesGroup[]>([]);
   private unsubscribes: (() => void)[] = [];
 
   ngOnInit(): void {
@@ -383,34 +400,47 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
       new Set(
         linkedDrivers
           .map((driver) => driver.championshipId)
-          .filter((seriesId) => seriesId),
+          .filter((seriesId): seriesId is Id<"series"> => Boolean(seriesId)),
       ),
     );
 
-    const seriesNameMap = new Map<string, string>();
+    const seriesMap = new Map<
+      Id<"series">,
+      { name: string; createdAt: number | null; lastEventDate: number | null }
+    >();
     await Promise.all(
       seriesIds.map(async (seriesId) => {
-        const series = await this.convex.query(this.convex.api.series.getById, {
-          id: seriesId,
-        });
+        const [series, events] = await Promise.all([
+          this.convex.query(this.convex.api.series.getById, {
+            id: seriesId,
+          }),
+          this.convex.query(this.convex.api.events.getBySeriesId, {
+            seriesId,
+          }),
+        ]);
 
         if (series) {
-          seriesNameMap.set(seriesId as string, series.name);
+          seriesMap.set(seriesId, {
+            name: series.name,
+            createdAt: getSeriesCreatedTimestamp(series),
+            lastEventDate: getLatestEventDate(events),
+          });
         }
       }),
     );
 
-    const groupsMap = new Map<string, any>();
+    const groupsMap = new Map<string, DriverDashboardSeriesGroup>();
     linkedDrivers.forEach((driver) => {
-      const seriesId = driver.championshipId ?? null;
+      const seriesId: Id<"series"> | null = driver.championshipId ?? null;
       const key = seriesId ? seriesId.toString() : "unknown";
       if (!groupsMap.has(key)) {
+        const seriesInfo = seriesId ? seriesMap.get(seriesId) : undefined;
         groupsMap.set(key, {
           seriesKey: key,
           seriesId,
-          seriesName: seriesId
-            ? seriesNameMap.get(seriesId as string) || "Unknown Series"
-            : "Unknown Series",
+          seriesName: seriesInfo?.name || "Unknown Series",
+          seriesLastEventDate: seriesInfo?.lastEventDate ?? null,
+          seriesCreatedAt: seriesInfo?.createdAt ?? null,
           driverIds: [],
           loadingSeriesPenalties: true,
           loadingIndividualPenalties: true,
@@ -420,11 +450,11 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
         });
       }
 
-      groupsMap.get(key).driverIds.push(driver._id);
+      groupsMap.get(key)!.driverIds.push(driver._id);
     });
 
-    const groups = Array.from(groupsMap.values()).sort((a, b) =>
-      a.seriesName.localeCompare(b.seriesName),
+    const groups = sortDriverDashboardSeriesGroups(
+      Array.from(groupsMap.values()),
     );
     this.seriesGroups.set(groups);
     this.loading.set(false);
@@ -439,7 +469,10 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     );
   }
 
-  private updateSeriesGroup(seriesKey: string, updates: Partial<any>): void {
+  private updateSeriesGroup(
+    seriesKey: string,
+    updates: Partial<DriverDashboardSeriesGroup>,
+  ): void {
     this.seriesGroups.update((groups) =>
       groups.map((group) =>
         group.seriesKey === seriesKey ? { ...group, ...updates } : group,
@@ -447,7 +480,9 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     );
   }
 
-  private async loadSeriesPenalties(group: any): Promise<void> {
+  private async loadSeriesPenalties(
+    group: DriverDashboardSeriesGroup,
+  ): Promise<void> {
     try {
       const penaltiesByDriver = await Promise.all(
         group.driverIds.map((driverId: Id<"drivers">) =>
@@ -484,7 +519,9 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async loadIndividualPenalties(group: any): Promise<void> {
+  private async loadIndividualPenalties(
+    group: DriverDashboardSeriesGroup,
+  ): Promise<void> {
     try {
       const penaltiesByDriver = await Promise.all(
         group.driverIds.map((driverId: Id<"drivers">) =>
