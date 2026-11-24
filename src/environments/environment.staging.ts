@@ -9,5 +9,4 @@ export const environment = {
   enableDevLogin: false,
   convexUrl: '',
   discordClientId: '',
-  discordClientSecret: ''
 };

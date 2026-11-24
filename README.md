@@ -34,7 +34,6 @@ Edit `.env` and set:
 - `PUBLIC_CONVEX_URL` — Your Convex deployment URL (cloud or self-hosted)
 - `PUBLIC_ENABLE_DEV_LOGIN` — Set to `true` for development, `false` for production
 - `DISCORD_CLIENT_ID` — Discord application client ID
-- `DISCORD_CLIENT_SECRET` — Discord application client secret
 
 ### 3. Set up Convex
 

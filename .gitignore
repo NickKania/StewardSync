@@ -44,10 +44,11 @@ tmp/convex-exports/
 # OS files
 Thumbs.db
 **/environment.local*
+!src/environments/environment.local.example.ts
 .tmp/**
 .vercel
 .env*
 
-# Generated environment files (contains secrets)
+# Generated environment overrides (tracked placeholders are kept)
 src/environments/environment.staging.ts
 src/environments/environment.prod.ts

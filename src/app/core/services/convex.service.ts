@@ -4,7 +4,6 @@ import { environment } from '../../../environments/environment';
 import { ConvexCustomLogger } from './convex-logger';
 import { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
 import { appRuntimeConfig } from '@core/config/runtime-config';
-import { RuntimeConfigService } from './runtime-config.service';
 
 // Import API to avoid circular inference issues
 import * as ConvexApi from '@convex/_generated/api';
@@ -16,7 +15,7 @@ export class ConvexService implements OnDestroy {
   private client: ConvexClient;
   private subscriptions: Map<string, () => void> = new Map();
 
-  constructor(private configService: RuntimeConfigService) {
+  constructor() {
     const convexUrl = appRuntimeConfig.convexUrl;
 
     if (!environment.production) {
