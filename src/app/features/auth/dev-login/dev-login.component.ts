@@ -6,16 +6,10 @@ import { ToastService } from '@core/services/toast.service';
 import { ButtonComponent } from '@shared/components/button/button.component';
 import { ConvexService } from '@core/services/convex.service';
 
-interface DevUser {
-  _id: string;
-  email: string;
-  name: string;
-  discordId: string;
-  role?: {
-    name: string;
-    displayName: string;
-  };
-}
+import type { FunctionReturnType } from 'convex/server';
+import type { api } from '@convex/_generated/api';
+
+type DevUser = FunctionReturnType<typeof api.auth.getDevUsers>[number];
 
 @Component({
   selector: 'app-dev-login',
@@ -65,7 +59,6 @@ interface DevUser {
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ user.name }}</h3>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
                   <div class="mt-2">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                           [ngClass]="{
@@ -146,7 +139,7 @@ export class DevLoginComponent implements OnInit {
         this.convex.api.auth.getDevUsers,
         {}
       );
-      this.devUsers.set(users as DevUser[]);
+      this.devUsers.set(users);
     } catch (error) {
       console.error('Failed to load dev users:', error);
       this.toastService.error('Failed to load demo users');
@@ -156,6 +149,7 @@ export class DevLoginComponent implements OnInit {
   }
 
   async loginAsUser(user: DevUser) {
+    if (!user.discordId) return;
     this.isLoggingIn = true;
     try {
       await this.authService.loginWithDiscordId(user.discordId);

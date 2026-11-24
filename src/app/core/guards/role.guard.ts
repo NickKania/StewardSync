@@ -8,11 +8,11 @@ import {
 import { AuthService } from "@core/services/auth.service";
 import { RoleName, RouteWithFallbackData } from "@core/models";
 
-export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
+export const roleGuard: CanActivateFn = async (route: ActivatedRouteSnapshot) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  const requiredRoles = route.data["roles"] as RoleName[] | undefined;
+  const requiredRoles = route.data["roles"] as readonly RoleName[] | undefined;
   const { fallbackCommands } = route.data as RouteWithFallbackData;
 
   const getFallback = (): UrlTree => {
@@ -27,26 +27,6 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     return true;
   }
 
-  if (authService.isLoading()) {
-    return new Promise((resolve) => {
-      const checkRole = () => {
-        if (!authService.isLoading()) {
-          if (authService.hasRole(...requiredRoles)) {
-            resolve(true);
-          } else {
-            resolve(getFallback());
-          }
-        } else {
-          setTimeout(checkRole, 50);
-        }
-      };
-      checkRole();
-    });
-  }
-
-  if (authService.hasRole(...requiredRoles)) {
-    return true;
-  }
-
-  return getFallback();
+  await authService.whenInitialized();
+  return authService.hasRole(...requiredRoles) || getFallback();
 };

@@ -2,33 +2,10 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = async () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isLoading()) {
-    // Wait for auth to initialize
-    return new Promise((resolve) => {
-      const checkAuth = () => {
-        if (!authService.isLoading()) {
-          if (authService.isAuthenticated()) {
-            resolve(true);
-          } else {
-            router.navigate(['/login']);
-            resolve(false);
-          }
-        } else {
-          setTimeout(checkAuth, 50);
-        }
-      };
-      checkAuth();
-    });
-  }
-
-  if (authService.isAuthenticated()) {
-    return true;
-  }
-
-  router.navigate(['/login']);
-  return false;
+  await authService.whenInitialized();
+  return authService.isAuthenticated() || router.createUrlTree(['/login']);
 };

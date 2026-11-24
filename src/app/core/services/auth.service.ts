@@ -7,8 +7,6 @@ import { environment } from "../../../environments/environment";
 import { appRuntimeConfig } from '@core/config/runtime-config';
 import { DISCORD_SESSION_KEY, readDiscordAccessToken, storeDiscordSession } from '@core/utils/discord-session';
 
-declare const google: any;
-
 const STORAGE_KEY = "steward_sync_user";
 const DISCORD_STATE_KEY = "steward_sync_discord_state";
 const DISCORD_VERIFIER_KEY = "steward_sync_discord_verifier";
@@ -23,6 +21,8 @@ const AUTH_DEBUG = !environment.production;
 export class AuthService {
   private convex = inject(ConvexService);
   private router = inject(Router);
+
+  private initialization?: Promise<void>;
 
   private _user = signal<User | null>(null);
   private _isLoading = signal(true);
@@ -61,7 +61,17 @@ export class AuthService {
     }
   }
 
-  async initialize(): Promise<void> {
+  initialize(): Promise<void> {
+    return this.whenInitialized();
+  }
+
+  whenInitialized(): Promise<void> {
+    return (this.initialization ??= this.restoreSession().finally(() => {
+      this._isLoading.set(false);
+    }));
+  }
+
+  private async restoreSession(): Promise<void> {
     // Try to restore session from localStorage
     const storedUserId = localStorage.getItem(STORAGE_KEY);
     if (!storedUserId) sessionStorage.removeItem(DISCORD_SESSION_KEY);
@@ -86,8 +96,6 @@ export class AuthService {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
-
-    this._isLoading.set(false);
   }
 
   async loginWithDiscord(): Promise<void> {
@@ -409,18 +417,6 @@ export class AuthService {
     const requiredIndex = roleHierarchy.indexOf(minimumRole);
 
     return currentIndex >= requiredIndex;
-  }
-
-  private decodeJwt(token: string): any {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join(""),
-    );
-    return JSON.parse(jsonPayload);
   }
 
   private generateRandomString(length: number): string {

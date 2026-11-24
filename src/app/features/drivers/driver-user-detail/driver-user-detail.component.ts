@@ -1312,7 +1312,7 @@ export class DriverUserDetailComponent implements OnInit {
           this.staffNoteDraft(),
         );
 
-        const mutations: Promise<void>[] = [];
+        const mutations: Promise<unknown>[] = [];
 
         mutations.push(
           this.convex.mutation(this.convex.api.users.updateNote, {
@@ -1383,6 +1383,11 @@ export class DriverUserDetailComponent implements OnInit {
     );
 
     this.driver.set(driver);
+    if (!driver) {
+      this.linkedUser.set(null);
+      this.toast.error("Driver not found");
+      return;
+    }
     this.linkedUser.set(driver.linkedUser);
     this.staffNoteDraft.set(driver.note || "");
 

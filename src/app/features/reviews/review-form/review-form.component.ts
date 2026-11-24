@@ -1087,7 +1087,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
                 : undefined,
           });
 
-      if (!useUpdate && !result.success) {
+      if (typeof result !== "string" && !result.success) {
         this.toast.error(result.error);
         return;
       }
