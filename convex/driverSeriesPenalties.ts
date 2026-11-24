@@ -489,10 +489,10 @@ export const getDriverPenaltyDetails = query({
           servedBy: dsp.servedBy,
           servedByUserName: (servedByUser as any)?.name ?? null,
           status: isServedButPendingReview
-            ? "served_pending_review"
+            ? ("served_pending_review" as const)
             : dsp.isServed
-              ? "served"
-              : "active",
+              ? ("served" as const)
+              : ("active" as const),
         };
       }),
     );
