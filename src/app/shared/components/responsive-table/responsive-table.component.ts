@@ -1,5 +1,6 @@
 import {
   Component,
+  ChangeDetectionStrategy,
   Input,
   Output,
   EventEmitter,
@@ -23,6 +24,7 @@ export interface TableColumn<T = any> {
 let nextId = 0;
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: "app-responsive-table",
   standalone: true,
   imports: [CommonModule],

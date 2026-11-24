@@ -1,0 +1,884 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div
+    class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+  >
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        Series Management
+      </h1>
+      <p class="text-gray-500 mt-1 dark:text-gray-400">
+        Manage racing series and their penalty configurations
+      </p>
+    </div>
+    <app-button (click)="showSeriesModal = true">
+      <svg
+        class="w-5 h-5 mr-2"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 4v16m8-8H4"
+        ></path>
+      </svg>
+      Add Series
+    </app-button>
+  </div>
+
+  <!-- Series List -->
+  @if (loading()) {
+    <app-loading text="Loading series..." />
+  } @else if (series().length > 0) {
+    <div class="space-y-4">
+      @for (s of series(); track s._id) {
+        <app-card>
+          <div class="space-y-4">
+            <div
+              class="flex items-center justify-between gap-4"
+            >
+              <div
+                class="flex-1 cursor-pointer"
+                role="button"
+                tabindex="0"
+                [attr.aria-expanded]="isSeriesExpanded(s._id)"
+                (click)="toggleSeriesExpanded(s._id)"
+                (keydown.enter)="toggleSeriesExpanded(s._id)"
+                (keydown.space)="toggleSeriesExpanded(s._id); $event.preventDefault()"
+              >
+                <div class="flex items-center gap-2">
+                  <svg
+                    class="w-5 h-5 text-gray-400 transition-transform dark:text-gray-500"
+                    [class.rotate-90]="isSeriesExpanded(s._id)"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    ></path>
+                  </svg>
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {{ s.name }}
+                    @if (s.isActive === false) {
+                      <app-badge variant="default" class="ml-2"
+                        >Inactive</app-badge
+                      >
+                    }
+                  </h3>
+                </div>
+                @if (s.description) {
+                  <p class="text-sm text-gray-500 mt-1 pl-7 dark:text-gray-400">
+                    {{ s.description }}
+                  </p>
+                }
+                @if (s.simgridLink && isSeriesExpanded(s._id)) {
+                  <a
+                    [href]="s.simgridLink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-sm text-primary-600 hover:text-primary-700 mt-1 ml-7 inline-flex items-center gap-1"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      ></path>
+                    </svg>
+                    View on SimGrid
+                  </a>
+                }
+              </div>
+              <div
+                class="flex flex-wrap items-center justify-end gap-2"
+              >
+                @if (!isSeriesExpanded(s._id)) {
+                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ getSeriesPenalties(s._id).length }} penalties |
+                    {{ getSeriesPenaltiesBySeries(s._id).length }} series penalties |
+                    {{ getDriverClassesBySeries(s._id).length }} classes
+                  </span>
+                }
+                <app-button
+                  variant="secondary"
+                  size="sm"
+                  (click)="editSeries(s)"
+                >
+                  Edit
+                </app-button>
+                <app-button
+                  variant="secondary"
+                  size="sm"
+                  (click)="openCopySeriesModal(s)"
+                  [disabled]="series().length < 2"
+                >
+                  <svg
+                    class="w-4 h-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    ></path>
+                  </svg>
+                  Copy From
+                </app-button>
+                @if (s.simgridLink) {
+                  <app-button
+                    variant="secondary"
+                    size="sm"
+                    (click)="importEvents(s._id)"
+                    [disabled]="importing()"
+                  >
+                    <svg
+                      class="w-4 h-4 mr-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                      ></path>
+                    </svg>
+                    {{ importing() ? "Importing..." : "Import Events" }}
+                  </app-button>
+                  <app-button
+                    variant="secondary"
+                    size="sm"
+                    (click)="importDrivers(s._id)"
+                    [disabled]="importing()"
+                  >
+                    <svg
+                      class="w-4 h-4 mr-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                      ></path>
+                    </svg>
+                    {{ importing() ? "Importing..." : "Import Drivers" }}
+                  </app-button>
+                }
+                <app-button
+                  variant="danger"
+                  size="sm"
+                  (click)="deleteSeries(s._id)"
+                >
+                  Delete
+                </app-button>
+              </div>
+            </div>
+
+            @if (isSeriesExpanded(s._id)) {
+              <!-- Penalties for this series -->
+              <div class="border-t pt-4 dark:border-gray-700">
+              <div class="flex items-center justify-between mb-3">
+                <h4
+                  class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Penalties
+                </h4>
+                <app-button
+                  variant="secondary"
+                  size="sm"
+                  (click)="addPenalty(s._id)"
+                >
+                  <svg
+                    class="w-4 h-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 4v16m8-8H4"
+                    ></path>
+                  </svg>
+                  Add Penalty
+                </app-button>
+              </div>
+
+              @if (getSeriesPenalties(s._id).length > 0) {
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  @for (
+                    penalty of getSeriesPenalties(s._id);
+                    track penalty._id
+                  ) {
+                    <div
+                      class="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                    >
+                      <div class="flex items-start justify-between mb-2">
+                        <span
+                          class="font-medium text-sm dark:text-gray-100"
+                          >{{ penalty.name }}</span
+                        >
+                        <div class="flex gap-1">
+                          <button
+                            (click)="editPenalty(penalty)"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 dark:text-gray-500"
+                          >
+                            <svg
+                              class="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              ></path>
+                            </svg>
+                          </button>
+                          <button
+                            (click)="deletePenalty(penalty._id)"
+                            class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
+                          >
+                            <svg
+                              class="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              ></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        class="space-y-1 text-xs text-gray-600 dark:text-gray-400"
+                      >
+                        <div class="flex justify-between">
+                          <span>Time Penalty:</span>
+                          <span class="font-medium"
+                            >{{ penalty.timePenalty }}s</span
+                          >
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Lap 1 Time:</span>
+                          <span class="font-medium"
+                            >{{ penalty.timePenaltyLap1 }}s</span
+                          >
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Self-Report Reduction:</span>
+                          <span class="font-medium"
+                            >{{ penalty.selfReportReduction ?? 0 }}s</span
+                          >
+                        </div>
+                        <div class="flex justify-between">
+                          <span>License Points:</span>
+                          <span class="font-medium">{{
+                            penalty.licensePoints
+                          }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Self-Report LP Reduction:</span>
+                          <span class="font-medium">{{
+                            penalty.selfReportLicensePointReduction ?? 0
+                          }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Allows No Driver:</span>
+                          <span class="font-medium">{{
+                            penalty.allowNoDriverAtFault ? "Yes" : "No"
+                          }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p
+                  class="text-sm text-gray-500 text-center py-4 dark:text-gray-400"
+                >
+                  No penalties configured
+                </p>
+              }
+              </div>
+
+              <!-- Series Penalties for this series -->
+              <div class="border-t pt-4 dark:border-gray-700">
+              <div class="flex items-center justify-between mb-3">
+                <h4
+                  class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Series Penalties
+                </h4>
+                <app-button
+                  variant="secondary"
+                  size="sm"
+                  (click)="addSeriesPenalty(s._id)"
+                >
+                  <svg
+                    class="w-4 h-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 4v16m8-8H4"
+                    ></path>
+                  </svg>
+                  Add Series Penalty
+                </app-button>
+              </div>
+
+              @if (getSeriesPenaltiesBySeries(s._id).length > 0) {
+                <div class="space-y-3">
+                  @for (
+                    sp of getSeriesPenaltiesBySeries(s._id);
+                    track sp._id
+                  ) {
+                    <div
+                      class="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                    >
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                          <span
+                            class="font-medium text-sm dark:text-gray-100"
+                            >{{ sp.penaltyName }}</span
+                          >
+                          @if (sp.penaltyDescription) {
+                            <p
+                              class="text-xs text-gray-600 dark:text-gray-400 mt-1"
+                            >
+                              {{ sp.penaltyDescription }}
+                            </p>
+                          }
+                        </div>
+                        <div class="flex gap-1 ml-2">
+                          <button
+                            (click)="editSeriesPenalty(sp)"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 dark:text-gray-500"
+                          >
+                            <svg
+                              class="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              ></path>
+                            </svg>
+                          </button>
+                          <button
+                            (click)="deleteSeriesPenalty(sp._id)"
+                            class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
+                          >
+                            <svg
+                              class="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              ></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      @if (sp.thresholds && sp.thresholds.length > 0) {
+                        <div
+                          class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700"
+                        >
+                          <p
+                            class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2"
+                          >
+                            Thresholds:
+                          </p>
+                          <div class="space-y-1">
+                            @for (
+                              threshold of sp.thresholds;
+                              track threshold._id
+                            ) {
+                              <div
+                                class="flex flex-wrap items-center gap-1"
+                              >
+                                <app-badge variant="danger">
+                                  {{ threshold.threshold }} pts
+                                </app-badge>
+                                @if (threshold.requiresReview) {
+                                  <app-badge variant="warning" size="sm">
+                                    Review Required
+                                  </app-badge>
+                                }
+                                <span class="text-xs text-gray-500 dark:text-gray-400"
+                                  >for:</span
+                                >
+                                @for (
+                                  driverClass of threshold.driverClassObjects;
+                                  track driverClass._id
+                                ) {
+                                  <app-badge variant="default" size="sm">
+                                    {{
+                                      driverClass.displayName ||
+                                        driverClass.className ||
+                                        "Unknown"
+                                    }}
+                                  </app-badge>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p
+                  class="text-sm text-gray-500 text-center py-4 dark:text-gray-400"
+                >
+                  No series penalties configured
+                </p>
+              }
+              </div>
+
+              <!-- Driver Classes Management -->
+              <div class="border-t pt-4 dark:border-gray-700">
+               <div class="flex items-center justify-between mb-3">
+                 <h4
+                   class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                 >
+                   Driver Classes
+                 </h4>
+                 <app-button
+                   variant="secondary"
+                   size="sm"
+                   (click)="loadDriverClassesForManagement(s._id)"
+                 >
+                   <svg
+                     class="w-4 h-4 mr-1"
+                     fill="none"
+                     stroke="currentColor"
+                     viewBox="0 0 24 24"
+                   >
+                     <path
+                       stroke-linecap="round"
+                       stroke-linejoin="round"
+                       stroke-width="2"
+                       d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                     ></path>
+                     <path
+                       stroke-linecap="round"
+                       stroke-linejoin="round"
+                       stroke-width="2"
+                       d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                     ></path>
+                   </svg>
+                   Manage Classes
+                 </app-button>
+               </div>
+
+               @if (getDriverClassesBySeries(s._id).length > 0) {
+                 <div
+                   class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"
+                 >
+                   @for (
+                     driverClass of getDriverClassesBySeries(s._id);
+                     track driverClass._id
+                   ) {
+                     <div
+                       class="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm"
+                     >
+                       <span class="text-gray-700 dark:text-gray-300">{{
+                         driverClass.displayName
+                       }}</span>
+                       <span class="text-xs text-gray-500 dark:text-gray-400"
+                         >({{ driverClass.driversCount }} drivers)</span
+                       >
+                     </div>
+                   }
+                 </div>
+               } @else {
+                 <p
+                   class="text-sm text-gray-500 text-center py-4 dark:text-gray-400"
+                 >
+                   No driver classes found
+                 </p>
+               }
+              </div>
+
+              <!-- Scheduled Import -->
+              @if (s.simgridLink) {
+                <app-scheduled-import-section
+                  [status]="getScheduledImportStatus(s._id)"
+                  (cancelSchedule)="cancelScheduledImport(s._id)"
+                  (openSchedule)="openScheduleModal(s._id)"
+                />
+              }
+
+            }
+          </div>
+        </app-card>
+      }
+    </div>
+  } @else {
+    <app-card>
+      <div class="text-center py-12">
+        <p class="text-gray-500 dark:text-gray-400">
+          No series found. Create one to get started.
+        </p>
+      </div>
+    </app-card>
+  }
+
+  <!-- Copy Series Modal -->
+  @if (showCopySeriesModal) {
+    <app-copy-series-modal
+      [copyTargetSeries]="copyTargetSeries"
+      [copySourceSeriesId]="copySourceSeriesId"
+      [copySourceSeriesOptions]="copySourceSeriesOptions()"
+      [copyLoading]="copyLoading()"
+      [copyPreview]="copyPreview()"
+      [copyResult]="copyResult()"
+      (sourceChange)="copySourceSeriesId = $event; copyPreview.set(null); copyResult.set(null)"
+      (close)="closeCopySeriesModal()"
+      (preview)="previewCopySeries()"
+      (execute)="executeCopySeries()"
+    />
+  }
+
+  <!-- Series Modal -->
+  @if (showSeriesModal) {
+    <app-series-form-modal
+      [editingSeriesId]="editingSeriesId"
+      [seriesForm]="seriesForm"
+      [timezoneDisplay]="timezoneDisplay()"
+      (save)="saveSeries()"
+      (close)="closeSeriesModal()"
+    />
+  }
+
+  <!-- Penalty Modal -->
+  @if (showPenaltyModal) {
+    <app-penalty-form-modal
+      [editingPenaltyId]="editingPenaltyId"
+      [penaltyForm]="penaltyForm"
+      (save)="savePenalty()"
+      (close)="closePenaltyModal()"
+    />
+  }
+
+  <!-- Series Penalty Modal -->
+  @if (showSeriesPenaltyModal) {
+    <app-series-penalty-form-modal
+      [editingSeriesPenaltyId]="editingSeriesPenaltyId"
+      [seriesPenaltyForm]="seriesPenaltyForm"
+      [loadingDriverClasses]="loadingDriverClasses"
+      [thresholds]="thresholds"
+      [availableDriverClasses]="availableDriverClasses()"
+      (thresholdAdd)="addThreshold()"
+      (thresholdRemove)="removeThreshold($event)"
+      (thresholdClassesChange)="onThresholdClassesChange($event.id, $event.options)"
+      (save)="saveSeriesPenalty()"
+      (close)="closeSeriesPenaltyModal()"
+    />
+  }
+
+  <!-- Driver Class Management Modal -->
+  @if (showDriverClassModal) {
+    <div
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      (click)="closeDriverClassModal()"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl m-4"
+        (click)="$event.stopPropagation()"
+      >
+        <div
+          class="p-6 border-b dark:border-gray-700 flex justify-between items-center"
+        >
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            Manage Driver Classes
+          </h3>
+          <button
+            (click)="closeDriverClassModal()"
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 dark:text-gray-500"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+          @if (loadingDriverClasses) {
+            <app-loading text="Loading driver classes..." />
+          } @else if (driverClassesForManagement().length === 0) {
+            <p class="text-gray-500 text-center py-4 dark:text-gray-400">
+              No driver classes found for this series.
+            </p>
+          } @else {
+            <div class="space-y-3">
+              @for (
+                driverClass of driverClassesForManagement();
+                track driverClass._id
+              ) {
+                <div
+                  class="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2 mb-1">
+                        <span
+                          class="font-medium text-gray-700 dark:text-gray-300"
+                          >{{ driverClass.className }}</span
+                        >
+                        <span class="text-xs text-gray-500 dark:text-gray-400"
+                          >({{ driverClass.driversCount }} drivers)</span
+                        >
+                      </div>
+
+                      @if (editingDriverClassId === driverClass._id) {
+                        <div class="mt-2 space-y-3">
+                          <div
+                            class="text-sm text-gray-600 dark:text-gray-400"
+                          >
+                            Class Name:
+                            <span
+                              class="font-medium text-gray-900 dark:text-gray-100"
+                              >{{ driverClass.className }}</span
+                            >
+                          </div>
+                          <div>
+                            <label
+                              class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+                              >Display Name</label
+                            >
+                            <div class="flex gap-2">
+                              <input
+                                type="text"
+                                class="input flex-1"
+                                [(ngModel)]="editingDriverClassName"
+                                placeholder="Display name"
+                              />
+                              <app-button
+                                variant="secondary"
+                                size="sm"
+                                (click)="cancelEditDriverClass()"
+                                >Cancel</app-button
+                              >
+                              <app-button
+                                size="sm"
+                                (click)="saveDriverClassDisplayName()"
+                                >Save</app-button
+                              >
+                            </div>
+                          </div>
+                        </div>
+                      } @else {
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                          Display:
+                          <span class="font-medium">{{
+                            driverClass.displayName
+                          }}</span>
+                        </p>
+                      }
+                    </div>
+
+                    @if (editingDriverClassId !== driverClass._id) {
+                      <button
+                        (click)="editDriverClass(driverClass)"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 dark:text-gray-500"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          ></path>
+                        </svg>
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="p-6 border-t dark:border-gray-700 flex justify-end">
+          <app-button variant="secondary" (click)="closeDriverClassModal()"
+            >Close</app-button
+          >
+        </div>
+       </div>
+     </div>
+   }
+
+  <!-- Schedule Import Modal -->
+  @if (showScheduleModal) {
+    <div
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4"
+      >
+        <div
+          class="p-6 border-b dark:border-gray-700 flex justify-between items-center"
+        >
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            Schedule Driver Import
+          </h3>
+        </div>
+
+        <div class="p-6 space-y-4">
+          @if (scheduleForm.seriesId; as seriesId) {
+            @if (getScheduledImportStatus(seriesId); as status) {
+              <div
+                class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 text-sm"
+              >
+                <div class="text-gray-600 dark:text-gray-400">
+                  Series range:
+                  <span class="font-medium text-gray-900 dark:text-gray-100">{{
+                    formatSeriesDateRange(
+                      status.seriesStartDate,
+                      status.seriesEndDate
+                    )
+                  }}</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">
+                  Imports will run weekly between these dates
+                </p>
+              </div>
+            }
+          }
+
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+            >
+              Time ({{ timezoneDisplay() }})
+            </label>
+            <input
+              type="time"
+              class="input w-full"
+              [(ngModel)]="scheduleForm.scheduledImportTime"
+            />
+            <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+              Import will run at this time on selected days
+            </p>
+          </div>
+
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300"
+            >
+              Days of Week
+            </label>
+            <div class="flex flex-wrap gap-2">
+              @for (day of DAYS_OF_WEEK; track day.value) {
+                <button
+                  type="button"
+                  (click)="toggleDay(day.value)"
+                  class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  [class.bg-primary-600]="isDaySelected(day.value)"
+                  [class.text-white]="isDaySelected(day.value)"
+                  [class.bg-gray-100]="!isDaySelected(day.value)"
+                  [class.text-gray-700]="!isDaySelected(day.value)"
+                  [class.dark:bg-gray-700]="!isDaySelected(day.value)"
+                  [class.dark:text-gray-300]="!isDaySelected(day.value)"
+                  [class.hover:bg-primary-700]="isDaySelected(day.value)"
+                  [class.hover:bg-gray-200]="!isDaySelected(day.value)"
+                  [class.dark:hover:bg-gray-600]="!isDaySelected(day.value)"
+                >
+                  {{ day.label }}
+                </button>
+              }
+            </div>
+            @if (scheduleForm.scheduledImportDays.length > 0) {
+              <p class="text-xs text-gray-500 mt-2 dark:text-gray-400">
+                Selected: {{ formatDaysOfWeek(scheduleForm.scheduledImportDays) }}
+              </p>
+            }
+          </div>
+        </div>
+
+        <div
+          class="p-6 border-t dark:border-gray-700 flex gap-2 justify-end"
+        >
+          <app-button variant="secondary" (click)="closeScheduleModal()"
+            >Cancel</app-button
+          >
+          <app-button
+            (click)="saveScheduledImport()"
+            [disabled]="
+              scheduleSaving() ||
+              scheduleForm.scheduledImportDays.length === 0 ||
+              !scheduleForm.scheduledImportTime
+            "
+          >
+            @if (scheduleSaving()) {
+              Saving...
+            } @else {
+              Schedule Import
+            }
+          </app-button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

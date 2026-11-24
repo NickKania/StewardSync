@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, computed, effect, input, output, signal } from "@angular/core";
+import { Component, ChangeDetectionStrategy, computed, effect, input, output, signal } from "@angular/core";
 import { ModalComponent } from "@shared/components/modal/modal.component";
 
 interface ChangelogRelease {
@@ -9,6 +9,7 @@ interface ChangelogRelease {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: "app-changelog-flyout",
   standalone: true,
   imports: [CommonModule, ModalComponent],

@@ -1,16 +1,8 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
-export const getEffectiveLicensePoints = (
-  penalty: { licensePoints?: number; selfReportLicensePointReduction?: number } | null | undefined,
-  isSelfReport: boolean | null | undefined,
-): number => {
-  const basePoints = penalty?.licensePoints ?? 0;
-  const reduction = isSelfReport
-    ? (penalty?.selfReportLicensePointReduction ?? 0)
-    : 0;
+import { getEffectiveLicensePoints } from "./licensePoints";
 
-  return Math.max(0, basePoints - reduction);
-};
+export { getEffectiveLicensePoints } from "./licensePoints";
 
 const comparePenaltySeverity = (
   left: { threshold: number; assignedAt?: number },

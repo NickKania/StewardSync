@@ -1,0 +1,213 @@
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+  (click)="close.emit()"
+>
+  <div
+    class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="p-6 border-b dark:border-gray-700">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        Copy Series Configuration
+      </h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Target: {{ copyTargetSeries?.name }}
+      </p>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-5">
+      <div>
+        <label class="label">Source Series</label>
+        <select
+          class="input w-full"
+          [ngModel]="copySourceSeriesId"
+          (ngModelChange)="sourceChange.emit($event)"
+        >
+          <option value="">Select a series to copy from</option>
+          @for (source of copySourceSeriesOptions; track source._id) {
+            <option [value]="source._id">{{ source.name }}</option>
+          }
+        </select>
+      </div>
+
+      @if (copyLoading) {
+        <app-loading text="Preparing copy preview..." />
+      }
+
+      @if (copyPreview; as preview) {
+        <div class="grid md:grid-cols-4 gap-3">
+          <div class="rounded-lg border p-3 dark:border-gray-700">
+            <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+              {{ preview.penalties.toCreate.length }}
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              penalties to create
+            </div>
+          </div>
+          <div class="rounded-lg border p-3 dark:border-gray-700">
+            <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+              {{ copySeriesPenaltiesToCreate(preview) }}
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              series penalties to create
+            </div>
+          </div>
+          <div class="rounded-lg border p-3 dark:border-gray-700">
+            <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+              {{ copyThresholdCount(preview) }}
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              thresholds
+            </div>
+          </div>
+          <div class="rounded-lg border p-3 dark:border-gray-700">
+            <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+              {{ copySessionCount(preview) }}
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              sessions to create
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <section class="border-t pt-4 dark:border-gray-700">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Penalties
+            </h4>
+            @if (preview.penalties.toCreate.length > 0) {
+              <div class="flex flex-wrap gap-2">
+                @for (penalty of preview.penalties.toCreate; track penalty.name) {
+                  <app-badge variant="success">{{ penalty.name }}</app-badge>
+                }
+              </div>
+            } @else {
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                No new penalties to create.
+              </p>
+            }
+            @if (preview.penalties.alreadyExists.length > 0) {
+              <p class="text-xs text-warning mt-2">
+                Skipped existing: {{ preview.penalties.alreadyExists.join(", ") }}
+              </p>
+            }
+          </section>
+
+          <section class="border-t pt-4 dark:border-gray-700">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Series Penalties
+            </h4>
+            @if (preview.seriesPenalties.length > 0) {
+              <div class="space-y-3">
+                @for (seriesPenalty of preview.seriesPenalties; track seriesPenalty.penaltyName) {
+                  <div class="rounded-lg border p-3 dark:border-gray-700">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
+                        {{ seriesPenalty.penaltyName }}
+                      </span>
+                      @if (seriesPenalty.alreadyExists) {
+                        <app-badge variant="warning" size="sm">Skipped</app-badge>
+                      } @else {
+                        <app-badge variant="success" size="sm">Create</app-badge>
+                      }
+                    </div>
+                    @if (!seriesPenalty.alreadyExists && seriesPenalty.thresholds.length > 0) {
+                      <div class="mt-2 space-y-2">
+                        @for (threshold of seriesPenalty.thresholds; track threshold.threshold) {
+                          <div class="text-xs text-gray-600 dark:text-gray-400">
+                            <span class="font-medium">{{ threshold.threshold }} pts</span>
+                            @if (threshold.requiresReview) {
+                              <span> - review required</span>
+                            }
+                            <div class="flex flex-wrap gap-1 mt-1">
+                              @for (driverClass of threshold.matchedClasses || []; track driverClass.id) {
+                                <app-badge variant="success" size="sm">
+                                  {{ driverClass.displayName || driverClass.className }}
+                                </app-badge>
+                              }
+                              @for (className of threshold.unmatchedClasses; track className) {
+                                <app-badge variant="danger" size="sm">
+                                  Missing: {{ className }}
+                                </app-badge>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                No series penalties found in the source series.
+              </p>
+            }
+          </section>
+
+          <section class="border-t pt-4 dark:border-gray-700">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Sessions
+            </h4>
+            @if (copySessionCount(preview) > 0) {
+              <div class="space-y-2">
+                @for (event of copySessionEvents(preview); track event.eventNumber) {
+                  <div class="text-sm text-gray-700 dark:text-gray-300">
+                    <span class="font-medium">Event {{ event.eventNumber }}:</span>
+                    {{ event.sessions.join(", ") }}
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                No new sessions to create.
+              </p>
+            }
+            @if (preview.sessions.eventsNotFound.length > 0) {
+              <p class="text-xs text-warning mt-2">
+                Missing target events: {{ preview.sessions.eventsNotFound.join(", ") }}
+              </p>
+            }
+          </section>
+        </div>
+      }
+
+      @if (copyResult; as result) {
+        <div class="rounded-lg border border-success-border bg-success-bg p-4">
+          <p class="text-sm font-medium text-success-text">
+            Copied {{ result.penaltiesCreated }} penalties,
+            {{ result.seriesPenaltiesCreated }} series penalties,
+            {{ result.thresholdsCreated }} thresholds, and
+            {{ result.sessionsCreated }} sessions.
+          </p>
+          @if (result.warnings.length > 0) {
+            <ul class="mt-2 text-xs text-warning space-y-1">
+              @for (warning of result.warnings; track warning) {
+                <li>{{ warning }}</li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="p-6 border-t dark:border-gray-700 flex gap-2 justify-end">
+      <app-button variant="secondary" (click)="close.emit()">
+        Cancel
+      </app-button>
+      <app-button
+        variant="secondary"
+        (click)="preview.emit()"
+        [disabled]="!copySourceSeriesId || copyLoading"
+      >
+        Preview Copy
+      </app-button>
+      <app-button
+        (click)="execute.emit()"
+        [disabled]="!copyPreview || copyLoading"
+      >
+        Execute Copy
+      </app-button>
+    </div>
+  </div>
+</div>
