@@ -1,3 +1,4 @@
+import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
 
 /**
@@ -65,7 +66,7 @@ export function getReportingWindow(
  * @returns Object with conflict information
  */
 export async function checkUserDriverConflict(
-  ctx: any,
+  ctx: QueryCtx,
   userId: Id<"users">,
   report: Doc<"reports">
 ): Promise<{
@@ -98,13 +99,13 @@ export async function checkUserDriverConflict(
   // Check if user is the reported driver
   const driversLinkedToUser = await ctx.db
     .query("drivers")
-    .withIndex("by_user_id", (q: any) => q.eq("userId", userId))
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
     .collect();
 
-  const driverIds = driversLinkedToUser.map((d: any) => d._id);
+  const driverIds = driversLinkedToUser.map((d) => d._id);
 
-  if (driverIds.some((id: any) => String(id) === String(report.reportedDriverId))) {
-    const driver = driversLinkedToUser.find((d: any) => String(d._id) === String(report.reportedDriverId));
+  if (driverIds.some((id) => String(id) === String(report.reportedDriverId))) {
+    const driver = driversLinkedToUser.find((d) => String(d._id) === String(report.reportedDriverId));
     return {
       hasConflict: true,
       conflictType: "reported_driver",
@@ -149,14 +150,14 @@ export function latestReviewForCurrentTarget(
 }
 
 export async function listReviewsForCurrentTarget(
-  ctx: any,
+  ctx: QueryCtx,
   report: Doc<"reports">,
-): Promise<any[]> {
+): Promise<Doc<"reviews">[]> {
   const reviews = await ctx.db
     .query("reviews")
-    .withIndex("by_report", (q: any) => q.eq("reportId", report._id))
+    .withIndex("by_report", (q) => q.eq("reportId", report._id))
     .collect();
-  return reviews.filter((review: any) =>
+  return reviews.filter((review) =>
     isReviewForCurrentTarget(review, report),
   );
 }
@@ -167,12 +168,12 @@ export async function listReviewsForCurrentTarget(
  * count. Returns the review count.
  */
 export async function maybeMarkReportReviewed(
-  ctx: any,
+  ctx: MutationCtx,
   report: Doc<"reports">,
 ): Promise<number> {
   const reviews = await ctx.db
     .query("reviews")
-    .withIndex("by_report", (q: any) => q.eq("reportId", report._id))
+    .withIndex("by_report", (q) => q.eq("reportId", report._id))
     .collect();
   if (
     reviews.length >= 2 &&

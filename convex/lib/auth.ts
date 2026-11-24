@@ -1,3 +1,4 @@
+import type { QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { UserFacingError } from "./errors";
 
@@ -9,7 +10,7 @@ const ROLE_HIERARCHY = [
   "league_manager",
 ];
 
-export async function getCurrentUserRole(ctx: any, userId: Id<"users">) {
+export async function getCurrentUserRole(ctx: QueryCtx, userId: Id<"users">) {
   const user = await ctx.db.get(userId);
   if (!user) {
     throw new Error("User not found");
@@ -38,7 +39,7 @@ export function hasMinimumRole(
 }
 
 export async function requireRole(
-  ctx: any,
+  ctx: QueryCtx,
   userId: Id<"users">,
   allowedRoles: string[]
 ) {
