@@ -1,6 +1,7 @@
 import { action, internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireDiscordUser } from "./lib/discordAuth";
+import { requireCorrectionActor } from "./lib/discordAuth";
+import { assertCorrectionActorAndTarget } from "./lib/testMode";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
@@ -11,7 +12,7 @@ import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { recordChanges, compareAndBuildChanges } from "./lib/audit";
 import { validateAtFaultDriverForReport } from "./lib/reportValidation";
-import { requireRole } from "./lib/auth";
+import { requireExactRole, requireRole } from "./lib/auth";
 
 const REVIEW_AUDIT_FIELDS = [
   "isSelfReport",
@@ -181,6 +182,7 @@ export const create = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireExactRole(ctx, args.userId, ["steward", "head_steward", "league_manager"]);
     // Validate report exists and is not finalized
     const report = await ctx.db.get(args.reportId);
     if (!report) {
@@ -391,24 +393,35 @@ const reviewCorrectionArgs = {
   isNoDriverAtFault: v.boolean(),
 };
 
-/** Verify the Discord actor before correcting a recorded assessment. */
+/** Verify the actor before correcting a recorded assessment. */
 export const correct = action({
   args: { discordAccessToken: v.string(), ...reviewCorrectionArgs },
   handler: async (ctx, args): Promise<Result<Id<"reviews">>> => {
     const { discordAccessToken, ...updates } = args;
-    const currentUserId = await requireDiscordUser(ctx, discordAccessToken);
-    return await ctx.runMutation(internal.reviews.correctVerified, { ...updates, currentUserId });
+    const { userId: currentUserId, testSessionToken } = await requireCorrectionActor(ctx, discordAccessToken);
+    return await ctx.runMutation(internal.reviews.correctVerified, { ...updates, currentUserId, testSessionToken });
   },
 });
 
 export const correctVerified = internalMutation({
-  args: { currentUserId: v.id("users"), ...reviewCorrectionArgs },
+  args: { currentUserId: v.id("users"), testSessionToken: v.optional(v.string()), ...reviewCorrectionArgs },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.currentUserId, ["league_manager"]);
     const review = await ctx.db.get(args.reviewId);
     if (!review) throw new UserFacingError("Review not found");
     const report = await ctx.db.get(review.reportId);
     if (!report) throw new UserFacingError("Report not found");
+    const linkedReview = review.linkedReviewId
+      ? await ctx.db.get(review.linkedReviewId)
+      : null;
+    if (review.linkedReviewId && (!linkedReview ||
+      linkedReview.reportId !== review.reportId || linkedReview.linkedReviewId !== review._id)) {
+      return failure("Joint review link is invalid; repair it before editing");
+    }
+    const reviews = linkedReview ? [review, linkedReview] : [review];
+    await assertCorrectionActorAndTarget(
+      ctx, args.currentUserId, args.testSessionToken, report, reviews.map(({ _id }) => _id),
+    );
 
     const incidentDescription = args.incidentDescription.trim();
     if (!incidentDescription) {
@@ -423,14 +436,6 @@ export const correctVerified = internalMutation({
     const driverError = await validateAtFaultDriverForReport(ctx, report, atFaultDriverId);
     if (driverError) return failure(driverError);
 
-    const linkedReview = review.linkedReviewId
-      ? await ctx.db.get(review.linkedReviewId)
-      : null;
-    if (review.linkedReviewId && (!linkedReview ||
-      linkedReview.reportId !== review.reportId || linkedReview.linkedReviewId !== review._id)) {
-      return failure("Joint review link is invalid; repair it before editing");
-    }
-    const reviews = linkedReview ? [review, linkedReview] : [review];
     if (args.isNoDriverAtFault) {
       for (const assessment of reviews) {
         const penaltyId = assessment.recommendedPenalty
@@ -479,11 +484,15 @@ export const update = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireExactRole(ctx, args.userId, ["steward", "head_steward", "league_manager"]);
     const { reviewId, userId, ...updates } = args;
 
     const review = await ctx.db.get(reviewId);
     if (!review) {
       throw new Error("Review not found");
+    }
+    if (review.userId !== args.userId) {
+      await requireExactRole(ctx, args.userId, ["head_steward", "league_manager"]);
     }
 
     // Check if the report is finalized
@@ -585,9 +594,13 @@ export const updateWithSecondSteward = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireExactRole(ctx, args.userId, ["steward", "head_steward", "league_manager"]);
     const review = await ctx.db.get(args.reviewId);
     if (!review) {
       throw new Error("Review not found");
+    }
+    if (review.userId !== args.userId) {
+      await requireExactRole(ctx, args.userId, ["head_steward", "league_manager"]);
     }
 
     const report = await ctx.db.get(review.reportId);
@@ -783,11 +796,15 @@ export const updateWithSecondSteward = mutation({
 });
 
 export const remove = mutation({
-  args: { reviewId: v.id("reviews") },
+  args: { currentUserId: v.id("users"), reviewId: v.id("reviews") },
   handler: async (ctx, args) => {
+    await requireExactRole(ctx, args.currentUserId, ["steward", "head_steward", "league_manager"]);
     const review = await ctx.db.get(args.reviewId);
     if (!review) {
       throw new Error("Review not found");
+    }
+    if (review.userId !== args.currentUserId) {
+      await requireExactRole(ctx, args.currentUserId, ["head_steward", "league_manager"]);
     }
 
     // Check if the report is finalized
@@ -825,7 +842,7 @@ export const getStats = query({
   },
 });
 
-export const migrateSecondStewardToLinkedReviews = mutation({
+export const migrateSecondStewardToLinkedReviews = internalMutation({
   args: {},
   handler: async (ctx) => {
     const reviews = await ctx.db.query("reviews").collect();

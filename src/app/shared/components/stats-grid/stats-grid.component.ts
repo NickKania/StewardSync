@@ -1,4 +1,4 @@
-import { Component, Input } from "@angular/core";
+import { Component, ChangeDetectionStrategy, Input } from "@angular/core";
 import { CommonModule } from "@angular/common";
 
 export interface StatCard {
@@ -9,6 +9,7 @@ export interface StatCard {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: "app-stats-grid",
   standalone: true,
   imports: [CommonModule],

@@ -1,6 +1,6 @@
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 
-export const cleanupDriverClassField = mutation({
+export const cleanupDriverClassField = internalMutation({
   args: {},
   handler: async (ctx) => {
     const drivers = await ctx.db.query("drivers").collect();

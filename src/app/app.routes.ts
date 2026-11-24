@@ -1,8 +1,10 @@
+import { DRIVER_DIRECTORY_ROLES, FINALIZATION_ROLES, REVIEW_ROLES } from "@core/models/route-roles";
 import { Routes } from "@angular/router";
 import { authGuard } from "@core/guards/auth.guard";
 import { roleGuard } from "@core/guards/role.guard";
 import { appRuntimeConfig } from "@core/config/runtime-config";
 import { RouteRedirectComponent } from "@core/components/route-redirect/route-redirect.component";
+import { localTestModeRoutes } from "@core/test-mode/test-mode.entry";
 
 export const routes: Routes = [
   {
@@ -124,7 +126,7 @@ export const routes: Routes = [
     path: "reviews",
     canActivate: [authGuard, roleGuard],
     data: {
-      roles: ["steward", "head_steward", "league_manager"],
+      roles: REVIEW_ROLES,
     },
     children: [
       {
@@ -185,7 +187,7 @@ export const routes: Routes = [
             path: "finalization",
             canActivate: [roleGuard],
             data: {
-              roles: ["head_steward", "league_manager"],
+              roles: FINALIZATION_ROLES,
               fallbackCommands: ["/reviews", "queue"],
             },
             loadComponent: () =>
@@ -207,7 +209,7 @@ export const routes: Routes = [
   {
     path: "finalize",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ["head_steward", "league_manager"] },
+    data: { roles: FINALIZATION_ROLES },
     children: [
       {
         path: "",
@@ -229,7 +231,7 @@ export const routes: Routes = [
   {
     path: "drivers",
     canActivate: [authGuard, roleGuard],
-    data: { roles: ["steward", "head_steward", "event_manager", "league_manager"] },
+    data: { roles: DRIVER_DIRECTORY_ROLES },
     children: [
       {
         path: "",
@@ -257,7 +259,6 @@ export const routes: Routes = [
   {
     path: "events",
     canActivate: [authGuard],
-    data: { roles: ["event_manager", "league_manager"] },
     children: [
       {
         path: "",
@@ -371,6 +372,7 @@ export const routes: Routes = [
       },
     ],
   },
+  ...localTestModeRoutes,
   {
     path: "**",
     redirectTo: "driver-dashboard",

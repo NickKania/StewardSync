@@ -1,22 +1,30 @@
-import { Injectable, signal, OnDestroy } from '@angular/core';
+import { assertInInjectionContext, DestroyRef, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { ConvexClient } from 'convex/browser';
-import { environment } from '../../../environments/environment';
-import { ConvexCustomLogger } from './convex-logger';
+import { ConvexError } from 'convex/values';
 import { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
 import { appRuntimeConfig } from '@core/config/runtime-config';
-import { RuntimeConfigService } from './runtime-config.service';
+import { api } from '@convex/_generated/api';
+import { environment } from '../../../environments/environment';
+import { ConvexCustomLogger } from './convex-logger';
 
-// Import API to avoid circular inference issues
-import * as ConvexApi from '@convex/_generated/api';
+function normalizeConvexError(error: unknown): unknown {
+  if (error instanceof ConvexError && typeof error.data === 'string') {
+    error.message = error.data;
+  }
+  return error;
+}
+
+function rethrowWithApplicationMessage(error: unknown): never {
+  throw normalizeConvexError(error);
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ConvexService implements OnDestroy {
   private client: ConvexClient;
-  private subscriptions: Map<string, () => void> = new Map();
 
-  constructor(private configService: RuntimeConfigService) {
+  constructor() {
     const convexUrl = appRuntimeConfig.convexUrl;
 
     if (!environment.production) {
@@ -29,63 +37,42 @@ export class ConvexService implements OnDestroy {
     });
   }
 
-  get api() {
-    // Type assertion to avoid circular type inference
-    return (ConvexApi as any).api;
+  get api(): typeof api {
+    return api;
   }
 
   async query<T extends FunctionReference<'query'>>(
     func: T,
     args: FunctionArgs<T>
   ): Promise<FunctionReturnType<T>> {
-    return this.client.query(func, args);
+    return this.client.query(func, args).catch(rethrowWithApplicationMessage);
   }
 
   async mutation<T extends FunctionReference<'mutation'>>(
     func: T,
     args: FunctionArgs<T>
   ): Promise<FunctionReturnType<T>> {
-    return this.client.mutation(func, args);
+    return this.client.mutation(func, args).catch(rethrowWithApplicationMessage);
   }
 
   async action<T extends FunctionReference<'action'>>(
     func: T,
     args: FunctionArgs<T>
   ): Promise<FunctionReturnType<T>> {
-    return (this.client as any).action(func, args);
-  }
-
-  subscribe<T extends FunctionReference<'query'>>(
-    func: T,
-    args: FunctionArgs<T>,
-    callback: (result: FunctionReturnType<T>) => void
-  ): () => void {
-    const key = `${func.toString()}-${JSON.stringify(args)}`;
-
-    // Unsubscribe from existing subscription with same key
-    if (this.subscriptions.has(key)) {
-      this.subscriptions.get(key)!();
-    }
-
-    const unsubscribe = this.client.onUpdate(func, args, callback);
-    this.subscriptions.set(key, unsubscribe);
-
-    return () => {
-      unsubscribe();
-      this.subscriptions.delete(key);
-    };
+    return this.client.action(func, args).catch(rethrowWithApplicationMessage);
   }
 
   createReactiveQuery<T extends FunctionReference<'query'>>(
     func: T,
     args: FunctionArgs<T>,
-    onData?: (data: FunctionReturnType<T>) => void
+    onData?: (data: FunctionReturnType<T>) => void,
+    destroyRef = this.getCurrentDestroyRef()
   ) {
     const data = signal<FunctionReturnType<T> | undefined>(undefined);
     const loading = signal(true);
     const error = signal<Error | null>(null);
 
-    const unsubscribe = this.client.onUpdate(
+    const stop = this.client.onUpdate(
       func,
       args,
       (result) => {
@@ -93,21 +80,44 @@ export class ConvexService implements OnDestroy {
         loading.set(false);
         error.set(null);
         onData?.(result);
+      },
+      (queryError) => {
+        const normalized = normalizeConvexError(queryError);
+        error.set(normalized instanceof Error ? normalized : new Error(String(normalized)));
+        loading.set(false);
       }
     );
+
+    let active = true;
+    const unsubscribe = () => {
+      if (!active) return;
+      active = false;
+      stop();
+    };
+    const unregister = destroyRef?.onDestroy(unsubscribe);
 
     return {
       data: data.asReadonly(),
       loading: loading.asReadonly(),
       error: error.asReadonly(),
-      unsubscribe
+      unsubscribe: () => {
+        if (!active) return;
+        unregister?.();
+        unsubscribe();
+      }
     };
   }
 
+  private getCurrentDestroyRef(): DestroyRef | undefined {
+    try {
+      assertInInjectionContext(this.createReactiveQuery);
+    } catch {
+      return undefined;
+    }
+    return inject(DestroyRef);
+  }
+
   ngOnDestroy(): void {
-    // Clean up all subscriptions
-    this.subscriptions.forEach((unsubscribe) => unsubscribe());
-    this.subscriptions.clear();
     this.client.close();
   }
 }

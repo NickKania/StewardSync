@@ -24,6 +24,7 @@ import {
   SelectOption,
 } from "@shared/components/select/select.component";
 import { DriverSeriesPenaltyDetails } from "@core/models";
+import { FINALIZATION_ROLES } from "@core/models/route-roles";
 import { debounceTime, Subject } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { effect } from "@angular/core";
@@ -1312,7 +1313,7 @@ export class DriverUserDetailComponent implements OnInit {
           this.staffNoteDraft(),
         );
 
-        const mutations: Promise<void>[] = [];
+        const mutations: Promise<unknown>[] = [];
 
         mutations.push(
           this.convex.mutation(this.convex.api.users.updateNote, {
@@ -1383,6 +1384,11 @@ export class DriverUserDetailComponent implements OnInit {
     );
 
     this.driver.set(driver);
+    if (!driver) {
+      this.linkedUser.set(null);
+      this.toast.error("Driver not found");
+      return;
+    }
     this.linkedUser.set(driver.linkedUser);
     this.staffNoteDraft.set(driver.note || "");
 
@@ -1550,7 +1556,7 @@ export class DriverUserDetailComponent implements OnInit {
   }
 
   canMarkAsServed(): boolean {
-    return this.authService.hasMinimumRole("head_steward");
+    return this.authService.hasRole(...FINALIZATION_ROLES);
   }
 
   toggleDriverSelection(driverId: string): void {

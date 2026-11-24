@@ -1,7 +1,8 @@
-import { Component, input, ViewChild, ElementRef, AfterViewInit, HostListener, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, ViewChild, ElementRef, AfterViewInit, HostListener, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-truncate-text',
   standalone: true,
   imports: [CommonModule],
@@ -13,11 +14,17 @@ import { CommonModule } from '@angular/common';
       (mouseleave)="onMouseLeave()"
     >
       <span #textElement class="block truncate overflow-hidden" [class]="maxW()">{{ text() }}</span>
-      <div *ngIf="showTooltip()" [ngClass]="getTooltipClasses()">
-        {{ tooltipText() || text() }}
-        <div *ngIf="tooltipPosition() === 'top'" class="absolute left-1/2 -translate-x-1/2 bottom-[-4px] w-2 h-2 bg-gray-900 rotate-45 dark:bg-white"></div>
-        <div *ngIf="tooltipPosition() === 'bottom'" class="absolute left-1/2 -translate-x-1/2 top-[-4px] w-2 h-2 bg-gray-900 rotate-45 dark:bg-white"></div>
-      </div>
+      @if (showTooltip()) {
+        <div [ngClass]="getTooltipClasses()">
+          {{ tooltipText() || text() }}
+          @if (tooltipPosition() === 'top') {
+            <div class="absolute left-1/2 -translate-x-1/2 bottom-[-4px] w-2 h-2 bg-gray-900 rotate-45 dark:bg-white"></div>
+          }
+          @if (tooltipPosition() === 'bottom') {
+            <div class="absolute left-1/2 -translate-x-1/2 top-[-4px] w-2 h-2 bg-gray-900 rotate-45 dark:bg-white"></div>
+          }
+        </div>
+      }
     </div>
   `,
   styles: [

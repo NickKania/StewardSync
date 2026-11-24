@@ -1,14 +1,8 @@
-export const getEffectiveLicensePoints = (
-  penalty: { licensePoints?: number; selfReportLicensePointReduction?: number } | null | undefined,
-  isSelfReport: boolean | null | undefined,
-): number => {
-  const basePoints = penalty?.licensePoints ?? 0;
-  const reduction = isSelfReport
-    ? (penalty?.selfReportLicensePointReduction ?? 0)
-    : 0;
+import type { Doc, Id } from "../_generated/dataModel";
+import type { QueryCtx, MutationCtx } from "../_generated/server";
+import { getEffectiveLicensePoints } from "./licensePoints";
 
-  return Math.max(0, basePoints - reduction);
-};
+export { getEffectiveLicensePoints } from "./licensePoints";
 
 const comparePenaltySeverity = (
   left: { threshold: number; assignedAt?: number },
@@ -29,12 +23,12 @@ export const isSeriesPenaltyThresholdMet = (
 ): boolean => totalPoints >= threshold;
 
 export const getSeriesLicensePointTotals = async (
-  ctx: any,
-  seriesId: unknown,
+  ctx: QueryCtx,
+  seriesId: Id<"series">,
 ): Promise<Map<string, number>> => {
   const events = await ctx.db
     .query("events")
-    .withIndex("by_series", (q: any) => q.eq("seriesId", seriesId))
+    .withIndex("by_series", (q) => q.eq("seriesId", seriesId))
     .collect();
 
   const pointTotals = new Map<string, number>();
@@ -42,11 +36,11 @@ export const getSeriesLicensePointTotals = async (
   for (const event of events) {
     const reports = await ctx.db
       .query("reports")
-      .withIndex("by_event", (q: any) => q.eq("eventId", event._id))
+      .withIndex("by_event", (q) => q.eq("eventId", event._id))
       .collect();
 
     const finalizedReports = reports.filter(
-      (report: any) => report.status === "finalized",
+      (report) => report.status === "finalized",
     );
 
     for (const report of finalizedReports) {
@@ -64,9 +58,10 @@ export const getSeriesLicensePointTotals = async (
         continue;
       }
 
-      const penalty = report.appliedPenalty
-        ? await ctx.db.get(report.appliedPenalty)
+      const penaltyId = report.appliedPenalty
+        ? ctx.db.normalizeId("penalties", report.appliedPenalty)
         : null;
+      const penalty = penaltyId ? await ctx.db.get(penaltyId) : null;
       const points = getEffectiveLicensePoints(penalty, report.isSelfReport);
       const driverKey = driverId.toString();
       pointTotals.set(driverKey, (pointTotals.get(driverKey) ?? 0) + points);
@@ -77,12 +72,12 @@ export const getSeriesLicensePointTotals = async (
 };
 
 export const recalculateSeriesLicensePoints = async (
-  ctx: any,
-  seriesId: unknown,
+  ctx: MutationCtx,
+  seriesId: Id<"series">,
 ): Promise<void> => {
   const drivers = await ctx.db
     .query("drivers")
-    .withIndex("by_championship", (q: any) =>
+    .withIndex("by_championship", (q) =>
       q.eq("championshipId", seriesId),
     )
     .collect();
@@ -91,7 +86,7 @@ export const recalculateSeriesLicensePoints = async (
 
   const seriesPenalties = await ctx.db
     .query("seriesPenalties")
-    .withIndex("by_series", (q: any) => q.eq("seriesId", seriesId))
+    .withIndex("by_series", (q) => q.eq("seriesId", seriesId))
     .collect();
 
   for (const driver of drivers) {
@@ -109,12 +104,12 @@ export const recalculateSeriesLicensePoints = async (
 
     const existingDriverSeriesPenalties = await ctx.db
       .query("driverSeriesPenalties")
-      .withIndex("by_driver_and_series", (q: any) =>
+      .withIndex("by_driver_and_series", (q) =>
         q.eq("driverId", driver._id).eq("seriesId", seriesId),
       )
       .collect();
 
-    const existingBySeriesPenalty = new Map<string, any>();
+    const existingBySeriesPenalty = new Map<string, Doc<"driverSeriesPenalties">>();
     for (const dsp of existingDriverSeriesPenalties) {
       const key = dsp.seriesPenaltyId.toString();
       const existing = existingBySeriesPenalty.get(key);
@@ -138,13 +133,13 @@ export const recalculateSeriesLicensePoints = async (
     for (const seriesPenalty of seriesPenalties) {
       const thresholds = await ctx.db
         .query("seriesPenaltyThresholds")
-        .withIndex("by_series_penalty", (q: any) =>
+        .withIndex("by_series_penalty", (q) =>
           q.eq("seriesPenaltyId", seriesPenalty._id),
         )
         .collect();
 
       const matchedThresholds = thresholds
-        .filter((threshold: any) => {
+        .filter((threshold) => {
           const appliesToDriver =
             driver.driverClassId &&
             threshold.driverClassIds?.some((driverClassId: unknown) =>
@@ -155,7 +150,7 @@ export const recalculateSeriesLicensePoints = async (
             isSeriesPenaltyThresholdMet(totalPoints, threshold.threshold)
           );
         })
-        .sort((a: any, b: any) =>
+        .sort((a, b) =>
           comparePenaltySeverity(
             { threshold: a.threshold },
             { threshold: b.threshold },

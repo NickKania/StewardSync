@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
@@ -24,7 +24,7 @@ export const getByUserId = query({
   },
 });
 
-export const create = mutation({
+export const create = internalMutation({
   args: {
     steamId: v.string(),
     userId: v.id("users"),
@@ -50,7 +50,7 @@ export const create = mutation({
   },
 });
 
-export const deleteBySteamId = mutation({
+export const deleteBySteamId = internalMutation({
   args: { steamId: v.string() },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -64,7 +64,7 @@ export const deleteBySteamId = mutation({
   },
 });
 
-export const updateNote = mutation({
+export const updateNote = internalMutation({
   args: {
     steamId: v.string(),
     note: v.string(),
@@ -83,7 +83,7 @@ export const updateNote = mutation({
   },
 });
 
-export const toggleBan = mutation({
+export const toggleBan = internalMutation({
   args: {
     steamId: v.string(),
   },

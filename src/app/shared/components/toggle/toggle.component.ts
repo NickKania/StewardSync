@@ -1,8 +1,9 @@
-import { Component, Input, forwardRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, inject, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-toggle',
   standalone: true,
   imports: [CommonModule, FormsModule],
@@ -61,6 +62,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/f
   `]
 })
 export class ToggleComponent implements ControlValueAccessor {
+  private readonly changeDetector = inject(ChangeDetectorRef);
   @Input() label = '';
   @Input() hint = '';
   @Input() required = false;
@@ -72,6 +74,7 @@ export class ToggleComponent implements ControlValueAccessor {
 
   writeValue(value: boolean): void {
     this.value = value ?? false;
+    this.changeDetector.markForCheck();
   }
 
   registerOnChange(fn: (value: boolean) => void): void {
@@ -84,6 +87,7 @@ export class ToggleComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
+    this.changeDetector.markForCheck();
   }
 
   onToggle(event: Event): void {

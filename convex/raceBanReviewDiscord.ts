@@ -1,10 +1,10 @@
-"use node";
-
-import { internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalAction, type ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
-import type { ThreadChannel } from "discord.js";
 import {
-  withDiscordClient,
+  addThreadMember,
+  sendDiscordMessage,
+  type DiscordThread,
   createPrivateThread,
   fetchThreadIfAvailable,
   closeThread,
@@ -14,22 +14,6 @@ import {
 import { Id } from "./_generated/dataModel";
 
 const getEnv = (key: string): string | undefined => process.env[key];
-
-interface MeetingThreadArgs {
-  id: Id<"raceBanReviews">;
-  expectedMeetingStartAt: number;
-}
-
-interface CloseMeetingThreadArgs {
-  id: Id<"raceBanReviews">;
-}
-
-const GET_MEETING_CONTEXT_FN = "raceBanReviews:getMeetingNotificationContext" as any;
-const GET_THREAD_CLOSE_CONTEXT_FN = "raceBanReviews:getMeetingThreadCloseContext" as any;
-const RECORD_MEETING_THREAD_RESULT_FN =
-  "raceBanReviews:recordMeetingThreadNotificationResult" as any;
-const RECORD_MEETING_REMINDER_RESULT_FN =
-  "raceBanReviews:recordMeetingReminderResult" as any;
 
 type MeetingNotificationContext = {
   reviewId: string;
@@ -50,16 +34,6 @@ type MeetingThreadCloseContext = {
   reviewId: string;
   meetingThreadId: string | null;
   status: "open" | "scheduled" | "completed";
-};
-
-const stepError = (
-  step: string,
-  error: unknown,
-  meta?: Record<string, unknown>,
-) => {
-  const base = toErrorMessage(error, "Unknown error");
-  const metaText = meta ? ` | meta=${JSON.stringify(meta)}` : "";
-  return new Error(`[${step}] ${base}${metaText}`);
 };
 
 const toErrorMessage = (error: unknown, fallback: string) => {
@@ -95,10 +69,10 @@ const formatDiscordMeetingWindow = (context: MeetingNotificationContext) => {
 };
 
 const createMeetingThread = async (
-  client: any,
   context: MeetingNotificationContext,
   openingMessage: string,
-): Promise<ThreadChannel> => {
+  onThreadCreated?: (threadId: string) => void,
+): Promise<DiscordThread> => {
   const parentChannelId = getEnv("DISCORD_RACE_REVIEW_CHANNEL_ID");
   if (!parentChannelId) {
     throw new Error("DISCORD_RACE_REVIEW_CHANNEL_ID is not configured.");
@@ -117,37 +91,48 @@ const createMeetingThread = async (
     participants.push(context.schedulerDiscordId);
   }
 
-  const thread = await createPrivateThread(client, {
+  const thread = await createPrivateThread({
     name: threadName,
     parentChannelId,
     participantDiscordIds: participants,
     reason: "Race review meeting scheduled",
+    onThreadCreated: (created) => onThreadCreated?.(created.id),
   });
 
-  await thread.send({ content: openingMessage });
+  await sendDiscordMessage(thread.id, openingMessage, participants);
   return thread;
 };
 
 const ensureMeetingThread = async (
-  client: any,
   context: MeetingNotificationContext,
   openingMessage: string,
+  onThreadCreated?: (threadId: string) => void,
 ) => {
-  const existingThread = await fetchThreadIfAvailable(client, context.meetingThreadId);
+  const existingThread = await fetchThreadIfAvailable(context.meetingThreadId);
   if (existingThread) {
+    const participants = Array.from(
+      new Set(
+        [context.requesterDiscordId, context.schedulerDiscordId].filter(
+          (id): id is string => Boolean(id),
+        ),
+      ),
+    );
+    for (const discordId of participants) {
+      await addThreadMember(existingThread.id, discordId);
+    }
     return { thread: existingThread, created: false };
   }
 
-  const createdThread = await createMeetingThread(client, context, openingMessage);
+  const createdThread = await createMeetingThread(context, openingMessage, onThreadCreated);
   return { thread: createdThread, created: true };
 };
 
 const loadContext = async (
-  ctx: any,
-  id: string,
+  ctx: ActionCtx,
+  id: Id<"raceBanReviews">,
   expectedMeetingStartAt: number,
 ): Promise<MeetingNotificationContext | null> => {
-  const context = await ctx.runQuery(GET_MEETING_CONTEXT_FN, {
+  const context = await ctx.runQuery(internal.raceBanReviews.getMeetingNotificationContext, {
     id,
   });
   if (!context || context.selectedMeetingStartAt !== expectedMeetingStartAt) {
@@ -157,10 +142,10 @@ const loadContext = async (
 };
 
 const loadCloseContext = async (
-  ctx: any,
-  id: string,
+  ctx: ActionCtx,
+  id: Id<"raceBanReviews">,
 ): Promise<MeetingThreadCloseContext | null> => {
-  const context = await ctx.runQuery(GET_THREAD_CLOSE_CONTEXT_FN, { id });
+  const context = await ctx.runQuery(internal.raceBanReviews.getMeetingThreadCloseContext, { id });
   if (!context || context.status !== "completed") {
     return null;
   }
@@ -172,7 +157,7 @@ export const createOrUpdateMeetingThreadPost = internalAction({
     id: v.id("raceBanReviews"),
     expectedMeetingStartAt: v.number(),
   },
-  handler: async (ctx, args: MeetingThreadArgs) => {
+  handler: async (ctx, args) => {
     let threadId: string | undefined;
     try {
       const context = await loadContext(ctx, args.id, args.expectedMeetingStartAt);
@@ -185,15 +170,14 @@ export const createOrUpdateMeetingThreadPost = internalAction({
       const content =
         `${mentions} Meeting accepted. ${context.schedulerName} will meet with ${context.requesterName} at ${meetingTime}.`;
 
-      threadId = await withDiscordClient(async (client) => {
-        const { thread, created } = await ensureMeetingThread(client, context, content);
-        if (!created) {
-          await thread.send({ content });
-        }
-        return thread.id;
+      const participants = [context.requesterDiscordId!, context.schedulerDiscordId!];
+      const { thread, created } = await ensureMeetingThread(context, content, (id) => {
+        threadId = id;
       });
+      threadId = thread.id;
+      if (!created) await sendDiscordMessage(threadId, content, participants);
 
-      await ctx.runMutation(RECORD_MEETING_THREAD_RESULT_FN, {
+      await ctx.runMutation(internal.raceBanReviews.recordMeetingThreadNotificationResult, {
         id: args.id,
         expectedMeetingStartAt: args.expectedMeetingStartAt,
         sent: true,
@@ -207,7 +191,7 @@ export const createOrUpdateMeetingThreadPost = internalAction({
         "Failed to create race review meeting notification thread.",
       );
 
-      await ctx.runMutation(RECORD_MEETING_THREAD_RESULT_FN, {
+      await ctx.runMutation(internal.raceBanReviews.recordMeetingThreadNotificationResult, {
         id: args.id,
         expectedMeetingStartAt: args.expectedMeetingStartAt,
         sent: false,
@@ -224,18 +208,14 @@ export const closeMeetingThread = internalAction({
   args: {
     id: v.id("raceBanReviews"),
   },
-  handler: async (ctx, args: CloseMeetingThreadArgs) => {
+  handler: async (ctx, args) => {
     try {
       const context = await loadCloseContext(ctx, args.id);
       if (!context || !context.meetingThreadId) {
         return { skipped: true };
       }
 
-      const result = await withDiscordClient(async (client) => {
-        return await closeThread(client, context.meetingThreadId!, "Race review completed");
-      });
-
-      return result;
+      return await closeThread(context.meetingThreadId, "Race review completed");
     } catch (error: unknown) {
       const message = toErrorMessage(error, "Failed to close race review meeting thread.");
       return { sent: false, error: message };
@@ -248,7 +228,7 @@ export const sendMeetingReminder = internalAction({
     id: v.id("raceBanReviews"),
     expectedMeetingStartAt: v.number(),
   },
-  handler: async (ctx, args: MeetingThreadArgs) => {
+  handler: async (ctx, args) => {
     let threadId: string | undefined;
     try {
       const context = await loadContext(ctx, args.id, args.expectedMeetingStartAt);
@@ -264,17 +244,18 @@ export const sendMeetingReminder = internalAction({
       const reminderMessage =
         `${mentions} Reminder: your race review meeting ${startsSoonText} at ${meetingTime}.`;
 
-      threadId = await withDiscordClient(async (client) => {
-        const { thread } = await ensureMeetingThread(
-          client,
-          context,
-          `${mentions} Race review meeting thread created for ${meetingTime}.`,
-        );
-        await thread.send({ content: reminderMessage });
-        return thread.id;
-      });
+      const participants = [context.requesterDiscordId!, context.schedulerDiscordId!];
+      const { thread } = await ensureMeetingThread(
+        context,
+        `${mentions} Race review meeting thread created for ${meetingTime}.`,
+        (id) => {
+          threadId = id;
+        },
+      );
+      threadId = thread.id;
+      await sendDiscordMessage(threadId, reminderMessage, participants);
 
-      await ctx.runMutation(RECORD_MEETING_REMINDER_RESULT_FN, {
+      await ctx.runMutation(internal.raceBanReviews.recordMeetingReminderResult, {
         id: args.id,
         expectedMeetingStartAt: args.expectedMeetingStartAt,
         sent: true,
@@ -285,7 +266,7 @@ export const sendMeetingReminder = internalAction({
     } catch (error: unknown) {
       const message = toErrorMessage(error, "Failed to send race review reminder.");
 
-      await ctx.runMutation(RECORD_MEETING_REMINDER_RESULT_FN, {
+      await ctx.runMutation(internal.raceBanReviews.recordMeetingReminderResult, {
         id: args.id,
         expectedMeetingStartAt: args.expectedMeetingStartAt,
         sent: false,

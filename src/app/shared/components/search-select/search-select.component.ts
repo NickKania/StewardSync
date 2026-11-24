@@ -1,5 +1,8 @@
 import {
   Component,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  inject,
   Input,
   forwardRef,
   signal,
@@ -12,6 +15,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from "@angular/f
 import { SelectOption } from "../select/select.component";
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: "app-search-select",
   standalone: true,
   imports: [CommonModule, FormsModule],
@@ -103,6 +107,7 @@ import { SelectOption } from "../select/select.component";
   `,
 })
 export class SearchSelectComponent implements ControlValueAccessor {
+  private readonly changeDetector = inject(ChangeDetectorRef);
   @Input() id = `search-select-${Math.random().toString(36).substr(2, 9)}`;
   @Input() label = "";
   @Input() placeholder = "";
@@ -153,6 +158,7 @@ export class SearchSelectComponent implements ControlValueAccessor {
     } else {
       this.searchTerm = "";
     }
+    this.changeDetector.markForCheck();
   }
 
   private syncSearchTermWithValue(): void {
@@ -179,6 +185,7 @@ export class SearchSelectComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
+    this.changeDetector.markForCheck();
   }
 
   selectOption(option: SelectOption): void {
@@ -209,6 +216,7 @@ export class SearchSelectComponent implements ControlValueAccessor {
 
   onBlur(): void {
     setTimeout(() => {
+      this.changeDetector.markForCheck();
       this.isOpen.set(false);
       this.onTouched();
 

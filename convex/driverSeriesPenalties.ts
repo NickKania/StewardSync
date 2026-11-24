@@ -51,7 +51,7 @@ const comparePenaltySeverity = (
   return (right.assignedAt ?? 0) - (left.assignedAt ?? 0);
 };
 
-export const assignPenalty = mutation({
+export const assignPenalty = internalMutation({
   args: {
     driverId: v.id("drivers"),
     seriesId: v.id("series"),
@@ -135,7 +135,7 @@ export const markAsServed = mutation({
   },
 });
 
-export const checkAndAssignThresholds = mutation({
+export const checkAndAssignThresholds = internalMutation({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
     const events = await ctx.db
@@ -489,10 +489,10 @@ export const getDriverPenaltyDetails = query({
           servedBy: dsp.servedBy,
           servedByUserName: (servedByUser as any)?.name ?? null,
           status: isServedButPendingReview
-            ? "served_pending_review"
+            ? ("served_pending_review" as const)
             : dsp.isServed
-              ? "served"
-              : "active",
+              ? ("served" as const)
+              : ("active" as const),
         };
       }),
     );

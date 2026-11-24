@@ -72,6 +72,34 @@
                 {
                   "replace": "src/environments/environment.ts",
                   "with": "src/environments/environment.local.ts"
+                },
+                {
+                  "replace": "src/app/core/test-mode/test-mode.entry.ts",
+                  "with": "src/app/core/test-mode/test-mode.entry.local.ts"
+                }
+              ]
+            },
+            "test-mode": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "assets": [
+                "src/favicon.ico",
+                "src/assets",
+                {
+                  "glob": "runtime-config.js",
+                  "input": ".convex/test-mode",
+                  "output": "/"
+                }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.local.ts"
+                },
+                {
+                  "replace": "src/app/core/test-mode/test-mode.entry.ts",
+                  "with": "src/app/core/test-mode/test-mode.entry.local.ts"
                 }
               ]
             },
@@ -101,26 +129,14 @@
             "local": {
               "buildTarget": "steward-sync:build:local"
             },
+            "test-mode": {
+              "buildTarget": "steward-sync:build:test-mode"
+            },
             "staging": {
               "buildTarget": "steward-sync:build:staging"
             }
           },
           "defaultConfiguration": "development"
-        },
-        "test": {
-          "builder": "@angular-devkit/build-angular:karma",
-          "options": {
-            "polyfills": ["zone.js", "zone.js/testing"],
-            "tsConfig": "tsconfig.spec.json",
-            "assets": [
-              "src/favicon.ico",
-              "src/assets"
-            ],
-            "styles": [
-              "src/styles.css"
-            ],
-            "scripts": []
-          }
         }
       }
     }

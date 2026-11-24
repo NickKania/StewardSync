@@ -1,4 +1,4 @@
-import { Component, input, output, ElementRef, ViewChild, inject, AfterViewInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, HostListener, input, output, ElementRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TruncateTextComponent } from '../truncate-text/truncate-text.component';
@@ -10,6 +10,7 @@ export interface MultiSelectOption {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-multi-select',
   standalone: true,
   imports: [CommonModule, FormsModule, TruncateTextComponent],
@@ -43,7 +44,7 @@ export interface MultiSelectOption {
             <label class="flex items-center gap-2 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer">
               <input
                 type="checkbox"
-                [(ngModel)]="allSelected"
+                [ngModel]="allSelected()"
                 (ngModelChange)="toggleAll($event)"
                 class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600"
               />
@@ -74,11 +75,10 @@ export interface MultiSelectOption {
   `
 })
 export class MultiSelectComponent {
-  @ViewChild('dropdownContainer', { static: false }) dropdownContainer!: ElementRef;
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   id = `multi-select-${Math.random().toString(36).substr(2, 9)}`;
   isOpen = false;
-  allSelected = false;
 
   options = input.required<MultiSelectOption[]>();
   label = input('');
@@ -88,6 +88,11 @@ export class MultiSelectComponent {
   error = input('');
 
   selectionChange = output<string[]>();
+
+  allSelected() {
+    const opts = this.options();
+    return opts.length > 0 && opts.every((opt) => opt.selected);
+  }
 
   selectedCount() {
     return this.options().filter((opt) => opt.selected).length;
@@ -116,7 +121,6 @@ export class MultiSelectComponent {
   }
 
   onOptionChange() {
-    this.allSelected = this.options().every((opt) => opt.selected);
     this.emitSelection();
   }
 
@@ -137,14 +141,12 @@ export class MultiSelectComponent {
     return `${base} ${errorClass} ${disabledClass}`;
   }
 
+  @HostListener('document:click', ['$event'])
   closeDropdown(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.relative')) {
+    const target = event.target as Node | null;
+    if (target && !this.elementRef.nativeElement.contains(target)) {
       this.isOpen = false;
     }
   }
 
-  constructor() {
-    document.addEventListener('click', this.closeDropdown.bind(this));
-  }
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { getFunctionName, type FunctionReference } from "convex/server";
 import { forceCompleteForPenalty, markCompleted } from "./raceBanReviews";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
@@ -64,8 +65,8 @@ function fixture(options: {
     },
     scheduler: {
       cancel: async (id: string) => { canceled.push(id); },
-      runAfter: async (_delay: number, name: string, args: Record<string, unknown>) => {
-        scheduled.push({ name, args });
+      runAfter: async (_delay: number, fn: string | FunctionReference<any, any>, args: Record<string, unknown>) => {
+        scheduled.push({ name: typeof fn === "string" ? fn : getFunctionName(fn), args });
       },
     },
   } as unknown as MutationCtx;

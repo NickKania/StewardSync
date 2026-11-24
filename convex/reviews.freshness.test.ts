@@ -110,6 +110,15 @@ const baseReport = {
 };
 
 const seedBase = (reviews: any[]) => ({
+  users: [
+    { _id: "stewardA", roleId: "stewardRole" },
+    { _id: "stewardB", roleId: "stewardRole" },
+    { _id: "headSteward", roleId: "headStewardRole" },
+  ],
+  roles: [
+    { _id: "stewardRole", name: "steward" },
+    { _id: "headStewardRole", name: "head_steward" },
+  ],
   reports: [{ ...baseReport }],
   reviews,
   drivers: [
@@ -234,7 +243,7 @@ describe("review provenance after a reported-driver change", () => {
     for (const reviewId of ["revA", "revB"]) {
       await updateHandler(ctx, {
         reviewId,
-        userId: "stewardA",
+        userId: "headSteward",
         candidateForStandardization: true,
         isAdjusted: false,
       });

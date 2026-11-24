@@ -34,7 +34,6 @@ Edit `.env` and set:
 - `PUBLIC_CONVEX_URL` — Your Convex deployment URL (cloud or self-hosted)
 - `PUBLIC_ENABLE_DEV_LOGIN` — Set to `true` for development, `false` for production
 - `DISCORD_CLIENT_ID` — Discord application client ID
-- `DISCORD_CLIENT_SECRET` — Discord application client secret
 
 ### 3. Set up Convex
 
@@ -61,13 +60,17 @@ This starts both the Convex dev server and Angular dev server concurrently.
 - App: `http://localhost:4200`
 - Convex Dashboard: Available via `bun x convex dashboard`
 
+## Local Test Mode
+
+On Linux, macOS, or WSL, run `bun run test-mode:local` to start a local Convex backend and Angular. Open the loopback URL printed by the launcher to switch test identities and stage racing scenarios. Use `bun run test-mode:backend` for CLI automation. [Local Test Mode guide](docs/LOCAL_TEST_MODE.md)
+
 ## Useful Commands
 
 ```bash
 bun run dev              # Start Convex + Angular dev servers
 bun run start            # Start Angular only
 bun run start:local      # Start Angular with local Convex config
-bun run build            # Production build
+bun run build:prod       # Production build (generates runtime-config.js)
 bun run test             # Run unit tests
 bun run convex:deploy    # Deploy Convex functions
 ```
@@ -115,7 +118,7 @@ StewardSync/
 
 ### Vercel (Frontend)
 
-See [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md) for deploying the Angular frontend to Vercel.
+See [docs/vercel-deployment.md](docs/vercel-deployment.md) for deploying the Angular frontend to Vercel.
 
 ### Convex (Backend)
 

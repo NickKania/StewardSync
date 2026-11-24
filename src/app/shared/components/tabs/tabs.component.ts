@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from "@angular/core";
+import { Component, ChangeDetectionStrategy, Input, Output, EventEmitter } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterLink } from "@angular/router";
 
@@ -12,6 +12,7 @@ export interface Tab {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: "app-tabs",
   standalone: true,
   host: { class: "block min-w-0" },

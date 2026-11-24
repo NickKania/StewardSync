@@ -6,6 +6,7 @@ import { ToastService } from "@core/services/toast.service";
 import { ThemeService } from "@core/services/theme.service";
 import { ButtonComponent } from "@shared/components/button/button.component";
 import { appRuntimeConfig } from "@core/config/runtime-config";
+import { IS_LOCAL_TEST_MODE } from "@core/test-mode/test-mode.entry";
 
 @Component({
   selector: "app-login",
@@ -108,6 +109,17 @@ import { appRuntimeConfig } from "@core/config/runtime-config";
               </a>
             </div>
           }
+          @if (showLocalTestMode) {
+            <div class="mt-4 text-center">
+              <a
+                routerLink="/test-mode"
+                data-testid="test-mode-link"
+                class="text-sm font-medium text-primary-700 hover:underline dark:text-primary-300"
+              >
+                Local Test Mode
+              </a>
+            </div>
+          }
         </div>
 
         <!-- Info cards -->
@@ -134,6 +146,7 @@ export class LoginComponent {
   private toastService = inject(ToastService);
   public readonly themeService = inject(ThemeService);
   protected readonly showDevLogin = appRuntimeConfig.enableDevLogin;
+  protected readonly showLocalTestMode = IS_LOCAL_TEST_MODE;
 
   isLoading = false;
 
@@ -158,8 +171,8 @@ export class LoginComponent {
     try {
       await this.authService.mockLogin();
       this.toastService.success("Signed in as demo user");
-    } catch (error: any) {
-      const errorMessage = error?.message || "Failed to sign in";
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to sign in";
       this.toastService.error(errorMessage);
       console.error("Login error:", error);
     } finally {

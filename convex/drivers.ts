@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { UserFacingError } from "./lib/errors";
@@ -526,6 +526,7 @@ export const getUserProfile = query({
 
 export const create = mutation({
   args: {
+    currentUserId: v.id("users"),
     driverNumber: v.optional(v.number()),
     driverName: v.string(),
     username: v.optional(v.string()),
@@ -535,6 +536,8 @@ export const create = mutation({
     championshipId: v.optional(v.id("series")),
   },
   handler: async (ctx, args) => {
+    const { currentUserId, ...driver } = args;
+    await requireRole(ctx, currentUserId, ["event_manager", "league_manager"]);
     if (args.driverNumber !== undefined) {
       const existing = await ctx.db
         .query("drivers")
@@ -552,7 +555,7 @@ export const create = mutation({
     const officialName = formatDriverName(args.driverName);
 
     const driverId = await ctx.db.insert("drivers", {
-      ...args,
+      ...driver,
       officialName,
       accumulatedLicensePoints: 0,
       isActive: true,
@@ -565,6 +568,7 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
+    currentUserId: v.id("users"),
     driverId: v.id("drivers"),
     driverNumber: v.optional(v.number()),
     driverName: v.optional(v.string()),
@@ -576,7 +580,8 @@ export const update = mutation({
     championshipId: v.optional(v.id("series")),
   },
   handler: async (ctx, args) => {
-    const { driverId, ...updates } = args;
+    const { currentUserId, driverId, ...updates } = args;
+    await requireRole(ctx, currentUserId, ["event_manager", "league_manager"]);
 
     // If updating driver number, check it's not taken
     if (updates.driverNumber !== undefined) {
@@ -616,28 +621,7 @@ export const updateOfficialName = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Get the current user to check their role
-    const currentUser = await ctx.db.get(args.userId);
-
-    if (!currentUser) {
-      throw new UserFacingError("User not found");
-    }
-
-    // Get the user's role
-    const userRole = await ctx.db.get(currentUser.roleId);
-    if (!userRole) {
-      throw new UserFacingError("User role not found");
-    }
-
-    // Only event_manager and league_manager can update official names
-    if (
-      userRole.name !== "event_manager" &&
-      userRole.name !== "league_manager"
-    ) {
-      throw new UserFacingError(
-        "Only event managers can update official names",
-      );
-    }
+    await requireRole(ctx, args.userId, ["event_manager", "league_manager"]);
 
     // Check if driver exists
     const driver = await ctx.db.get(args.driverId);
@@ -705,7 +689,7 @@ export const getDriverStats = query({
   },
 });
 
-export const importOrUpdateDriver = mutation({
+export const importOrUpdateDriver = internalMutation({
   args: {
     championshipId: v.id("series"),
     driverNumber: v.optional(v.number()),
@@ -819,7 +803,7 @@ export const importOrUpdateDriver = mutation({
   },
 });
 
-export const markInactiveDrivers = mutation({
+export const markInactiveDrivers = internalMutation({
   args: {
     championshipId: v.id("series"),
     activeDriverIds: v.array(v.id("drivers")),
@@ -897,18 +881,10 @@ export const updateDriverClass = mutation({
     newLicensePoints: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.userId, ["event_manager", "league_manager"]);
+
     const driver = await ctx.db.get(args.driverId);
     if (!driver) throw new UserFacingError("Driver not found");
-
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new UserFacingError("User not found");
-
-    const role = await ctx.db.get(user.roleId);
-    if (!role) throw new UserFacingError("User role not found");
-
-    if (!["event_manager", "league_manager"].includes(role.name)) {
-      throw new UserFacingError("Unauthorized to update driver class");
-    }
 
     const updates: any = {
       driverClassId: args.newDriverClassId,
@@ -955,18 +931,10 @@ export const updateUserAssociation = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.userId, ["event_manager", "league_manager"]);
+
     const driver = await ctx.db.get(args.driverId);
     if (!driver) throw new UserFacingError("Driver not found");
-
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new UserFacingError("User not found");
-
-    const role = await ctx.db.get(user.roleId);
-    if (!role) throw new UserFacingError("User role not found");
-
-    if (!["event_manager", "league_manager"].includes(role.name)) {
-      throw new UserFacingError("Unauthorized to update user association");
-    }
 
     if (driver.steamId && driver.userId) {
       const oldMapping = await ctx.db

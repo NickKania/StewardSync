@@ -5,9 +5,13 @@ import { User, RoleName } from "@core/models";
 import { Id } from "@convex/_generated/dataModel";
 import { environment } from "../../../environments/environment";
 import { appRuntimeConfig } from '@core/config/runtime-config';
-import { DISCORD_SESSION_KEY, readDiscordAccessToken, storeDiscordSession } from '@core/utils/discord-session';
-
-declare const google: any;
+import {
+  getDiscordSessionKey,
+  migrateLegacyDiscordSession,
+  normalizeDeploymentScope,
+  readDiscordAccessToken,
+  storeDiscordSession,
+} from '@core/utils/discord-session';
 
 const STORAGE_KEY = "steward_sync_user";
 const DISCORD_STATE_KEY = "steward_sync_discord_state";
@@ -17,6 +21,34 @@ const DISCORD_AUTH_ERROR = "discord-auth-error";
 const DISCORD_AUTH_RESULT_KEY = "steward_sync_discord_auth_result";
 const AUTH_DEBUG = !environment.production;
 
+export function getUserStorageKey(convexUrl: string | undefined = appRuntimeConfig.convexUrl): string {
+  const scope = normalizeDeploymentScope(convexUrl);
+  return scope ? `${STORAGE_KEY}:${scope}` : STORAGE_KEY;
+}
+
+interface SessionSnapshot {
+  user: User | null;
+  userId: Id<"users"> | null;
+  userStorageKey: string;
+  discordSessionKey: string;
+  storedUserId: string | null;
+  discordSession: string | null;
+}
+
+interface DiscordTokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type?: string;
+  scope?: string;
+}
+
+interface DiscordProfile {
+  id: string;
+  username: string;
+  global_name?: string | null;
+  avatar?: string | null;
+}
+
 @Injectable({
   providedIn: "root",
 })
@@ -24,12 +56,18 @@ export class AuthService {
   private convex = inject(ConvexService);
   private router = inject(Router);
 
+  private initialization?: Promise<void>;
+
   private _user = signal<User | null>(null);
   private _isLoading = signal(true);
   private _userId = signal<Id<"users"> | null>(null);
+  private readonly _sessionVersion = signal(0);
+  private _authEpoch = 0;
+  private _externalAuthEpoch = 0;
 
   readonly user = this._user.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
+  readonly sessionVersion = this._sessionVersion.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
   readonly userRole = computed(
     () => this._user()?.role?.name as RoleName | undefined,
@@ -61,10 +99,43 @@ export class AuthService {
     }
   }
 
-  async initialize(): Promise<void> {
-    // Try to restore session from localStorage
-    const storedUserId = localStorage.getItem(STORAGE_KEY);
-    if (!storedUserId) sessionStorage.removeItem(DISCORD_SESSION_KEY);
+  initialize(): Promise<void> {
+    return this.whenInitialized();
+  }
+
+  whenInitialized(): Promise<void> {
+    if (!this.initialization) {
+      this.initialization = this.restoreSession()
+        .catch(() => {
+          this.initialization = undefined;
+        })
+        .finally(() => {
+          this._isLoading.set(false);
+        });
+    }
+    return this.initialization;
+  }
+
+  private userStorageKey(): string {
+    return getUserStorageKey(appRuntimeConfig.convexUrl);
+  }
+
+  private discordSessionKey(): string {
+    return getDiscordSessionKey(appRuntimeConfig.convexUrl);
+  }
+
+  private async restoreSession(): Promise<void> {
+    const scopedKey = this.userStorageKey();
+    const sessionKey = this.discordSessionKey();
+    const selectedUserId = () => localStorage.getItem(scopedKey) ?? (
+      scopedKey !== STORAGE_KEY && !localStorage.getItem(`${scopedKey}:signed-out`)
+        ? localStorage.getItem(STORAGE_KEY)
+        : null
+    );
+    const epoch = this._authEpoch;
+    const storedUserId = selectedUserId();
+    const fromLegacyKey = storedUserId !== null && !localStorage.getItem(scopedKey);
+    if (!storedUserId) sessionStorage.removeItem(sessionKey);
 
     if (storedUserId) {
       try {
@@ -73,21 +144,30 @@ export class AuthService {
           { userId: storedUserId as Id<"users"> },
         );
 
+        if (epoch !== this._authEpoch || selectedUserId() !== storedUserId) return;
+
         if (user) {
+          this._authEpoch += 1;
           this._user.set(user as User);
           this._userId.set(storedUserId as Id<"users">);
+          if (fromLegacyKey) {
+            localStorage.setItem(scopedKey, storedUserId);
+            if (localStorage.getItem(STORAGE_KEY) === storedUserId) localStorage.removeItem(STORAGE_KEY);
+          }
+          // A different tab may have migrated the shared user ID before this tab restores its credential.
+          migrateLegacyDiscordSession(sessionStorage, storedUserId, sessionKey);
         } else {
-          sessionStorage.removeItem(DISCORD_SESSION_KEY);
-          localStorage.removeItem(STORAGE_KEY);
+          this._authEpoch += 1;
+          sessionStorage.removeItem(sessionKey);
+          if (!fromLegacyKey) {
+            localStorage.removeItem(scopedKey);
+          }
         }
       } catch (error) {
         console.error("Failed to restore session:", error);
-        sessionStorage.removeItem(DISCORD_SESSION_KEY);
-        localStorage.removeItem(STORAGE_KEY);
+        throw error;
       }
     }
-
-    this._isLoading.set(false);
   }
 
   async loginWithDiscord(): Promise<void> {
@@ -289,12 +369,12 @@ export class AuthService {
 
     this.logAuth("convex:getOrCreateUser:start");
     const userId = await this.withTimeout(
-      this.convex.mutation(this.convex.api.auth.getOrCreateUser as any, {
+      this.convex.mutation(this.convex.api.auth.getOrCreateUser, {
         name,
         avatarUrl,
         discordId: profile.id,
         discordUsername: profile.username,
-      } as any),
+      }),
       15000,
       "Timed out waiting for Convex mutation. Check Convex backend connection.",
     );
@@ -305,17 +385,27 @@ export class AuthService {
     });
 
     if (user) {
-      storeDiscordSession(sessionStorage, userId, tokenData.access_token, tokenData.expires_in);
+      this._authEpoch += 1;
+      this._externalAuthEpoch += 1;
+      storeDiscordSession(
+        sessionStorage,
+        userId,
+        tokenData.access_token,
+        tokenData.expires_in,
+        Date.now(),
+        this.discordSessionKey(),
+      );
       this._user.set(user as User);
       this._userId.set(userId);
-      localStorage.setItem(STORAGE_KEY, userId);
+      localStorage.setItem(this.userStorageKey(), userId);
+      this.bumpSessionVersion();
       this.router.navigate(["/"]);
       this.logAuth("loginWithDiscord:complete", { userId });
     }
   }
 
   async mockLogin(): Promise<void> {
-    sessionStorage.removeItem(DISCORD_SESSION_KEY);
+    sessionStorage.removeItem(this.discordSessionKey());
     // Create a demo user for development
     const userId = await this.convex.mutation(
       this.convex.api.auth.getOrCreateUser,
@@ -338,14 +428,17 @@ export class AuthService {
       throw new Error("Failed to get user after creation");
     }
 
+    this._authEpoch += 1;
+    this._externalAuthEpoch += 1;
     this._user.set(user as User);
     this._userId.set(userId);
-    localStorage.setItem(STORAGE_KEY, userId);
+    localStorage.setItem(this.userStorageKey(), userId);
+    this.bumpSessionVersion();
     this.router.navigate(["/"]);
   }
 
   async loginWithDiscordId(discordId: string): Promise<void> {
-    sessionStorage.removeItem(DISCORD_SESSION_KEY);
+    sessionStorage.removeItem(this.discordSessionKey());
     // Get user by Discord ID
     const user = await this.convex.query(
       this.convex.api.auth.getUserByDiscordId,
@@ -356,22 +449,105 @@ export class AuthService {
       throw new Error("User not found. Please run seedDemoUsers first.");
     }
 
+    this._authEpoch += 1;
+    this._externalAuthEpoch += 1;
     this._user.set(user as User);
     this._userId.set(user._id);
-    localStorage.setItem(STORAGE_KEY, user._id);
+    localStorage.setItem(this.userStorageKey(), user._id);
+    this.bumpSessionVersion();
     this.router.navigate(["/"]);
   }
 
   logout(): void {
-    sessionStorage.removeItem(DISCORD_SESSION_KEY);
+    this.clearSession();
+  }
+
+  getAuthEpoch(): number {
+    return this._authEpoch;
+  }
+
+  getExternalAuthEpoch(): number {
+    return this._externalAuthEpoch;
+  }
+
+  captureSessionSnapshot(): SessionSnapshot {
+    const userStorageKey = this.userStorageKey();
+    const discordSessionKey = this.discordSessionKey();
+    return {
+      user: this._user(),
+      userId: this._userId(),
+      userStorageKey,
+      discordSessionKey,
+      storedUserId: localStorage.getItem(userStorageKey),
+      discordSession: sessionStorage.getItem(discordSessionKey),
+    };
+  }
+
+  restoreSessionSnapshot(snapshot: SessionSnapshot): void {
+    this._authEpoch += 1;
+    if (snapshot.storedUserId === null) {
+      localStorage.removeItem(snapshot.userStorageKey);
+    } else {
+      localStorage.setItem(snapshot.userStorageKey, snapshot.storedUserId);
+    }
+    if (snapshot.discordSession === null) {
+      sessionStorage.removeItem(snapshot.discordSessionKey);
+    } else {
+      sessionStorage.setItem(snapshot.discordSessionKey, snapshot.discordSession);
+    }
+    this._user.set(snapshot.user);
+    this._userId.set(snapshot.userId);
+  }
+
+  setTestSession(
+    user: User,
+    sessionToken: string,
+    expiresInSeconds: number,
+    options?: { bumpVersion?: boolean },
+  ): void {
+    this._authEpoch += 1;
+    storeDiscordSession(
+      sessionStorage,
+      user._id,
+      sessionToken,
+      expiresInSeconds,
+      Date.now(),
+      this.discordSessionKey(),
+    );
+    localStorage.setItem(this.userStorageKey(), user._id);
+    this._user.set(user);
+    this._userId.set(user._id);
+    if (options?.bumpVersion !== false) this.bumpSessionVersion();
+  }
+
+  bumpSessionVersion(): void {
+    this._sessionVersion.update((version) => version + 1);
+  }
+
+  clearDiscordSession(): void {
+    sessionStorage.removeItem(this.discordSessionKey());
+  }
+
+  clearSession(options?: { navigateToLogin?: boolean }): void {
+    this._authEpoch += 1;
+    this._externalAuthEpoch += 1;
+    this.clearDiscordSession();
     this._user.set(null);
     this._userId.set(null);
-    localStorage.removeItem(STORAGE_KEY);
-    this.router.navigate(["/login"]);
+    // A legacy identity may belong to another deployment sharing this origin.
+    localStorage.setItem(`${this.userStorageKey()}:signed-out`, "true");
+    localStorage.removeItem(this.userStorageKey());
+    this.bumpSessionVersion();
+    if (options?.navigateToLogin !== false) void this.router.navigate(["/login"]);
   }
 
   requireDiscordAccessToken(): string {
-    const accessToken = readDiscordAccessToken(sessionStorage, this.getUserId());
+    const accessToken = readDiscordAccessToken(
+      sessionStorage,
+      this.getUserId(),
+      Date.now(),
+      this.discordSessionKey(),
+    );
     if (!accessToken) throw new Error("Sign in with Discord again to make corrections");
     return accessToken;
   }
@@ -411,18 +587,6 @@ export class AuthService {
     return currentIndex >= requiredIndex;
   }
 
-  private decodeJwt(token: string): any {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join(""),
-    );
-    return JSON.parse(jsonPayload);
-  }
-
   private generateRandomString(length: number): string {
     const charset =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
@@ -456,7 +620,7 @@ export class AuthService {
     codeVerifier: string,
     redirectUri: string,
     clientId: string,
-  ): Promise<any> {
+  ): Promise<DiscordTokenResponse> {
     this.logAuth("token:exchange:start", { redirectUri });
     const response = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
@@ -486,7 +650,7 @@ export class AuthService {
     return response.json();
   }
 
-  private async fetchDiscordProfile(accessToken: string): Promise<any> {
+  private async fetchDiscordProfile(accessToken: string): Promise<DiscordProfile> {
     this.logAuth("profile:fetch:start");
     const response = await fetch("https://discord.com/api/users/@me", {
       headers: {

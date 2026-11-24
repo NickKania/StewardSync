@@ -1,4 +1,5 @@
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { MutationCtx } from "./_generated/server";
@@ -13,10 +14,6 @@ const STAFF_ROLES = new Set([
 const REVIEW_MANAGER_ROLES = new Set(["head_steward", "league_manager"]);
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const IMMEDIATE_REMINDER_DELAY_MS = 60 * 1000;
-const SEND_MEETING_REMINDER_FN = "raceBanReviewDiscord:sendMeetingReminder" as any;
-const CREATE_MEETING_THREAD_POST_FN =
-  "raceBanReviewDiscord:createOrUpdateMeetingThreadPost" as any;
-const CLOSE_MEETING_THREAD_FN = "raceBanReviewDiscord:closeMeetingThread" as any;
 
 const normalizeAvailabilityWindows = (
   availabilityWindows: Array<{ startAt: number; endAt: number }>,
@@ -83,7 +80,7 @@ const completeExistingReview = async (
   }
 
   if (request.meetingThreadId) {
-    await ctx.scheduler.runAfter(0, CLOSE_MEETING_THREAD_FN, { id: request._id });
+    await ctx.scheduler.runAfter(0, internal.raceBanReviewDiscord.closeMeetingThread, { id: request._id });
   }
 
   return request._id;
@@ -629,7 +626,7 @@ export const scheduleMeeting = mutation({
       });
     }
 
-    await ctx.scheduler.runAfter(0, CREATE_MEETING_THREAD_POST_FN, {
+    await ctx.scheduler.runAfter(0, internal.raceBanReviewDiscord.createOrUpdateMeetingThreadPost, {
       id: args.id,
       expectedMeetingStartAt: args.selectedMeetingStartAt,
     });
@@ -637,11 +634,11 @@ export const scheduleMeeting = mutation({
     const reminderAt = args.selectedMeetingStartAt - ONE_HOUR_MS;
     const reminderJobId =
       reminderAt <= now
-        ? await ctx.scheduler.runAfter(IMMEDIATE_REMINDER_DELAY_MS, SEND_MEETING_REMINDER_FN, {
+        ? await ctx.scheduler.runAfter(IMMEDIATE_REMINDER_DELAY_MS, internal.raceBanReviewDiscord.sendMeetingReminder, {
             id: args.id,
             expectedMeetingStartAt: args.selectedMeetingStartAt,
           })
-        : await ctx.scheduler.runAt(reminderAt, SEND_MEETING_REMINDER_FN, {
+        : await ctx.scheduler.runAt(reminderAt, internal.raceBanReviewDiscord.sendMeetingReminder, {
             id: args.id,
             expectedMeetingStartAt: args.selectedMeetingStartAt,
           });
@@ -755,7 +752,7 @@ export const forceCompleteForPenalty = mutation({
   },
 });
 
-export const recordNotificationResult = mutation({
+export const recordNotificationResult = internalMutation({
   args: {
     id: v.id("raceBanReviews"),
     sent: v.boolean(),

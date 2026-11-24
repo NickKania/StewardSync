@@ -1,3 +1,4 @@
+import type { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 
 export type ChangeSource = "manual" | "simgrid" | "system";
@@ -29,7 +30,7 @@ function serializeValue(value: unknown): string | undefined {
 }
 
 export async function recordChange(
-  ctx: any,
+  ctx: MutationCtx,
   args: RecordChangeArgs,
 ): Promise<void> {
   const fromSerialized = serializeValue(args.fromValue);
@@ -58,7 +59,7 @@ export interface FieldChange {
 }
 
 export async function recordChanges(
-  ctx: any,
+  ctx: MutationCtx,
   args: {
     tableName: string;
     documentId: string;

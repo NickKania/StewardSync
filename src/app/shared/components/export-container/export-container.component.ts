@@ -1,9 +1,10 @@
-import { Component, input, output, HostListener } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LegendComponent, LegendItem } from '../legend/legend.component';
 import { ButtonComponent } from '../button/button.component';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-export-container',
   standalone: true,
   imports: [CommonModule, LegendComponent, ButtonComponent],

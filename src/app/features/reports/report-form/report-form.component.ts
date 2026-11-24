@@ -15,6 +15,7 @@ import {
   Validators,
   ReactiveFormsModule,
 } from "@angular/forms";
+import type { Id } from "@convex/_generated/dataModel";
 import { ConvexService } from "@core/services/convex.service";
 import { ToastService } from "@core/services/toast.service";
 import { AuthService } from "@core/services/auth.service";
@@ -385,7 +386,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   form: FormGroup;
   isEdit = false;
   readonly isFinalized = signal(false);
-  private readonly editedEvent = signal<{ _id: string; series?: { _id: string; requireVideoEvidence?: boolean } } | null>(null);
+  private readonly editedEvent = signal<{ _id: string; series?: { _id: string; requireVideoEvidence?: boolean } | null } | null>(null);
 
   series = signal<any[]>([]);
   readonly availableSeries = computed(() => {
@@ -582,7 +583,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
       try {
         const report = await this.convex.query(
           this.convex.api.reports.getById,
-          { reportId: this.id as any },
+          { reportId: this.id as Id<"reports"> },
         );
 
         if (report) {
@@ -783,7 +784,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         }
         await this.convex.action(this.convex.api.reports.updateFinalizedDetails, {
           discordAccessToken: this.authService.requireDiscordAccessToken(),
-          reportId: this.id,
+          reportId: this.id as Id<"reports">,
           lap,
           turn,
           description: formValue.description,
@@ -801,7 +802,7 @@ export class ReportFormComponent implements OnInit, OnDestroy {
         }
         await this.convex.mutation(this.convex.api.reports.update, {
           currentUserId: currentUserId as any,
-          reportId: this.id as any,
+          reportId: this.id as Id<"reports">,
           reportedDriverId: formValue.reportedDriverId,
           eventId: formValue.eventId,
           raceId: formValue.raceId,
@@ -842,10 +843,8 @@ export class ReportFormComponent implements OnInit, OnDestroy {
   }
 
   private extractUserFacingError(errorMessage: string): string {
-    // Convex wraps errors with a prefix like:
-    // "[CONVEX M(reports:create)] [Request ID: xxx] Server Error Uncaught UserFacingError: ..."
-    // We want to extract just the part after "Uncaught UserFacingError: " or "Error: "
     if (!errorMessage) return "";
+    if (!errorMessage.includes("[CONVEX ")) return errorMessage;
 
     // Try to extract UserFacingError message
     const userFacingMatch = errorMessage.match(

@@ -1085,10 +1085,8 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
   }
 
   private extractUserFacingError(errorMessage: string): string {
-    // Convex wraps errors with a prefix like:
-    // "[CONVEX M(reports:finalize)] [Request ID: xxx] Server Error Uncaught UserFacingError: ..."
-    // We want to extract just the part after "Uncaught UserFacingError: " or "Error: "
     if (!errorMessage) return "";
+    if (!errorMessage.includes("[CONVEX ")) return errorMessage;
 
     // Try to extract UserFacingError message
     const userFacingMatch = errorMessage.match(
@@ -1117,6 +1115,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       const result = await this.convex.mutation(
         this.convex.api.reports.reject,
         {
+          currentUserId: this.authService.requireUserId(),
           reportId: this.reportId as any,
           finalDecision: this.rejectionReason,
         },

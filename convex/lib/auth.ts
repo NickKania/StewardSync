@@ -1,3 +1,4 @@
+import type { QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { UserFacingError } from "./errors";
 
@@ -9,7 +10,7 @@ const ROLE_HIERARCHY = [
   "league_manager",
 ];
 
-export async function getCurrentUserRole(ctx: any, userId: Id<"users">) {
+export async function getCurrentUserRole(ctx: QueryCtx, userId: Id<"users">) {
   const user = await ctx.db.get(userId);
   if (!user) {
     throw new Error("User not found");
@@ -37,8 +38,22 @@ export function hasMinimumRole(
   return userRoleIndex >= minimumRoleIndex;
 }
 
+export async function requireExactRole(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  allowedRoles: readonly string[],
+) {
+  const userRole = await getCurrentUserRole(ctx, userId);
+
+  if (!allowedRoles.includes(userRole)) {
+    throw new UserFacingError(
+      `Unauthorized. Required roles: ${allowedRoles.join(", ")}. User role: ${userRole}`
+    );
+  }
+}
+
 export async function requireRole(
-  ctx: any,
+  ctx: QueryCtx,
   userId: Id<"users">,
   allowedRoles: string[]
 ) {

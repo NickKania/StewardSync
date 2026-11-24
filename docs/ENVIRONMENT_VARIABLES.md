@@ -18,9 +18,9 @@ The StewardSync application now reads environment variables directly from the sy
 
 - `PUBLIC_ENABLE_DEV_LOGIN`: Enable/disable the developer login page (`true`/`false`)
 - `DISCORD_CLIENT_ID`: Discord OAuth 2.0 client ID
-- `DISCORD_CLIENT_SECRET`: Discord OAuth 2.0 client secret
 - `DISCORD_BOT_TOKEN`: Discord bot token used for race ban review meeting notifications
 - `DISCORD_RACE_REVIEW_CHANNEL_ID`: Parent Discord **text channel** ID used to create private meeting threads
+- `STEWARDSYNC_TEST_MODE` enables anonymous test fixture and identity operations when set to `true` on the local Convex deployment. The local startup scripts set it after verifying the deployment and checking for Discord notification credentials. Never enable it on staging or production. [Local Test Mode guide](LOCAL_TEST_MODE.md)
 
 ## Using with Docker
 
@@ -44,7 +44,6 @@ Create a `.env` file in the project root:
 PUBLIC_CONVEX_URL=http://127.0.0.1:3210
 PUBLIC_ENABLE_DEV_LOGIN=true
 DISCORD_CLIENT_ID=your-discord-client-id
-DISCORD_CLIENT_SECRET=your-discord-client-secret
 DISCORD_BOT_TOKEN=your-discord-bot-token
 DISCORD_RACE_REVIEW_CHANNEL_ID=your-discord-text-channel-id
 ```
@@ -68,15 +67,16 @@ The application supports three build configurations:
 ### Local
 - Uses `environment.local.ts`
 - Local Convex URL
-- Developer Discord credentials
+- Discord application client ID
+
+Copy `src/environments/environment.local.example.ts` to
+`src/environments/environment.local.ts` and fill in your local values before
+running `bun run start` or `bun run start:local`.
 
 ## Runtime Configuration
 
-The application uses a hybrid approach:
-
-1. **Server Endpoint**: On build, the application reads environment variables at build time
-2. **Runtime Fallback**: If the server endpoint fails, it uses default values
-3. **Server Endpoint**: If running in production, can provide runtime config via `/runtime-config` endpoint
+The browser reads public settings from the generated `runtime-config.js` file.
+Angular environment files supply fallback values.
 
 ## Troubleshooting
 
@@ -89,13 +89,12 @@ The application uses a hybrid approach:
 ### Runtime configuration not loading
 
 1. Check browser console for errors
-2. Verify the `/runtime-config` endpoint is accessible
+2. Verify the browser loads `runtime-config.js`
 3. Check that environment variables are set correctly in your environment
 
 ## Security Notes
 
 - Never commit `.env` files to version control
 - Use `.env.example` or `.env.docker.example` as templates
-- Keep `DISCORD_CLIENT_SECRET` secure
 - Keep `DISCORD_BOT_TOKEN` secure
 - Rotate secrets regularly

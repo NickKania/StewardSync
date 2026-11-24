@@ -1,8 +1,7 @@
 import { mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { requireRole } from "./lib/auth";
-
-const CREATE_THREAD_FN = "driverMeetingDiscord:createDriverMeetingThreadAction" as any;
+import { requireExactRole } from "./lib/auth";
 
 export const createDriverMeetingThread = mutation({
   args: {
@@ -12,7 +11,7 @@ export const createDriverMeetingThread = mutation({
   },
   handler: async (ctx, args) => {
     // 1. Permission check - only head_steward and league_manager
-    await requireRole(ctx, args.userId, ["head_steward", "league_manager"]);
+    await requireExactRole(ctx, args.userId, ["head_steward", "league_manager"]);
 
     // 2. Fetch driver with linked user
     const driver = await ctx.db.get(args.driverId);
@@ -37,11 +36,9 @@ export const createDriverMeetingThread = mutation({
     const seriesName = series?.name ?? "Unknown Series";
 
     // 6. Create Discord thread via scheduler
-    await ctx.scheduler.runAfter(0, CREATE_THREAD_FN, {
+    await ctx.scheduler.runAfter(0, internal.driverMeetingDiscord.createDriverMeetingThreadAction, {
       driverLabel: driver.officialName || driver.driverName || "Unknown Driver",
-      ...(driver.driverNumber === undefined
-        ? {}
-        : { driverNumber: driver.driverNumber }),
+      driverNumber: driver.driverNumber,
       seriesName,
       driverDiscordId: linkedUser.discordId,
       creatorDiscordId: creatingUser.discordId,

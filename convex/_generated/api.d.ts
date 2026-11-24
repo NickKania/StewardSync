@@ -22,14 +22,19 @@ import type * as drivers from "../drivers.js";
 import type * as events from "../events.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_discordAuth from "../lib/discordAuth.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_formatting from "../lib/formatting.js";
+import type * as lib_licensePoints from "../lib/licensePoints.js";
 import type * as lib_penalties from "../lib/penalties.js";
+import type * as lib_queryCache from "../lib/queryCache.js";
 import type * as lib_reportValidation from "../lib/reportValidation.js";
+import type * as lib_reportingWindow from "../lib/reportingWindow.js";
 import type * as lib_reports from "../lib/reports.js";
 import type * as lib_result from "../lib/result.js";
 import type * as lib_simgridCsv from "../lib/simgridCsv.js";
 import type * as lib_simgridRaces from "../lib/simgridRaces.js";
+import type * as lib_testMode from "../lib/testMode.js";
 import type * as migrations from "../migrations.js";
 import type * as migrations_backfillReportIds from "../migrations/backfillReportIds.js";
 import type * as penalties from "../penalties.js";
@@ -47,6 +52,7 @@ import type * as seriesPenalties from "../seriesPenalties.js";
 import type * as seriesPenaltyThresholds from "../seriesPenaltyThresholds.js";
 import type * as statistics from "../statistics.js";
 import type * as steamUserMappings from "../steamUserMappings.js";
+import type * as testMode from "../testMode.js";
 import type * as users from "../users.js";
 
 import type {
@@ -70,14 +76,19 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
+  "lib/discordAuth": typeof lib_discordAuth;
   "lib/errors": typeof lib_errors;
   "lib/formatting": typeof lib_formatting;
+  "lib/licensePoints": typeof lib_licensePoints;
   "lib/penalties": typeof lib_penalties;
+  "lib/queryCache": typeof lib_queryCache;
   "lib/reportValidation": typeof lib_reportValidation;
+  "lib/reportingWindow": typeof lib_reportingWindow;
   "lib/reports": typeof lib_reports;
   "lib/result": typeof lib_result;
   "lib/simgridCsv": typeof lib_simgridCsv;
   "lib/simgridRaces": typeof lib_simgridRaces;
+  "lib/testMode": typeof lib_testMode;
   migrations: typeof migrations;
   "migrations/backfillReportIds": typeof migrations_backfillReportIds;
   penalties: typeof penalties;
@@ -95,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   seriesPenaltyThresholds: typeof seriesPenaltyThresholds;
   statistics: typeof statistics;
   steamUserMappings: typeof steamUserMappings;
+  testMode: typeof testMode;
   users: typeof users;
 }>;
 

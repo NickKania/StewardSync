@@ -269,7 +269,7 @@ describe("reports.update reportedDriverId", () => {
       },
     ]);
 
-    await markReviewedHandler(ctx, { reportId: "rep1" });
+    await markReviewedHandler(ctx, { reportId: "rep1", currentUserId: "stewardUser" });
     expect(docs["rep1"].status).toBe("reviewed");
   });
 
