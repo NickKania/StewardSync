@@ -1,3 +1,5 @@
+import { ConvexError } from 'convex/values';
+
 /**
  * Logger type that matches Convex's Logger interface.
  */
@@ -9,7 +11,7 @@ export type Logger = {
 };
 
 /**
- * Custom logger that filters out UserFacingError messages from the console.
+ * Custom logger that filters out UserFacingError / ConvexError messages from the console.
  * These are validation/business logic errors that should only be shown via toast notifications.
  * All other errors (unexpected failures, bugs, etc.) are logged normally.
  */
@@ -17,13 +19,16 @@ export class ConvexCustomLogger implements Logger {
   private _onLogLineFuncs: Array<(level: string, ...args: any[]) => void> = [];
 
   private shouldFilterError(args: any[]): boolean {
-    // Filter out UserFacingError messages from console logs
+    // Filter out UserFacingError / ConvexError messages from console logs
     for (const arg of args) {
       if (arg && typeof arg === 'string') {
-        if (arg.includes('UserFacingError')) {
+        if (arg.includes('UserFacingError') || arg.includes('ConvexError')) {
           return true;
         }
-      } else if (arg && arg.name === 'UserFacingError') {
+      } else if (
+        arg instanceof ConvexError ||
+        (arg && (arg.name === 'UserFacingError' || arg.name === 'ConvexError'))
+      ) {
         return true;
       }
     }

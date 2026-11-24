@@ -79,6 +79,7 @@ const formatDiscordMeetingWindow = (context: MeetingNotificationContext) => {
 const createMeetingThread = async (
   context: MeetingNotificationContext,
   openingMessage: string,
+  onThreadCreated?: (threadId: string) => void,
 ): Promise<DiscordThread> => {
   const parentChannelId = getEnv("DISCORD_RACE_REVIEW_CHANNEL_ID");
   if (!parentChannelId) {
@@ -103,22 +104,24 @@ const createMeetingThread = async (
     parentChannelId,
     participantDiscordIds: participants,
     reason: "Race review meeting scheduled",
+    onThreadCreated: (created) => onThreadCreated?.(created.id),
   });
 
-  await sendDiscordMessage(thread.id, openingMessage);
+  await sendDiscordMessage(thread.id, openingMessage, participants);
   return thread;
 };
 
 const ensureMeetingThread = async (
   context: MeetingNotificationContext,
   openingMessage: string,
+  onThreadCreated?: (threadId: string) => void,
 ) => {
   const existingThread = await fetchThreadIfAvailable(context.meetingThreadId);
   if (existingThread) {
     return { thread: existingThread, created: false };
   }
 
-  const createdThread = await createMeetingThread(context, openingMessage);
+  const createdThread = await createMeetingThread(context, openingMessage, onThreadCreated);
   return { thread: createdThread, created: true };
 };
 
@@ -165,9 +168,12 @@ export const createOrUpdateMeetingThreadPost = internalAction({
       const content =
         `${mentions} Meeting accepted. ${context.schedulerName} will meet with ${context.requesterName} at ${meetingTime}.`;
 
-      const { thread, created } = await ensureMeetingThread(context, content);
+      const participants = [context.requesterDiscordId!, context.schedulerDiscordId!];
+      const { thread, created } = await ensureMeetingThread(context, content, (id) => {
+        threadId = id;
+      });
       threadId = thread.id;
-      if (!created) await sendDiscordMessage(threadId, content);
+      if (!created) await sendDiscordMessage(threadId, content, participants);
 
       await ctx.runMutation(internal.raceBanReviews.recordMeetingThreadNotificationResult, {
         id: args.id,
@@ -236,12 +242,16 @@ export const sendMeetingReminder = internalAction({
       const reminderMessage =
         `${mentions} Reminder: your race review meeting ${startsSoonText} at ${meetingTime}.`;
 
+      const participants = [context.requesterDiscordId!, context.schedulerDiscordId!];
       const { thread } = await ensureMeetingThread(
         context,
         `${mentions} Race review meeting thread created for ${meetingTime}.`,
+        (id) => {
+          threadId = id;
+        },
       );
       threadId = thread.id;
-      await sendDiscordMessage(threadId, reminderMessage);
+      await sendDiscordMessage(threadId, reminderMessage, participants);
 
       await ctx.runMutation(internal.raceBanReviews.recordMeetingReminderResult, {
         id: args.id,

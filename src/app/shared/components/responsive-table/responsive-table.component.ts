@@ -6,6 +6,7 @@ import {
   EventEmitter,
   TemplateRef,
   contentChild,
+  input,
   signal,
   computed,
 } from "@angular/core";
@@ -30,13 +31,13 @@ let nextId = 0;
   imports: [CommonModule],
   template: `
     <div class="responsive-table">
-      @if (data.length > 0) {
+      @if (data().length > 0) {
         <!-- Desktop table view (md and up) -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full">
             <thead class="bg-gray-50 dark:bg-gray-800">
               <tr class="text-left text-sm text-gray-500 dark:text-gray-400">
-                @for (column of columns; track column.key) {
+                @for (column of columns(); track column.key) {
                   <th
                     class="px-6 py-3 font-medium"
                     [class.cursor-pointer]="column.sortable"
@@ -61,7 +62,7 @@ let nextId = 0;
                   [class.cursor-pointer]="rowClickable"
                   (click)="rowClickable && rowClick.emit(row)"
                 >
-                  @for (column of columns; track column.key) {
+                  @for (column of columns(); track column.key) {
                     <td class="px-6 py-4" [class]="getCellClass(column)">
                       <ng-container
                         [ngTemplateOutlet]="cellTemplate() || defaultCell"
@@ -149,8 +150,8 @@ let nextId = 0;
   ],
 })
 export class ResponsiveTableComponent<T = any> {
-  @Input() columns: TableColumn<T>[] = [];
-  @Input() data: T[] = [];
+  readonly columns = input<TableColumn<T>[]>([]);
+  readonly data = input<T[]>([]);
   @Input() trackKey = "_id";
   @Input() emptyMessage = "No data available";
   @Input() rowClickable = false;
@@ -170,17 +171,17 @@ export class ResponsiveTableComponent<T = any> {
   tableId = `responsive-table-${nextId++}`;
 
   get visibleMobileColumns(): TableColumn<T>[] {
-    return this.columns.filter((c) => !c.hiddenOnMobile);
+    return this.columns().filter((c) => !c.hiddenOnMobile);
   }
 
   sortedData = computed(() => {
-    const data = this.data;
+    const data = this.data();
     const column = this.sortColumn();
     const direction = this.sortDirection();
 
     if (!column) return data;
 
-    const colDef = this.columns.find((c) => c.key === column);
+    const colDef = this.columns().find((c) => c.key === column);
     if (colDef?.sortFn) {
       return [...data].sort((a, b) => colDef.sortFn!(a, b, direction));
     }

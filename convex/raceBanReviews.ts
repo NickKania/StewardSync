@@ -755,7 +755,7 @@ export const forceCompleteForPenalty = mutation({
   },
 });
 
-export const recordNotificationResult = mutation({
+export const recordNotificationResult = internalMutation({
   args: {
     id: v.id("raceBanReviews"),
     sent: v.boolean(),

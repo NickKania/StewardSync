@@ -11,7 +11,7 @@ import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
 import { recordChanges, compareAndBuildChanges } from "./lib/audit";
 import { validateAtFaultDriverForReport } from "./lib/reportValidation";
-import { requireRole } from "./lib/auth";
+import { requireExactRole, requireRole } from "./lib/auth";
 
 const REVIEW_AUDIT_FIELDS = [
   "isSelfReport",
@@ -181,7 +181,7 @@ export const create = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.userId, ["steward"]);
+    await requireExactRole(ctx, args.userId, ["steward", "head_steward", "league_manager"]);
     // Validate report exists and is not finalized
     const report = await ctx.db.get(args.reportId);
     if (!report) {
@@ -480,7 +480,7 @@ export const update = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.userId, ["steward"]);
+    await requireExactRole(ctx, args.userId, ["steward", "head_steward", "league_manager"]);
     const { reviewId, userId, ...updates } = args;
 
     const review = await ctx.db.get(reviewId);
@@ -488,7 +488,7 @@ export const update = mutation({
       throw new Error("Review not found");
     }
     if (review.userId !== args.userId) {
-      await requireRole(ctx, args.userId, ["head_steward"]);
+      await requireExactRole(ctx, args.userId, ["head_steward", "league_manager"]);
     }
 
     // Check if the report is finalized
@@ -590,13 +590,13 @@ export const updateWithSecondSteward = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.userId, ["steward"]);
+    await requireExactRole(ctx, args.userId, ["steward", "head_steward", "league_manager"]);
     const review = await ctx.db.get(args.reviewId);
     if (!review) {
       throw new Error("Review not found");
     }
     if (review.userId !== args.userId) {
-      await requireRole(ctx, args.userId, ["head_steward"]);
+      await requireExactRole(ctx, args.userId, ["head_steward", "league_manager"]);
     }
 
     const report = await ctx.db.get(review.reportId);
@@ -794,13 +794,13 @@ export const updateWithSecondSteward = mutation({
 export const remove = mutation({
   args: { currentUserId: v.id("users"), reviewId: v.id("reviews") },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.currentUserId, ["steward"]);
+    await requireExactRole(ctx, args.currentUserId, ["steward", "head_steward", "league_manager"]);
     const review = await ctx.db.get(args.reviewId);
     if (!review) {
       throw new Error("Review not found");
     }
     if (review.userId !== args.currentUserId) {
-      await requireRole(ctx, args.currentUserId, ["head_steward"]);
+      await requireExactRole(ctx, args.currentUserId, ["head_steward", "league_manager"]);
     }
 
     // Check if the report is finalized

@@ -89,4 +89,15 @@ describe("mutation and import authorization", () => {
       .resolves.toEqual({ success: true });
     expect(writes).toEqual(["drivers", "series"]);
   });
+
+  for (const [name, endpoint] of Object.entries({
+    createBySteward, finalize, markAsReviewed, reject, createReview, remove,
+    update, updateWithSecondSteward,
+  })) {
+    it(`rejects an event manager calling steward/finalization mutation ${name}`, async () => {
+      const { ctx, writes } = fixture("event_manager");
+      await expect(invoke(endpoint, ctx, actorArgs)).rejects.toThrow("Unauthorized");
+      expect(writes).toEqual([]);
+    });
+  }
 });

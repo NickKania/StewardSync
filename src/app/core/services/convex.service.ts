@@ -7,11 +7,15 @@ import { api } from '@convex/_generated/api';
 import { environment } from '../../../environments/environment';
 import { ConvexCustomLogger } from './convex-logger';
 
-function rethrowWithApplicationMessage(error: unknown): never {
+function normalizeConvexError(error: unknown): unknown {
   if (error instanceof ConvexError && typeof error.data === 'string') {
     error.message = error.data;
   }
-  throw error;
+  return error;
+}
+
+function rethrowWithApplicationMessage(error: unknown): never {
+  throw normalizeConvexError(error);
 }
 
 @Injectable({
@@ -78,7 +82,8 @@ export class ConvexService implements OnDestroy {
         onData?.(result);
       },
       (queryError) => {
-        error.set(queryError);
+        const normalized = normalizeConvexError(queryError);
+        error.set(normalized instanceof Error ? normalized : new Error(String(normalized)));
         loading.set(false);
       }
     );

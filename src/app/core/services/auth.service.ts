@@ -66,9 +66,16 @@ export class AuthService {
   }
 
   whenInitialized(): Promise<void> {
-    return (this.initialization ??= this.restoreSession().finally(() => {
-      this._isLoading.set(false);
-    }));
+    if (!this.initialization) {
+      this.initialization = this.restoreSession()
+        .catch(() => {
+          this.initialization = undefined;
+        })
+        .finally(() => {
+          this._isLoading.set(false);
+        });
+    }
+    return this.initialization;
   }
 
   private async restoreSession(): Promise<void> {
@@ -92,8 +99,7 @@ export class AuthService {
         }
       } catch (error) {
         console.error("Failed to restore session:", error);
-        sessionStorage.removeItem(DISCORD_SESSION_KEY);
-        localStorage.removeItem(STORAGE_KEY);
+        throw error;
       }
     }
   }

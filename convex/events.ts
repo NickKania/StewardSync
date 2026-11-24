@@ -1,5 +1,5 @@
 import { internalMutation, mutation, query, action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireRole } from "./lib/auth";
@@ -262,14 +262,6 @@ export const importOrUpdateEvent = internalMutation({
   },
 });
 
-// Helper function to avoid circular type inference in Convex
-async function runGetSeriesByIdWithSimgridLink(
-  ctx: any,
-  args: { id: Id<"series"> },
-) {
-  return ctx.runQuery("series:getByIdWithSimgridLink", args);
-}
-
 export const importFromSimGrid = action({
   args: { currentUserId: v.id("users"), seriesId: v.id("series") },
   handler: async (ctx, args): Promise<{ created: number; skipped: number }> => {
@@ -279,7 +271,7 @@ export const importFromSimGrid = action({
       throw new Error("SIMGRID_API_KEY environment variable not configured");
     }
 
-    const series = await runGetSeriesByIdWithSimgridLink(ctx, {
+    const series = await ctx.runQuery(api.series.getByIdWithSimgridLink, {
       id: args.seriesId,
     });
     if (!series || !series.simgridLink) {

@@ -31,6 +31,7 @@ import { DateFormatPipe, TimeAgoPipe } from "@shared/pipes/date-format.pipe";
 import { Penalty } from "@core/models/series.model";
 import { SelectOption } from "@shared/components/select/select.component";
 import { User } from "@app/core/models";
+import { FINALIZATION_ROLES } from "@core/models/route-roles";
 
 @Component({
   selector: "app-review-form",
@@ -281,7 +282,7 @@ import { User } from "@app/core/models";
                   class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
                 >
                   <div class="flex flex-col sm:flex-row gap-3">
-                    @if (authService.hasMinimumRole("head_steward")) {
+                    @if (canRejectReport()) {
                       <app-button
                         type="button"
                         variant="danger"
@@ -573,6 +574,10 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       (s) => String(s._id) !== String(currentUserId),
     );
   });
+
+  canRejectReport(): boolean {
+    return this.authService.hasRole(...FINALIZATION_ROLES);
+  }
 
   stewardOptions = computed(() => {
     const currentUserId = this.authService.getUserId();

@@ -6,16 +6,6 @@ import {
   getEnvOrThrow,
 } from "./discord";
 
-interface CreateDriverMeetingThreadArgs {
-  driverLabel: string;
-  driverNumber?: number;
-  seriesName: string;
-  driverDiscordId: string;
-  creatorDiscordId: string;
-  creatorName: string;
-  initialMessage: string;
-}
-
 export const createDriverMeetingThreadAction = internalAction({
   args: {
     driverLabel: v.string(),
@@ -26,7 +16,7 @@ export const createDriverMeetingThreadAction = internalAction({
     creatorName: v.string(),
     initialMessage: v.string(),
   },
-  handler: async (_ctx, args: CreateDriverMeetingThreadArgs) => {
+  handler: async (_ctx, args) => {
     const parentChannelId = getEnvOrThrow("DISCORD_RACE_REVIEW_CHANNEL_ID");
 
     // Build thread name
@@ -51,7 +41,7 @@ export const createDriverMeetingThreadAction = internalAction({
     // Send formatted initial message
     const timestamp = new Date().toLocaleString();
     const content = `${args.initialMessage}\n\n_Created by ${args.creatorName} at ${timestamp}_`;
-    await sendDiscordMessage(thread.id, content);
+    await sendDiscordMessage(thread.id, content, participants);
 
     return {
       threadId: thread.id,

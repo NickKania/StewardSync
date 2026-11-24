@@ -11,7 +11,7 @@ import {
 } from "./lib/reports";
 import { UserFacingError } from "./lib/errors";
 import { Result, success, failure } from "./lib/result";
-import { requireRole } from "./lib/auth";
+import { requireExactRole, requireRole } from "./lib/auth";
 import { reportCounter } from "./reportCounter";
 import { recordChanges, compareAndBuildChanges } from "./lib/audit";
 import {
@@ -720,7 +720,7 @@ export const updateFinalizedDetailsVerified = internalMutation({
 export const markAsReviewed = mutation({
   args: { currentUserId: v.id("users"), reportId: v.id("reports") },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.currentUserId, ["steward"]);
+    await requireExactRole(ctx, args.currentUserId, ["steward", "head_steward", "league_manager"]);
     const report = await ctx.db.get(args.reportId);
     if (!report) {
       throw new Error("Report not found");
@@ -761,7 +761,7 @@ export const finalize = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.userId, ["head_steward", "league_manager"]);
+    await requireExactRole(ctx, args.userId, ["head_steward", "league_manager"]);
     const report = await ctx.db.get(args.reportId);
     if (!report) {
       throw new Error("Report not found");
@@ -882,7 +882,7 @@ export const updateFinalizedDecision = mutation({
       );
     }
 
-    await requireRole(ctx, args.userId, ["head_steward", "league_manager"]);
+    await requireExactRole(ctx, args.userId, ["head_steward", "league_manager"]);
 
     const updates = {
       finalDecision: args.finalDecision,
@@ -962,7 +962,7 @@ export const createBySteward = mutation({
     reportNumber: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.reportingUserId, ["steward"]);
+    await requireExactRole(ctx, args.reportingUserId, ["steward", "head_steward", "league_manager"]);
     const now = Date.now();
 
     // Check if series is locked
@@ -1099,7 +1099,7 @@ export const reject = mutation({
     finalDecision: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireRole(ctx, args.currentUserId, ["head_steward", "league_manager"]);
+    await requireExactRole(ctx, args.currentUserId, ["head_steward", "league_manager"]);
     const report = await ctx.db.get(args.reportId);
     if (!report) {
       throw new Error("Report not found");

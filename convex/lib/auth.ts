@@ -38,6 +38,20 @@ export function hasMinimumRole(
   return userRoleIndex >= minimumRoleIndex;
 }
 
+export async function requireExactRole(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  allowedRoles: readonly string[],
+) {
+  const userRole = await getCurrentUserRole(ctx, userId);
+
+  if (!allowedRoles.includes(userRole)) {
+    throw new UserFacingError(
+      `Unauthorized. Required roles: ${allowedRoles.join(", ")}. User role: ${userRole}`
+    );
+  }
+}
+
 export async function requireRole(
   ctx: QueryCtx,
   userId: Id<"users">,

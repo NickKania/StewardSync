@@ -512,12 +512,15 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
   }
 
   addThreshold(): void {
-    this.thresholds.push({
-      id: `new-${Date.now()}`,
-      threshold: 0,
-      requiresReview: false,
-      selectedDriverClasses: [],
-    });
+    this.thresholds = [
+      ...this.thresholds,
+      {
+        id: `new-${Date.now()}`,
+        threshold: 0,
+        requiresReview: false,
+        selectedDriverClasses: [],
+      },
+    ];
   }
 
   removeThreshold(id: string): void {
@@ -528,10 +531,11 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     thresholdId: string,
     selectedValues: string[],
   ): void {
-    const threshold = this.thresholds.find((t) => t.id === thresholdId);
-    if (threshold) {
-      threshold.selectedDriverClasses = selectedValues;
-    }
+    this.thresholds = this.thresholds.map((threshold) =>
+      threshold.id === thresholdId
+        ? { ...threshold, selectedDriverClasses: [...selectedValues] }
+        : threshold,
+    );
   }
 
   async saveSeriesPenalty(): Promise<void> {

@@ -5,13 +5,18 @@
 
 set -e
 
-# Read values from the local environment file
+# Read values from the local environment file, bootstrapping from the example on a fresh checkout
 ENV_FILE="src/environments/environment.local.ts"
+EXAMPLE_FILE="src/environments/environment.local.example.ts"
 
 if [ ! -f "$ENV_FILE" ]; then
-  echo "ERROR: $ENV_FILE not found"
-  echo "Copy src/environments/environment.local.example.ts to $ENV_FILE and set your local values."
-  exit 1
+  if [ -f "$EXAMPLE_FILE" ]; then
+    cp "$EXAMPLE_FILE" "$ENV_FILE"
+    echo "ℹ Created $ENV_FILE from $EXAMPLE_FILE (update it with your local values if needed)"
+  else
+    echo "ERROR: $ENV_FILE not found"
+    exit 1
+  fi
 fi
 
 # Extract public values from the local environment file

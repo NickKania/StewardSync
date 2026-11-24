@@ -519,10 +519,8 @@ export class EventDetailComponent implements OnInit, OnDestroy {
   }
 
   private extractUserFacingError(errorMessage: string): string {
-    // Convex wraps errors with a prefix like:
-    // "[CONVEX M(races:remove)] [Request ID: xxx] Server Error Uncaught UserFacingError: ..."
-    // We want to extract just the part after "Uncaught UserFacingError: " or "Error: "
     if (!errorMessage) return "";
+    if (!errorMessage.includes("[CONVEX ")) return errorMessage;
 
     // Try to extract UserFacingError message
     const userFacingMatch = errorMessage.match(

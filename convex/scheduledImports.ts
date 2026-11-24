@@ -270,8 +270,14 @@ export const runScheduledImport = internalAction({
         championshipId: args.seriesId,
         simgridChampionshipId: championshipId,
       });
-      
-      console.log(`Scheduled import completed for series ${args.seriesId}:`, result);
+
+      if (result && !result.success) {
+        console.error(
+          `Scheduled import failed for series ${args.seriesId}: ${result.error ?? "Unknown error"}`,
+        );
+      } else {
+        console.log(`Scheduled import completed for series ${args.seriesId}:`, result);
+      }
     } catch (error) {
       console.error(`Scheduled import failed for series ${args.seriesId}:`, error);
     }
@@ -297,12 +303,14 @@ export const runScheduledImport = internalAction({
         await ctx.runMutation(internal.scheduledImports.scheduleNextRun, {
           seriesId: args.seriesId,
           nextRunTime: nextRun.getTime(),
+          expectedJobId: series.scheduledImportJobId,
         });
         
         console.log(`Next scheduled import for series ${args.seriesId} at ${nextRun.toISOString()}`);
       } else {
         await ctx.runMutation(internal.scheduledImports.deactivateSchedule, {
           seriesId: args.seriesId,
+          expectedJobId: series.scheduledImportJobId,
         });
         console.log(`No more scheduled imports for series ${args.seriesId} - series has ended`);
       }
@@ -314,8 +322,17 @@ export const scheduleNextRun = internalMutation({
   args: {
     seriesId: v.id("series"),
     nextRunTime: v.number(),
+    expectedJobId: v.optional(v.id("_scheduled_functions")),
   },
   handler: async (ctx, args): Promise<void> => {
+    const series = await ctx.db.get(args.seriesId);
+    if (!series || !series.isScheduledImportActive) {
+      return;
+    }
+    if (args.expectedJobId && series.scheduledImportJobId !== args.expectedJobId) {
+      return;
+    }
+
     const jobId = await ctx.scheduler.runAt(args.nextRunTime, internal.scheduledImports.runScheduledImport, {
       seriesId: args.seriesId,
       expectedRunTime: args.nextRunTime,
@@ -330,8 +347,17 @@ export const scheduleNextRun = internalMutation({
 export const deactivateSchedule = internalMutation({
   args: {
     seriesId: v.id("series"),
+    expectedJobId: v.optional(v.id("_scheduled_functions")),
   },
   handler: async (ctx, args) => {
+    const series = await ctx.db.get(args.seriesId);
+    if (!series || !series.isScheduledImportActive) {
+      return;
+    }
+    if (args.expectedJobId && series.scheduledImportJobId !== args.expectedJobId) {
+      return;
+    }
+
     await ctx.db.patch(args.seriesId, {
       scheduledImportJobId: undefined,
       isScheduledImportActive: false,
