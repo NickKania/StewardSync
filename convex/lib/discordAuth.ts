@@ -1,14 +1,15 @@
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { UserFacingError } from "./errors";
+import { TEST_MODE_SESSION_PREFIX, isTestModeEnabled, isTestSessionToken } from "./testMode";
 
 /** Resolve the actor from Discord, never from a caller-selected StewardSync ID. */
 export async function requireDiscordUser(
   ctx: Pick<ActionCtx, "runQuery">,
   accessToken: string,
 ): Promise<Id<"users">> {
-  if (!accessToken || /\s/.test(accessToken)) {
+  if (!accessToken || /\s/.test(accessToken) || accessToken.startsWith(TEST_MODE_SESSION_PREFIX)) {
     throw new UserFacingError("Sign in with Discord again to make corrections");
   }
   const controller = new AbortController();
@@ -39,4 +40,19 @@ export async function requireDiscordUser(
   const user = await ctx.runQuery(api.auth.getUserByDiscordId, { discordId: profile.id });
   if (!user) throw new UserFacingError("No StewardSync account exists for this Discord user");
   return user._id;
+}
+
+export async function requireCorrectionActor(
+  ctx: Pick<ActionCtx, "runQuery">,
+  accessToken: string,
+): Promise<{ userId: Id<"users">; testSessionToken?: string }> {
+  if (!accessToken.startsWith(TEST_MODE_SESSION_PREFIX)) {
+    return { userId: await requireDiscordUser(ctx, accessToken) };
+  }
+
+  if (!isTestModeEnabled()) throw new UserFacingError("Test mode is disabled");
+  if (!isTestSessionToken(accessToken)) throw new UserFacingError("A valid test mode session is required to make corrections");
+  const userId = await ctx.runQuery(internal.testMode.resolveTestSession, { token: accessToken });
+  if (!userId) throw new UserFacingError("A valid test mode session is required to make corrections");
+  return { userId, testSessionToken: accessToken };
 }

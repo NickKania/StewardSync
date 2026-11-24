@@ -25,7 +25,10 @@ function fixture(role = "league_manager", joint = false) {
       get: async (id: string) => documents.get(id) ?? null,
       normalizeId: (_table: string, id: string) => documents.has(id) ? id : null,
       query: (table: string) => ({
-        withIndex: () => ({ collect: async () => [documents.get("review")] }),
+        withIndex: () => ({
+          collect: async () => [documents.get("review")],
+          unique: async () => null,
+        }),
         order: () => ({ collect: async () => table === "reports" ? [documents.get("report")] : [] }),
       }),
       patch: async (id: string, updates: Record<string, unknown>) => Object.assign(documents.get(id)!, updates),

@@ -5,6 +5,7 @@ import { AuthService } from '@core/services/auth.service';
 import { ThemeService } from '@core/services/theme.service';
 import { ColorModeService } from '@core/services/color-mode.service';
 import { SidebarStateService } from '@core/services/sidebar-state.service';
+import { LOCAL_TEST_MODE_HEADER_COMPONENT } from '@core/test-mode/test-mode.entry';
 
 @Component({
   selector: 'app-header',
@@ -36,6 +37,9 @@ import { SidebarStateService } from '@core/services/sidebar-state.service';
 
         <!-- User menu -->
         <div class="flex items-center gap-4">
+          @if (testModeHeaderComponent) {
+            <ng-container *ngComponentOutlet="testModeHeaderComponent" />
+          }
           <button
             class="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
             (click)="colorModeService.toggleColorBlindMode()"
@@ -114,6 +118,7 @@ export class HeaderComponent {
   themeService = inject(ThemeService);
   colorModeService = inject(ColorModeService);
   readonly sidebarStateService = inject(SidebarStateService);
+  protected readonly testModeHeaderComponent = LOCAL_TEST_MODE_HEADER_COMPONENT;
 
   showUserMenu = false;
 

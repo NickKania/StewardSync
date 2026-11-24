@@ -19,6 +19,28 @@ export default defineSchema({
   })
     .index("by_discord_id", ["discordId"]),
 
+  testModeSessions: defineTable({
+    token: v.string(),
+    userId: v.id("users"),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["userId"])
+    .index("by_expires_at", ["expiresAt"]),
+
+  testModeOwnership: defineTable({
+    scenarioId: v.string(),
+    entityTable: v.string(),
+    entityId: v.string(),
+    fixtureKey: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_scenario", ["scenarioId"])
+    .index("by_table_and_entity", ["entityTable", "entityId"])
+    .index("by_entity", ["entityId"])
+    .index("by_scenario_and_key", ["scenarioId", "fixtureKey"]),
+
   steamUserMappings: defineTable({
     steamId: v.string(),
     userId: v.id("users"),
@@ -120,6 +142,7 @@ export default defineSchema({
     changedAt: v.number(),
   })
     .index("by_entity", ["tableName", "documentId"])
+    .index("by_changed_by", ["changedByUserId"])
     .index("by_entity_field", ["tableName", "documentId", "fieldName"])
     .index("by_entity_field_source", ["tableName", "documentId", "fieldName", "source"]),
 

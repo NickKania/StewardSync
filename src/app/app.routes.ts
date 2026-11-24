@@ -4,6 +4,7 @@ import { authGuard } from "@core/guards/auth.guard";
 import { roleGuard } from "@core/guards/role.guard";
 import { appRuntimeConfig } from "@core/config/runtime-config";
 import { RouteRedirectComponent } from "@core/components/route-redirect/route-redirect.component";
+import { localTestModeRoutes } from "@core/test-mode/test-mode.entry";
 
 export const routes: Routes = [
   {
@@ -371,6 +372,7 @@ export const routes: Routes = [
       },
     ],
   },
+  ...localTestModeRoutes,
   {
     path: "**",
     redirectTo: "driver-dashboard",

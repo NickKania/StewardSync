@@ -18,6 +18,7 @@ function fixture(role = "league_manager") {
   const ctx = {
     db: {
       get: async (id: string) => documents.get(id) ?? null,
+      query: () => ({ withIndex: () => ({ unique: async () => null }) }),
       patch: async (id: string, updates: Record<string, unknown>) => Object.assign(documents.get(id)!, updates),
       insert: async (_table: string, data: Record<string, unknown>) => { audit.push(data); return "history"; },
     },

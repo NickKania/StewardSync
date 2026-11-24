@@ -1,3 +1,5 @@
+import type { TestModeBridge } from "../app/core/test-mode/test-mode.types";
+
 export interface ProcessEnv {
   NODE_ENV?: string;
   PUBLIC_ENABLE_DEV_LOGIN?: string;
@@ -14,4 +16,9 @@ export interface Window {
     enableDevLogin?: boolean | string;
     discordClientId?: string;
   };
+}
+declare global {
+  interface Window {
+    __STEWARDSYNC_TEST_MODE__?: TestModeBridge;
+  }
 }

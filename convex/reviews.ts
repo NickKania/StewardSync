@@ -1,6 +1,7 @@
 import { action, internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireDiscordUser } from "./lib/discordAuth";
+import { requireCorrectionActor } from "./lib/discordAuth";
+import { assertCorrectionActorAndTarget } from "./lib/testMode";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
@@ -392,24 +393,35 @@ const reviewCorrectionArgs = {
   isNoDriverAtFault: v.boolean(),
 };
 
-/** Verify the Discord actor before correcting a recorded assessment. */
+/** Verify the actor before correcting a recorded assessment. */
 export const correct = action({
   args: { discordAccessToken: v.string(), ...reviewCorrectionArgs },
   handler: async (ctx, args): Promise<Result<Id<"reviews">>> => {
     const { discordAccessToken, ...updates } = args;
-    const currentUserId = await requireDiscordUser(ctx, discordAccessToken);
-    return await ctx.runMutation(internal.reviews.correctVerified, { ...updates, currentUserId });
+    const { userId: currentUserId, testSessionToken } = await requireCorrectionActor(ctx, discordAccessToken);
+    return await ctx.runMutation(internal.reviews.correctVerified, { ...updates, currentUserId, testSessionToken });
   },
 });
 
 export const correctVerified = internalMutation({
-  args: { currentUserId: v.id("users"), ...reviewCorrectionArgs },
+  args: { currentUserId: v.id("users"), testSessionToken: v.optional(v.string()), ...reviewCorrectionArgs },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.currentUserId, ["league_manager"]);
     const review = await ctx.db.get(args.reviewId);
     if (!review) throw new UserFacingError("Review not found");
     const report = await ctx.db.get(review.reportId);
     if (!report) throw new UserFacingError("Report not found");
+    const linkedReview = review.linkedReviewId
+      ? await ctx.db.get(review.linkedReviewId)
+      : null;
+    if (review.linkedReviewId && (!linkedReview ||
+      linkedReview.reportId !== review.reportId || linkedReview.linkedReviewId !== review._id)) {
+      return failure("Joint review link is invalid; repair it before editing");
+    }
+    const reviews = linkedReview ? [review, linkedReview] : [review];
+    await assertCorrectionActorAndTarget(
+      ctx, args.currentUserId, args.testSessionToken, report, reviews.map(({ _id }) => _id),
+    );
 
     const incidentDescription = args.incidentDescription.trim();
     if (!incidentDescription) {
@@ -424,14 +436,6 @@ export const correctVerified = internalMutation({
     const driverError = await validateAtFaultDriverForReport(ctx, report, atFaultDriverId);
     if (driverError) return failure(driverError);
 
-    const linkedReview = review.linkedReviewId
-      ? await ctx.db.get(review.linkedReviewId)
-      : null;
-    if (review.linkedReviewId && (!linkedReview ||
-      linkedReview.reportId !== review.reportId || linkedReview.linkedReviewId !== review._id)) {
-      return failure("Joint review link is invalid; repair it before editing");
-    }
-    const reviews = linkedReview ? [review, linkedReview] : [review];
     if (args.isNoDriverAtFault) {
       for (const assessment of reviews) {
         const penaltyId = assessment.recommendedPenalty

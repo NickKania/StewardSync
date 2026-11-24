@@ -60,6 +60,10 @@ This starts both the Convex dev server and Angular dev server concurrently.
 - App: `http://localhost:4200`
 - Convex Dashboard: Available via `bun x convex dashboard`
 
+## Local Test Mode
+
+On Linux, macOS, or WSL, run `bun run test-mode:local` to start a local Convex backend and Angular. Open the loopback URL printed by the launcher to switch test identities and stage racing scenarios. Use `bun run test-mode:backend` for CLI automation. [Local Test Mode guide](docs/LOCAL_TEST_MODE.md)
+
 ## Useful Commands
 
 ```bash

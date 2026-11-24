@@ -1,7 +1,8 @@
 import { cacheQueryDocuments } from "./lib/queryCache";
 import { internalQuery, action, internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireDiscordUser } from "./lib/discordAuth";
+import { requireCorrectionActor } from "./lib/discordAuth";
+import { assertCorrectionActorAndTarget } from "./lib/testMode";
 import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import {
@@ -664,22 +665,23 @@ const finalizedDetailArgs = {
   videoTimestamp: v.string(),
 };
 
-/** Verify the Discord actor before correcting finalized incident details. */
+/** Verify the actor before correcting finalized incident details. */
 export const updateFinalizedDetails = action({
   args: { discordAccessToken: v.string(), ...finalizedDetailArgs },
   handler: async (ctx, args): Promise<Id<"reports">> => {
     const { discordAccessToken, ...updates } = args;
-    const currentUserId = await requireDiscordUser(ctx, discordAccessToken);
-    return await ctx.runMutation(internal.reports.updateFinalizedDetailsVerified, { ...updates, currentUserId });
+    const { userId: currentUserId, testSessionToken } = await requireCorrectionActor(ctx, discordAccessToken);
+    return await ctx.runMutation(internal.reports.updateFinalizedDetailsVerified, { ...updates, currentUserId, testSessionToken });
   },
 });
 
 export const updateFinalizedDetailsVerified = internalMutation({
-  args: { currentUserId: v.id("users"), ...finalizedDetailArgs },
+  args: { currentUserId: v.id("users"), testSessionToken: v.optional(v.string()), ...finalizedDetailArgs },
   handler: async (ctx, args) => {
     await requireRole(ctx, args.currentUserId, ["league_manager"]);
     const report = await ctx.db.get(args.reportId);
     if (!report) throw new UserFacingError("Report not found");
+    await assertCorrectionActorAndTarget(ctx, args.currentUserId, args.testSessionToken, report);
     if (!report.isFinalized) {
       throw new UserFacingError("Use the standard editor for reports that are not finalized");
     }

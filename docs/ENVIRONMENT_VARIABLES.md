@@ -20,6 +20,7 @@ The StewardSync application now reads environment variables directly from the sy
 - `DISCORD_CLIENT_ID`: Discord OAuth 2.0 client ID
 - `DISCORD_BOT_TOKEN`: Discord bot token used for race ban review meeting notifications
 - `DISCORD_RACE_REVIEW_CHANNEL_ID`: Parent Discord **text channel** ID used to create private meeting threads
+- `STEWARDSYNC_TEST_MODE` enables anonymous test fixture and identity operations when set to `true` on the local Convex deployment. The local startup scripts set it after verifying the deployment and checking for Discord notification credentials. Never enable it on staging or production. [Local Test Mode guide](LOCAL_TEST_MODE.md)
 
 ## Using with Docker
 
