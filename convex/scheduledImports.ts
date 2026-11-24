@@ -1,6 +1,8 @@
 import { internalMutation, internalAction, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+import { requireRole } from "./lib/auth";
 
 const RUN_SCHEDULED_IMPORT_FN = "scheduledImports:runScheduledImport" as any;
 
@@ -13,7 +15,7 @@ async function runGetEventsBySeriesId(ctx: any, args: { seriesId: Id<"series"> }
 }
 
 async function runImportDriversFromSimGrid(ctx: any, args: { championshipId: Id<"series">; simgridChampionshipId: string }) {
-  return ctx.runAction("actions:importDriversFromSimGrid", args);
+  return ctx.runAction(internal.actions.runDriverImport, args);
 }
 
 async function runScheduleNextRun(ctx: any, args: { seriesId: Id<"series">; nextRunTime: number }) {
@@ -118,11 +120,13 @@ export const getScheduleStatus = query({
 
 export const scheduleImport = mutation({
   args: {
+    currentUserId: v.id("users"),
     seriesId: v.id("series"),
     scheduledImportTime: v.string(),
     scheduledImportDays: v.array(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["event_manager", "league_manager"]);
     const series = await ctx.db.get(args.seriesId);
     if (!series) {
       throw new Error("Series not found");
@@ -192,8 +196,9 @@ export const scheduleImport = mutation({
 });
 
 export const cancelScheduledImport = mutation({
-  args: { seriesId: v.id("series") },
+  args: { currentUserId: v.id("users"), seriesId: v.id("series") },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["event_manager", "league_manager"]);
     const series = await ctx.db.get(args.seriesId);
     if (!series) {
       throw new Error("Series not found");
@@ -217,8 +222,9 @@ export const cancelScheduledImport = mutation({
 });
 
 export const updateScheduleWithNewDates = mutation({
-  args: { seriesId: v.id("series") },
+  args: { currentUserId: v.id("users"), seriesId: v.id("series") },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["event_manager", "league_manager"]);
     const series = await ctx.db.get(args.seriesId);
     if (!series || !series.isScheduledImportActive || !series.scheduledImportTime || !series.scheduledImportDays?.length) {
       return;

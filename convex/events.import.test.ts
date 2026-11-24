@@ -28,16 +28,19 @@ async function runImport(pages: unknown[]) {
     return Response.json(pages[requests.length - 1]);
   }) as typeof fetch;
   const ctx = {
-    runQuery: async () => ({ simgridLink: 'https://www.thesimgrid.com/championship/26032' }),
+    runQuery: async (_reference: unknown, args: { currentUserId?: string }) => {
+      if (args.currentUserId) return;
+      return { simgridLink: 'https://www.thesimgrid.com/championship/26032' };
+    },
     runMutation: async (_reference: unknown, args: ImportedEvent) => {
       events.push(args);
       return { action: events.length === 1 ? 'created' : 'updated', eventId: 'event-id' };
     },
   };
   const action = importFromSimGrid as unknown as {
-    _handler: (context: typeof ctx, args: { seriesId: string }) => Promise<unknown>;
+    _handler: (context: typeof ctx, args: { seriesId: string; currentUserId: string }) => Promise<unknown>;
   };
-  const result = await action._handler(ctx, { seriesId: 'series-1' });
+  const result = await action._handler(ctx, { seriesId: 'series-1', currentUserId: 'manager-1' });
   return { events, requests, result };
 }
 

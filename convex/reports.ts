@@ -1,4 +1,4 @@
-import { action, internalMutation, mutation, query } from "./_generated/server";
+import { internalQuery, action, internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { requireDiscordUser } from "./lib/discordAuth";
 import type { Id } from "./_generated/dataModel";
@@ -373,7 +373,7 @@ export const getReadyForFinalization = query({
 
 export const create = mutation({
   args: {
-    reportingUserId: v.optional(v.id("users")),
+    reportingUserId: v.id("users"),
     reportingDriverId: v.optional(v.id("drivers")),
     reportedDriverId: v.id("drivers"),
     eventId: v.id("events"),
@@ -385,6 +385,7 @@ export const create = mutation({
     videoTimestamp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.reportingUserId, ["driver"]);
     // Validate that reporting and reported drivers are different if reportingDriverId is provided
     if (
       args.reportingDriverId &&
@@ -714,8 +715,9 @@ export const updateFinalizedDetailsVerified = internalMutation({
 });
 
 export const markAsReviewed = mutation({
-  args: { reportId: v.id("reports") },
+  args: { currentUserId: v.id("users"), reportId: v.id("reports") },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["steward"]);
     const report = await ctx.db.get(args.reportId);
     if (!report) {
       throw new Error("Report not found");
@@ -756,6 +758,7 @@ export const finalize = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.userId, ["head_steward", "league_manager"]);
     const report = await ctx.db.get(args.reportId);
     if (!report) {
       throw new Error("Report not found");
@@ -956,6 +959,7 @@ export const createBySteward = mutation({
     reportNumber: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.reportingUserId, ["steward"]);
     const now = Date.now();
 
     // Check if series is locked
@@ -1087,10 +1091,12 @@ export const createBySteward = mutation({
 
 export const reject = mutation({
   args: {
+    currentUserId: v.id("users"),
     reportId: v.id("reports"),
     finalDecision: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["head_steward", "league_manager"]);
     const report = await ctx.db.get(args.reportId);
     if (!report) {
       throw new Error("Report not found");
@@ -1602,7 +1608,7 @@ export const getEventExportData = query({
   },
 });
 
-export const debugReportState = query({
+export const debugReportState = internalQuery({
   args: { reportId: v.id("reports") },
   handler: async (ctx, args) => {
     console.log(`[DEBUG] Getting debug state for report: ${args.reportId}`);

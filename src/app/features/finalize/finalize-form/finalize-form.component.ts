@@ -1117,6 +1117,7 @@ export class FinalizeFormComponent implements OnInit, OnDestroy {
       const result = await this.convex.mutation(
         this.convex.api.reports.reject,
         {
+          currentUserId: this.authService.requireUserId(),
           reportId: this.reportId as any,
           finalDecision: this.rejectionReason,
         },
