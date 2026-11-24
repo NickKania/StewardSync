@@ -17,7 +17,7 @@ StewardSync is a unified application for reviewing racing steward reports. The a
 
 - **Frontend:** Angular 17+ (standalone components, signals)
 - **Backend:** Convex (real-time backend-as-a-service)
-- **Authentication:** Convex Auth with Google OAuth 2.0
+- **Authentication:** Discord OAuth 2.0 with PKCE
 - **Styling:** Tailwind CSS 3.x
 - **Package Manager:** bun
 - **Node Version:** 20 (via nvm)

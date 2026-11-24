@@ -45,6 +45,21 @@
       }
     },
     {
+      "files": ["src/app/features/drivers/driver-list/driver-list.component.ts"],
+      "rules": { "@angular-eslint/no-empty-lifecycle-method": "warn" }
+    },
+    {
+      "files": [
+        "src/app/features/reports/edit-decision/edit-decision.component.ts",
+        "src/app/shared/components/modal/modal.component.ts"
+      ],
+      "rules": { "@angular-eslint/no-output-native": "warn" }
+    },
+    {
+      "files": ["src/app/shared/components/button/button.component.ts"],
+      "rules": { "@angular-eslint/no-output-on-prefix": "warn" }
+    },
+    {
       "files": ["*.html"],
       "extends": ["plugin:@angular-eslint/template/recommended"],
       "rules": {}

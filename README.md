@@ -114,7 +114,7 @@ StewardSync/
 
 ### Vercel (Frontend)
 
-See [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md) for deploying the Angular frontend to Vercel.
+See [docs/vercel-deployment.md](docs/vercel-deployment.md) for deploying the Angular frontend to Vercel.
 
 ### Convex (Backend)
 
