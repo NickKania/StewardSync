@@ -6,16 +6,12 @@ import { UserFacingError } from "./lib/errors";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
-
-    const usersWithRoles = await Promise.all(
-      users.map(async (user) => {
-        const role = await ctx.db.get(user.roleId);
-        return { ...user, role };
-      })
-    );
-
-    return usersWithRoles;
+    const [users, roles] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db.query("roles").collect(),
+    ]);
+    const rolesById = new Map(roles.map((role) => [role._id, role]));
+    return users.map((user) => ({ ...user, role: rolesById.get(user.roleId) ?? null }));
   },
 });
 
@@ -68,24 +64,17 @@ export const listRoles = query({
 export const listStewards = query({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
-    const roles = await ctx.db.query("roles").collect();
-    const stewardRoleIds = roles.filter(r =>
-      r.name === 'steward' ||
-      r.name === 'head_steward' ||
-      r.name === 'league_manager'
-    ).map(r => r._id);
-
-    const stewards = users.filter(user => stewardRoleIds.includes(user.roleId));
-
-    const usersWithRoles = await Promise.all(
-      stewards.map(async (user) => {
-        const role = await ctx.db.get(user.roleId);
-        return { ...user, role };
-      })
-    );
-
-    return usersWithRoles;
+    const [users, roles] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db.query("roles").collect(),
+    ]);
+    const stewardRoles = new Map(roles
+      .filter((role) => ["steward", "head_steward", "league_manager"].includes(role.name))
+      .map((role) => [role._id, role]));
+    return users.flatMap((user) => {
+      const role = stewardRoles.get(user.roleId);
+      return role ? [{ ...user, role }] : [];
+    });
   },
 });
 

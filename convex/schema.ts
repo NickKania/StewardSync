@@ -233,6 +233,8 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_event", ["eventId"])
+    .index("by_event_and_status", ["eventId", "status"])
+    .index("by_race", ["raceId"])
     .index("by_reporting_driver", ["reportingDriverId"])
     .index("by_reporting_user", ["reportingUserId"])
     .index("by_reported_driver", ["reportedDriverId"])

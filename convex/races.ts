@@ -151,7 +151,7 @@ export const remove = mutation({
 
     const reports = await ctx.db
       .query("reports")
-      .filter((q) => q.eq(q.field("raceId"), args.raceId))
+      .withIndex("by_race", (q) => q.eq("raceId", args.raceId))
       .first();
 
     if (reports) {

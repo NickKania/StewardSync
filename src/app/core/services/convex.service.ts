@@ -1,5 +1,6 @@
 import { Injectable, signal, OnDestroy } from '@angular/core';
 import { ConvexClient } from 'convex/browser';
+import { ConvexError } from 'convex/values';
 import { environment } from '../../../environments/environment';
 import { ConvexCustomLogger } from './convex-logger';
 import { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
@@ -7,6 +8,13 @@ import { appRuntimeConfig } from '@core/config/runtime-config';
 
 // Import API to avoid circular inference issues
 import * as ConvexApi from '@convex/_generated/api';
+
+function rethrowWithApplicationMessage(error: unknown): never {
+  if (error instanceof ConvexError && typeof error.data === 'string') {
+    error.message = error.data;
+  }
+  throw error;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -37,21 +45,21 @@ export class ConvexService implements OnDestroy {
     func: T,
     args: FunctionArgs<T>
   ): Promise<FunctionReturnType<T>> {
-    return this.client.query(func, args);
+    return this.client.query(func, args).catch(rethrowWithApplicationMessage);
   }
 
   async mutation<T extends FunctionReference<'mutation'>>(
     func: T,
     args: FunctionArgs<T>
   ): Promise<FunctionReturnType<T>> {
-    return this.client.mutation(func, args);
+    return this.client.mutation(func, args).catch(rethrowWithApplicationMessage);
   }
 
   async action<T extends FunctionReference<'action'>>(
     func: T,
     args: FunctionArgs<T>
   ): Promise<FunctionReturnType<T>> {
-    return (this.client as any).action(func, args);
+    return this.client.action(func, args).catch(rethrowWithApplicationMessage);
   }
 
   subscribe<T extends FunctionReference<'query'>>(

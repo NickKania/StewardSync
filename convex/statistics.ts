@@ -1,4 +1,6 @@
-import { query } from "./_generated/server";
+import { cacheQueryDocuments } from "./lib/queryCache";
+import type { Doc, Id } from "./_generated/dataModel";
+import { query, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getDriverDisplayName } from "./lib/formatting";
 import { getEffectiveLicensePoints } from "./lib/penalties";
@@ -53,10 +55,54 @@ function raceSortValue(race: { raceNumber?: number; sessionName?: string }): num
   return Number.MAX_SAFE_INTEGER;
 }
 
+async function getEventReportsByRace(ctx: QueryCtx, eventId: Id<"events">) {
+  const reports = await ctx.db.query("reports")
+    .withIndex("by_event", (q) => q.eq("eventId", eventId))
+    .collect();
+  const byRace = new Map<Id<"races">, Doc<"reports">[]>();
+  for (const report of reports) {
+    const raceReports = byRace.get(report.raceId);
+    if (raceReports) raceReports.push(report);
+    else byRace.set(report.raceId, [report]);
+  }
+  return byRace;
+}
+
+async function getSeriesPoints(
+  ctx: QueryCtx,
+  seriesId: Id<"series">,
+  drivers: Doc<"drivers">[],
+  get: ReturnType<typeof cacheQueryDocuments>,
+) {
+  const driverIds = new Set(drivers.map((driver) => driver._id));
+  const events = await ctx.db.query("events")
+    .withIndex("by_series", (q) => q.eq("seriesId", seriesId))
+    .collect();
+  const reportsByEvent = await Promise.all(events.map((event) =>
+    ctx.db.query("reports")
+      .withIndex("by_event_and_status", (q) =>
+        q.eq("eventId", event._id).eq("status", "finalized"))
+      .collect(),
+  ));
+
+  const points = new Map<Id<"drivers">, number>();
+  for (const report of reportsByEvent.flat()) {
+    const driverId = report.atFaultDriverId;
+    if (report.isNoDriverAtFault || !driverId || !driverIds.has(driverId)) continue;
+    const penalty = report.appliedPenalty
+      ? await get(report.appliedPenalty as Id<"penalties">)
+      : null;
+    const earned = getEffectiveLicensePoints(penalty, report.isSelfReport);
+    points.set(driverId, (points.get(driverId) ?? 0) + earned);
+  }
+  return points;
+}
+
 export const getEventRundown = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    const event = await ctx.db.get(args.eventId);
+    const get = cacheQueryDocuments(ctx.db);
+    const event = await get(args.eventId);
     if (!event) {
       return [];
     }
@@ -68,14 +114,10 @@ export const getEventRundown = query({
 
     races.sort((a, b) => raceSortValue(a) - raceSortValue(b));
 
+    const reportsByRace = await getEventReportsByRace(ctx, args.eventId);
     const rundown = await Promise.all(
       races.map(async (race) => {
-        const reports = await ctx.db
-          .query("reports")
-          .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-          .collect();
-
-        const raceReports = reports.filter((r) => r.raceId === race._id);
+        const raceReports = reportsByRace.get(race._id) ?? [];
 
         const eventRundownRows = await Promise.all(
           raceReports.map(async (report) => {
@@ -83,7 +125,7 @@ export const getEventRundown = query({
               return null;
             }
 
-            let review: any = null;
+            let review: Doc<"reviews"> | null | undefined = null;
             if (report.status === "reviewed") {
               const reviews = await ctx.db
                 .query("reviews")
@@ -106,7 +148,7 @@ export const getEventRundown = query({
               ? null
               : report.atFaultDriverId;
             const reportedDriver = atFaultDriverId
-              ? await ctx.db.get(atFaultDriverId)
+              ? await get(atFaultDriverId)
               : null;
 
             // Skip reports where the driver doesn't belong to this event's series
@@ -125,7 +167,7 @@ export const getEventRundown = query({
             // Get display name with priority: user.officialName > driver.officialName > driver.driverName
             let userOfficialName: string | undefined;
             if (reportedDriver?.userId) {
-              const user = await ctx.db.get(reportedDriver.userId);
+              const user = await get(reportedDriver.userId);
               userOfficialName = user?.officialName;
             }
             const displayName = reportedDriver
@@ -135,16 +177,16 @@ export const getEventRundown = query({
                 )
               : null;
 
-            let appliedPenalty: any = null;
-            let recommendedPenaltyObj: any = null;
+            let appliedPenalty: Doc<"penalties"> | null = null;
+            let recommendedPenaltyObj: Doc<"penalties"> | null = null;
 
             if (report.status === "finalized" && report.appliedPenalty) {
-              appliedPenalty = await ctx.db.get(report.appliedPenalty as any);
+              appliedPenalty = await get(report.appliedPenalty as Id<"penalties">);
             }
 
             if (report.status === "reviewed" && review?.recommendedPenalty) {
-              recommendedPenaltyObj = await ctx.db.get(
-                review.recommendedPenalty as any,
+              recommendedPenaltyObj = await get(
+                review.recommendedPenalty as Id<"penalties">,
               );
             }
 
@@ -214,7 +256,7 @@ export const getEventRundown = query({
             // Get driver class display name
             let driverClassDisplayName: string | null = null;
             if (reportedDriver?.driverClassId) {
-              const driverClass = await ctx.db.get(reportedDriver.driverClassId);
+              const driverClass = await get(reportedDriver.driverClassId);
               driverClassDisplayName = driverClass?.displayName ?? null;
             }
 
@@ -267,7 +309,8 @@ export const getEventRundown = query({
 export const debugEventRundownDriverMismatches = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    const event = await ctx.db.get(args.eventId);
+    const get = cacheQueryDocuments(ctx.db);
+    const event = await get(args.eventId);
     if (!event) {
       return { error: "Event not found" };
     }
@@ -286,13 +329,9 @@ export const debugEventRundownDriverMismatches = query({
     const mismatches: any[] = [];
     const correct: any[] = [];
 
+    const reportsByRace = await getEventReportsByRace(ctx, args.eventId);
     for (const race of races) {
-      const reports = await ctx.db
-        .query("reports")
-        .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-        .collect();
-
-      const raceReports = reports.filter((r) => r.raceId === race._id);
+      const raceReports = reportsByRace.get(race._id) ?? [];
 
       for (const report of raceReports) {
         if (report.status !== "finalized" && report.status !== "reviewed") {
@@ -303,7 +342,7 @@ export const debugEventRundownDriverMismatches = query({
         if (!atFaultDriverId) {
           continue;
         }
-        const driver = await ctx.db.get(atFaultDriverId);
+        const driver = await get(atFaultDriverId);
 
         if (!driver) {
           continue;
@@ -314,7 +353,7 @@ export const debugEventRundownDriverMismatches = query({
         // Get driver class display name for debug
         let driverClassDisplayName = "N/A";
         if (driver.driverClassId) {
-          const driverClass = await ctx.db.get(driver.driverClassId);
+          const driverClass = await get(driver.driverClassId);
           driverClassDisplayName = driverClass?.displayName || "N/A";
         }
 
@@ -327,9 +366,7 @@ export const debugEventRundownDriverMismatches = query({
           driverChampionshipId: driver.championshipId?.toString() || "None",
           eventSeriesId: eventSeriesId.toString(),
           eventId: args.eventId.toString(),
-          eventSeriesName: (await ctx.db.get(eventSeriesId))
-            ? (await ctx.db.get(eventSeriesId))?.name
-            : "Unknown",
+          eventSeriesName: (await get(eventSeriesId))?.name ?? "Unknown",
           raceNumber: race.raceNumber,
           reason: isMismatch
             ? "Driver belongs to different series than event"
@@ -347,7 +384,7 @@ export const debugEventRundownDriverMismatches = query({
     // Build drivers in series with class display names
     const driversInSeriesWithClass = await Promise.all(
       driversInSeries.map(async (d) => {
-        const driverClass = d.driverClassId ? await ctx.db.get(d.driverClassId) : null;
+        const driverClass = d.driverClassId ? await get(d.driverClassId) : null;
         return {
           driverId: d._id.toString(),
           driverName: d.driverName,
@@ -374,6 +411,7 @@ export const debugEventRundownDriverMismatches = query({
 export const getSeriesLicensePoints = query({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
+    const get = cacheQueryDocuments(ctx.db);
     const drivers = await ctx.db
       .query("drivers")
       .withIndex("by_championship", (q) =>
@@ -381,58 +419,14 @@ export const getSeriesLicensePoints = query({
       )
       .collect();
 
-    const events = await ctx.db
-      .query("events")
-      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
-      .collect();
-
-    const penaltyAccumulator: Record<string, number> = {};
-
-    for (const event of events) {
-      const reports = await ctx.db
-        .query("reports")
-        .withIndex("by_event", (q) => q.eq("eventId", event._id))
-        .collect();
-
-      const finalizedReports = reports.filter((r) => r.status === "finalized");
-
-      for (const report of finalizedReports) {
-        if (report.isNoDriverAtFault) {
-          continue;
-        }
-
-        let penalty: any = null;
-        if (report.appliedPenalty) {
-          penalty = await ctx.db.get(report.appliedPenalty as any);
-        }
-
-        const points = getEffectiveLicensePoints(penalty, report.isSelfReport);
-        const atFaultDriverId = report.atFaultDriverId;
-        if (!atFaultDriverId) {
-          continue;
-        }
-        const driverId = atFaultDriverId.toString();
-
-        // Verify the driver belongs to this series before accumulating points
-        const driver = await ctx.db.get(atFaultDriverId);
-
-        // Only accumulate points if the driver's championship matches the current series
-        if (driver && driver.championshipId === args.seriesId) {
-          if (penaltyAccumulator[driverId]) {
-            penaltyAccumulator[driverId] += points;
-          } else {
-            penaltyAccumulator[driverId] = points;
-          }
-        }
-      }
-    }
+    const pointsByDriver = await getSeriesPoints(ctx, args.seriesId, drivers, get);
 
     const driverPoints = await Promise.all(
       drivers.map(async (driver) => {
         // Get display name with priority: user.officialName > driver.officialName > driver.driverName
         let userOfficialName: string | undefined;
         if (driver.userId) {
-          const user = await ctx.db.get(driver.userId);
+          const user = await get(driver.userId);
           userOfficialName = user?.officialName;
         }
         const displayName = getDriverDisplayName(
@@ -444,7 +438,7 @@ export const getSeriesLicensePoints = query({
           driverId: driver._id,
           driverNumber: driver.driverNumber,
           driverName: displayName,
-          totalLicensePoints: penaltyAccumulator[driver._id.toString()] ?? 0,
+          totalLicensePoints: pointsByDriver.get(driver._id) ?? 0,
         };
       })
     );
@@ -458,6 +452,7 @@ export const getSeriesLicensePoints = query({
 export const getSeriesLicensePointsWithPenalties = query({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
+    const get = cacheQueryDocuments(ctx.db);
     const drivers = await ctx.db
       .query("drivers")
       .withIndex("by_championship", (q) =>
@@ -465,51 +460,7 @@ export const getSeriesLicensePointsWithPenalties = query({
       )
       .collect();
 
-    const events = await ctx.db
-      .query("events")
-      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
-      .collect();
-
-    const penaltyAccumulator: Record<string, number> = {};
-
-    for (const event of events) {
-      const reports = await ctx.db
-        .query("reports")
-        .withIndex("by_event", (q) => q.eq("eventId", event._id))
-        .collect();
-
-      const finalizedReports = reports.filter((r) => r.status === "finalized");
-
-      for (const report of finalizedReports) {
-        if (report.isNoDriverAtFault) {
-          continue;
-        }
-
-        let penalty: any = null;
-        if (report.appliedPenalty) {
-          penalty = await ctx.db.get(report.appliedPenalty as any);
-        }
-
-        const points = getEffectiveLicensePoints(penalty, report.isSelfReport);
-        const atFaultDriverId = report.atFaultDriverId;
-        if (!atFaultDriverId) {
-          continue;
-        }
-        const driverId = atFaultDriverId.toString();
-
-        // Verify the driver belongs to this series before accumulating points
-        const driver = await ctx.db.get(atFaultDriverId);
-
-        // Only accumulate points if the driver's championship matches the current series
-        if (driver && driver.championshipId === args.seriesId) {
-          if (penaltyAccumulator[driverId]) {
-            penaltyAccumulator[driverId] += points;
-          } else {
-            penaltyAccumulator[driverId] = points;
-          }
-        }
-      }
-    }
+    const pointsByDriver = await getSeriesPoints(ctx, args.seriesId, drivers, get);
 
     const allSeriesPenalties = await ctx.db
       .query("seriesPenalties")
@@ -532,15 +483,28 @@ export const getSeriesLicensePointsWithPenalties = query({
       }),
     );
 
+    const assignedPenalties = await ctx.db.query("driverSeriesPenalties")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
+      .collect();
+    const penaltiesByDriver = new Map<Id<"drivers">, Doc<"driverSeriesPenalties">[]>();
+    for (const penalty of assignedPenalties) {
+      const assigned = penaltiesByDriver.get(penalty.driverId);
+      if (assigned) assigned.push(penalty);
+      else penaltiesByDriver.set(penalty.driverId, [penalty]);
+    }
+
+    const seriesPenaltiesById = new Map(allSeriesPenalties.map((penalty) => [penalty._id, penalty]));
+    const thresholdsById = new Map(seriesPenaltiesWithThresholds
+      .flatMap(({ thresholds }) => thresholds.map((threshold) => [threshold._id, threshold] as const)));
+
     const driverPointsWithPenalties = await Promise.all(
       drivers.map(async (driver) => {
-        const driverId = driver._id.toString();
-        const totalPoints = penaltyAccumulator[driverId] ?? 0;
+        const totalPoints = pointsByDriver.get(driver._id) ?? 0;
 
         // Get display name with priority: user.officialName > driver.officialName > driver.driverName
         let userOfficialName: string | undefined;
         if (driver.userId) {
-          const user = await ctx.db.get(driver.userId);
+          const user = await get(driver.userId);
           userOfficialName = user?.officialName;
         }
         const displayName = getDriverDisplayName(
@@ -548,47 +512,15 @@ export const getSeriesLicensePointsWithPenalties = query({
           userOfficialName ? { officialName: userOfficialName } : undefined
         );
 
-        const allDriverSeriesPenalties = await ctx.db
-          .query("driverSeriesPenalties")
-          .withIndex("by_driver_and_series", (q) =>
-            q.eq("driverId", driver._id).eq("seriesId", args.seriesId),
-          )
-          .collect();
-
-        // DEBUG: Log mismatch if found
-        if (allDriverSeriesPenalties.length > 0) {
-          const mismatchedPenalties = allDriverSeriesPenalties.filter(
-            (dsp) => {
-              const driverInDb = drivers.find((d) => d._id === dsp.driverId);
-              return !driverInDb || driverInDb.championshipId !== args.seriesId;
-            },
-          );
-
-          if (mismatchedPenalties.length > 0) {
-            const driverClassDebug = driver.driverClassId ? await ctx.db.get(driver.driverClassId) : null;
-            console.error("Mismatched driverSeriesPenalties found:", {
-              querySeriesId: args.seriesId.toString(),
-              driverId: driver._id.toString(),
-              driverName: driver.driverName,
-              driverClass: driverClassDebug?.displayName || "N/A",
-              driverChampionshipId: driver.championshipId?.toString() || "none",
-              mismatchedPenalties: mismatchedPenalties.map((dsp) => ({
-                driverSeriesPenaltyId: dsp._id.toString(),
-                seriesId: dsp.seriesId.toString(),
-                isServed: dsp.isServed,
-              })),
-            });
-          }
-        }
+        const allDriverSeriesPenalties = penaltiesByDriver.get(driver._id) ?? [];
 
         const driverSeriesPenaltiesWithDetails = await Promise.all(
           allDriverSeriesPenalties.map(async (dsp) => {
-            const seriesPenalty = await ctx.db.get(dsp.seriesPenaltyId);
-            const seriesPenaltyThreshold = await ctx.db.get(
-              dsp.seriesPenaltyThresholdId,
-            );
+            const seriesPenalty = seriesPenaltiesById.get(dsp.seriesPenaltyId) ?? await get(dsp.seriesPenaltyId);
+            const seriesPenaltyThreshold = thresholdsById.get(dsp.seriesPenaltyThresholdId) ??
+              await get(dsp.seriesPenaltyThresholdId);
             const servedByUser = dsp.servedBy
-              ? await ctx.db.get(dsp.servedBy)
+              ? await get(dsp.servedBy)
               : null;
 
             return {
@@ -617,7 +549,7 @@ export const getSeriesLicensePointsWithPenalties = query({
                 // Look up driver class display names for the threshold
                 const driverClassDisplayNames = await Promise.all(
                   threshold.driverClassIds.map(async (id) => {
-                    const dc = await ctx.db.get(id);
+                    const dc = await get(id);
                     return dc?.displayName || "Unknown";
                   })
                 );
@@ -636,7 +568,7 @@ export const getSeriesLicensePointsWithPenalties = query({
         }
 
         // Get driver class display name for the result
-        const driverClassResult = driver.driverClassId ? await ctx.db.get(driver.driverClassId) : null;
+        const driverClassResult = driver.driverClassId ? await get(driver.driverClassId) : null;
 
         return {
           driverId: driver._id,
@@ -667,6 +599,7 @@ export const getSeriesLicensePointsWithPenalties = query({
 export const debugSeriesDriverMismatches = query({
   args: { seriesId: v.id("series") },
   handler: async (ctx, args) => {
+    const get = cacheQueryDocuments(ctx.db);
     const drivers = await ctx.db
       .query("drivers")
       .withIndex("by_championship", (q) =>
@@ -683,13 +616,13 @@ export const debugSeriesDriverMismatches = query({
     const correct: any[] = [];
 
     for (const dsp of allDriverSeriesPenalties) {
-      const driver = await ctx.db.get(dsp.driverId);
-      const seriesPenalty = await ctx.db.get(dsp.seriesPenaltyId);
+      const driver = await get(dsp.driverId);
+      const seriesPenalty = await get(dsp.seriesPenaltyId);
 
       const isMismatch = !driver || driver.championshipId !== args.seriesId;
 
       // Get driver class display name
-      const driverClassDbg = driver?.driverClassId ? await ctx.db.get(driver.driverClassId) : null;
+      const driverClassDbg = driver?.driverClassId ? await get(driver.driverClassId) : null;
 
       const entry = {
         driverSeriesPenaltyId: dsp._id.toString(),
@@ -717,7 +650,7 @@ export const debugSeriesDriverMismatches = query({
     // Build drivers in series with class display names
     const driversInSeriesWithClass = await Promise.all(
       drivers.map(async (d) => {
-        const driverClass = d.driverClassId ? await ctx.db.get(d.driverClassId) : null;
+        const driverClass = d.driverClassId ? await get(d.driverClassId) : null;
         return {
           driverId: d._id.toString(),
           driverName: d.driverName,
@@ -742,7 +675,8 @@ export const debugSeriesDriverMismatches = query({
 export const getEventTimePenaltySummary = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    const event = await ctx.db.get(args.eventId);
+    const get = cacheQueryDocuments(ctx.db);
+    const event = await get(args.eventId);
     if (!event) {
       return [];
     }
@@ -754,14 +688,10 @@ export const getEventTimePenaltySummary = query({
 
     races.sort((a, b) => raceSortValue(a) - raceSortValue(b));
 
+    const reportsByRace = await getEventReportsByRace(ctx, args.eventId);
     const timePenaltySummary = await Promise.all(
       races.map(async (race) => {
-        const reports = await ctx.db
-          .query("reports")
-          .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-          .collect();
-
-        const raceReports = reports.filter((r) => r.raceId === race._id);
+        const raceReports = reportsByRace.get(race._id) ?? [];
 
         const finalizedReports = raceReports.filter((r) => r.status === "finalized");
 
@@ -782,7 +712,7 @@ export const getEventTimePenaltySummary = query({
           if (!atFaultDriverId) {
             continue;
           }
-          const reportedDriver = await ctx.db.get(atFaultDriverId);
+          const reportedDriver = await get(atFaultDriverId);
 
           if (
             reportedDriver &&
@@ -792,9 +722,9 @@ export const getEventTimePenaltySummary = query({
             continue;
           }
 
-          let appliedPenalty: any = null;
+          let appliedPenalty: Doc<"penalties"> | null = null;
           if (report.appliedPenalty) {
-            appliedPenalty = await ctx.db.get(report.appliedPenalty as any);
+            appliedPenalty = await get(report.appliedPenalty as Id<"penalties">);
           }
 
           if (!appliedPenalty) {
@@ -815,7 +745,7 @@ export const getEventTimePenaltySummary = query({
 
           let userOfficialName: string | undefined;
           if (reportedDriver?.userId) {
-            const user = await ctx.db.get(reportedDriver.userId);
+            const user = await get(reportedDriver.userId);
             userOfficialName = user?.officialName;
           }
           const displayName = reportedDriver
@@ -827,7 +757,7 @@ export const getEventTimePenaltySummary = query({
 
           let driverClassDisplayName: string | null = null;
           if (reportedDriver?.driverClassId) {
-            const driverClass = await ctx.db.get(reportedDriver.driverClassId);
+            const driverClass = await get(reportedDriver.driverClassId);
             driverClassDisplayName = driverClass?.displayName ?? null;
           }
 
