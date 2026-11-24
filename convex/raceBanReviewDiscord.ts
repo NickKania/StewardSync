@@ -2,6 +2,7 @@ import { internal } from "./_generated/api";
 import { internalAction, type ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  addThreadMember,
   sendDiscordMessage,
   type DiscordThread,
   createPrivateThread,
@@ -13,15 +14,6 @@ import {
 import { Id } from "./_generated/dataModel";
 
 const getEnv = (key: string): string | undefined => process.env[key];
-
-interface MeetingThreadArgs {
-  id: Id<"raceBanReviews">;
-  expectedMeetingStartAt: number;
-}
-
-interface CloseMeetingThreadArgs {
-  id: Id<"raceBanReviews">;
-}
 
 type MeetingNotificationContext = {
   reviewId: string;
@@ -118,6 +110,16 @@ const ensureMeetingThread = async (
 ) => {
   const existingThread = await fetchThreadIfAvailable(context.meetingThreadId);
   if (existingThread) {
+    const participants = Array.from(
+      new Set(
+        [context.requesterDiscordId, context.schedulerDiscordId].filter(
+          (id): id is string => Boolean(id),
+        ),
+      ),
+    );
+    for (const discordId of participants) {
+      await addThreadMember(existingThread.id, discordId);
+    }
     return { thread: existingThread, created: false };
   }
 
@@ -155,7 +157,7 @@ export const createOrUpdateMeetingThreadPost = internalAction({
     id: v.id("raceBanReviews"),
     expectedMeetingStartAt: v.number(),
   },
-  handler: async (ctx, args: MeetingThreadArgs) => {
+  handler: async (ctx, args) => {
     let threadId: string | undefined;
     try {
       const context = await loadContext(ctx, args.id, args.expectedMeetingStartAt);
@@ -206,7 +208,7 @@ export const closeMeetingThread = internalAction({
   args: {
     id: v.id("raceBanReviews"),
   },
-  handler: async (ctx, args: CloseMeetingThreadArgs) => {
+  handler: async (ctx, args) => {
     try {
       const context = await loadCloseContext(ctx, args.id);
       if (!context || !context.meetingThreadId) {
@@ -226,7 +228,7 @@ export const sendMeetingReminder = internalAction({
     id: v.id("raceBanReviews"),
     expectedMeetingStartAt: v.number(),
   },
-  handler: async (ctx, args: MeetingThreadArgs) => {
+  handler: async (ctx, args) => {
     let threadId: string | undefined;
     try {
       const context = await loadContext(ctx, args.id, args.expectedMeetingStartAt);

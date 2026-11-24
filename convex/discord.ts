@@ -30,25 +30,27 @@ class DiscordRestError extends Error {
 }
 
 const MAX_RETRIES = 3;
-const MAX_RETRY_DELAY_MS = 5_000;
+const MAX_RETRY_DELAY_MS = 10_000;
 const IDEMPOTENT_METHODS = new Set(["GET", "PUT", "PATCH"]);
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function parseRetryDelayMs(response: Response, responseText: string, attempt: number): number {
+function parseRetryDelayMs(response: Response, responseText: string, attempt: number): number | null {
   const headerVal = response.headers.get("retry-after");
-  if (headerVal !== null) {
-    const parsed = Number(headerVal);
+  if (headerVal !== null && headerVal.trim() !== "") {
+    const parsed = Number(headerVal.trim());
     if (Number.isFinite(parsed) && parsed >= 0) {
-      return Math.min(Math.ceil(parsed * 1000), MAX_RETRY_DELAY_MS);
+      const delayMs = Math.ceil(parsed * 1000);
+      return delayMs <= MAX_RETRY_DELAY_MS ? delayMs : null;
     }
   }
   try {
     const json = JSON.parse(responseText) as { retry_after?: unknown };
     if (typeof json.retry_after === "number" && Number.isFinite(json.retry_after) && json.retry_after >= 0) {
-      return Math.min(Math.ceil(json.retry_after * 1000), MAX_RETRY_DELAY_MS);
+      const delayMs = Math.ceil(json.retry_after * 1000);
+      return delayMs <= MAX_RETRY_DELAY_MS ? delayMs : null;
     }
   } catch {
     // Non-JSON error body
@@ -88,8 +90,10 @@ async function discordRequest<T>(
             (response.status >= 500 && IDEMPOTENT_METHODS.has(method)));
         if (canRetry) {
           const delayMs = parseRetryDelayMs(response, text, attempt);
-          await sleep(delayMs);
-          continue;
+          if (delayMs !== null) {
+            await sleep(delayMs);
+            continue;
+          }
         }
         throw new DiscordRestError(
           response.status,
@@ -143,7 +147,7 @@ export async function sendDiscordMessage(
   allowedMentionUserIds?: string[],
 ): Promise<void> {
   const allowed_mentions = allowedMentionUserIds
-    ? { parse: [] as string[], users: allowedMentionUserIds }
+    ? { parse: [] as string[], users: Array.from(new Set(allowedMentionUserIds)) }
     : { parse: ["users"] };
   await discordRequest("POST", `/channels/${channelId}/messages`, {
     content,

@@ -66,7 +66,7 @@ This starts both the Convex dev server and Angular dev server concurrently.
 bun run dev              # Start Convex + Angular dev servers
 bun run start            # Start Angular only
 bun run start:local      # Start Angular with local Convex config
-bun run build            # Production build
+bun run build:prod       # Production build (generates runtime-config.js)
 bun run test             # Run unit tests
 bun run convex:deploy    # Deploy Convex functions
 ```

@@ -150,12 +150,14 @@ export const scheduleImport = mutation({
       dateRange.endDate
     );
     
+    const nextVersion = (series.scheduledImportVersion ?? 0) + 1;
     let jobId: Id<"_scheduled_functions"> | undefined;
     
     if (nextRun) {
       jobId = await ctx.scheduler.runAt(nextRun.getTime(), internal.scheduledImports.runScheduledImport, {
         seriesId: args.seriesId,
         expectedRunTime: nextRun.getTime(),
+        scheduleVersion: nextVersion,
       });
     }
     
@@ -163,6 +165,7 @@ export const scheduleImport = mutation({
       scheduledImportTime: args.scheduledImportTime,
       scheduledImportDays: args.scheduledImportDays,
       scheduledImportJobId: jobId,
+      scheduledImportVersion: nextVersion,
       isScheduledImportActive: true,
     });
     
@@ -190,8 +193,10 @@ export const cancelScheduledImport = mutation({
       }
     }
     
+    const nextVersion = (series.scheduledImportVersion ?? 0) + 1;
     await ctx.db.patch(args.seriesId, {
       scheduledImportJobId: undefined,
+      scheduledImportVersion: nextVersion,
       isScheduledImportActive: false,
     });
     
@@ -226,17 +231,20 @@ export const updateScheduleWithNewDates = mutation({
       dateRange.endDate
     );
     
+    const nextVersion = (series.scheduledImportVersion ?? 0) + 1;
     let jobId: Id<"_scheduled_functions"> | undefined;
     
     if (nextRun) {
       jobId = await ctx.scheduler.runAt(nextRun.getTime(), internal.scheduledImports.runScheduledImport, {
         seriesId: args.seriesId,
         expectedRunTime: nextRun.getTime(),
+        scheduleVersion: nextVersion,
       });
     }
     
     await ctx.db.patch(args.seriesId, {
       scheduledImportJobId: jobId,
+      scheduledImportVersion: nextVersion,
     });
   },
 });
@@ -245,12 +253,21 @@ export const runScheduledImport = internalAction({
   args: {
     seriesId: v.id("series"),
     expectedRunTime: v.number(),
+    scheduleVersion: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<void> => {
     const series = await ctx.runQuery(api.series.getById, { id: args.seriesId });
     
     if (!series || !series.isScheduledImportActive) {
       console.log(`Skipping import for series ${args.seriesId}: schedule inactive or series not found`);
+      return;
+    }
+
+    if (
+      args.scheduleVersion !== undefined &&
+      series.scheduledImportVersion !== args.scheduleVersion
+    ) {
+      console.log(`Skipping stale scheduled import for series ${args.seriesId}`);
       return;
     }
     
@@ -304,6 +321,7 @@ export const runScheduledImport = internalAction({
           seriesId: args.seriesId,
           nextRunTime: nextRun.getTime(),
           expectedJobId: series.scheduledImportJobId,
+          expectedVersion: args.scheduleVersion ?? series.scheduledImportVersion,
         });
         
         console.log(`Next scheduled import for series ${args.seriesId} at ${nextRun.toISOString()}`);
@@ -311,6 +329,7 @@ export const runScheduledImport = internalAction({
         await ctx.runMutation(internal.scheduledImports.deactivateSchedule, {
           seriesId: args.seriesId,
           expectedJobId: series.scheduledImportJobId,
+          expectedVersion: args.scheduleVersion ?? series.scheduledImportVersion,
         });
         console.log(`No more scheduled imports for series ${args.seriesId} - series has ended`);
       }
@@ -323,19 +342,27 @@ export const scheduleNextRun = internalMutation({
     seriesId: v.id("series"),
     nextRunTime: v.number(),
     expectedJobId: v.optional(v.id("_scheduled_functions")),
+    expectedVersion: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<void> => {
     const series = await ctx.db.get(args.seriesId);
     if (!series || !series.isScheduledImportActive) {
       return;
     }
-    if (args.expectedJobId && series.scheduledImportJobId !== args.expectedJobId) {
+    if (
+      args.expectedVersion !== undefined &&
+      series.scheduledImportVersion !== args.expectedVersion
+    ) {
+      return;
+    }
+    if (!args.expectedJobId || series.scheduledImportJobId !== args.expectedJobId) {
       return;
     }
 
     const jobId = await ctx.scheduler.runAt(args.nextRunTime, internal.scheduledImports.runScheduledImport, {
       seriesId: args.seriesId,
       expectedRunTime: args.nextRunTime,
+      scheduleVersion: series.scheduledImportVersion,
     });
     
     await ctx.db.patch(args.seriesId, {
@@ -348,18 +375,27 @@ export const deactivateSchedule = internalMutation({
   args: {
     seriesId: v.id("series"),
     expectedJobId: v.optional(v.id("_scheduled_functions")),
+    expectedVersion: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const series = await ctx.db.get(args.seriesId);
     if (!series || !series.isScheduledImportActive) {
       return;
     }
-    if (args.expectedJobId && series.scheduledImportJobId !== args.expectedJobId) {
+    if (
+      args.expectedVersion !== undefined &&
+      series.scheduledImportVersion !== args.expectedVersion
+    ) {
+      return;
+    }
+    if (!args.expectedJobId || series.scheduledImportJobId !== args.expectedJobId) {
       return;
     }
 
+    const nextVersion = (series.scheduledImportVersion ?? 0) + 1;
     await ctx.db.patch(args.seriesId, {
       scheduledImportJobId: undefined,
+      scheduledImportVersion: nextVersion,
       isScheduledImportActive: false,
     });
   },

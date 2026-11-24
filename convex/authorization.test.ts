@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { authorizeSimGridImport } from "./actions";
 import { create as createDriver } from "./drivers";
-import { create, createBySteward, finalize, markAsReviewed, reject } from "./reports";
+import { createDriverMeetingThread } from "./driverMeetingThreads";
+import { create, createBySteward, finalize, markAsReviewed, reject, updateFinalizedDecision } from "./reports";
 import { create as createReview, remove, update, updateWithSecondSteward } from "./reviews";
 import { cancelScheduledImport, scheduleImport, updateScheduleWithNewDates } from "./scheduledImports";
 
@@ -15,6 +16,7 @@ function fixture(role: string) {
           case "role": return { name: role };
           case "review": return { userId: "author", reportId: "report" };
           case "report": return { isFinalized: false };
+          case "finalized-report": return { isFinalized: true };
           case "series": return { isScheduledImportActive: true };
           default: return null;
         }
@@ -91,12 +93,13 @@ describe("mutation and import authorization", () => {
   });
 
   for (const [name, endpoint] of Object.entries({
-    createBySteward, finalize, markAsReviewed, reject, createReview, remove,
-    update, updateWithSecondSteward,
+    createBySteward, finalize, markAsReviewed, reject, updateFinalizedDecision,
+    createDriverMeetingThread, createReview, remove, update, updateWithSecondSteward,
   })) {
     it(`rejects an event manager calling steward/finalization mutation ${name}`, async () => {
       const { ctx, writes } = fixture("event_manager");
-      await expect(invoke(endpoint, ctx, actorArgs)).rejects.toThrow("Unauthorized");
+      const args = name === "updateFinalizedDecision" ? { ...actorArgs, reportId: "finalized-report" } : actorArgs;
+      await expect(invoke(endpoint, ctx, args)).rejects.toThrow("Unauthorized");
       expect(writes).toEqual([]);
     });
   }

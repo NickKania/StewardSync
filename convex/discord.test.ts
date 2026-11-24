@@ -53,10 +53,10 @@ test("creates a private thread and adds each participant", async () => {
   }
 });
 
-test("sends a message to the channel with safe allowed_mentions", async () => {
+test("sends a message to the channel with deduplicated safe allowed_mentions", async () => {
   const fetch = spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ id: "123" }));
   try {
-    await sendDiscordMessage("456", "Meeting scheduled", ["789"]);
+    await sendDiscordMessage("456", "Meeting scheduled", ["789", "789"]);
     expect(fetch).toHaveBeenCalledWith(`${baseUrl}/channels/456/messages`, expect.objectContaining({
       method: "POST",
       body: JSON.stringify({
@@ -118,6 +118,21 @@ test("retries HTTP 429 rate-limited requests using retry-after", async () => {
   try {
     await sendDiscordMessage("456", "Retried message");
     expect(fetch).toHaveBeenCalledTimes(2);
+  } finally {
+    fetch.mockRestore();
+  }
+});
+
+test("fails fast on HTTP 429 when retry_after exceeds retry budget", async () => {
+  const fetch = spyOn(globalThis, "fetch").mockResolvedValueOnce(
+    new Response(JSON.stringify({ retry_after: 30 }), {
+      status: 429,
+      headers: { "retry-after": "30" },
+    }),
+  );
+  try {
+    await expect(sendDiscordMessage("456", "Rate limited")).rejects.toThrow("HTTP 429");
+    expect(fetch).toHaveBeenCalledTimes(1);
   } finally {
     fetch.mockRestore();
   }

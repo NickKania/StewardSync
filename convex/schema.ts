@@ -74,6 +74,7 @@ export default defineSchema({
     scheduledImportTime: v.optional(v.string()),
     scheduledImportDays: v.optional(v.array(v.number())),
     scheduledImportJobId: v.optional(v.id("_scheduled_functions")),
+    scheduledImportVersion: v.optional(v.number()),
     isScheduledImportActive: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_name", ["name"]),

@@ -19,10 +19,10 @@ if [ ! -f "$ENV_FILE" ]; then
   fi
 fi
 
-# Extract public values from the local environment file
-CONVEX_URL=$(grep "convexUrl:" "$ENV_FILE" | sed "s/.*convexUrl: '\(.*\)'.*/\1/")
-ENABLE_DEV_LOGIN=$(grep "enableDevLogin:" "$ENV_FILE" | sed "s/.*enableDevLogin: \(.*\),/\1/")
-DISCORD_CLIENT_ID=$(grep "discordClientId:" "$ENV_FILE" | sed "s/.*discordClientId: '\(.*\)'.*/\1/")
+# Extract public values from the local environment file (supports single or double quotes)
+CONVEX_URL=$(grep "convexUrl:" "$ENV_FILE" | sed -E "s/.*convexUrl:[[:space:]]*['\"]([^'\"]*)['\"].*/\1/")
+ENABLE_DEV_LOGIN=$(grep "enableDevLogin:" "$ENV_FILE" | sed -E "s/.*enableDevLogin:[[:space:]]*(true|false).*/\1/")
+DISCORD_CLIENT_ID=$(grep "discordClientId:" "$ENV_FILE" | sed -E "s/.*discordClientId:[[:space:]]*['\"]([^'\"]*)['\"].*/\1/")
 
 # Generate runtime-config.js
 cat > src/runtime-config.js <<EOF

@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, HostListener, computed, input, output, ElementRef, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, HostListener, input, output, ElementRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TruncateTextComponent } from '../truncate-text/truncate-text.component';
@@ -89,10 +89,10 @@ export class MultiSelectComponent {
 
   selectionChange = output<string[]>();
 
-  readonly allSelected = computed(() => {
+  allSelected() {
     const opts = this.options();
     return opts.length > 0 && opts.every((opt) => opt.selected);
-  });
+  }
 
   selectedCount() {
     return this.options().filter((opt) => opt.selected).length;
