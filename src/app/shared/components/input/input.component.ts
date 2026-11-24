@@ -1,8 +1,9 @@
-import { Component, Input, forwardRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, inject, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-input',
   standalone: true,
   imports: [CommonModule, FormsModule],
@@ -44,6 +45,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/f
   `
 })
 export class InputComponent implements ControlValueAccessor {
+  private readonly changeDetector = inject(ChangeDetectorRef);
   @Input() id = `input-${Math.random().toString(36).substr(2, 9)}`;
   @Input() label = '';
   @Input() type: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' = 'text';
@@ -60,6 +62,7 @@ export class InputComponent implements ControlValueAccessor {
 
   writeValue(value: string): void {
     this.value = value || '';
+    this.changeDetector.markForCheck();
   }
 
   registerOnChange(fn: (value: string) => void): void {
@@ -72,6 +75,7 @@ export class InputComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
+    this.changeDetector.markForCheck();
   }
 
   onValueChange(value: string): void {

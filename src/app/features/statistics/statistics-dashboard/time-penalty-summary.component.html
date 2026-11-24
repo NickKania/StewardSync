@@ -1,0 +1,286 @@
+<div class="space-y-6">
+  <app-card [noPadding]="true">
+    <div
+      class="px-6 py-4 border-b border-gray-200 flex items-center justify-between dark:border-gray-700"
+    >
+      <h3
+        class="text-lg font-semibold text-gray-900 dark:text-gray-100"
+      >
+        Time Penalty Summary
+      </h3>
+      <button
+        (click)="
+          requestExport()
+        "
+        class="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+      >
+        <svg
+          class="h-5 w-5"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+          <polyline points="16 6 12 2 8 6" />
+          <line x1="12" y1="2" x2="12" y2="15" />
+        </svg>
+      </button>
+    </div>
+    <div class="px-6 py-4 space-y-4">
+      @if (!isExportMode()) {
+        <div>
+          <label class="label">Select Series</label>
+          <app-select
+            [options]="seriesOptions()"
+            [ngModel]="timePenaltySeriesId()"
+            (ngModelChange)="timePenaltySeriesIdChange.emit($event)"
+            placeholder="Choose a series"
+          />
+        </div>
+      }
+
+      @if (timePenaltySeriesId()) {
+        @if (!isExportMode()) {
+          <div>
+            <label class="label">Select Event</label>
+            <app-select
+              [options]="timePenaltyEventOptions()"
+              [ngModel]="timePenaltyEventId()"
+              (ngModelChange)="timePenaltyEventIdChange.emit($event)"
+              placeholder="Choose an event"
+            />
+          </div>
+        }
+
+        @if (timePenaltySummary().length > 0) {
+          @if (!isExportMode()) {
+            <div
+              class="flex items-center justify-between mb-4 gap-4"
+            >
+              <div class="flex-1 max-w-md">
+                <input
+                  type="text"
+                  class="input w-full"
+                  placeholder="Filter by any field..."
+                  [ngModel]="timePenaltyFilterText()"
+                  (ngModelChange)="timePenaltyFilterTextChange.emit($event)"
+                />
+              </div>
+            </div>
+          }
+
+          <div
+            #timePenaltySummaryExportContainer
+            class="export-container bg-white dark:bg-gray-900"
+            [class.export-active]="isExportMode()"
+          >
+            @if (isExportMode() && timePenaltyEventId()) {
+              <div
+                class="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700"
+              >
+                @if (selectedTimePenaltySeries()) {
+                  <p
+                    class="text-xl font-semibold text-gray-900 dark:text-gray-100"
+                  >
+                    {{ selectedTimePenaltySeries()?.name }}
+                  </p>
+                }
+                @if (selectedTimePenaltyEvent()) {
+                  <p
+                    class="text-lg font-semibold text-gray-800 dark:text-gray-200"
+                  >
+                    Event
+                    {{ selectedTimePenaltyEvent()?.eventNumber }} -
+                    {{ selectedTimePenaltyEvent()?.trackName }}
+                  </p>
+                }
+              </div>
+            }
+            @for (
+              race of filteredAndSortedTimePenaltySummary();
+              track race.raceId
+            ) {
+              <div class="space-y-4">
+                <div class="flex items-center gap-2 pt-4">
+                  <h3
+                    class="text-lg font-semibold text-gray-900 dark:text-gray-100"
+                  >
+                    {{ race.raceName }}
+                  </h3>
+                </div>
+                @if (
+                  getRaceTimePenaltyDrivers(race.raceId).length > 0
+                ) {
+                  <div class="overflow-x-auto">
+                    <table
+                      class="w-full text-sm border border-gray-300 dark:border-gray-700"
+                    >
+                      <thead
+                        class="bg-gray-50 border-b border-gray-300 dark:bg-gray-800 dark:border-gray-700"
+                      >
+                        <tr>
+                          <th
+                            class="w-[8%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            (click)="
+                              sortChange.emit({ raceNumber: race.raceNumber, column: 'carNumber' })
+                            "
+                          >
+                            Car #
+                            {{
+                              getSortIcon(
+                                "carNumber",
+                                getTimePenaltyRaceSortColumn(
+                                  race.raceNumber
+                                ),
+                                getTimePenaltyRaceSortDirection(
+                                  race.raceNumber
+                                )
+                              )
+                            }}
+                          </th>
+                          <th
+                            class="w-[18%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            (click)="
+                              sortChange.emit({ raceNumber: race.raceNumber, column: 'driverName' })
+                            "
+                          >
+                            Driver
+                            {{
+                              getSortIcon(
+                                "driverName",
+                                getTimePenaltyRaceSortColumn(
+                                  race.raceNumber
+                                ),
+                                getTimePenaltyRaceSortDirection(
+                                  race.raceNumber
+                                )
+                              )
+                            }}
+                          </th>
+                          <th
+                            class="w-[12%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-left cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            (click)="
+                              sortChange.emit({ raceNumber: race.raceNumber, column: 'driverClass' })
+                            "
+                          >
+                            Class
+                            {{
+                              getSortIcon(
+                                "driverClass",
+                                getTimePenaltyRaceSortColumn(
+                                  race.raceNumber
+                                ),
+                                getTimePenaltyRaceSortDirection(
+                                  race.raceNumber
+                                )
+                              )
+                            }}
+                          </th>
+                          <th
+                            class="w-[12%] border-r border-gray-300 px-3 py-2 font-bold text-gray-500 text-center cursor-pointer hover:text-gray-700 align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            (click)="
+                              sortChange.emit({ raceNumber: race.raceNumber, column: 'totalTimePenaltySeconds' })
+                            "
+                          >
+                            Total Time Penalty
+                            {{
+                              getSortIcon(
+                                "totalTimePenaltySeconds",
+                                getTimePenaltyRaceSortColumn(
+                                  race.raceNumber
+                                ),
+                                getTimePenaltyRaceSortDirection(
+                                  race.raceNumber
+                                )
+                              )
+                            }}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody
+                        class="divide-y divide-gray-100 dark:divide-gray-800"
+                      >
+                        @for (
+                          row of getRaceTimePenaltyDrivers(
+                            race.raceId
+                          );
+                          track row.driverId;
+                          let i = $index
+                        ) {
+                          <tr [class]="rowClasses(i)">
+                            <td
+                              class="w-[8%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
+                            >
+                              {{ row.carNumber ?? "—" }}
+                            </td>
+                            <td
+                              class="w-[18%] border-r border-gray-300 px-3 py-2 font-medium text-left align-middle leading-tight text-xs dark:border-gray-700"
+                            >
+                              <a
+                                [routerLink]="[
+                                  '/drivers',
+                                  row.driverId,
+                                ]"
+                                class="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                              >
+                                {{ row.driverName }}
+                              </a>
+                            </td>
+                            <td
+                              class="w-[12%] border-r border-gray-300 px-3 py-2 text-gray-600 text-left align-middle leading-tight text-xs dark:border-gray-700 dark:text-gray-300"
+                            >
+                              {{ row.driverClass }}
+                            </td>
+                            <td
+                              class="w-[12%] border-r border-gray-300 px-3 py-2 text-center align-middle leading-tight text-xs dark:border-gray-700"
+                            >
+                              @if (
+                                row.totalTimePenaltySeconds > 0
+                              ) {
+                                <app-badge>
+                                  {{ row.totalTimePenaltySeconds }}s
+                                </app-badge>
+                              } @else {
+                                <span
+                                  class="text-gray-400 dark:text-gray-500"
+                                  >0s</span
+                                >
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <p
+                    class="text-gray-500 text-center py-4 dark:text-gray-400"
+                  >
+                    No drivers with time penalties for this race
+                  </p>
+                }
+              </div>
+            }
+          </div>
+        } @else if (timePenaltyEventId()) {
+          <p
+            class="text-gray-500 text-center py-4 dark:text-gray-400"
+          >
+            No finalized reports with time penalties for this event
+          </p>
+        }
+      } @else if (timePenaltySeriesId()) {
+        <p
+          class="text-gray-500 text-center py-4 dark:text-gray-400"
+        >
+          Select an event to view time penalty summary
+        </p>
+      }
+    </div>
+  </app-card>
+</div>

@@ -1,0 +1,106 @@
+<div class="border-t pt-4 dark:border-gray-700">
+ <div class="flex items-center justify-between mb-3">
+   <h4
+     class="text-sm font-medium text-gray-700 dark:text-gray-300"
+   >
+     Scheduled Import
+   </h4>
+   @if (status; as importStatus) {
+     @if (importStatus.isScheduledImportActive) {
+       <app-button
+         variant="danger"
+         size="sm"
+         (click)="cancelSchedule.emit()"
+       >
+         Cancel Schedule
+       </app-button>
+     } @else if (importStatus.hasEvents) {
+       <app-button
+         variant="secondary"
+         size="sm"
+         (click)="openSchedule.emit()"
+       >
+         <svg
+           class="w-4 h-4 mr-1"
+           fill="none"
+           stroke="currentColor"
+           viewBox="0 0 24 24"
+         >
+           <path
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="2"
+             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+           ></path>
+         </svg>
+         Schedule Import
+       </app-button>
+     }
+   }
+ </div>
+
+ @if (status; as importStatus) {
+   @if (!importStatus.hasEvents) {
+     <p
+       class="text-sm text-gray-500 text-center py-2 dark:text-gray-400"
+     >
+       Import events first to enable scheduled imports
+     </p>
+   } @else if (importStatus.isScheduledImportActive) {
+      <div
+        class="bg-success-bg border border-success-border rounded-lg p-3"
+      >
+        <div class="flex items-center gap-2 mb-2">
+          <svg
+            class="w-4 h-4 text-success"
+           fill="none"
+           stroke="currentColor"
+           viewBox="0 0 24 24"
+         >
+           <path
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="2"
+             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+           ></path>
+         </svg>
+          <span
+            class="text-sm font-medium text-success-text"
+           >Active</span
+         >
+       </div>
+       <div
+         class="text-xs text-gray-600 dark:text-gray-400 space-y-1"
+       >
+         <div class="flex justify-between">
+           <span>Next run:</span>
+           <span class="font-medium text-gray-900 dark:text-gray-100">{{
+             formatNextRun(importStatus.nextRun)
+           }}</span>
+         </div>
+         <div class="flex justify-between">
+           <span>Days:</span>
+           <span class="font-medium text-gray-900 dark:text-gray-100">{{
+             formatDaysOfWeek(importStatus.scheduledImportDays)
+           }}</span>
+         </div>
+         <div class="flex justify-between">
+           <span>Series range:</span>
+           <span class="font-medium text-gray-900 dark:text-gray-100">{{
+             formatSeriesDateRange(
+               importStatus.seriesStartDate,
+               importStatus.seriesEndDate
+             )
+           }}</span>
+         </div>
+       </div>
+     </div>
+   } @else {
+     <p
+       class="text-sm text-gray-500 text-center py-2 dark:text-gray-400"
+     >
+       No scheduled import configured
+     </p>
+   }
+ }
+</div>

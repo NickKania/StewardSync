@@ -1,61 +1,6 @@
 import { Doc, Id } from "../_generated/dataModel";
 
-/**
- * Calculates the reporting window (open and close times) for an event.
- * Used to validate driver report submissions.
- * NOTE: This should NOT be used for steward incidents, which bypass time validation.
- *
- * @param eventDate - The date of the event
- * @param reportingOpenTime - The time reporting opens (HH:MM format in UTC)
- * @param reportingCloseDuration - The number of hours after open time when reporting closes
- * @returns Object with openTime and closeTime Date objects
- */
-export function getReportingWindow(
-  eventDate: Date,
-  reportingOpenTime: string,
-  reportingCloseDuration: number
-): { openTime: Date; closeTime: Date } {
-  const [hours, minutes] = reportingOpenTime.split(":").map(Number);
-  const utcYear = eventDate.getUTCFullYear();
-  const utcMonth = eventDate.getUTCMonth();
-  const utcDay = eventDate.getUTCDate();
-  const utcDateStart = Date.UTC(utcYear, utcMonth, utcDay);
-  const offsetFromUtcDateStart = eventDate.getTime() - utcDateStart;
-  const dayMs = 24 * 60 * 60 * 1000;
-  const eventTimezoneOffset =
-    offsetFromUtcDateStart > dayMs / 2
-      ? offsetFromUtcDateStart - dayMs
-      : offsetFromUtcDateStart;
-  const eventLocalDateStart = eventDate.getTime() - eventTimezoneOffset;
-  const eventLocalDate = new Date(eventLocalDateStart);
-  const eventYear = eventLocalDate.getUTCFullYear();
-  const eventMonth = eventLocalDate.getUTCMonth();
-  const eventDay = eventLocalDate.getUTCDate();
-
-  const candidates = [-1, 0, 1].map(
-    (dayOffset) =>
-      new Date(
-        Date.UTC(eventYear, eventMonth, eventDay + dayOffset, hours, minutes, 0, 0),
-      )
-  );
-  const openTime =
-    candidates.find((candidate) => {
-      const shiftedCandidate = new Date(
-        candidate.getTime() - eventTimezoneOffset,
-      );
-      return (
-        shiftedCandidate.getUTCFullYear() === eventYear &&
-        shiftedCandidate.getUTCMonth() === eventMonth &&
-        shiftedCandidate.getUTCDate() === eventDay
-      );
-    }) ?? candidates[1];
-
-  const closeTime = new Date(
-    openTime.getTime() + reportingCloseDuration * 60 * 60 * 1000,
-  );
-
-  return { openTime, closeTime };
-}
+export { getReportingWindow } from "./reportingWindow";
 
 /**
  * Checks if a user is involved in a report

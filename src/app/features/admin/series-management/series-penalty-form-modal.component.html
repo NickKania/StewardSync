@@ -1,0 +1,153 @@
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+>
+  <div
+    class="bg-white rounded-lg w-full max-w-2xl dark:bg-gray-800 flex flex-col max-h-[90vh]"
+  >
+    <div class="p-6 border-b dark:border-gray-700">
+      <h3 class="text-lg font-semibold dark:text-gray-100">
+        {{ editingSeriesPenaltyId ? "Edit" : "Add" }} Series Penalty
+      </h3>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6 space-y-5">
+      <div>
+        <label class="label">Penalty Name</label>
+        <input
+          type="text"
+          class="input w-full"
+          [(ngModel)]="seriesPenaltyForm.penaltyName"
+          placeholder="e.g., Race Ban"
+        />
+      </div>
+      <div>
+        <label class="label">Description (optional)</label>
+        <textarea
+          class="input w-full"
+          rows="3"
+          [(ngModel)]="seriesPenaltyForm.penaltyDescription"
+          placeholder="Penalty description..."
+        ></textarea>
+      </div>
+
+      <div class="border-t pt-5 dark:border-gray-700">
+        <div class="flex items-center justify-between mb-3">
+          <label
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >License Points Thresholds</label
+          >
+          <app-button
+            variant="secondary"
+            size="sm"
+            (click)="thresholdAdd.emit()"
+            [disabled]="loadingDriverClasses"
+          >
+            <svg
+              class="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              ></path>
+            </svg>
+            Add Threshold
+          </app-button>
+        </div>
+        @if (loadingDriverClasses) {
+          <app-loading text="Loading driver classes..." />
+        } @else {
+          @if (thresholds.length === 0) {
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              No thresholds added. Add at least one threshold.
+            </p>
+          }
+          @for (threshold of thresholds; track threshold.id) {
+            <div
+              class="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 dark:border-gray-700 mb-3"
+            >
+              <div class="flex justify-between items-start mb-3">
+                <div class="flex-1 mr-4">
+                  <label class="label">Threshold (points)</label>
+                  <input
+                    type="number"
+                    class="input w-full"
+                    [(ngModel)]="threshold.threshold"
+                    placeholder="e.g., 10"
+                    min="1"
+                  />
+                </div>
+                <button
+                  (click)="thresholdRemove.emit(threshold.id || '')"
+                  class="text-gray-400 hover:text-danger p-1 dark:text-gray-500"
+                  type="button"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+              <label
+                class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-3"
+              >
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  [(ngModel)]="threshold.requiresReview"
+                />
+                Requires race review meeting
+              </label>
+              <div>
+                <label class="label">Driver Classes</label>
+                <app-multi-select
+                  [label]="''"
+                  [placeholder]="
+                    'Select driver classes for this threshold'
+                  "
+                  [options]="
+                    getDriverClassOptions(
+                      threshold.selectedDriverClasses
+                    )
+                  "
+                  (selectionChange)="
+                    thresholdClassesChange.emit({ id: threshold.id || '', options: $event })
+                  "
+                />
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+    <div
+      class="p-6 border-t dark:border-gray-700 flex gap-2 justify-end"
+    >
+      <app-button
+        variant="secondary"
+        (click)="close.emit()"
+        >Cancel</app-button
+      >
+      <app-button
+        (click)="save.emit()"
+        [disabled]="
+          !seriesPenaltyForm.penaltyName || thresholds.length === 0
+        "
+      >
+        {{ editingSeriesPenaltyId ? "Update" : "Create" }}
+      </app-button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,125 @@
+<div
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+>
+  <div class="bg-white rounded-lg p-6 w-full max-w-md dark:bg-gray-800">
+    <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">
+      {{ editingPenaltyId ? "Edit" : "Add" }} Penalty
+    </h3>
+    <div class="space-y-4">
+      <div>
+        <label
+          class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+          >Penalty Name</label
+        >
+        <input
+          type="text"
+          class="input w-full"
+          [(ngModel)]="penaltyForm.name"
+          placeholder="e.g., Track Limits"
+        />
+      </div>
+      <div>
+        <label
+          class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+          >Time Penalty (seconds)</label
+        >
+        <input
+          type="number"
+          class="input w-full"
+          [(ngModel)]="penaltyForm.timePenalty"
+          placeholder="e.g., 5"
+        />
+      </div>
+      <div>
+        <label
+          class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+          >Self-Report Reduction (seconds)</label
+        >
+        <input
+          type="number"
+          class="input w-full"
+          [(ngModel)]="penaltyForm.selfReportReduction"
+          placeholder="e.g., 5"
+          min="0"
+        />
+        <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+          Seconds subtracted from time penalties if driver self-reported
+        </p>
+      </div>
+      <div>
+        <label
+          class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+          >Lap 1 Time Penalty (seconds)</label
+        >
+        <input
+          type="number"
+          class="input w-full"
+          [(ngModel)]="penaltyForm.timePenaltyLap1"
+          placeholder="e.g., 5"
+        />
+        <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+          Defaults to primary time penalty if not specified
+        </p>
+      </div>
+      <div>
+        <label
+          class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+          >License Points</label
+        >
+        <input
+          type="number"
+          step="any"
+          class="input w-full"
+          [(ngModel)]="penaltyForm.licensePoints"
+          placeholder="e.g., 2.5"
+        />
+      </div>
+      <div>
+        <label
+          class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+          >Self-Report License Point Reduction</label
+        >
+        <input
+          type="number"
+          step="any"
+          class="input w-full"
+          [(ngModel)]="penaltyForm.selfReportLicensePointReduction"
+          placeholder="e.g., 0.5"
+          min="0"
+        />
+        <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+          License points subtracted when the driver self-reported.
+        </p>
+      </div>
+      <div>
+        <label class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            [(ngModel)]="penaltyForm.allowNoDriverAtFault"
+            class="rounded border-gray-300 dark:border-gray-700"
+          />
+          <span
+            class="text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            Allow "No Driver" At Fault
+          </span>
+        </label>
+        <p class="text-xs text-gray-500 mt-1 dark:text-gray-400">
+          When enabled, stewards can select "No Driver" as the
+          at-fault driver for this penalty.
+        </p>
+      </div>
+      <div class="flex gap-2 justify-end">
+        <app-button variant="secondary" (click)="close.emit()"
+          >Cancel</app-button
+        >
+        <app-button
+          (click)="save.emit()"
+          [disabled]="!penaltyForm.name"
+        >
+          {{ editingPenaltyId ? "Update" : "Create" }}
+        </app-button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,108 @@
+<div class="space-y-6">
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+    Statistics
+  </h1>
+
+  @if (loading()) {
+    <div>
+      <app-loading text="Loading..." />
+    </div>
+  } @else {
+    <!-- Normal Mode: Show Tabs -->
+    @if (!isExportMode()) {
+      <app-tabs
+        [tabs]="visibleTabs()"
+        [activeTab]="activeTab()"
+        (activeTabChange)="selectTab($event)"
+      />
+    }
+
+    <!-- Export Mode: Show Header -->
+    @if (isExportMode()) {
+      <div
+        class="export-header bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+      >
+        <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          @if (activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
+            Event Rundown
+          } @else if (activeTab() === STATISTICS_TABS.SERIES_OVERVIEW) {
+            Series Overview - License Points
+          } @else if (activeTab() === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
+            Time Penalty Summary
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Content Area -->
+    <div
+      [class]="
+        isExportMode()
+          ? 'export-body bg-gray-50 dark:bg-gray-900'
+          : 'space-y-6'
+      "
+    >
+      @if (activeTab() === STATISTICS_TABS.EVENT_RUNDOWN) {
+        <app-event-rundown
+          [isExportMode]="isExportMode()"
+          [eventRundown]="eventRundown()"
+          [eventOptions]="eventOptions()"
+          [selectedEventDetails]="selectedEventDetails()"
+          [filteredAndSortedRaces]="filteredAndSortedRaces()"
+          [legendItems]="legendItems()"
+          [eventSortColumn]="eventSortColumn()"
+          [eventSortDirection]="eventSortDirection()"
+          [selectedEventId]="selectedEventId()"
+          (selectedEventIdChange)="selectedEventId.set($event); loadEventRundown()"
+          [eventFilterText]="eventFilterText()"
+          (eventFilterTextChange)="eventFilterText.set($event)"
+          [hideNoDriverAtFaultWithoutTicket]="hideNoDriverAtFaultWithoutTicket()"
+          (hideNoDriverAtFaultWithoutTicketChange)="hideNoDriverAtFaultWithoutTicket.set($event)"
+          (sortChange)="sortEventRundown($event.raceNumber, $event.column)"
+          (exportImage)="exportTableImage($event.element, $event.filename)"
+        />
+      }
+
+      @if (activeTab() === STATISTICS_TABS.SERIES_OVERVIEW && canViewSeriesStats()) {
+        <app-series-overview
+          [isExportMode]="isExportMode()"
+          [seriesPoints]="seriesPoints()"
+          [seriesOptions]="seriesOptions()"
+          [selectedSeriesName]="selectedSeriesName()"
+          [filteredAndSortedSeriesPoints]="filteredAndSortedSeriesPoints()"
+          [seriesOverviewLegendItems]="seriesOverviewLegendItems()"
+          [seriesSortColumn]="seriesSortColumn()"
+          [seriesSortDirection]="seriesSortDirection()"
+          [selectedSeriesId]="selectedSeriesId()"
+          (selectedSeriesIdChange)="selectedSeriesId.set($event); loadSeriesPoints()"
+          [seriesFilterText]="seriesFilterText()"
+          (seriesFilterTextChange)="seriesFilterText.set($event)"
+          (sortChange)="sortSeriesPoints($event)"
+          (exportImage)="exportTableImage($event.element, $event.filename)"
+        />
+      }
+
+      @if (activeTab() === STATISTICS_TABS.TIME_PENALTY_SUMMARY) {
+        <app-time-penalty-summary
+          [isExportMode]="isExportMode()"
+          [timePenaltySummary]="timePenaltySummary()"
+          [seriesOptions]="seriesOptions()"
+          [timePenaltyEventOptions]="timePenaltyEventOptions()"
+          [selectedTimePenaltySeries]="selectedTimePenaltySeries()"
+          [selectedTimePenaltyEvent]="selectedTimePenaltyEvent()"
+          [filteredAndSortedTimePenaltySummary]="filteredAndSortedTimePenaltySummary()"
+          [timePenaltySortColumn]="timePenaltySortColumn()"
+          [timePenaltySortDirection]="timePenaltySortDirection()"
+          [timePenaltySeriesId]="timePenaltySeriesId()"
+          (timePenaltySeriesIdChange)="timePenaltySeriesId.set($event); timePenaltyEventId.set(''); loadTimePenaltySummary()"
+          [timePenaltyEventId]="timePenaltyEventId()"
+          (timePenaltyEventIdChange)="timePenaltyEventId.set($event); loadTimePenaltySummary()"
+          [timePenaltyFilterText]="timePenaltyFilterText()"
+          (timePenaltyFilterTextChange)="timePenaltyFilterText.set($event)"
+          (sortChange)="sortTimePenaltySummary($event.raceNumber, $event.column)"
+          (exportImage)="exportTableImage($event.element, $event.filename)"
+        />
+      }
+    </div>
+  }
+</div>

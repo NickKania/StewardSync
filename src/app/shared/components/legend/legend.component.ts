@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface LegendItem {
@@ -8,6 +8,7 @@ export interface LegendItem {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-legend',
   standalone: true,
   host: { class: 'block min-w-0' },

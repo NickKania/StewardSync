@@ -1,4 +1,4 @@
-import { Component, input, output, ElementRef, ViewChild, inject, AfterViewInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, HostListener, input, output, ElementRef, ViewChild, inject, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TruncateTextComponent } from '../truncate-text/truncate-text.component';
@@ -10,6 +10,7 @@ export interface MultiSelectOption {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-multi-select',
   standalone: true,
   imports: [CommonModule, FormsModule, TruncateTextComponent],
@@ -137,6 +138,7 @@ export class MultiSelectComponent {
     return `${base} ${errorClass} ${disabledClass}`;
   }
 
+  @HostListener('document:click', ['$event'])
   closeDropdown(event: MouseEvent) {
     const target = event.target as HTMLElement;
     if (!target.closest('.relative')) {
@@ -144,7 +146,4 @@ export class MultiSelectComponent {
     }
   }
 
-  constructor() {
-    document.addEventListener('click', this.closeDropdown.bind(this));
-  }
 }

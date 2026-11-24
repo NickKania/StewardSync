@@ -1,4 +1,4 @@
-import { Component, Input, forwardRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, inject, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 
@@ -9,6 +9,7 @@ export interface SelectOption {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-select',
   standalone: true,
   host: { class: 'block min-w-0' },
@@ -54,6 +55,7 @@ export interface SelectOption {
   `
 })
 export class SelectComponent implements ControlValueAccessor {
+  private readonly changeDetector = inject(ChangeDetectorRef);
   @Input() id = `select-${Math.random().toString(36).substr(2, 9)}`;
   @Input() label = '';
   @Input() placeholder = '';
@@ -68,6 +70,7 @@ export class SelectComponent implements ControlValueAccessor {
 
   writeValue(value: string): void {
     this.value = value || '';
+    this.changeDetector.markForCheck();
   }
 
   registerOnChange(fn: (value: string) => void): void {
@@ -80,6 +83,7 @@ export class SelectComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
+    this.changeDetector.markForCheck();
   }
 
   onValueChange(value: string): void {
