@@ -1,9 +1,7 @@
-"use node";
-
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import {
-  withDiscordClient,
+  sendDiscordMessage,
   createPrivateThread,
   getEnvOrThrow,
 } from "./discord";
@@ -28,38 +26,36 @@ export const createDriverMeetingThreadAction = internalAction({
     creatorName: v.string(),
     initialMessage: v.string(),
   },
-  handler: async (ctx, args: CreateDriverMeetingThreadArgs) => {
-    return await withDiscordClient(async (client) => {
-      const parentChannelId = getEnvOrThrow("DISCORD_RACE_REVIEW_CHANNEL_ID");
+  handler: async (_ctx, args: CreateDriverMeetingThreadArgs) => {
+    const parentChannelId = getEnvOrThrow("DISCORD_RACE_REVIEW_CHANNEL_ID");
 
-      // Build thread name
-      const numberLabel =
-        args.driverNumber === undefined ? "" : ` (#${args.driverNumber})`;
-      const threadName = `Driver Meeting: ${args.driverLabel}${numberLabel}`;
+    // Build thread name
+    const numberLabel =
+      args.driverNumber === undefined ? "" : ` (#${args.driverNumber})`;
+    const threadName = `Driver Meeting: ${args.driverLabel}${numberLabel}`;
 
-      // Collect unique participants
-      const participants = [args.driverDiscordId];
-      if (args.creatorDiscordId !== args.driverDiscordId) {
-        participants.push(args.creatorDiscordId);
-      }
+    // Collect unique participants
+    const participants = [args.driverDiscordId];
+    if (args.creatorDiscordId !== args.driverDiscordId) {
+      participants.push(args.creatorDiscordId);
+    }
 
-      // Create private thread
-      const thread = await createPrivateThread(client, {
-        name: threadName,
-        parentChannelId,
-        participantDiscordIds: participants,
-        reason: "Driver meeting requested",
-      });
-
-      // Send formatted initial message
-      const timestamp = new Date().toLocaleString();
-      const content = `${args.initialMessage}\n\n_Created by ${args.creatorName} at ${timestamp}_`;
-      await thread.send({ content });
-
-      return {
-        threadId: thread.id,
-        threadName: thread.name,
-      };
+    // Create private thread
+    const thread = await createPrivateThread({
+      name: threadName,
+      parentChannelId,
+      participantDiscordIds: participants,
+      reason: "Driver meeting requested",
     });
+
+    // Send formatted initial message
+    const timestamp = new Date().toLocaleString();
+    const content = `${args.initialMessage}\n\n_Created by ${args.creatorName} at ${timestamp}_`;
+    await sendDiscordMessage(thread.id, content);
+
+    return {
+      threadId: thread.id,
+      threadName: thread.name,
+    };
   },
 });

@@ -1,28 +1,8 @@
-import { internalMutation, internalAction, mutation, query } from "./_generated/server";
+import { internalMutation, internalAction, mutation, query, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
-const RUN_SCHEDULED_IMPORT_FN = "scheduledImports:runScheduledImport" as any;
-
-async function runGetSeriesById(ctx: any, args: { id: Id<"series"> }) {
-  return ctx.runQuery("series:getById", args);
-}
-
-async function runGetEventsBySeriesId(ctx: any, args: { seriesId: Id<"series"> }) {
-  return ctx.runQuery("events:getBySeriesId", args);
-}
-
-async function runImportDriversFromSimGrid(ctx: any, args: { championshipId: Id<"series">; simgridChampionshipId: string }) {
-  return ctx.runAction("actions:importDriversFromSimGrid", args);
-}
-
-async function runScheduleNextRun(ctx: any, args: { seriesId: Id<"series">; nextRunTime: number }) {
-  return ctx.runMutation("scheduledImports:scheduleNextRun", args);
-}
-
-async function runDeactivateSchedule(ctx: any, args: { seriesId: Id<"series"> }) {
-  return ctx.runMutation("scheduledImports:deactivateSchedule", args);
-}
+import { api, internal } from "./_generated/api";
 
 function getNextOccurrence(dayOfWeek: number, timeStr: string, fromDate: Date): Date {
   const [hours, minutes] = timeStr.split(":").map(Number);
@@ -67,17 +47,17 @@ function findNextScheduledRun(
   return nextRun;
 }
 
-async function getSeriesDateRange(ctx: any, seriesId: Id<"series">): Promise<{ startDate: number | null; endDate: number | null }> {
+async function getSeriesDateRange(ctx: QueryCtx, seriesId: Id<"series">): Promise<{ startDate: number | null; endDate: number | null }> {
   const events = await ctx.db
     .query("events")
-    .withIndex("by_series", (q: any) => q.eq("seriesId", seriesId))
+    .withIndex("by_series", (q) => q.eq("seriesId", seriesId))
     .collect();
   
   if (events.length === 0) {
     return { startDate: null, endDate: null };
   }
   
-  const sortedEvents = events.sort((a: any, b: any) => a.eventDate - b.eventDate);
+  const sortedEvents = events.sort((a, b) => a.eventDate - b.eventDate);
   
   return {
     startDate: sortedEvents[0].eventDate,
@@ -171,7 +151,7 @@ export const scheduleImport = mutation({
     let jobId: Id<"_scheduled_functions"> | undefined;
     
     if (nextRun) {
-      jobId = await ctx.scheduler.runAt(nextRun.getTime(), RUN_SCHEDULED_IMPORT_FN, {
+      jobId = await ctx.scheduler.runAt(nextRun.getTime(), internal.scheduledImports.runScheduledImport, {
         seriesId: args.seriesId,
         expectedRunTime: nextRun.getTime(),
       });
@@ -245,7 +225,7 @@ export const updateScheduleWithNewDates = mutation({
     let jobId: Id<"_scheduled_functions"> | undefined;
     
     if (nextRun) {
-      jobId = await ctx.scheduler.runAt(nextRun.getTime(), RUN_SCHEDULED_IMPORT_FN, {
+      jobId = await ctx.scheduler.runAt(nextRun.getTime(), internal.scheduledImports.runScheduledImport, {
         seriesId: args.seriesId,
         expectedRunTime: nextRun.getTime(),
       });
@@ -262,8 +242,8 @@ export const runScheduledImport = internalAction({
     seriesId: v.id("series"),
     expectedRunTime: v.number(),
   },
-  handler: async (ctx, args) => {
-    const series = await runGetSeriesById(ctx, { id: args.seriesId });
+  handler: async (ctx, args): Promise<void> => {
+    const series = await ctx.runQuery(api.series.getById, { id: args.seriesId });
     
     if (!series || !series.isScheduledImportActive) {
       console.log(`Skipping import for series ${args.seriesId}: schedule inactive or series not found`);
@@ -282,7 +262,7 @@ export const runScheduledImport = internalAction({
     }
     
     try {
-      const result = await runImportDriversFromSimGrid(ctx, {
+      const result = await ctx.runAction(api.actions.importDriversFromSimGrid, {
         championshipId: args.seriesId,
         simgridChampionshipId: championshipId,
       });
@@ -293,11 +273,11 @@ export const runScheduledImport = internalAction({
     }
     
     if (series.scheduledImportTime && series.scheduledImportDays?.length) {
-      const events = await runGetEventsBySeriesId(ctx, { seriesId: args.seriesId });
+      const events = await ctx.runQuery(api.events.getBySeriesId, { seriesId: args.seriesId });
       let seriesEndDate: number | null = null;
       
       if (events && events.length > 0) {
-        const sortedEvents = [...events].sort((a: any, b: any) => a.eventDate - b.eventDate);
+        const sortedEvents = [...events].sort((a, b) => a.eventDate - b.eventDate);
         seriesEndDate = sortedEvents[sortedEvents.length - 1].eventDate;
       }
       
@@ -310,14 +290,14 @@ export const runScheduledImport = internalAction({
       );
       
       if (nextRun) {
-        await runScheduleNextRun(ctx, {
+        await ctx.runMutation(internal.scheduledImports.scheduleNextRun, {
           seriesId: args.seriesId,
           nextRunTime: nextRun.getTime(),
         });
         
         console.log(`Next scheduled import for series ${args.seriesId} at ${nextRun.toISOString()}`);
       } else {
-        await runDeactivateSchedule(ctx, {
+        await ctx.runMutation(internal.scheduledImports.deactivateSchedule, {
           seriesId: args.seriesId,
         });
         console.log(`No more scheduled imports for series ${args.seriesId} - series has ended`);
@@ -331,8 +311,8 @@ export const scheduleNextRun = internalMutation({
     seriesId: v.id("series"),
     nextRunTime: v.number(),
   },
-  handler: async (ctx, args) => {
-    const jobId = await ctx.scheduler.runAt(args.nextRunTime, RUN_SCHEDULED_IMPORT_FN, {
+  handler: async (ctx, args): Promise<void> => {
+    const jobId = await ctx.scheduler.runAt(args.nextRunTime, internal.scheduledImports.runScheduledImport, {
       seriesId: args.seriesId,
       expectedRunTime: args.nextRunTime,
     });
