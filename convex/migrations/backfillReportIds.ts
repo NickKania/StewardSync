@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { reportCounter } from "../reportCounter";
 
@@ -7,7 +7,7 @@ import { reportCounter } from "../reportCounter";
  * Reports are processed in order of creation (oldest first).
  * Returns the highest reportId assigned.
  */
-export const backfillReportIds = mutation({
+export const backfillReportIds = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Fetch all reports ordered by creation time (oldest first)
@@ -64,7 +64,7 @@ export const backfillReportIds = mutation({
  * Initializes the sharded counter to the correct value.
  * Should be called after backfillReportIds to set counter to next reportId.
  */
-export const initializeCounter = mutation({
+export const initializeCounter = internalMutation({
   args: {
     targetValue: v.optional(v.number()),
   },

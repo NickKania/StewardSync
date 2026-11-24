@@ -281,13 +281,15 @@ import { User } from "@app/core/models";
                   class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-3 dark:bg-gray-800 dark:border-gray-700"
                 >
                   <div class="flex flex-col sm:flex-row gap-3">
-                    <app-button
-                      type="button"
-                      variant="danger"
-                      (onClick)="showRejectModal = true"
-                    >
-                      Reject Report
-                    </app-button>
+                    @if (authService.hasMinimumRole("head_steward")) {
+                      <app-button
+                        type="button"
+                        variant="danger"
+                        (onClick)="showRejectModal = true"
+                      >
+                        Reject Report
+                      </app-button>
+                    }
                     <app-button
                       type="button"
                       variant="secondary"
@@ -1157,6 +1159,7 @@ export class ReviewFormComponent implements OnInit, OnDestroy {
       const result = await this.convex.mutation(
         this.convex.api.reports.reject,
         {
+          currentUserId: this.authService.requireUserId(),
           reportId: this.reportId as any,
           finalDecision: this.rejectionReason,
         },

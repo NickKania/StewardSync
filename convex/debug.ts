@@ -1,11 +1,11 @@
-import { query, mutation } from "./_generated/server";
+import { internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { checkUserDriverConflict } from "./lib/reports";
 import { requireRole } from "./lib/auth";
 import { Id } from "./_generated/dataModel";
 import { getEffectiveLicensePoints } from "./lib/penalties";
 
-export const debugReportConflict = query({
+export const debugReportConflict = internalQuery({
   args: {
     userId: v.id("users"),
     reportId: v.id("reports"),
@@ -29,7 +29,7 @@ export const debugReportConflict = query({
   },
 });
 
-export const checkConflict = query({
+export const checkConflict = internalQuery({
   args: {
     userId: v.id("users"),
     reportId: v.id("reports"),
@@ -58,7 +58,7 @@ export const checkConflict = query({
   },
 });
 
-export const debugPenaltyAssignment = query({
+export const debugPenaltyAssignment = internalQuery({
   args: {
     reportId: v.id("reports"),
     driverId: v.id("drivers"),
@@ -225,7 +225,7 @@ export const debugPenaltyAssignment = query({
   },
 });
 
-export const manuallyAssignPenaltiesForReport = mutation({
+export const manuallyAssignPenaltiesForReport = internalMutation({
   args: {
     currentUserId: v.id("users"),
     reportId: v.id("reports"),

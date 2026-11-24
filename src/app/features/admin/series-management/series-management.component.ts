@@ -2387,7 +2387,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     try {
       const result = await this.convex.action(
         this.convex.api.events.importFromSimGrid,
-        { seriesId },
+        { seriesId, currentUserId: this.authService.requireUserId() },
       );
       this.importResult.set(result);
 
@@ -2429,6 +2429,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       const result = await this.convex.action(
         (this.convex.api as any).actions.importDriversFromSimGrid,
         {
+          currentUserId: this.authService.requireUserId(),
           championshipId: seriesId,
           simgridChampionshipId: championshipId,
         },
@@ -2546,6 +2547,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
       await this.convex.mutation(
         (this.convex.api as any).scheduledImports.scheduleImport,
         {
+          currentUserId: this.authService.requireUserId(),
           seriesId: this.scheduleForm.seriesId,
           scheduledImportTime: utcTime,
           scheduledImportDays: this.scheduleForm.scheduledImportDays,
@@ -2568,7 +2570,7 @@ export class SeriesManagementComponent implements OnInit, OnDestroy {
     try {
       await this.convex.mutation(
         (this.convex.api as any).scheduledImports.cancelScheduledImport,
-        { seriesId },
+        { seriesId, currentUserId: this.authService.requireUserId() },
       );
     } catch (error: any) {
       alert(`Failed to cancel scheduled import: ${error.message}`);

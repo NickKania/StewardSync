@@ -1,4 +1,4 @@
-import { mutation, internalMutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { UserFacingError } from "./lib/errors";
@@ -409,7 +409,7 @@ export const cleanupIncorrectDriverSeriesPenalties = internalMutation({
  * in the event's series. If no unambiguous match can be found, the report's
  * public ticket number is returned for manual intervention.
  */
-export const fixCrossSeriesAtFaultDrivers = mutation({
+export const fixCrossSeriesAtFaultDrivers = internalMutation({
   args: { dryRun: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const dryRun = args.dryRun ?? true;

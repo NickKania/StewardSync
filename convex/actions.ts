@@ -1,8 +1,9 @@
-import { action } from "./_generated/server";
+import { action, internalAction, internalQuery } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { parseSimGridDriversCsv } from "./lib/simgridCsv";
+import { requireRole } from "./lib/auth";
 
 interface ImportOrUpdateDriverResult {
   action: "created" | "updated";
@@ -22,15 +23,41 @@ async function runImportOrUpdateDriver(
   },
 ): Promise<ImportOrUpdateDriverResult> {
   // @ts-ignore - Circular type inference in Convex API
-  return ctx.runMutation(api.drivers.importOrUpdateDriver, args);
+  return ctx.runMutation(internal.drivers.importOrUpdateDriver, args);
 }
 
-export const importDriversFromSimGrid = action({
-  args: {
-    championshipId: v.id("series"),
-    simgridChampionshipId: v.string(),
+const driverImportArgs = {
+  championshipId: v.id("series"),
+  simgridChampionshipId: v.string(),
+};
+
+export const authorizeSimGridImport = internalQuery({
+  args: { currentUserId: v.id("users") },
+  handler: async (ctx, { currentUserId }) => {
+    await requireRole(ctx, currentUserId, ["event_manager", "league_manager"]);
   },
-  handler: async (ctx: any, args) => {
+});
+
+export const importDriversFromSimGrid = action({
+  args: { currentUserId: v.id("users"), ...driverImportArgs },
+  handler: async (ctx, { currentUserId, ...args }): Promise<DriverImportResult> => {
+    await ctx.runQuery(internal.actions.authorizeSimGridImport, { currentUserId });
+    return ctx.runAction(internal.actions.runDriverImport, args);
+  },
+});
+
+type DriverImportResult =
+  | {
+      success: true;
+      imported: number;
+      markedInactive: number;
+      results: Array<{ action: string; driverId: Id<"drivers">; name: string }>;
+    }
+  | { success: false; error: string };
+
+export const runDriverImport = internalAction({
+  args: driverImportArgs,
+  handler: async (ctx: any, args): Promise<DriverImportResult> => {
     const apiKey = process.env["SIMGRID_API_KEY"];
     if (!apiKey) {
       throw new Error("SIMGRID_API_KEY environment variable not configured");
@@ -66,7 +93,7 @@ export const importDriversFromSimGrid = action({
         // Get or create driver class based on carClass from SimGrid
         let driverClassId: Id<"driverClasses"> | undefined;
         if (simgridDriver.carClass) {
-          const classResult: any = await ctx.runMutation(api.driverClasses.getOrCreate, {
+          const classResult: any = await ctx.runMutation(internal.driverClasses.getOrCreate, {
             seriesId: args.championshipId,
             className: simgridDriver.carClass,
           });
@@ -89,7 +116,7 @@ export const importDriversFromSimGrid = action({
         });
       }
 
-      const inactiveResult: any = await ctx.runMutation(api.drivers.markInactiveDrivers, {
+      const inactiveResult: any = await ctx.runMutation(internal.drivers.markInactiveDrivers, {
         championshipId: args.championshipId,
         activeDriverIds: results.map((result) => result.driverId),
       });

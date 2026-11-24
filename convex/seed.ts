@@ -1,7 +1,7 @@
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { formatDriverName } from "./lib/formatting";
 
-export const seedRoles = mutation({
+export const seedRoles = internalMutation({
   args: {},
   handler: async (ctx) => {
     const roles = [
@@ -27,7 +27,7 @@ export const seedRoles = mutation({
   },
 });
 
-export const seedDemoUsers = mutation({
+export const seedDemoUsers = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Get head_steward role
@@ -113,7 +113,7 @@ export const seedDemoUsers = mutation({
   },
 });
 
-export const seedSampleData = mutation({
+export const seedSampleData = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Seed sample drivers
@@ -205,7 +205,7 @@ export const seedSampleData = mutation({
   },
 });
 
-export const migrateDriverOfficialNames = mutation({
+export const migrateDriverOfficialNames = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Get all drivers that don't have an officialName

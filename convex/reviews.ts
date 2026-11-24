@@ -181,6 +181,7 @@ export const create = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.userId, ["steward"]);
     // Validate report exists and is not finalized
     const report = await ctx.db.get(args.reportId);
     if (!report) {
@@ -479,11 +480,15 @@ export const update = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.userId, ["steward"]);
     const { reviewId, userId, ...updates } = args;
 
     const review = await ctx.db.get(reviewId);
     if (!review) {
       throw new Error("Review not found");
+    }
+    if (review.userId !== args.userId) {
+      await requireRole(ctx, args.userId, ["head_steward"]);
     }
 
     // Check if the report is finalized
@@ -585,9 +590,13 @@ export const updateWithSecondSteward = mutation({
     adjustedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.userId, ["steward"]);
     const review = await ctx.db.get(args.reviewId);
     if (!review) {
       throw new Error("Review not found");
+    }
+    if (review.userId !== args.userId) {
+      await requireRole(ctx, args.userId, ["head_steward"]);
     }
 
     const report = await ctx.db.get(review.reportId);
@@ -783,11 +792,15 @@ export const updateWithSecondSteward = mutation({
 });
 
 export const remove = mutation({
-  args: { reviewId: v.id("reviews") },
+  args: { currentUserId: v.id("users"), reviewId: v.id("reviews") },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.currentUserId, ["steward"]);
     const review = await ctx.db.get(args.reviewId);
     if (!review) {
       throw new Error("Review not found");
+    }
+    if (review.userId !== args.currentUserId) {
+      await requireRole(ctx, args.currentUserId, ["head_steward"]);
     }
 
     // Check if the report is finalized
@@ -825,7 +838,7 @@ export const getStats = query({
   },
 });
 
-export const migrateSecondStewardToLinkedReviews = mutation({
+export const migrateSecondStewardToLinkedReviews = internalMutation({
   args: {},
   handler: async (ctx) => {
     const reviews = await ctx.db.query("reviews").collect();
