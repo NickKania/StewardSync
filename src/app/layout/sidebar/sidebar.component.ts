@@ -163,20 +163,16 @@ export class SidebarComponent implements OnDestroy, OnInit {
     });
   }
 
-  private pendingReviewQuery = this.convex.createReactiveQuery(
-    this.convex.api.reports.getPendingForReview,
-    {},
-  );
-  private finalizeQueueQuery = this.convex.createReactiveQuery(
-    this.convex.api.reports.getReadyForFinalization,
+  private readonly queueCountsQuery = this.convex.createReactiveQuery(
+    this.convex.api.reports.getQueueCounts,
     {},
   );
 
   readonly pendingReviewCount = computed(
-    () => this.pendingReviewQuery.data()?.length ?? 0,
+    () => this.queueCountsQuery.data()?.pending ?? 0,
   );
   readonly finalizeQueueCount = computed(
-    () => this.finalizeQueueQuery.data()?.length ?? 0,
+    () => this.queueCountsQuery.data()?.readyForFinalization ?? 0,
   );
   readonly isChangelogOpen = signal(false);
   readonly appVersion = signal("1.0.0");
@@ -239,8 +235,7 @@ export class SidebarComponent implements OnDestroy, OnInit {
   ];
 
   ngOnDestroy(): void {
-    this.pendingReviewQuery.unsubscribe();
-    this.finalizeQueueQuery.unsubscribe();
+    this.queueCountsQuery.unsubscribe();
     this.routerSubscription.unsubscribe();
   }
 
