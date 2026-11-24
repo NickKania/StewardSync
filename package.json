@@ -17,7 +17,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "bun test",
     "lint": "eslint \"src/**/*.ts\" \"src/**/*.html\"",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p convex/tsconfig.json --noEmit",
     "dev": "concurrently \"bun x convex dev\" \"ng serve\"",
     "dev:local": "concurrently \"docker compose -f docker-compose.local.yml up backend dashboard\" \"ng serve --configuration local\"",
     "dev:staging": "concurrently \"dotenv -e .env.staging -- sh -c 'unset CONVEX_SELF_HOSTED_ADMIN_KEY && bun x convex dev'\" \"dotenv -e .env.staging -- ng serve --configuration staging\"",
